@@ -29,6 +29,8 @@ import ValidatorProducedBlocks from 'pages/ValidatorProducedBlocks';
 import SlotPage from 'pages/SlotPage';
 import Validators from 'pages/Validators';
 import ClusterHealth from 'pages/ClusterHealth';
+import FeatureGatePage from 'pages/FeatureGatePage';
+import FeatureGates from 'pages/FeatureGates';
 import Governance from 'pages/Governance';
 import GovernanceProposal from 'pages/GovernanceProposal';
 import Decentralization from 'pages/Decentralization';
@@ -158,6 +160,8 @@ const routes: RouteObject[] = [
               { path: '/validators', element: <Validators /> },
               { path: '/decentralization', element: <Decentralization /> },
               { path: '/cluster-health', element: <ClusterHealth /> },
+              { path: '/features', element: <FeatureGates /> },
+              { path: '/feature/:id', element: <FeatureGatePage /> },
               { path: '/governance', element: <Governance /> },
               {
                 path: '/governance/:address',

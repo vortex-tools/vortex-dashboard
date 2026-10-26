@@ -75,6 +75,12 @@ import {
   validatorNamesSchema,
   hostChangesSchema,
   governanceProposalsSchema,
+  featuresSchema,
+  Features,
+  featuresUpcomingSchema,
+  FeaturesUpcoming,
+  featureDetailSchema,
+  FeatureDetail,
   GovernanceProposals,
   governanceProposalDetailSchema,
   GovernanceProposalDetail,
@@ -724,6 +730,28 @@ const keyed =
   <K, T>() =>
   (key: K, response: T): Array<[K, T]> => [[key, response]];
 
+// Feature gates: all of them (one key), what's next (by cluster; '' = the
+// one this API serves), one by id.
+export const FEATURES_KEY = 'all';
+const featuresRequest = () => ({
+  path: '/features',
+  params: {},
+  schema: featuresSchema,
+  timeout: 20_000
+});
+const featuresUpcomingRequest = (cluster: string) => ({
+  path: '/features/upcoming',
+  params: cluster ? { cluster } : {},
+  schema: featuresUpcomingSchema,
+  timeout: 20_000
+});
+const featureRequest = (id: string) => ({
+  path: '/feature',
+  params: { id },
+  schema: featureDetailSchema,
+  timeout: 20_000
+});
+
 const hostChangesRequest = (identity: string) => ({
   path: '/validators/host-changes',
   params: { identity, limit: 100 },
@@ -1287,6 +1315,9 @@ interface VortexDataState {
   validatorNamesState: KeyedSlice<string, ValidatorNames>;
   hostChangesState: KeyedSlice<string, HostChanges>;
   governanceProposalsState: KeyedSlice<string, GovernanceProposals>;
+  featuresState: KeyedSlice<string, Features>;
+  featuresUpcomingState: KeyedSlice<string, FeaturesUpcoming>;
+  featureState: KeyedSlice<string, FeatureDetail>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
   validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
   clusterVersionsState: KeyedSlice<number, ClusterVersions>;
@@ -1377,6 +1408,18 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
   const versionsTimelineState = useKeyedSlice({
     request: versionsTimelineRequest,
     toEntries: versionsTimelineToEntries
+  });
+  const featuresState = useKeyedSlice({
+    request: featuresRequest,
+    toEntries: keyed<string, Features>()
+  });
+  const featuresUpcomingState = useKeyedSlice({
+    request: featuresUpcomingRequest,
+    toEntries: keyed<string, FeaturesUpcoming>()
+  });
+  const featureState = useKeyedSlice({
+    request: featureRequest,
+    toEntries: keyed<string, FeatureDetail>()
   });
   const governanceProposalsState = useKeyedSlice({
     request: governanceProposalsRequest,
@@ -1476,6 +1519,9 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       validatorNamesState,
       hostChangesState,
       governanceProposalsState,
+      featuresState,
+      featuresUpcomingState,
+      featureState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,
@@ -1513,6 +1559,9 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       validatorNamesState,
       hostChangesState,
       governanceProposalsState,
+      featuresState,
+      featuresUpcomingState,
+      featureState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,

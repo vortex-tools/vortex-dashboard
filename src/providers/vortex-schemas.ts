@@ -2280,3 +2280,110 @@ export const validatorGovernanceSchema = z.object({
     .catch([])
 });
 export type ValidatorGovernance = z.infer<typeof validatorGovernanceSchema>;
+
+// ---- Feature gates (/features, /features/upcoming, /feature) ------------
+// Status per cluster from the feature accounts on chain; queue order,
+// titles, SIMDs and min versions from the Agave wiki's tracker.
+const clientVersionsSchema = z
+  .object({
+    agave: z.array(z.string()).catch([]),
+    firedancer: z.array(z.string()).catch([]),
+    frankendancer: z.array(z.string()).catch([]),
+    jito: z.array(z.string()).catch([])
+  })
+  .catch({ agave: [], firedancer: [], frankendancer: [], jito: [] });
+export type ClientVersionLists = z.infer<typeof clientVersionsSchema>;
+
+const featureClusterStateSchema = z.object({
+  // 'active' | 'queued' (activates at the next epoch boundary) | 'inactive'
+  status: z.string().catch('inactive'),
+  slot: z.number().nullable().catch(null),
+  epoch: z.number().nullable().catch(null),
+  queuedAtSlot: z.number().nullable().catch(null),
+  // 1-based place in the tracker's pending list for this cluster.
+  queuePosition: z.number().nullable().catch(null)
+});
+export type FeatureClusterState = z.infer<typeof featureClusterStateSchema>;
+
+const featureReadinessSchema = z.object({
+  cluster: z.string().nullable().catch(null),
+  totalStake: z.number().catch(0),
+  readyStake: z.number().catch(0),
+  notReadyStake: z.number().catch(0),
+  unknownStake: z.number().catch(0),
+  byClient: z
+    .array(
+      z.object({
+        client: z.string(),
+        minVersions: z.array(z.string()).catch([]),
+        readyStake: z.number().catch(0),
+        notReadyStake: z.number().catch(0),
+        unknownStake: z.number().catch(0)
+      })
+    )
+    .catch([])
+});
+export type FeatureReadiness = z.infer<typeof featureReadinessSchema>;
+
+export const featureGateSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable().catch(null),
+  title: z.string().nullable().catch(null),
+  simds: z.array(z.number()).catch([]),
+  minVersions: clientVersionsSchema,
+  clusters: z.record(z.string(), featureClusterStateSchema).catch({}),
+  readiness: featureReadinessSchema.nullable().optional().catch(null)
+});
+export type FeatureGate = z.infer<typeof featureGateSchema>;
+
+const featuresHeader = {
+  updatedAt: z.number().nullable().catch(null),
+  checkedAt: z.number().nullable().catch(null),
+  wikiUrl: z.string().nullable().catch(null),
+  clusters: z
+    .array(
+      z.object({
+        cluster: z.string(),
+        epoch: z.number().nullable().catch(null),
+        readAt: z.number().nullable().catch(null),
+        // The cluster's minimum supported software, now and next.
+        versionFloor: z
+          .object({ current: clientVersionsSchema, next: clientVersionsSchema })
+          .nullable()
+          .catch(null)
+      })
+    )
+    .catch([])
+};
+
+export const featuresSchema = z.object({
+  ...featuresHeader,
+  features: z.array(featureGateSchema).catch([])
+});
+export type Features = z.infer<typeof featuresSchema>;
+
+export const featuresUpcomingSchema = z.object({
+  ...featuresHeader,
+  cluster: z.string().nullable().catch(null),
+  features: z.array(featureGateSchema).catch([])
+});
+export type FeaturesUpcoming = z.infer<typeof featuresUpcomingSchema>;
+
+export const featureDetailSchema = z.object({
+  ...featuresHeader,
+  feature: featureGateSchema,
+  events: z
+    .array(
+      z.object({
+        cluster: z.string(),
+        // 'scheduled' | 'unscheduled' | 'queued' | 'revoked' | 'activated'
+        kind: z.string(),
+        observedAt: z.number().nullable().catch(null),
+        slot: z.number().nullable().catch(null),
+        epoch: z.number().nullable().catch(null),
+        queuePosition: z.number().nullable().catch(null)
+      })
+    )
+    .catch([])
+});
+export type FeatureDetail = z.infer<typeof featureDetailSchema>;

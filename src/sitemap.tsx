@@ -51,7 +51,13 @@ export const routes: RouteItems[] = [
         name: 'Validators',
         icon: 'server',
         path: '/validators'
-      },
+      }
+    ]
+  },
+  // The cluster as a whole.
+  {
+    label: 'cluster',
+    pages: [
       // How spread out the stake is (clients, providers, countries).
       {
         name: 'Decentralization',
@@ -63,6 +69,12 @@ export const routes: RouteItems[] = [
         name: 'Cluster Health',
         icon: 'activity',
         path: '/cluster-health'
+      },
+      // Feature gates: what's active, what activates next.
+      {
+        name: 'Feature Gates',
+        icon: 'toggle-right',
+        path: '/features'
       },
       // Governance proposals (staging only until the API serves them in
       // production).
