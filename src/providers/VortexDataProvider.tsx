@@ -76,6 +76,8 @@ import {
   hostChangesSchema,
   governanceProposalsSchema,
   featuresSchema,
+  clusterHaltSchema,
+  ClusterHaltRunUp,
   Features,
   featuresUpcomingSchema,
   FeaturesUpcoming,
@@ -733,6 +735,13 @@ const keyed =
 // Feature gates: all of them (one key), what's next (by cluster; '' = the
 // one this API serves), one by id.
 export const FEATURES_KEY = 'all';
+// The run-up to a halt: the 300 slots ending at the given last slot.
+const clusterHaltRequest = (slot: number) => ({
+  path: '/cluster/halt',
+  params: { slot, slots: 300 },
+  schema: clusterHaltSchema,
+  timeout: 30_000
+});
 const featuresRequest = () => ({
   path: '/features',
   params: {},
@@ -1316,6 +1325,7 @@ interface VortexDataState {
   hostChangesState: KeyedSlice<string, HostChanges>;
   governanceProposalsState: KeyedSlice<string, GovernanceProposals>;
   featuresState: KeyedSlice<string, Features>;
+  clusterHaltState: KeyedSlice<number, ClusterHaltRunUp>;
   featuresUpcomingState: KeyedSlice<string, FeaturesUpcoming>;
   featureState: KeyedSlice<string, FeatureDetail>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
@@ -1408,6 +1418,10 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
   const versionsTimelineState = useKeyedSlice({
     request: versionsTimelineRequest,
     toEntries: versionsTimelineToEntries
+  });
+  const clusterHaltState = useKeyedSlice({
+    request: clusterHaltRequest,
+    toEntries: keyed<number, ClusterHaltRunUp>()
   });
   const featuresState = useKeyedSlice({
     request: featuresRequest,
@@ -1520,6 +1534,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       hostChangesState,
       governanceProposalsState,
       featuresState,
+      clusterHaltState,
       featuresUpcomingState,
       featureState,
       governanceProposalState,
@@ -1560,6 +1575,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       hostChangesState,
       governanceProposalsState,
       featuresState,
+      clusterHaltState,
       featuresUpcomingState,
       featureState,
       governanceProposalState,

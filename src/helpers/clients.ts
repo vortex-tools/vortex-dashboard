@@ -30,3 +30,9 @@ export const clientFork = (id: string) => CLIENTS[id]?.[1] ?? null;
 
 /** Whether the id is one we can place. */
 export const isKnownClient = (id: string) => id in CLIENTS;
+
+/** "Agave · Jito", "Firedancer", or the id itself when we can't place it. */
+export const clientLabel = (id: string) => {
+  const c = CLIENTS[id];
+  return c ? (c[1] ? `${c[0]} · ${c[1]}` : c[0]) : id;
+};

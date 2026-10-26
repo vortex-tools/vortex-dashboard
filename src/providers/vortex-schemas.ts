@@ -2438,3 +2438,59 @@ export const featureDetailSchema = z.object({
     .catch([])
 });
 export type FeatureDetail = z.infer<typeof featureDetailSchema>;
+
+// ---- Halt run-up (/cluster/halt) ----------------------------------------
+// The last slots before a halt (Alpenglow footers): blocks, skips,
+// finalization, votes per slot, and who was voting at the end.
+const haltVoterGroupSchema = z.object({
+  client: z.string().nullable().catch(null),
+  version: z.string().nullable().catch(null),
+  validators: z.number().catch(0),
+  stakePpb: z.number().catch(0)
+});
+export const clusterHaltSchema = z.object({
+  startSlot: z.number(),
+  endSlot: z.number(),
+  lastBlockSlot: z.number().nullable().catch(null),
+  lastFinalizedSlot: z.number().nullable().catch(null),
+  blocks: z.number().catch(0),
+  skipped: z.number().catch(0),
+  trend: z
+    .array(
+      z.object({
+        firstSlot: z.number(),
+        blocks: z.number().catch(0),
+        skipped: z.number().catch(0),
+        finalized: z.number().catch(0),
+        meanNotarStakePpb: z.number().nullable().catch(null),
+        meanSkipStakePpb: z.number().nullable().catch(null)
+      })
+    )
+    .catch([]),
+  slots: z
+    .array(
+      z.object({
+        slot: z.number(),
+        outcome: z.string().nullable().catch(null),
+        leader: z.string().nullable().catch(null),
+        userAgent: z.string().nullable().catch(null),
+        notarStakePpb: z.number().nullable().catch(null),
+        skipStakePpb: z.number().nullable().catch(null),
+        finalizationLagSlots: z.number().nullable().catch(null)
+      })
+    )
+    .catch([]),
+  // The last block (up to 32 back) whose slot + 8 carried reward
+  // certificates: who voted, and the stake in neither certificate.
+  finalVoters: z
+    .object({
+      slot: z.number(),
+      votedStakePpb: z.number().catch(0),
+      missingStakePpb: z.number().catch(0),
+      voted: z.array(haltVoterGroupSchema).catch([]),
+      missing: z.array(haltVoterGroupSchema).catch([])
+    })
+    .nullable()
+    .catch(null)
+});
+export type ClusterHaltRunUp = z.infer<typeof clusterHaltSchema>;
