@@ -1,6 +1,5 @@
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
-import { IS_STAGING } from 'helpers/apiEndpoint';
 import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';
 import { useMemo } from 'react';
@@ -76,11 +75,8 @@ export const routes: RouteItems[] = [
         icon: 'toggle-right',
         path: '/features'
       },
-      // Governance proposals (staging only until the API serves them in
-      // production).
-      ...(IS_STAGING
-        ? [{ name: 'Governance', icon: 'check-square', path: '/governance' }]
-        : [])
+      // Solana governance proposals (mainnet only).
+      { name: 'Governance', icon: 'check-square', path: '/governance' }
     ]
   },
   {
@@ -135,6 +131,7 @@ export const useNavRoutes = (): RouteItems[] => {
                 r =>
                   r.path !== '/leaderboards/block-income' &&
                   r.path !== '/client-versions' &&
+                  r.path !== '/governance' &&
                   (!alpenglowActive || r.path !== '/leaderboards/voting')
               )
             }))
