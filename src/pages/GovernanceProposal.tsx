@@ -245,7 +245,7 @@ const GovernanceProposal = () => {
     data: votes,
     sortable: true,
     pagination: true,
-    pageSize: 25,
+    pageSize: 10,
     getRowId: v => v.identity,
     resetPageKey: address,
     initialState: { sorting: [{ id: 'stake', desc: true }] }
