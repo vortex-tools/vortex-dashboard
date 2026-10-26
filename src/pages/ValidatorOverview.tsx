@@ -5,6 +5,7 @@ import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
 import HostChangesCard from 'components/validator/HostChangesCard';
+import GovernanceCard from 'components/validator/GovernanceCard';
 import StatCard from 'components/common/StatCard';
 import ValidatorProduction from 'components/validator/ValidatorProduction';
 import ValidatorConsensus, {
@@ -609,6 +610,7 @@ const ValidatorOverview = () => {
                 />
               </Col>
             )}
+            {nodeAddress && <GovernanceCard identity={nodeAddress} />}
           </Row>
         ) : (
           <Row className="g-3 mb-3">

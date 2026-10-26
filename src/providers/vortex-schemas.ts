@@ -2079,3 +2079,181 @@ export const versionsTimelineSchema = z.object({
   )
 });
 export type VersionsTimeline = z.infer<typeof versionsTimelineSchema>;
+
+// ---- Governance (svmgov proposals) ---------------------------------------
+// /governance/proposals, /governance/proposal, /validators/governance.
+// Shapes follow the API's plan (2026-10-26) before it shipped; everything
+// is lenient so a renamed or missing field degrades to "—", not an error.
+const lamports = z.number().nullable().catch(null);
+const share = z.number().nullable().catch(null);
+
+export const governanceProposalSchema = z.object({
+  address: z.string(),
+  index: z.number().nullable().catch(null),
+  title: z.string().nullable().catch(null),
+  docUrl: z.string().nullable().optional().catch(null),
+  voteUrl: z.string().nullable().optional().catch(null),
+  author: z
+    .object({
+      identity: z.string().nullable().catch(null),
+      name: validatorNameSchema.catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  // 'support' | 'voting' | 'finalized'
+  phase: z.string().nullable().catch(null),
+  creationEpoch: z.number().nullable().optional().catch(null),
+  startEpoch: z.number().nullable().optional().catch(null),
+  endEpoch: z.number().nullable().optional().catch(null),
+  snapshotSlot: z.number().nullable().optional().catch(null),
+  snapshotEpoch: z.number().nullable().optional().catch(null),
+  support: z
+    .object({ lamports, share, needed: share })
+    .nullable()
+    .optional()
+    .catch(null),
+  tallies: z
+    .object({ for: lamports, against: lamports, abstain: lamports })
+    .nullable()
+    .optional()
+    .catch(null),
+  voters: z.number().nullable().optional().catch(null),
+  overrides: z.number().nullable().optional().catch(null),
+  // Votes cast / the snapshot epoch's total stake.
+  turnout: share.optional(),
+  // For / (for + against + abstain), and for / (for + against).
+  forShare: share.optional(),
+  forShareExAbstain: share.optional(),
+  verdict: z
+    .object({
+      // 'accepted' | 'rejected' | 'inconclusive'
+      result: z.string().nullable().catch(null),
+      rule: z
+        .object({
+          quorum: share.optional(),
+          threshold: share.optional(),
+          abstainCounted: z.boolean().nullable().optional().catch(null),
+          source: z.string().nullable().optional().catch(null),
+          text: z.string().nullable().optional().catch(null)
+        })
+        .nullable()
+        .optional()
+        .catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null)
+});
+export type GovernanceProposal = z.infer<typeof governanceProposalSchema>;
+
+export const governanceProposalsSchema = z.object({
+  proposals: z.array(governanceProposalSchema).catch([])
+});
+export type GovernanceProposals = z.infer<typeof governanceProposalsSchema>;
+
+/** A vote's split in basis points (a validator can split its stake). */
+const bpSplitSchema = z
+  .object({
+    for: z.number().catch(0),
+    against: z.number().catch(0),
+    abstain: z.number().catch(0)
+  })
+  .nullable()
+  .catch(null);
+
+const splitRowSchema = z.object({
+  key: z.string(),
+  label: z.string().nullable().optional().catch(null),
+  for: lamports,
+  against: lamports,
+  abstain: lamports,
+  notVoted: lamports.optional()
+});
+
+export const governanceProposalDetailSchema = z.object({
+  proposal: governanceProposalSchema,
+  votes: z
+    .array(
+      z.object({
+        identity: z.string(),
+        voteAccount: z.string().nullable().optional().catch(null),
+        name: validatorNameSchema.catch(null),
+        stake: lamports,
+        bp: bpSplitSchema,
+        // The stake it votes with once its stakers' overrides are taken out.
+        effective: lamports.optional(),
+        votedAt: z.number().nullable().optional().catch(null)
+      })
+    )
+    .catch([]),
+  nonVoters: z
+    .array(
+      z.object({
+        identity: z.string(),
+        name: validatorNameSchema.catch(null),
+        stake: lamports
+      })
+    )
+    .catch([]),
+  overrides: z
+    .object({
+      byValidator: z
+        .array(
+          z.object({
+            identity: z.string(),
+            name: validatorNameSchema.catch(null),
+            lamports,
+            count: z.number().nullable().catch(null)
+          })
+        )
+        .catch([]),
+      entries: z
+        .array(
+          z.object({
+            staker: z.string(),
+            // A known stake pool's address (no names).
+            pool: z.boolean().nullable().optional().catch(null),
+            validator: z.string().nullable().optional().catch(null),
+            lamports,
+            bp: bpSplitSchema
+          })
+        )
+        .catch([])
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  splits: z
+    .object({
+      clients: z.array(splitRowSchema).catch([]),
+      countries: z.array(splitRowSchema).catch([]),
+      asns: z.array(splitRowSchema).catch([])
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  turnoutOverTime: z
+    .array(z.object({ t: z.number(), share: z.number() }))
+    .optional()
+    .catch([])
+});
+export type GovernanceProposalDetail = z.infer<
+  typeof governanceProposalDetailSchema
+>;
+
+export const validatorGovernanceSchema = z.object({
+  identity: z.string().nullable().optional().catch(null),
+  records: z
+    .array(
+      z.object({
+        proposal: governanceProposalSchema,
+        bp: bpSplitSchema,
+        stake: lamports.optional(),
+        effective: lamports.optional(),
+        votedAt: z.number().nullable().optional().catch(null)
+      })
+    )
+    .catch([])
+});
+export type ValidatorGovernance = z.infer<typeof validatorGovernanceSchema>;

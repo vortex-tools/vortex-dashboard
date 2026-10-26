@@ -29,6 +29,8 @@ import ValidatorProducedBlocks from 'pages/ValidatorProducedBlocks';
 import SlotPage from 'pages/SlotPage';
 import Validators from 'pages/Validators';
 import ClusterHealth from 'pages/ClusterHealth';
+import Governance from 'pages/Governance';
+import GovernanceProposal from 'pages/GovernanceProposal';
 import Decentralization from 'pages/Decentralization';
 
 // Inlined at build time. Staging-only pages are absent from the production
@@ -156,6 +158,11 @@ const routes: RouteObject[] = [
               { path: '/validators', element: <Validators /> },
               { path: '/decentralization', element: <Decentralization /> },
               { path: '/cluster-health', element: <ClusterHealth /> },
+              { path: '/governance', element: <Governance /> },
+              {
+                path: '/governance/:address',
+                element: <GovernanceProposal />
+              },
 
               // Mainnet's TowerBFT -> Alpenglow migration: timing and readiness.
               // The migration is done (both clusters on Alpenglow).

@@ -74,6 +74,12 @@ import {
   validatorDelegatorsSchema,
   validatorNamesSchema,
   hostChangesSchema,
+  governanceProposalsSchema,
+  GovernanceProposals,
+  governanceProposalDetailSchema,
+  GovernanceProposalDetail,
+  validatorGovernanceSchema,
+  ValidatorGovernance,
   clusterVersionsSchema,
   ClusterVersions,
   versionsTimelineSchema,
@@ -693,6 +699,31 @@ const versionsTimelineToEntries = (
 ): Array<[number, VersionsTimeline]> => [[key, response]];
 
 // A validator's host changes: 100 epochs of moves, and events.
+// Governance: every proposal (one key), one proposal by address, one
+// validator's votes by identity.
+export const GOVERNANCE_KEY = 'all';
+const governanceProposalsRequest = () => ({
+  path: '/governance/proposals',
+  params: {},
+  schema: governanceProposalsSchema,
+  timeout: 20_000
+});
+const governanceProposalRequest = (address: string) => ({
+  path: '/governance/proposal',
+  params: { address },
+  schema: governanceProposalDetailSchema,
+  timeout: 30_000
+});
+const validatorGovernanceRequest = (identity: string) => ({
+  path: '/validators/governance',
+  params: { identity },
+  schema: validatorGovernanceSchema,
+  timeout: 20_000
+});
+const keyed =
+  <K, T>() =>
+  (key: K, response: T): Array<[K, T]> => [[key, response]];
+
 const hostChangesRequest = (identity: string) => ({
   path: '/validators/host-changes',
   params: { identity, limit: 100 },
@@ -1255,6 +1286,9 @@ interface VortexDataState {
   delegatorsState: KeyedSlice<string, ValidatorDelegators>;
   validatorNamesState: KeyedSlice<string, ValidatorNames>;
   hostChangesState: KeyedSlice<string, HostChanges>;
+  governanceProposalsState: KeyedSlice<string, GovernanceProposals>;
+  governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
+  validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
   clusterVersionsState: KeyedSlice<number, ClusterVersions>;
   versionsTimelineState: KeyedSlice<number, VersionsTimeline>;
   productionHistoryState: KeyedSlice<string, ProductionEpoch[]>;
@@ -1344,6 +1378,18 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: versionsTimelineRequest,
     toEntries: versionsTimelineToEntries
   });
+  const governanceProposalsState = useKeyedSlice({
+    request: governanceProposalsRequest,
+    toEntries: keyed<string, GovernanceProposals>()
+  });
+  const governanceProposalState = useKeyedSlice({
+    request: governanceProposalRequest,
+    toEntries: keyed<string, GovernanceProposalDetail>()
+  });
+  const validatorGovernanceState = useKeyedSlice({
+    request: validatorGovernanceRequest,
+    toEntries: keyed<string, ValidatorGovernance>()
+  });
   const hostChangesState = useKeyedSlice({
     request: hostChangesRequest,
     toEntries: hostChangesToEntries
@@ -1429,6 +1475,9 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       delegatorsState,
       validatorNamesState,
       hostChangesState,
+      governanceProposalsState,
+      governanceProposalState,
+      validatorGovernanceState,
       clusterVersionsState,
       versionsTimelineState,
       productionHistoryState,
@@ -1463,6 +1512,9 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       delegatorsState,
       validatorNamesState,
       hostChangesState,
+      governanceProposalsState,
+      governanceProposalState,
+      validatorGovernanceState,
       clusterVersionsState,
       versionsTimelineState,
       productionHistoryState,
