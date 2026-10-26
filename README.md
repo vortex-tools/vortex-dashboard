@@ -15,7 +15,8 @@ testnet API.
   production, per epoch.
 - **Block income leaderboard** - each validator's blocks against the blocks
   other leaders made around them ("capture"), and what skipped slots cost.
-- **Live consensus** - the cluster's latest slots as they happen.
+- **Cluster status** - the cluster's latest slots as they happen, and any
+  halt and restart.
 - **Decentralization** - Nakamoto coefficients by validator, provider,
   provider + city, country and client, with each breakdown's history.
 - **Client versions** - how far each client's validators have upgraded.

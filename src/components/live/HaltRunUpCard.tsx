@@ -42,7 +42,8 @@ const HaltRunUpCard = ({
   const last = data.slots.slice(-LAST_SLOTS).reverse();
   const fv = data.finalVoters;
   const window = data.endSlot - data.startSlot + 1;
-  // Who voted (and didn't) by base client, flavor, then version; groups
+  // Who voted (and didn't), sorted by base client, flavor, then version;
+  // groups
   // under 1% of stake left out.
   const MIN_PPB = 1e7;
   const voters = (() => {
@@ -189,8 +190,7 @@ const HaltRunUpCard = ({
           >
             <thead>
               <tr>
-                <th>Base</th>
-                <th>Flavor</th>
+                <th>Client</th>
                 <th>Version</th>
                 <th>Vote</th>
                 <th className="text-end">Validators</th>
@@ -198,31 +198,26 @@ const HaltRunUpCard = ({
               </tr>
             </thead>
             <tbody>
-              {voters.map((g, i) => {
-                const prev = voters[i - 1];
-                const newBase = !prev || prev.base !== g.base;
-                const newFlavor = newBase || prev.flavor !== g.flavor;
-                return (
-                  <tr key={`${g.voted}-${g.client}-${g.version}`}>
-                    <td className="fw-semibold">{newBase ? g.base : ''}</td>
-                    <td className="text-body-secondary">
-                      {newFlavor ? g.flavor : ''}
-                    </td>
-                    <td className="font-monospace">{g.version ?? '—'}</td>
-                    <td>
-                      <span
-                        className={`badge badge-soft badge-soft-${g.voted ? 'success' : 'warning'}`}
-                      >
-                        {g.voted ? 'voted' : 'missing'}
-                      </span>
-                    </td>
-                    <td className="text-end font-monospace">{g.validators}</td>
-                    <td className="text-end font-monospace">
-                      {ppb(g.stakePpb)}
-                    </td>
-                  </tr>
-                );
-              })}
+              {voters.map(g => (
+                <tr key={`${g.voted}-${g.client}-${g.version}`}>
+                  <td>
+                    {g.base}
+                    {g.flavor && g.flavor !== 'plain' && (
+                      <span className="text-body-secondary"> · {g.flavor}</span>
+                    )}
+                  </td>
+                  <td className="font-monospace">{g.version ?? '—'}</td>
+                  <td>
+                    <span
+                      className={`badge badge-soft badge-soft-${g.voted ? 'success' : 'warning'}`}
+                    >
+                      {g.voted ? 'voted' : 'missing'}
+                    </span>
+                  </td>
+                  <td className="text-end font-monospace">{g.validators}</td>
+                  <td className="text-end font-monospace">{ppb(g.stakePpb)}</td>
+                </tr>
+              ))}
             </tbody>
           </Table>
           {hidden > 0 && (

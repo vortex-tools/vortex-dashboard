@@ -28,7 +28,7 @@ import { Link } from 'react-router';
 
 const breadcrumbItems: Crumb[] = [
   { label: 'Home', url: '/' },
-  { label: 'Live Consensus', active: true }
+  { label: 'Cluster Status', active: true }
 ];
 
 const POLL_MS = 2_000;
@@ -472,9 +472,9 @@ const LiveConsensus = () => {
   const header = (
     <Row className="page-header align-items-start justify-content-between g-3">
       <Col xs="auto">
-        <h3>Live Consensus</h3>
+        <h3>Cluster Status</h3>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
-          The cluster&apos;s latest slots as they happen
+          The cluster&apos;s latest slots as they happen, and any halt
         </p>
       </Col>
     </Row>

@@ -148,18 +148,15 @@ const useNavRoutesFor = (alpenglowActive: boolean): RouteItems[] =>
     if (!alpenglowActive) return routes;
     const voting = (r: Route) => r.path === '/leaderboards/voting';
     return routes.flatMap(group => {
-      // The live view sits with the overview pages once Alpenglow is on.
-      if (group.label === 'overview')
+      // The live view of the cluster leads the Cluster section once
+      // Alpenglow is on.
+      if (group.label === 'cluster')
         return [
           {
             ...group,
             pages: [
-              ...group.pages,
-              {
-                name: 'Live Consensus',
-                icon: 'radio',
-                path: '/live'
-              }
+              { name: 'Cluster Status', icon: 'radio', path: '/status' },
+              ...group.pages
             ]
           }
         ];

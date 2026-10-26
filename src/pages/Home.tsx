@@ -272,7 +272,7 @@ const Home = () => {
                     : undefined
               }
               alert={!!halt}
-              linkTo="/live"
+              linkTo="/status"
             />
           </Col>
           {blockIncomeTracked ? (
@@ -339,9 +339,9 @@ const Home = () => {
             <>
               <Col xs={12}>
                 <LeaderboardCard
-                  title="Live Consensus"
+                  title="Cluster Status"
                   description="The cluster's latest slots as they happen: skips, votes, finalization. Jump into any slot."
-                  linkTo="/live"
+                  linkTo="/status"
                   icon="radio"
                 />
               </Col>

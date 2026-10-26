@@ -177,7 +177,8 @@ const routes: RouteObject[] = [
               { path: '/alpenglow/*', element: <Navigate to="/" replace /> },
 
               // What the cluster is doing now (Alpenglow).
-              { path: '/live', element: <LiveConsensus /> },
+              { path: '/status', element: <LiveConsensus /> },
+              { path: '/live', element: <Navigate to="/status" replace /> },
 
               // One slot's whole story (Tower or Alpenglow).
               { path: '/slot/:slot', element: <SlotPage /> },
