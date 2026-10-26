@@ -226,7 +226,10 @@ const Home = () => {
       : null;
   const trailing = useTrailingTotals(latest, countMs, blocksPerSec);
   const halt = useClusterHalt();
-  const currentSlot = useTickingSlot(live.progress, !!halt);
+  // Halted: the halted chain's last slot (the epoch reading can show the
+  // restart snapshot's slot once our node has restarted onto it).
+  const tickingSlot = useTickingSlot(live.progress, !!halt);
+  const currentSlot = halt ? halt.slot : tickingSlot;
 
   return (
     <div>
