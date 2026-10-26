@@ -117,7 +117,7 @@ const rowColumns: ColumnDef<ValidatorRow>[] = [
   },
   {
     id: 'overridden',
-    header: 'Changed by stakers',
+    header: 'Overridden',
     accessorFn: v => v.overridden,
     cell: ({ row: { original: v } }) =>
       v.overridden ? (
@@ -494,7 +494,7 @@ const GovernanceProposal = () => {
           </Col>
           <Col xs={6} lg={3}>
             <StatCard
-              label="Changed by Stakers"
+              label="Overridden"
               value={compactSol(movedFromVoters + movedFromNonVoters)}
               sublabel={`stakers' own votes that changed the tally · ${compactSol(reVoted)} more re-voted the same`}
             />
@@ -654,11 +654,12 @@ const GovernanceProposal = () => {
           {effects.length || data.largeOverrides.length ? (
             <>
               <p className="fs-9 mb-3">
-                Stakers&apos; own votes that changed something:{' '}
+                Overridden by stakers, counting only what changed:{' '}
                 <span className="fw-semibold">
                   {compactSol(movedFromVoters)}
                 </span>{' '}
-                changed to a different choice than their validator&apos;s, and{' '}
+                overridden to a different choice than their validator&apos;s,
+                and{' '}
                 <span className="fw-semibold">
                   {compactSol(movedFromNonVoters)}
                 </span>{' '}
@@ -678,7 +679,7 @@ const GovernanceProposal = () => {
                       <tr>
                         <th>Validator</th>
                         <th>Its vote</th>
-                        <th>Stakers changed it to</th>
+                        <th>Overridden to</th>
                         <th className="text-end">Stakers</th>
                       </tr>
                     </thead>
