@@ -542,7 +542,7 @@ const LiveConsensus = () => {
         <Row className="g-3">
           <Col xs={6} md>
             <StatCard
-              label="Skip Rate"
+              label="Recent Skip Rate"
               value={
                 stats.known
                   ? `${((stats.skipped / stats.known) * 100).toFixed(1)}%`
