@@ -21,6 +21,11 @@ $body-highlight-bg: ink(100) !default;
   --#{$prefix}warning-light: #{tint-color($warning, 45%)};
   --#{$prefix}danger-light: #{tint-color($danger, 45%)};
   --#{$prefix}scrollbar-bg: rgba(var(--#{$prefix}quaternary-bg-rgb), 0.55);
+  // Governance votes: a calmer green / red than the status colors, so the
+  // bars sit with the accent palette; the same weight in both themes.
+  --#{$prefix}vote-for: #3f9f5c;
+  --#{$prefix}vote-against: #d4573f;
+  --#{$prefix}vote-abstain: #{ink(400)};
 
   --#{$prefix}navbar-top-height: #{$vx-topbar-height};
   --#{$prefix}topbar-bg: #{$accent-50};
@@ -57,6 +62,9 @@ $body-highlight-bg: ink(100) !default;
   @include vx-rgb-var(body-highlight-bg, $body-highlight-bg-dark);
   @include vx-rgb-var(emphasis-bg, $body-emphasis-bg-dark);
   --#{$prefix}success-light: #{$success};
+  --#{$prefix}vote-for: #4daa69;
+  --#{$prefix}vote-against: #dc6650;
+  --#{$prefix}vote-abstain: #{ink(600)};
   --#{$prefix}warning-light: #{$warning};
   --#{$prefix}danger-light: #{$danger};
 

@@ -103,9 +103,9 @@ export const VerdictBadge = ({
 // The three choices - always "For", "Against", "Abstain" - and their
 // colors (theme tokens: CSS var for the page, the name for charts).
 export const CHOICE = [
-  { key: 'for', label: 'For', token: 'success' },
-  { key: 'against', label: 'Against', token: 'danger' },
-  { key: 'abstain', label: 'Abstain', token: 'quaternary-color' }
+  { key: 'for', label: 'For', token: 'vote-for' },
+  { key: 'against', label: 'Against', token: 'vote-against' },
+  { key: 'abstain', label: 'Abstain', token: 'vote-abstain' }
 ] as const;
 export type ChoiceKey = (typeof CHOICE)[number]['key'];
 const cssColor = (token: string) => `var(--vx-${token})`;
