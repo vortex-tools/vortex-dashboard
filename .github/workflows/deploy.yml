@@ -1,16 +1,16 @@
 # Deploys vortex-dashboard to Cloudflare Workers (Static Assets).
 #
-#   push to main    -> staging.vx.tools  (vortex-dashboard-staging)
+#   push to staging -> staging.vx.tools  (vortex-dashboard-staging)
 #   push to testnet -> testnet.vx.tools  (vortex-dashboard-testnet; built
 #                      against api.testnet.vx.tools)
-#   push to release -> app.vx.tools      (vortex-dashboard)
+#   push to mainnet -> app.vx.tools      (vortex-dashboard)
 #
-# testnet and release are both public: each is fast-forwarded to a commit
+# testnet and mainnet are both public: each is fast-forwarded to a commit
 # already verified on staging, independently (the testnet API and
 # api.vx.tools run different vortex-data versions, so the two sites can
 # move at different paces).
 #
-# Shipping to production = moving `release` forward to a commit that has
+# Shipping to production = moving `mainnet` forward to a commit that has
 # already been verified on staging.
 #
 # Required secrets (in the `cloudflare` environment): CLOUDFLARE_API_TOKEN,
@@ -20,7 +20,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main, release, testnet]
+    branches: [staging, mainnet, testnet]
 
 # The jobs only read the repository; deploys authenticate to Cloudflare.
 permissions:
@@ -35,16 +35,16 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     # The Cloudflare secrets live in this environment, which only the
-    # deploy branches (main, release, testnet) may use.
+    # deploy branches (staging, mainnet, testnet) may use.
     environment: cloudflare
     env:
       # False until the Cloudflare secrets are added. The
       # deploy steps skip rather than fail, so landing this workflow before
-      # the credentials exist doesn't leave a permanent red X on main.
+      # the credentials exist doesn't leave a permanent red X on staging.
       HAS_CLOUDFLARE_CREDS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-      # release / testnet: the site built for this commit by main's
+      # mainnet / testnet: the site built for this commit by staging's
       # prebuild job (key below); a hit skips the build.
-      SITE_MODE: ${{ github.ref == 'refs/heads/release' && 'production' || github.ref == 'refs/heads/testnet' && 'testnet' || 'staging' }}
+      SITE_MODE: ${{ github.ref == 'refs/heads/mainnet' && 'production' || github.ref == 'refs/heads/testnet' && 'testnet' || 'staging' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -65,10 +65,10 @@ jobs:
       - if: steps.node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      # release / testnet move only to commits main already built: take
+      # mainnet / testnet move only to commits staging already built: take
       # that build (same commit, same mode) instead of building again.
       - name: Restore prebuilt site
-        if: github.ref != 'refs/heads/main'
+        if: github.ref != 'refs/heads/staging'
         id: site
         uses: actions/cache/restore@v4
         with:
@@ -76,24 +76,24 @@ jobs:
           key: site-${{ env.SITE_MODE }}-${{ github.sha }}
 
       # Staging: typecheck and build side by side; both must pass before
-      # anything is published. release / testnet skip the typecheck (their
+      # anything is published. mainnet / testnet skip the typecheck (their
       # commits were verified on staging) and build only on a cache miss.
       - name: Typecheck + build (staging)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/staging'
         run: |
           npx tsc --noEmit -p tsconfig.json & tsc=$!
           npm run build:staging
           wait $tsc
 
       - name: Build (production)
-        if: github.ref == 'refs/heads/release' && steps.site.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/mainnet' && steps.site.outputs.cache-hit != 'true'
         run: npm run build
 
       # wrangler is a pinned devDependency, so `npm ci` above already installed
       # it - no per-run install. `--no-install` makes npx fail loudly rather
       # than silently fetch a different version.
       - name: Deploy to staging
-        if: github.ref == 'refs/heads/main' && env.HAS_CLOUDFLARE_CREDS == 'true'
+        if: github.ref == 'refs/heads/staging' && env.HAS_CLOUDFLARE_CREDS == 'true'
         run: npx --no-install wrangler deploy --env staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -115,7 +115,7 @@ jobs:
       # --env="" targets the top-level (production) config explicitly;
       # without it wrangler warns that multiple environments are defined.
       - name: Deploy to production
-        if: github.ref == 'refs/heads/release' && env.HAS_CLOUDFLARE_CREDS == 'true'
+        if: github.ref == 'refs/heads/mainnet' && env.HAS_CLOUDFLARE_CREDS == 'true'
         run: npx --no-install wrangler deploy --env=""
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -127,12 +127,12 @@ jobs:
           echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set."
           echo "::warning::The build was verified but nothing was deployed."
 
-  # On main, beside the staging deploy (it doesn't hold staging up): build
+  # On staging, beside the staging deploy (it doesn't hold staging up): build
   # this commit for production and testnet and cache each by commit, so
-  # fast-forwarding release / testnet to it only uploads. Cache entries
-  # made on main (the default branch) are readable from other branches.
+  # fast-forwarding mainnet / testnet to it only uploads. Cache entries
+  # made on staging (the default branch) are readable from other branches.
   prebuild:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

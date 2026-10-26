@@ -32,14 +32,14 @@
   // The API the share cards read (vars aren't inherited: set per env).
   "vars": { "API_BASE": "https://api.vx.tools", "CLUSTER": "mainnet" },
 
-  // PRODUCTION — app.vx.tools. Deployed from the `release` branch.
+  // PRODUCTION — app.vx.tools. Deployed from the `mainnet` branch.
   // custom_domain: Cloudflare owns this hostname's DNS record and certificate.
   // Routes are declared per environment on purpose: an env that inherited
   // these would claim app.vx.tools for itself (workers-sdk #13925).
   "routes": [{ "pattern": "app.vx.tools", "custom_domain": true }],
 
   "env": {
-    // STAGING — staging.vx.tools. Deployed on every push to main.
+    // STAGING — staging.vx.tools. Deployed on every push to `staging`.
     "staging": {
       "name": "vortex-dashboard-staging",
       "assets": {
@@ -53,7 +53,7 @@
     },
     // TESTNET - testnet.vx.tools. Built against the testnet API (npm run
     // build:testnet), deployed from the `testnet` branch (fast-forwarded to
-    // a commit verified on staging, like `release`). custom_domain:
+    // a commit verified on staging, like `mainnet`). custom_domain:
     // Cloudflare creates the DNS record and cert.
     "testnet": {
       "name": "vortex-dashboard-testnet",

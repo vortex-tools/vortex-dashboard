@@ -53,7 +53,7 @@ staging.vx.tools and testnet.vx.tools builds.
   response is validated with Zod (`src/providers/vortex-schemas.ts`).
 - A small Cloudflare Worker (`worker/`) renders share cards; everything
   else is static assets.
-- Pushes to `main` deploy staging.vx.tools; `release` and `testnet` deploy
+- Pushes to `staging` deploy staging.vx.tools; `mainnet` and `testnet` deploy
   app.vx.tools and testnet.vx.tools (`.github/workflows/deploy.yml`).
 
 ## License
