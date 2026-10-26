@@ -103,8 +103,9 @@ export const routes: RouteItems[] = [
  * Tower is current, `routes` as-is. Once Alpenglow is active, the
  * Consensus (participation) leaderboard leads the leaderboards and Tower
  * voting moves to a "historical" group. Testnet (by the API's cluster)
- * has no block income and only Alpenglow worth showing: Income and Tower
- * voting are left out of the nav (their pages still answer direct links).
+ * has no block income, no client-upgrade data and only Alpenglow worth
+ * showing: Block Income, Cluster Health and Tower voting are left out of
+ * the nav (their pages still answer direct links).
  */
 export const useNavRoutes = (): RouteItems[] => {
   const { alpenglowActive } = useConsensus();
@@ -121,6 +122,7 @@ export const useNavRoutes = (): RouteItems[] => {
               pages: g.pages.filter(
                 r =>
                   r.path !== '/leaderboards/block-income' &&
+                  r.path !== '/cluster-health' &&
                   (!alpenglowActive || r.path !== '/leaderboards/voting')
               )
             }))
