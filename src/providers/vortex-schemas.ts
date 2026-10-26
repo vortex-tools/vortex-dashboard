@@ -787,6 +787,14 @@ export const currentEpochResponseSchema = z.object({
         .object({
           supermajority: z.number().catch(0.8),
           stake: z.number().catch(0),
+          // Whether our gossip observer can see restarted nodes at all
+          // (one still on the halted version can't): progress against the
+          // supermajority means something only when true.
+          canSeeRestart: z.boolean().nullable().optional().catch(null),
+          // The shred version the cluster halted on (not a restart).
+          haltedShredVersion: z.number().nullable().optional().catch(null),
+          // Stake on the new (restart) version, in percent.
+          newVersionStakePercent: z.number().nullable().optional().catch(null),
           shredVersions: z
             .array(
               z.object({

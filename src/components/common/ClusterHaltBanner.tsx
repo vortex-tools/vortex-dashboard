@@ -1,5 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
-import { leadingVersion } from 'components/live/RestartCard';
+import { restartProgress } from 'components/live/RestartCard';
 import { formatDuration } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
 import { Link } from 'react-router';
@@ -21,7 +21,7 @@ const ClusterHaltBanner = () => {
   const halt = useClusterHalt();
   const { cluster } = useCluster();
   if (!halt) return null;
-  const lead = halt.restart ? leadingVersion(halt.restart) : null;
+  const progress = halt.restart ? restartProgress(halt.restart) : null;
   const name = (cluster && CLUSTER_NAME[cluster]) ?? 'The cluster';
   return (
     <div
@@ -41,17 +41,20 @@ const ClusterHaltBanner = () => {
         at slot{' '}
         <Link to={`/slot/${halt.slot}`}>{halt.slot.toLocaleString()}</Link>.
         Data shown is from before the halt.
-        {lead && halt.restart && (
-          <>
-            {' '}
-            Restart:{' '}
-            <span className="fw-semibold">
-              {(lead.share * 100).toFixed(1)}%
-            </span>{' '}
-            of stake on shred version {lead.shredVersion}
-            {` (${(halt.restart.supermajority * 100).toFixed(0)}% needed).`}
-          </>
-        )}
+        {halt.restart &&
+          (progress ? (
+            <>
+              {' '}
+              Restart:{' '}
+              <span className="fw-semibold">
+                {(progress.share * 100).toFixed(1)}%
+              </span>{' '}
+              of stake on the new version
+              {` (${(halt.restart.supermajority * 100).toFixed(0)}% needed).`}
+            </>
+          ) : (
+            ' No restart visible yet (observer on the old version).'
+          ))}
       </span>
     </div>
   );

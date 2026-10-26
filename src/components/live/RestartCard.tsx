@@ -5,10 +5,23 @@ import { Table } from 'react-bootstrap';
 const pct = (share: number) =>
   share > 0 && share < 0.001 ? '<0.1%' : `${(share * 100).toFixed(1)}%`;
 
-/** The shred version with the most stake in gossip (null = not in
- *  gossip, which can't restart anything). */
-export const leadingVersion = (restart: NonNullable<ClusterHalt['restart']>) =>
-  restart.shredVersions.find(v => v.shredVersion != null) ?? null;
+/**
+ * The restart's progress, when it can be seen: the share of stake on the
+ * new shred version (the API's, else the largest version other than the
+ * one the cluster halted on). null while our observer can't see restarted
+ * nodes - it still runs the halted version - so nothing is claimed.
+ */
+export const restartProgress = (
+  restart: NonNullable<ClusterHalt['restart']>
+) => {
+  if (restart.canSeeRestart !== true) return null;
+  if (restart.newVersionStakePercent != null)
+    return { share: restart.newVersionStakePercent / 100, version: null };
+  const v = restart.shredVersions.find(
+    x => x.shredVersion != null && x.shredVersion !== restart.haltedShredVersion
+  );
+  return v ? { share: v.share, version: v.shredVersion } : null;
+};
 
 /**
  * While the cluster is halted: stake by the shred version its validators
@@ -20,12 +33,27 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
   const r = halt.restart;
   if (!r) return null;
   const need = r.supermajority;
+  const progress = restartProgress(r);
   return (
     <SectionCard
       title="Cluster Restart"
       icon="refresh-cw"
       info="Validators restart a halted cluster on a new shred version, at an agreed slot. This is all activated stake by the shred version its node advertises in gossip, refreshed every minute; one version needs the supermajority of stake for the cluster to resume. Not in gossip: the node isn't advertising at all (down, or restarting)."
     >
+      <p className="fs-9 mb-3">
+        {progress ? (
+          <>
+            New version:{' '}
+            <span className="fw-semibold">{pct(progress.share)}</span> of stake,{' '}
+            {pct(need)} needed to resume.
+          </>
+        ) : (
+          <span className="text-body-tertiary">
+            No restart visible yet: our observer still runs the version the
+            cluster halted on, so it can&apos;t see restarted nodes.
+          </span>
+        )}
+      </p>
       <div className="d-flex flex-column gap-3">
         {r.shredVersions.map(v => (
           <div key={v.shredVersion ?? 'none'}>
@@ -35,6 +63,12 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
                   <>
                     Shred version{' '}
                     <span className="font-monospace">{v.shredVersion}</span>
+                    {v.shredVersion === r.haltedShredVersion && (
+                      <span className="text-body-tertiary fw-normal">
+                        {' '}
+                        · the halted version
+                      </span>
+                    )}
                   </>
                 ) : (
                   'Not in gossip'
@@ -57,7 +91,8 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
                 style={{
                   width: `${Math.min(100, v.share * 100)}%`,
                   background:
-                    v.shredVersion == null
+                    v.shredVersion == null ||
+                    v.shredVersion === r.haltedShredVersion
                       ? 'var(--vx-quaternary-color)'
                       : v.share >= need
                         ? 'var(--vx-success)'
