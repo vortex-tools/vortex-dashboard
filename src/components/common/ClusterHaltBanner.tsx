@@ -39,8 +39,9 @@ const ClusterHaltBanner = () => {
           {name} halted {formatDuration(Date.now() / 1000 - halt.since)} ago
         </span>{' '}
         at slot{' '}
-        <Link to={`/slot/${halt.slot}`}>{halt.slot.toLocaleString()}</Link>.
-        Data shown is from before the halt.
+        <Link to={`/slot/${halt.slot}`}>{halt.slot.toLocaleString()}</Link>
+        {halt.finalizedSlot === halt.slot && ', the last finalized block'}. Data
+        shown is from before the halt.
         {halt.restart &&
           (progress ? (
             <>

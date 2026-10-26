@@ -59,19 +59,32 @@ const HaltRunUpCard = ({
         info="The last slots before the chain stopped, from the block footers: every 25 slots, the blocks, skips, blocks finalized and the mean stake in each notarization."
       >
         <p className="fs-9 mb-3">
-          Last block{' '}
-          <Link to={`/slot/${data.lastBlockSlot}`} className="font-monospace">
-            {data.lastBlockSlot?.toLocaleString() ?? '—'}
-          </Link>
-          , last finalized{' '}
-          <span className="font-monospace">
-            {data.lastFinalizedSlot?.toLocaleString() ?? '—'}
-          </span>
-          .{' '}
+          {halt.finalizedSlot != null ? (
+            <>
+              Last finalized block{' '}
+              <Link
+                to={`/slot/${halt.finalizedSlot}`}
+                className="font-monospace"
+              >
+                {halt.finalizedSlot.toLocaleString()}
+              </Link>
+              .{' '}
+            </>
+          ) : null}
           <span className="text-body-tertiary">
             {data.blocks.toLocaleString()} blocks and{' '}
-            {data.skipped.toLocaleString()} skipped in the {window} slots
-            before.
+            {data.skipped.toLocaleString()} skipped in the {window} slots before
+            {data.lastBlockSlot != null &&
+              (halt.finalizedSlot == null ||
+                data.lastBlockSlot < halt.finalizedSlot) && (
+                <>
+                  {' '}
+                  - our block footers end at{' '}
+                  {data.lastBlockSlot.toLocaleString()}, so the final blocks are
+                  missing below
+                </>
+              )}
+            .
           </span>
         </p>
         <Table
