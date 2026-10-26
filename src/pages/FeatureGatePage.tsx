@@ -11,6 +11,7 @@ import {
   clientLabel,
   clusterLabel,
   featureName,
+  inLine,
   pctOf
 } from 'components/features/features';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -45,8 +46,8 @@ const stateText = (s: FeatureClusterState | undefined) => {
     return { value: 'Next epoch', sub: 'activates at the next epoch boundary' };
   if (s.queuePosition != null)
     return {
-      value: `Queue #${s.queuePosition}`,
-      sub: "in the tracker's queue"
+      value: inLine(s.queuePosition),
+      sub: "in the tracker's activation queue"
     };
   return { value: 'Not scheduled', sub: "not in the tracker's queue" };
 };
@@ -238,7 +239,7 @@ const FeatureGatePage = () => {
                       {e.queuePosition != null && (
                         <span className="text-body-tertiary">
                           {' '}
-                          · #{e.queuePosition}
+                          · {inLine(e.queuePosition).toLowerCase()}
                         </span>
                       )}
                     </td>

@@ -40,6 +40,19 @@ export const SimdLinks = ({ simds }: { simds: number[] }) =>
     <span className="text-body-quaternary">—</span>
   );
 
+/** A place in the tracker's queue: "Next in line", "2nd in line". */
+export const inLine = (position: number) => {
+  if (position <= 1) return 'Next in line';
+  const tens = position % 100;
+  const suffix =
+    tens >= 11 && tens <= 13
+      ? 'th'
+      : (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[
+          position % 10
+        ] ?? 'th');
+  return `${position}${suffix} in line`;
+};
+
 /** A gate's state on one cluster: active (from epoch N), queued (at the
  *  next epoch boundary), waiting at #k in the tracker's queue, or not
  *  scheduled. */
@@ -75,7 +88,7 @@ export const StatusChip = ({
         bg="info"
         title="Its place in the tracker's queue for this cluster"
       >
-        Queue #{state.queuePosition}
+        {inLine(state.queuePosition)}
       </Badge>
     );
   return <Badge bg="secondary">Not scheduled</Badge>;
