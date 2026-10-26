@@ -117,7 +117,7 @@ const rowColumns: ColumnDef<ValidatorRow>[] = [
   },
   {
     id: 'overridden',
-    header: 'Moved by stakers',
+    header: 'Changed by stakers',
     accessorFn: v => v.overridden,
     cell: ({ row: { original: v } }) =>
       v.overridden ? (
@@ -129,7 +129,7 @@ const rowColumns: ColumnDef<ValidatorRow>[] = [
       headerProps: {
         className: 'text-end',
         title:
-          "Its stake that its stakers voted differently from it (or, if it didn't vote, voted at all) - see Staker Overrides"
+          "Its stake that its stakers voted differently from it - or, if it didn't vote, voted at all (see Staker Overrides)"
       },
       cellProps: end.cellProps
     }
@@ -649,7 +649,7 @@ const GovernanceProposal = () => {
         <SectionCard
           title="Staker Overrides"
           icon="corner-down-right"
-          info="Stakers can vote their own stake instead of leaving it to their validator. Only overrides that changed something count here: stake moved to a different choice than the validator's, or voted where the validator didn't vote. Stake pools appear by name (svmgov lets a pool's manager vote its stake); everyone else by address."
+          info="Stakers can vote their own stake instead of leaving it to their validator. Only overrides that changed something count here: stake changed to a different choice than the validator's, or voted where the validator didn't vote. Stake pools appear by name (svmgov lets a pool's manager vote its stake); everyone else by address."
         >
           {effects.length || data.largeOverrides.length ? (
             <>
@@ -658,7 +658,7 @@ const GovernanceProposal = () => {
                 <span className="fw-semibold">
                   {compactSol(movedFromVoters)}
                 </span>{' '}
-                moved to a different choice than their validator&apos;s, and{' '}
+                changed to a different choice than their validator&apos;s, and{' '}
                 <span className="fw-semibold">
                   {compactSol(movedFromNonVoters)}
                 </span>{' '}
@@ -678,7 +678,7 @@ const GovernanceProposal = () => {
                       <tr>
                         <th>Validator</th>
                         <th>Its vote</th>
-                        <th>Moved to</th>
+                        <th>Stakers changed it to</th>
                         <th className="text-end">Stakers</th>
                       </tr>
                     </thead>
