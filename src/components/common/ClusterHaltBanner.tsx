@@ -2,6 +2,7 @@ import FeatherIcon from 'feather-icons-react';
 import { leadingVersion } from 'components/live/RestartCard';
 import { formatDuration } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
+import { Link } from 'react-router';
 import { useClusterHalt } from 'hooks/useIngestion';
 
 const CLUSTER_NAME: Record<string, string> = {
@@ -34,11 +35,12 @@ const ClusterHaltBanner = () => {
         className="me-2 flex-shrink-0 text-danger"
       />
       <span>
-        <span className="fw-semibold">{name} has halted</span>: no new slots
-        since slot{' '}
-        <span className="font-monospace">{halt.slot.toLocaleString()}</span>,{' '}
-        {formatDuration(Date.now() / 1000 - halt.since)} ago. What&apos;s shown
-        is as of then; it picks up again when the cluster restarts.
+        <span className="fw-semibold">
+          {name} halted {formatDuration(Date.now() / 1000 - halt.since)} ago
+        </span>{' '}
+        at slot{' '}
+        <Link to={`/slot/${halt.slot}`}>{halt.slot.toLocaleString()}</Link>.
+        Data shown is from before the halt.
         {lead && halt.restart && (
           <>
             {' '}
@@ -46,9 +48,8 @@ const ClusterHaltBanner = () => {
             <span className="fw-semibold">
               {(lead.share * 100).toFixed(1)}%
             </span>{' '}
-            of stake on shred version{' '}
-            <span className="font-monospace">{lead.shredVersion}</span>,{' '}
-            {(halt.restart.supermajority * 100).toFixed(0)}% needed.
+            of stake on shred version {lead.shredVersion}
+            {` (${(halt.restart.supermajority * 100).toFixed(0)}% needed).`}
           </>
         )}
       </span>
