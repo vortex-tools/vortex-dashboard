@@ -18,7 +18,7 @@ testnet API.
 - **Live consensus** - the cluster's latest slots as they happen.
 - **Decentralization** - Nakamoto coefficients by validator, provider,
   provider + city, country and client, with each breakdown's history.
-- **Cluster health** - how far each client's validators have upgraded.
+- **Client versions** - how far each client's validators have upgraded.
 - **Governance** - Solana governance proposals: each one's verdict under
   its rule, every validator's vote, and stakers' overrides.
 - **A page per validator** - overview, voting, production, earnings, block

@@ -1,16 +1,15 @@
 import ClientVersionsCard from 'components/common/ClientVersionsCard';
 
 /**
- * How the cluster is keeping up: for now, how far each client's validators
- * have upgraded (ClientVersionsCard).
+ * How far each client's validators have upgraded (ClientVersionsCard).
  */
-const ClusterHealth = () => (
+const ClientVersions = () => (
   <div className="mb-9">
     <div className="page-header row g-3 align-items-start justify-content-between">
       <div className="col-auto">
-        <h3>Cluster Health</h3>
+        <h3>Client Versions</h3>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
-          How the cluster is keeping up
+          How far each client's validators have upgraded
         </p>
       </div>
     </div>
@@ -18,4 +17,4 @@ const ClusterHealth = () => (
   </div>
 );
 
-export default ClusterHealth;
+export default ClientVersions;

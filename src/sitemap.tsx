@@ -66,9 +66,9 @@ export const routes: RouteItems[] = [
       },
       // Client upgrade progress.
       {
-        name: 'Cluster Health',
+        name: 'Client Versions',
         icon: 'activity',
-        path: '/cluster-health'
+        path: '/client-versions'
       },
       // Feature gates: what's active, what activates next.
       {
@@ -116,7 +116,7 @@ export const routes: RouteItems[] = [
  * Consensus (participation) leaderboard leads the leaderboards and Tower
  * voting moves to a "historical" group. Testnet (by the API's cluster)
  * has no block income, no client-upgrade data and only Alpenglow worth
- * showing: Block Income, Cluster Health and Tower voting are left out of
+ * showing: Block Income, Client Versions and Tower voting are left out of
  * the nav (their pages still answer direct links).
  */
 export const useNavRoutes = (): RouteItems[] => {
@@ -134,7 +134,7 @@ export const useNavRoutes = (): RouteItems[] => {
               pages: g.pages.filter(
                 r =>
                   r.path !== '/leaderboards/block-income' &&
-                  r.path !== '/cluster-health' &&
+                  r.path !== '/client-versions' &&
                   (!alpenglowActive || r.path !== '/leaderboards/voting')
               )
             }))
