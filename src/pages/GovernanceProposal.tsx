@@ -30,11 +30,12 @@ import { VortexDataContext } from 'providers/VortexDataProvider';
 import {
   GovernanceBreakdownRow,
   GovernanceProposal as Proposal,
-  GovernanceVote
+  GovernanceProposalDetail,
+  GovernanceTally
 } from 'providers/vortex-schemas';
 import FeatherIcon from 'feather-icons-react';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { Col, Row, Table } from 'react-bootstrap';
+import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
@@ -64,7 +65,30 @@ const end = {
   headerProps: { className: 'text-end' },
   cellProps: { className: 'text-end font-monospace' }
 };
-const voteColumns: ColumnDef<GovernanceVote>[] = [
+/** A validator in the snapshot epoch: its vote, or none. */
+interface ValidatorRow {
+  identity: string;
+  voteAccount: string | null;
+  name: string | null;
+  // 'for' | 'against' | 'abstain' | 'split' | 'none'
+  choice: string;
+  basisPoints: GovernanceTally | null;
+  stake: number | null;
+  // Its stake its stakers moved to another choice (see overrideEffect).
+  overridden: number;
+  votedAt: number | null;
+}
+const FILTERS = [
+  ['all', 'All'],
+  ['for', 'For'],
+  ['against', 'Against'],
+  ['abstain', 'Abstain'],
+  ['split', 'Split'],
+  ['none', "Didn't vote"]
+] as const;
+type Filter = (typeof FILTERS)[number][0];
+
+const rowColumns: ColumnDef<ValidatorRow>[] = [
   {
     id: 'validator',
     header: 'Validator',
@@ -76,10 +100,13 @@ const voteColumns: ColumnDef<GovernanceVote>[] = [
   {
     id: 'vote',
     header: 'Vote',
-    accessorFn: v => v.choice ?? '',
-    cell: ({ row: { original: v } }) => (
-      <VoteChoice choice={v.choice} basisPoints={v.basisPoints} />
-    )
+    accessorFn: v => v.choice,
+    cell: ({ row: { original: v } }) =>
+      v.choice === 'none' ? (
+        <span className="text-body-tertiary">Didn&apos;t vote</span>
+      ) : (
+        <VoteChoice choice={v.choice} basisPoints={v.basisPoints} />
+      )
   },
   {
     id: 'stake',
@@ -90,8 +117,8 @@ const voteColumns: ColumnDef<GovernanceVote>[] = [
   },
   {
     id: 'overridden',
-    header: 'Overridden',
-    accessorFn: v => v.overridden ?? 0,
+    header: 'Moved by stakers',
+    accessorFn: v => v.overridden,
     cell: ({ row: { original: v } }) =>
       v.overridden ? (
         compactSol(v.overridden)
@@ -101,7 +128,8 @@ const voteColumns: ColumnDef<GovernanceVote>[] = [
     meta: {
       headerProps: {
         className: 'text-end',
-        title: 'Its stake whose stakers voted it themselves'
+        title:
+          "Its stake that its stakers voted differently from it (or, if it didn't vote, voted at all) - see Staker Overrides"
       },
       cellProps: end.cellProps
     }
@@ -119,6 +147,50 @@ const voteColumns: ColumnDef<GovernanceVote>[] = [
     }
   }
 ];
+
+/** Stakers' choices with their stake: "For ◎644K · Against ◎12K"
+ *  (under 1 SOL left out). */
+const TallyChoices = ({ tally }: { tally: GovernanceTally | null }) => {
+  const parts = CHOICE.filter(c => (tally?.[c.key] ?? 0) >= 1e9).sort(
+    (a, b) => (tally?.[b.key] ?? 0) - (tally?.[a.key] ?? 0)
+  );
+  if (!parts.length) return <span className="text-body-quaternary">—</span>;
+  return (
+    <span className="fs-10">
+      {parts.map((c, i) => (
+        <span key={c.key}>
+          {i > 0 && <span className="text-body-quaternary"> · </span>}
+          <ChoiceTag choice={c.key}>{compactSol(tally?.[c.key])}</ChoiceTag>
+        </span>
+      ))}
+    </span>
+  );
+};
+
+type ValidatorOverrides =
+  GovernanceProposalDetail['overridesByValidator'][number];
+/**
+ * What a validator's stakers' overrides changed: the stake that went to a
+ * choice other than the validator's own (against its split, for a split
+ * vote), by choice. Overrides re-voting the validator's choice change
+ * nothing. When the validator didn't vote, all of it counts - that stake
+ * would not have counted at all.
+ */
+const overrideEffect = (
+  o: ValidatorOverrides,
+  validatorBp: GovernanceTally | null | undefined
+): GovernanceTally => {
+  const t = o.tally ?? { for: 0, against: 0, abstain: 0 };
+  if (!o.validatorVoted || !validatorBp) return t;
+  const total = tallySum(t);
+  const moved = (k: keyof GovernanceTally) =>
+    Math.max(0, t[k] - (total * validatorBp[k]) / 10_000);
+  return {
+    for: moved('for'),
+    against: moved('against'),
+    abstain: moved('abstain')
+  };
+};
 
 /** One condition of the rule, met or not. */
 const Check = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
@@ -236,18 +308,77 @@ const GovernanceProposal = () => {
   useEffect(() => {
     if (address) fetchData?.(address);
   }, [address, fetchData]);
-  const [allNon, setAllNon] = useState(false);
   const [allObv, setAllObv] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
 
-  const votes = useMemo(() => data?.votes ?? [], [data]);
+  // Each voter's split, and what its stakers' overrides changed.
+  const bpByIdentity = useMemo(
+    () => new Map((data?.votes ?? []).map(v => [v.identity, v.basisPoints])),
+    [data]
+  );
+  const movedByIdentity = useMemo(
+    () =>
+      new Map(
+        (data?.overridesByValidator ?? []).flatMap(o =>
+          o.identity
+            ? [
+                [
+                  o.identity,
+                  tallySum(overrideEffect(o, bpByIdentity.get(o.identity)))
+                ] as const
+              ]
+            : []
+        )
+      ),
+    [data, bpByIdentity]
+  );
+
+  // Voters and non-voters in one list.
+  const rows = useMemo<ValidatorRow[]>(
+    () =>
+      data
+        ? [
+            ...data.votes.map(v => ({
+              identity: v.identity,
+              voteAccount: v.voteAccount,
+              name: v.name,
+              choice: v.choice ?? 'none',
+              basisPoints: v.basisPoints,
+              stake: v.stake,
+              overridden: movedByIdentity.get(v.identity) ?? 0,
+              votedAt: v.votedAt
+            })),
+            ...data.nonVoters.map(v => ({
+              identity: v.identity,
+              voteAccount: v.voteAccount,
+              name: v.name,
+              choice: 'none',
+              basisPoints: null,
+              stake: v.stake,
+              overridden: tallySum(v.overrides),
+              votedAt: null
+            }))
+          ]
+        : [],
+    [data, movedByIdentity]
+  );
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: rows.length };
+    for (const r of rows) c[r.choice] = (c[r.choice] ?? 0) + 1;
+    return c;
+  }, [rows]);
+  const shown = useMemo(
+    () => (filter === 'all' ? rows : rows.filter(r => r.choice === filter)),
+    [rows, filter]
+  );
   const table = useAdvanceTable({
-    columns: voteColumns,
-    data: votes,
+    columns: rowColumns,
+    data: shown,
     sortable: true,
     pagination: true,
     pageSize: 10,
     getRowId: v => v.identity,
-    resetPageKey: address,
+    resetPageKey: `${address}:${filter}`,
     initialState: { sorting: [{ id: 'stake', desc: true }] }
   });
 
@@ -268,11 +399,31 @@ const GovernanceProposal = () => {
   const p = data.proposal;
   const quorumShare =
     p.quorum != null && p.snapshotStake ? p.quorum / p.snapshotStake : null;
-  const nonVoters = data.nonVoters;
   const obv = data.overridesByValidator;
-  const overridden =
-    obv.reduce((a, o) => a + tallySum(o.tally), 0) +
-    tallySum(data.breakdown?.unattributed);
+  // Overrides by what they changed (see overrideEffect), largest first;
+  // dust under 1 SOL left out.
+  const effects = obv
+    .map(o => {
+      const moved = overrideEffect(
+        o,
+        o.identity ? bpByIdentity.get(o.identity) : null
+      );
+      return { o, moved, total: tallySum(moved) };
+    })
+    .filter(e => e.total >= 1e9)
+    .sort((a, b) => b.total - a.total);
+  const movedFromVoters = effects
+    .filter(e => e.o.validatorVoted)
+    .reduce((a, e) => a + e.total, 0);
+  const movedFromNonVoters = effects
+    .filter(e => !e.o.validatorVoted)
+    .reduce((a, e) => a + e.total, 0);
+  const reVoted = Math.max(
+    0,
+    obv.reduce((a, o) => a + tallySum(o.tally), 0) -
+      movedFromVoters -
+      movedFromNonVoters
+  );
 
   return (
     <div className="mb-9">
@@ -338,14 +489,14 @@ const GovernanceProposal = () => {
             <StatCard
               label="Validators Voted"
               value={p.validatorVotes?.toLocaleString() ?? '—'}
-              sublabel={`${nonVoters.length.toLocaleString()} staked validators didn't`}
+              sublabel={`${data.nonVoters.length.toLocaleString()} staked validators didn't`}
             />
           </Col>
           <Col xs={6} lg={3}>
             <StatCard
-              label="Staker Overrides"
-              value={p.stakerOverrides?.toLocaleString() ?? '—'}
-              sublabel={`${compactSol(overridden)} voted by stakers themselves`}
+              label="Changed by Stakers"
+              value={compactSol(movedFromVoters + movedFromNonVoters)}
+              sublabel={`stakers' own votes that changed the tally · ${compactSol(reVoted)} more re-voted the same`}
             />
           </Col>
         </Row>
@@ -454,16 +605,40 @@ const GovernanceProposal = () => {
         ) : null}
 
         <SectionCard
-          title="Votes"
+          title="Validators"
           icon="users"
-          info="Every validator that voted, with its stake in the snapshot epoch and how much of it its stakers voted themselves."
+          info="Every validator staked in the snapshot epoch: its vote (or none), its stake then, and how much of it its stakers voted themselves."
         >
           <AdvanceTableProvider {...table}>
-            <SearchBox
-              className="mb-3"
-              placeholder="Search validators"
-              onChange={e => table.setGlobalFilter(e.target.value || undefined)}
-            />
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <SearchBox
+                placeholder="Search validators"
+                onChange={e =>
+                  table.setGlobalFilter(e.target.value || undefined)
+                }
+              />
+              <ButtonGroup size="sm">
+                {FILTERS.filter(
+                  ([k]) => k === 'all' || (counts[k] ?? 0) > 0
+                ).map(([k, label]) => (
+                  <ToggleButton
+                    key={k}
+                    id={`gov-filter-${k}`}
+                    type="radio"
+                    name="gov-filter"
+                    variant="soft-secondary"
+                    value={k}
+                    checked={filter === k}
+                    onChange={() => setFilter(k)}
+                  >
+                    {label}{' '}
+                    <span className="text-body-tertiary fw-normal">
+                      {(counts[k] ?? 0).toLocaleString()}
+                    </span>
+                  </ToggleButton>
+                ))}
+              </ButtonGroup>
+            </div>
             <AdvanceTable
               tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
             />
@@ -471,72 +646,30 @@ const GovernanceProposal = () => {
           </AdvanceTableProvider>
         </SectionCard>
 
-        <Row className="g-3">
-          <Col xs={12} lg={6}>
-            <SectionCard
-              title="Didn't Vote"
-              icon="user-x"
-              info="Validators staked in the snapshot epoch with no vote, largest first; their stakers could still vote their own stake."
-            >
-              {nonVoters.length ? (
-                <>
-                  <Table
-                    size="sm"
-                    className="data-table compact-rows fs-9 mb-0"
-                  >
-                    <thead>
-                      <tr>
-                        <th>Validator</th>
-                        <th className="text-end">Stake</th>
-                        <th className="text-end">Stakers voted</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(allNon ? nonVoters : nonVoters.slice(0, 10)).map(v => (
-                        <tr key={v.identity}>
-                          <td>
-                            <ValidatorLink
-                              identity={v.identity}
-                              name={v.name}
-                            />
-                          </td>
-                          <td className="text-end font-monospace">
-                            {compactSol(v.stake)}
-                          </td>
-                          <td className="text-end font-monospace">
-                            {tallySum(v.overrides) ? (
-                              compactSol(tallySum(v.overrides))
-                            ) : (
-                              <span className="text-body-quaternary">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                  {nonVoters.length > 10 && (
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 fs-10 mt-2"
-                      onClick={() => setAllNon(a => !a)}
-                    >
-                      {allNon ? 'Show fewer' : `Show all ${nonVoters.length}`}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <UntrackedState>Every staked validator voted.</UntrackedState>
-              )}
-            </SectionCard>
-          </Col>
-          <Col xs={12} lg={6}>
-            <SectionCard
-              title="Staker Overrides"
-              icon="corner-down-right"
-              info="Stake whose stakers voted it themselves, taken out of their validator's vote. By validator, then the stakers overriding 10,000 SOL or more: stake pools by name (svmgov lets a pool's manager vote its stake), everyone else by address."
-            >
-              {obv.length ? (
-                <>
+        <SectionCard
+          title="Staker Overrides"
+          icon="corner-down-right"
+          info="Stakers can vote their own stake instead of leaving it to their validator. Only overrides that changed something count here: stake moved to a different choice than the validator's, or voted where the validator didn't vote. Stake pools appear by name (svmgov lets a pool's manager vote its stake); everyone else by address."
+        >
+          {effects.length || data.largeOverrides.length ? (
+            <>
+              <p className="fs-9 mb-3">
+                Stakers&apos; own votes that changed something:{' '}
+                <span className="fw-semibold">
+                  {compactSol(movedFromVoters)}
+                </span>{' '}
+                moved to a different choice than their validator&apos;s, and{' '}
+                <span className="fw-semibold">
+                  {compactSol(movedFromNonVoters)}
+                </span>{' '}
+                counted for validators that didn&apos;t vote.{' '}
+                <span className="text-body-tertiary">
+                  Another {compactSol(reVoted)} re-voted their validator&apos;s
+                  choice, which changes nothing, so it isn&apos;t counted here.
+                </span>
+              </p>
+              <Row className="g-4">
+                <Col xs={12} xl={7}>
                   <Table
                     size="sm"
                     className="data-table compact-rows fs-9 mb-0"
@@ -545,62 +678,68 @@ const GovernanceProposal = () => {
                       <tr>
                         <th>Validator</th>
                         <th>Its vote</th>
+                        <th>Moved to</th>
                         <th className="text-end">Stakers</th>
-                        <th className="text-end">Overridden</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(allObv ? obv : obv.slice(0, 8)).map(o => (
-                        <tr key={o.voteAccount ?? o.identity}>
-                          <td>
-                            <ValidatorLink
-                              identity={o.identity}
-                              name={o.name}
-                            />
-                          </td>
-                          <td>
-                            {o.validatorVoted ? (
-                              <VoteChoice choice={o.validatorChoice} />
-                            ) : (
-                              <span className="text-body-tertiary">
-                                didn&apos;t vote
-                              </span>
-                            )}
-                          </td>
-                          <td className="text-end font-monospace">
-                            {o.stakers?.toLocaleString() ?? '—'}
-                          </td>
-                          <td className="text-end">
-                            <div className="d-flex align-items-center justify-content-end gap-2">
-                              <div style={{ width: 48 }}>
-                                <VoteBar tally={o.tally} height={6} />
-                              </div>
-                              <span className="font-monospace">
-                                {compactSol(tallySum(o.tally))}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {(allObv ? effects : effects.slice(0, 10)).map(
+                        ({ o, moved }) => (
+                          <tr key={o.voteAccount ?? o.identity}>
+                            <td>
+                              <ValidatorLink
+                                identity={o.identity}
+                                name={o.name}
+                              />
+                            </td>
+                            <td>
+                              {o.validatorVoted ? (
+                                <VoteChoice
+                                  choice={o.validatorChoice}
+                                  basisPoints={
+                                    o.identity
+                                      ? bpByIdentity.get(o.identity)
+                                      : null
+                                  }
+                                />
+                              ) : (
+                                <span className="text-body-tertiary">
+                                  Didn&apos;t vote
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <TallyChoices tally={moved} />
+                            </td>
+                            <td className="text-end font-monospace">
+                              {o.stakers?.toLocaleString() ?? '—'}
+                            </td>
+                          </tr>
+                        )
+                      )}
                     </tbody>
                   </Table>
-                  {obv.length > 8 && (
+                  {effects.length > 10 && (
                     <button
                       type="button"
                       className="btn btn-link p-0 fs-10 mt-2"
                       onClick={() => setAllObv(a => !a)}
                     >
-                      {allObv ? 'Show fewer' : `Show all ${obv.length}`}
+                      {allObv ? 'Show fewer' : `Show all ${effects.length}`}
                     </button>
                   )}
+                </Col>
+                <Col xs={12} xl={5}>
                   {data.largeOverrides.length > 0 && (
                     <Table
                       size="sm"
-                      className="data-table compact-rows fs-9 mt-3 mb-0"
+                      className="data-table compact-rows fs-9 mb-0"
                     >
                       <thead>
                         <tr>
-                          <th>Largest stakers</th>
+                          <th title="Stakers voting 10,000 SOL or more of their own stake, with any choice - including their validators' own">
+                            Largest stakers (any choice)
+                          </th>
                           <th>Vote</th>
                           <th className="text-end">Validators</th>
                           <th className="text-end">Stake</th>
@@ -616,9 +755,7 @@ const GovernanceProposal = () => {
                                 >
                                   <span className="fw-semibold">{o.pool}</span>
                                   <span className="badge badge-soft badge-soft-info ms-2">
-                                    {o.kind === 'stake-pool'
-                                      ? 'pool'
-                                      : (o.kind ?? 'pool')}
+                                    pool
                                   </span>
                                 </span>
                               ) : (
@@ -650,13 +787,15 @@ const GovernanceProposal = () => {
                       {compactSol(tallySum(data.otherOverrides))} together.
                     </p>
                   ) : null}
-                </>
-              ) : (
-                <UntrackedState>No staker overrides.</UntrackedState>
-              )}
-            </SectionCard>
-          </Col>
-        </Row>
+                </Col>
+              </Row>
+            </>
+          ) : (
+            <UntrackedState>
+              No staker override changed anything.
+            </UntrackedState>
+          )}
+        </SectionCard>
 
         {data.breakdown && (
           <Row className="g-3">
