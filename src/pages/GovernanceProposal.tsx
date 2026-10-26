@@ -29,9 +29,11 @@ import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import {
   GovernanceBreakdownRow,
+  GovernanceProposal as Proposal,
   GovernanceVote
 } from 'providers/vortex-schemas';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import FeatherIcon from 'feather-icons-react';
+import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { Col, Row, Table } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
 
@@ -117,6 +119,55 @@ const voteColumns: ColumnDef<GovernanceVote>[] = [
     }
   }
 ];
+
+/** One condition of the rule, met or not. */
+const Check = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
+  <li className="d-flex align-items-center gap-2">
+    <FeatherIcon
+      icon={ok ? 'check-circle' : 'x-circle'}
+      size={14}
+      className={ok ? 'text-success' : 'text-danger'}
+    />
+    <span>{children}</span>
+  </li>
+);
+
+/** What the verdict was decided on: the rule's conditions, each met or
+ *  not, with the numbers. */
+const RuleChecks = ({
+  proposal: p,
+  quorumShare
+}: {
+  proposal: Proposal;
+  quorumShare: number | null;
+}) => {
+  const share = ruleShare(p);
+  const decisive = p.rule === 'decisive';
+  return (
+    <div className="fs-9 mt-3">
+      <p className="mb-2 text-body-tertiary">
+        Decided by{' '}
+        {decisive
+          ? 'the decisive rule (Abstain not counted, no quorum)'
+          : "the Solana Constitution's rule (Abstain counts as a vote that isn't For)"}
+        :
+      </p>
+      <ul className="list-unstyled d-flex flex-column gap-1 mb-0">
+        {!decisive && quorumShare != null && (
+          <Check ok={!!p.quorumMet}>
+            Turnout <span className="fw-bold">{pct(p.turnout)}</span> of the
+            stake - needs at least {pct(quorumShare)}
+          </Check>
+        )}
+        <Check ok={share != null && share >= THRESHOLD}>
+          For <span className="fw-bold">{pct(share)}</span> of{' '}
+          {decisive ? 'For + Against' : 'all votes'} - needs at least{' '}
+          {pct(THRESHOLD)}
+        </Check>
+      </ul>
+    </div>
+  );
+};
 
 /** The outcome by client, country or provider: each group's vote and its
  *  stake that didn't vote. */
@@ -215,7 +266,6 @@ const GovernanceProposal = () => {
     );
 
   const p = data.proposal;
-  const rule = p.rule ? RULE[p.rule] : null;
   const quorumShare =
     p.quorum != null && p.snapshotStake ? p.quorum / p.snapshotStake : null;
   const nonVoters = data.nonVoters;
@@ -268,9 +318,9 @@ const GovernanceProposal = () => {
         <Row className="g-3">
           <Col xs={6} lg={3}>
             <StatCard
-              label="For share"
+              label="For"
               value={pct(ruleShare(p))}
-              sublabel={`needs ${pct(THRESHOLD)} of ${p.rule === 'decisive' ? 'For + Against' : 'all votes'}`}
+              sublabel={`of ${p.rule === 'decisive' ? 'For + Against' : 'all votes'} · needs ${pct(THRESHOLD)}`}
             />
           </Col>
           <Col xs={6} lg={3}>
@@ -316,36 +366,8 @@ const GovernanceProposal = () => {
                 {compactSol(p.tally?.[c.key])}
               </ChoiceTag>
             ))}
-            <span className="ms-auto text-body-tertiary">
-              For share:{' '}
-              <span
-                className={
-                  p.rule !== 'decisive' ? 'fw-bold text-body' : undefined
-                }
-              >
-                {pct(p.shares?.ofParticipating)} of all votes
-              </span>{' '}
-              ·{' '}
-              <span
-                className={
-                  p.rule === 'decisive' ? 'fw-bold text-body' : undefined
-                }
-              >
-                {pct(p.shares?.ofDecisive)} of For + Against
-              </span>
-              <span>
-                {' '}
-                (bold: what the {rule?.label.toLowerCase() ?? p.rule} rule
-                counts; it needs {pct(THRESHOLD)})
-              </span>
-            </span>
           </div>
-          {rule && (
-            <p className="fs-9 mt-3 mb-0">
-              <span className="fw-semibold">{rule.label} rule.</span>{' '}
-              <span className="text-body-tertiary">{rule.text}</span>
-            </p>
-          )}
+          <RuleChecks proposal={p} quorumShare={quorumShare} />
           {p.official && (
             <p className="fs-9 text-body-tertiary mt-2 mb-0">
               Official status: {p.official.status ?? '—'}
@@ -363,19 +385,17 @@ const GovernanceProposal = () => {
           )}
           {p.contested && (
             <div className="bg-warning-subtle border border-warning-subtle rounded p-2 fs-9 mt-3">
-              <span className="fw-semibold">
-                Contested
-                {p.contested.rule && p.contested.verdict && (
-                  <>
-                    {': '}
-                    {p.contested.verdict} under the{' '}
-                    {RULE[p.contested.rule]?.label.toLowerCase() ??
-                      p.contested.rule}{' '}
-                    rule ({pct(ruleShare(p, p.contested.rule))})
-                  </>
-                )}
-                .
-              </span>{' '}
+              <span className="fw-semibold">Contested.</span>{' '}
+              {p.contested.rule === 'decisive' && (
+                <>
+                  Under the rule the proposal&apos;s own text used - two thirds
+                  of For + Against, Abstain not counted - For is{' '}
+                  <span className="fw-bold">
+                    {pct(ruleShare(p, 'decisive'))}
+                  </span>{' '}
+                  and it would be {p.contested.verdict ?? '—'}.{' '}
+                </>
+              )}
               {p.contested.summary}
               {p.contested.url && (
                 <>

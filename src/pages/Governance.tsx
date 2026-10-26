@@ -69,7 +69,12 @@ const Governance = () => {
               <th className="ps-3">Proposal</th>
               <th>Status</th>
               <th style={{ minWidth: '12rem' }}>For · Against · Abstain</th>
-              <th className="text-end">For share</th>
+              <th
+                className="text-end"
+                title="For as a share of all votes (For + Against + Abstain): what the constitution rule judges"
+              >
+                For
+              </th>
               <th className="text-end">Turnout</th>
               <th className="text-end">Validators voted</th>
               <th className="text-end pe-3">Epochs</th>
