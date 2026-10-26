@@ -2,6 +2,7 @@ import SectionCard from 'components/common/SectionCard';
 import { clientLabel } from 'helpers/clients';
 import { ClusterHalt } from 'hooks/useIngestion';
 import { Table } from 'react-bootstrap';
+import { Link } from 'react-router';
 
 const pct = (share: number) =>
   share > 0 && share < 0.001 ? '<0.1%' : `${(share * 100).toFixed(1)}%`;
@@ -24,6 +25,10 @@ export const restartProgress = (
   return v ? { share: v.share, version: v.shredVersion } : null;
 };
 
+/** "waitingForSupermajority" -> "waiting for supermajority". */
+const startStage = (p: string) =>
+  p.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+
 /**
  * While the cluster is halted: stake by the shred version its validators
  * advertise in gossip (from the API, every minute). A restart shows as
@@ -35,6 +40,7 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
   if (!r) return null;
   const need = r.supermajority;
   const progress = restartProgress(r);
+  const o = r.observer;
   return (
     <SectionCard
       title="Cluster Restart"
@@ -55,6 +61,49 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
           </span>
         )}
       </p>
+      {o?.waitForSupermajoritySlot != null && (
+        <dl className="row fs-9 gy-1 mb-3">
+          <dt className="col-sm-3 fw-normal text-body-tertiary">
+            Restart slot
+          </dt>
+          <dd className="col-sm-9 mb-0">
+            <Link
+              to={`/slot/${o.waitForSupermajoritySlot}`}
+              className="font-monospace"
+            >
+              {o.waitForSupermajoritySlot.toLocaleString()}
+            </Link>
+          </dd>
+          {o.expectedShredVersion != null && (
+            <>
+              <dt className="col-sm-3 fw-normal text-body-tertiary">
+                New shred version
+              </dt>
+              <dd className="col-sm-9 mb-0 font-monospace">
+                {o.expectedShredVersion}
+              </dd>
+            </>
+          )}
+          {o.expectedBankHash && (
+            <>
+              <dt className="col-sm-3 fw-normal text-body-tertiary">
+                Expected bank hash
+              </dt>
+              <dd className="col-sm-9 mb-0 font-monospace text-break">
+                {o.expectedBankHash}
+              </dd>
+            </>
+          )}
+          {o.startProgress && (
+            <>
+              <dt className="col-sm-3 fw-normal text-body-tertiary">
+                Our node
+              </dt>
+              <dd className="col-sm-9 mb-0">{startStage(o.startProgress)}</dd>
+            </>
+          )}
+        </dl>
+      )}
       <div className="d-flex flex-column gap-3">
         {r.shredVersions.map(v => (
           <div key={v.shredVersion ?? 'none'}>

@@ -795,6 +795,28 @@ export const currentEpochResponseSchema = z.object({
           haltedShredVersion: z.number().nullable().optional().catch(null),
           // Stake on the new (restart) version, in percent.
           newVersionStakePercent: z.number().nullable().optional().catch(null),
+          // Our node, when it is the observer (source getRestartStatus):
+          // the restart it waits on and where it is in starting.
+          observer: z
+            .object({
+              shredVersion: z.number().nullable().optional().catch(null),
+              expectedShredVersion: z
+                .number()
+                .nullable()
+                .optional()
+                .catch(null),
+              waitForSupermajoritySlot: z
+                .number()
+                .nullable()
+                .optional()
+                .catch(null),
+              expectedBankHash: z.string().nullable().optional().catch(null),
+              startProgress: z.string().nullable().optional().catch(null),
+              readAt: z.number().nullable().optional().catch(null)
+            })
+            .nullable()
+            .optional()
+            .catch(null),
           shredVersions: z
             .array(
               z.object({
