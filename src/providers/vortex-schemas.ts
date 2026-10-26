@@ -2135,16 +2135,6 @@ export const governanceProposalSchema = z.object({
     })
     .nullable()
     .catch(null),
-  // An open dispute about the official verdict.
-  contested: z
-    .object({
-      url: z.string().nullable().catch(null),
-      summary: z.string().nullable().catch(null),
-      rule: z.string().nullable().catch(null),
-      verdict: z.string().nullable().catch(null)
-    })
-    .nullable()
-    .catch(null),
   simds: z
     .array(
       z.object({

@@ -331,10 +331,9 @@ const BreakdownCard = ({
 };
 
 /**
- * One governance proposal: the verdict under its rule (and any dispute
- * about it), the vote as it came in, every validator's vote, who didn't
- * vote, stakers' overrides, and the outcome by client, country and
- * provider.
+ * One governance proposal: the verdict under its rule, the vote as it
+ * came in, every validator's vote, stakers' overrides, and the outcome by
+ * client, country and provider.
  */
 const GovernanceProposal = () => {
   const { address = '' } = useParams();
@@ -658,34 +657,6 @@ const GovernanceProposal = () => {
                   </tr>
                 </tbody>
               </Table>
-              {p.contested && (
-                <div className="bg-warning-subtle border border-warning-subtle rounded p-2 fs-9 mt-3">
-                  <span className="fw-semibold">Contested.</span>{' '}
-                  {p.contested.rule === 'decisive' && (
-                    <>
-                      Under the rule the proposal&apos;s own text used - two
-                      thirds of For + Against, Abstain not counted - For is{' '}
-                      <span className="fw-bold">
-                        {pct(ruleShare(p, 'decisive'))}
-                      </span>{' '}
-                      and it would be {p.contested.verdict ?? '—'}.{' '}
-                    </>
-                  )}
-                  {p.contested.summary}
-                  {p.contested.url && (
-                    <>
-                      {' '}
-                      <a
-                        href={p.contested.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        The dispute
-                      </a>
-                    </>
-                  )}
-                </div>
-              )}
             </SectionCard>
           </Col>
           <Col xs={12} lg={4}>

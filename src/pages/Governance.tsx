@@ -97,17 +97,6 @@ const Governance = () => {
                   <div className="d-flex gap-1 flex-wrap">
                     <PhaseBadge phase={p.phase} />
                     <VerdictBadge verdict={p.verdict} projected={p.projected} />
-                    {p.contested && (
-                      <Badge
-                        bg="warning"
-                        title={
-                          p.contested.summary ??
-                          'The official verdict is disputed'
-                        }
-                      >
-                        Contested
-                      </Badge>
-                    )}
                   </div>
                 </td>
                 <td className="align-middle">
