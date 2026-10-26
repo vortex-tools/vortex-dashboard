@@ -286,12 +286,28 @@ const LiveConsensus = () => {
   const catchUp = useRef(false);
   const edgeRef = useRef(playEdge);
   edgeRef.current = playEdge;
+  // Halted: no slots are coming, so there's nothing to play through -
+  // the playhead sits on the last slot loaded (no PLAY_GAP wait for votes
+  // that won't land).
+  const halted = !!halt;
+  // The last slot with any data: its votes would have come in blocks that
+  // never were, so don't wait for them.
+  const lastEdge = useMemo(() => {
+    if (!halted || dataEnd == null) return loadedEdge ?? playEdge;
+    for (let s = dataEnd; s > dataEnd - 600; s--)
+      if (infos.get(s)?.outcome) return s;
+    return loadedEdge ?? playEdge;
+  }, [halted, dataEnd, infos, loadedEdge, playEdge]);
   useEffect(() => {
-    if (cursor == null && playEdge != null) setCursor(playEdge - PLAY_LEAD);
-  }, [cursor, playEdge]);
+    if (cursor == null && playEdge != null)
+      setCursor(halted && lastEdge != null ? lastEdge : playEdge - PLAY_LEAD);
+  }, [cursor, playEdge, halted, lastEdge]);
+  useEffect(() => {
+    if (halted && lastEdge != null) setCursor(lastEdge);
+  }, [halted, lastEdge]);
   const held = playing && hovering;
   useEffect(() => {
-    if (!playing || hovering) return;
+    if (!playing || hovering || halted) return;
     let t: ReturnType<typeof setTimeout>;
     const tick = () => {
       setCursor(c => {
@@ -313,13 +329,14 @@ const LiveConsensus = () => {
     };
     t = setTimeout(tick, catchUp.current ? FF_MS : stepMs);
     return () => clearTimeout(t);
-  }, [playing, hovering, stepMs]);
+  }, [playing, hovering, stepMs, halted]);
   const step = (d: number) => {
     setPlaying(false);
     setCursor(c => (c == null ? c : c + d));
   };
   const toLive = () => {
-    if (playEdge != null) setCursor(playEdge - PLAY_LEAD);
+    if (halted && lastEdge != null) setCursor(lastEdge);
+    else if (playEdge != null) setCursor(playEdge - PLAY_LEAD);
     setPlaying(true);
   };
   // Play always resumes from the live edge, like a fresh page load (no
@@ -372,14 +389,15 @@ const LiveConsensus = () => {
   // Back from a hidden / idle tab: timers were throttled, so the playhead
   // is stale - jump back to the live edge if it fell a couple of rows
   // behind (and was playing).
-  const liveRef = useRef({ cursor, playEdge, playing, rowSlots });
-  liveRef.current = { cursor, playEdge, playing, rowSlots };
+  const liveRef = useRef({ cursor, playEdge, playing, rowSlots, halted });
+  liveRef.current = { cursor, playEdge, playing, rowSlots, halted };
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== 'visible') return;
       const v = liveRef.current;
       if (
         v.playing &&
+        !v.halted &&
         v.cursor != null &&
         v.playEdge != null &&
         v.playEdge - v.cursor > 2 * v.rowSlots

@@ -1,4 +1,5 @@
 import SectionCard from 'components/common/SectionCard';
+import { clientLabel } from 'helpers/clients';
 import { ClusterHalt } from 'hooks/useIngestion';
 import { Table } from 'react-bootstrap';
 
@@ -109,30 +110,45 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
                 title={`${pct(need)} needed to resume`}
               />
             </div>
-            {v.software.length > 0 && (
-              <Table
-                size="sm"
-                className="data-table compact-rows fs-10 mt-2 mb-0"
-              >
-                <tbody>
-                  {v.software.slice(0, 6).map(sw => (
-                    <tr key={`${sw.client}-${sw.version}`}>
-                      <td>{sw.client ?? 'Unknown client'}</td>
-                      <td className="font-monospace">{sw.version ?? '—'}</td>
-                      <td className="text-end text-body-tertiary">
-                        {sw.validators.toLocaleString()}
-                      </td>
-                      <td className="text-end font-monospace">
-                        {pct(sw.share)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
           </div>
         ))}
       </div>
+      {r.shredVersions.some(v => v.software.length) && (
+        <Table
+          size="sm"
+          responsive
+          className="data-table compact-rows fs-9 mt-4 mb-0 text-nowrap"
+        >
+          <thead>
+            <tr>
+              <th>Shred version</th>
+              <th>Client</th>
+              <th>Version</th>
+              <th className="text-end">Validators</th>
+              <th className="text-end">Stake</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.shredVersions.flatMap(v =>
+              v.software.slice(0, 6).map((sw, i) => (
+                <tr key={`${v.shredVersion}-${sw.client}-${sw.version}`}>
+                  <td className="font-monospace text-body-tertiary">
+                    {i === 0 ? (v.shredVersion ?? 'not in gossip') : ''}
+                  </td>
+                  <td>
+                    {sw.client ? clientLabel(sw.client) : 'Unknown client'}
+                  </td>
+                  <td className="font-monospace">{sw.version ?? '—'}</td>
+                  <td className="text-end font-monospace">
+                    {sw.validators.toLocaleString()}
+                  </td>
+                  <td className="text-end font-monospace">{pct(sw.share)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      )}
       <p className="fs-10 text-body-tertiary mt-3 mb-0">
         The cluster resumes once one shred version holds {pct(need)} of all
         activated stake. Last slot {halt.slot.toLocaleString()}
