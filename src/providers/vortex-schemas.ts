@@ -768,8 +768,59 @@ export const currentEpochResponseSchema = z.object({
     })
     .nullable()
     .optional()
+    .catch(null),
+  // Is the cluster moving? 'halted': the writer reads the chain fine but
+  // no new confirmed slot for 30 s; 'stale': the writer itself is silent
+  // (says nothing about the cluster). While halted, `restart` is stake by
+  // the shred version validators advertise in gossip.
+  chain: z
+    .object({
+      state: z.string().catch('running'),
+      checkedAt: z.number().nullable().catch(null),
+      source: z.string().nullable().catch(null),
+      lastSlot: z.number().nullable().catch(null),
+      lastSlotAt: z.number().nullable().catch(null),
+      lastFinalizedSlot: z.number().nullable().catch(null),
+      lastFinalizedAt: z.number().nullable().catch(null),
+      haltedSince: z.number().nullable().catch(null),
+      restart: z
+        .object({
+          supermajority: z.number().catch(0.8),
+          stake: z.number().catch(0),
+          shredVersions: z
+            .array(
+              z.object({
+                // null: not in gossip.
+                shredVersion: z.number().nullable().catch(null),
+                validators: z.number().catch(0),
+                stake: z.number().catch(0),
+                share: z.number().catch(0),
+                software: z
+                  .array(
+                    z.object({
+                      client: z.string().nullable().catch(null),
+                      version: z.string().nullable().catch(null),
+                      validators: z.number().catch(0),
+                      stake: z.number().catch(0),
+                      share: z.number().catch(0)
+                    })
+                  )
+                  .catch([])
+              })
+            )
+            .catch([])
+        })
+        .nullable()
+        .catch(null)
+    })
+    .nullable()
+    .optional()
     .catch(null)
 });
+export type ChainState = NonNullable<
+  z.infer<typeof currentEpochResponseSchema>['chain']
+>;
+export type ChainRestart = NonNullable<ChainState['restart']>;
 export type EpochTotals = NonNullable<
   z.infer<typeof currentEpochResponseSchema>['totals']
 >;

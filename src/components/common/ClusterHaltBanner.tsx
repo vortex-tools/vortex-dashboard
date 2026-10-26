@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import { leadingVersion } from 'components/live/RestartCard';
 import { formatDuration } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
 import { useClusterHalt } from 'hooks/useIngestion';
@@ -19,6 +20,7 @@ const ClusterHaltBanner = () => {
   const halt = useClusterHalt();
   const { cluster } = useCluster();
   if (!halt) return null;
+  const lead = halt.restart ? leadingVersion(halt.restart) : null;
   const name = (cluster && CLUSTER_NAME[cluster]) ?? 'The cluster';
   return (
     <div
@@ -37,6 +39,18 @@ const ClusterHaltBanner = () => {
         <span className="font-monospace">{halt.slot.toLocaleString()}</span>,{' '}
         {formatDuration(Date.now() / 1000 - halt.since)} ago. What&apos;s shown
         is as of then; it picks up again when the cluster restarts.
+        {lead && halt.restart && (
+          <>
+            {' '}
+            Restart:{' '}
+            <span className="fw-semibold">
+              {(lead.share * 100).toFixed(1)}%
+            </span>{' '}
+            of stake on shred version{' '}
+            <span className="font-monospace">{lead.shredVersion}</span>,{' '}
+            {(halt.restart.supermajority * 100).toFixed(0)}% needed.
+          </>
+        )}
       </span>
     </div>
   );

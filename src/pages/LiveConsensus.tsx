@@ -15,6 +15,7 @@ import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import { fetchSlots } from 'helpers/slotContext';
 import useConsensus from 'hooks/useConsensus';
+import RestartCard from 'components/live/RestartCard';
 import { formatDuration as duration } from 'helpers/utils';
 import { clusterHaltOf, useEpochLive } from 'hooks/useIngestion';
 import useLiveConsensus from 'hooks/useLiveConsensus';
@@ -529,6 +530,7 @@ const LiveConsensus = () => {
           onToggle={togglePlay}
           onStep={step}
         />
+        {halt?.restart && <RestartCard halt={halt} />}
         {/* A halt is already said above every page (ClusterHaltBanner). */}
         {stuck && !halt && (
           <div

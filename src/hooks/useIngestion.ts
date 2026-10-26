@@ -2,6 +2,8 @@ import { noteApiFailure, noteApiSuccess } from 'helpers/apiHealth';
 import { noteIngestTip } from 'helpers/slotContext';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import {
+  ChainRestart,
+  ChainState,
   EpochProgress,
   EpochTotals,
   Ingestion,
@@ -21,6 +23,8 @@ export interface EpochLive {
   ingestion: Ingestion | null;
   progress: EpochProgress | null;
   totals: EpochTotals | null;
+  /** Whether the cluster is moving (null on APIs without it). */
+  chain: ChainState | null;
   /** When the last response arrived (ms); null before the first. */
   okAt: number | null;
 }
@@ -31,6 +35,7 @@ const EMPTY: EpochLive = {
   ingestion: null,
   progress: null,
   totals: null,
+  chain: null,
   okAt: null
 };
 
@@ -82,6 +87,7 @@ const load = () =>
         ingestion: parsed.ingestion ?? null,
         progress: parsed.progress ?? null,
         totals: parsed.totals ?? null,
+        chain: parsed.chain ?? null,
         okAt: Date.now()
       };
       store.subs.forEach(s => s.set(store.value));
@@ -167,10 +173,16 @@ export interface ClusterHalt {
   since: number;
   /** The last slot it reached. */
   slot: number;
+  /** The last finalized slot, when the API says. */
+  finalizedSlot: number | null;
+  /** Stake by advertised shred version while halted (the API's chain
+   *  field), or null. */
+  restart: ChainRestart | null;
 }
 
 /**
- * Whether the cluster has halted, from /epochs/current: its slot reading
+ * Whether the cluster has halted, from /epochs/current: its `chain`
+ * verdict, or on an API without one, from its slot reading
  * (progress.readAt moves only when the slot does) is over HALT_SECS old
  * while the API's other reading (totals.readAt) is fresh - so it's the
  * chain that stopped, not the API's reader.
@@ -179,13 +191,31 @@ export const clusterHaltOf = (
   live: EpochLive,
   nowMs = Date.now()
 ): ClusterHalt | null => {
+  // The API's own verdict when it gives one: 'halted' from the chain;
+  // 'running', or 'stale' (its writer is silent - nothing about the
+  // cluster), aren't a halt.
+  const c = live.chain;
+  if (c)
+    return c.state === 'halted' && c.lastSlot != null
+      ? {
+          since: c.haltedSince ?? c.lastSlotAt ?? nowMs / 1000,
+          slot: c.lastSlot,
+          finalizedSlot: c.lastFinalizedSlot,
+          restart: c.restart
+        }
+      : null;
   const p = live.progress;
   const totalsAt = live.totals?.readAt;
   if (p?.readAt == null || p.absoluteSlot == null || totalsAt == null)
     return null;
   const now = nowMs / 1000;
   return now - p.readAt > HALT_SECS && now - totalsAt < HALT_SECS
-    ? { since: p.readAt, slot: p.absoluteSlot }
+    ? {
+        since: p.readAt,
+        slot: p.absoluteSlot,
+        finalizedSlot: null,
+        restart: null
+      }
     : null;
 };
 
