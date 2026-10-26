@@ -41,6 +41,10 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
   const need = r.supermajority;
   const progress = restartProgress(r);
   const o = r.observer;
+  // The node-sourced view names versions, not clients.
+  const hasClients = r.shredVersions.some(v =>
+    v.software.some(sw => sw.client)
+  );
   return (
     <SectionCard
       title="Cluster Restart"
@@ -171,7 +175,7 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
           <thead>
             <tr>
               <th>Shred version</th>
-              <th>Client</th>
+              {hasClients && <th>Client</th>}
               <th>Version</th>
               <th className="text-end">Validators</th>
               <th className="text-end">Stake</th>
@@ -179,14 +183,14 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
           </thead>
           <tbody>
             {r.shredVersions.flatMap(v =>
-              v.software.slice(0, 6).map((sw, i) => (
+              v.software.slice(0, 6).map(sw => (
                 <tr key={`${v.shredVersion}-${sw.client}-${sw.version}`}>
-                  <td className="font-monospace text-body-tertiary">
-                    {i === 0 ? (v.shredVersion ?? 'not in gossip') : ''}
+                  <td className="font-monospace">
+                    {v.shredVersion ?? 'not in gossip'}
                   </td>
-                  <td>
-                    {sw.client ? clientLabel(sw.client) : 'Unknown client'}
-                  </td>
+                  {hasClients && (
+                    <td>{sw.client ? clientLabel(sw.client) : '—'}</td>
+                  )}
                   <td className="font-monospace">{sw.version ?? '—'}</td>
                   <td className="text-end font-monospace">
                     {sw.validators.toLocaleString()}
