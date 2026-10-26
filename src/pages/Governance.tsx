@@ -1,4 +1,4 @@
-import Badge from 'components/base/Badge';
+import FeatherIcon from 'feather-icons-react';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import UntrackedState from 'components/common/UntrackedState';
 import {
@@ -21,6 +21,10 @@ import {
 import { useContext, useEffect } from 'react';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
+
+/** Where the proposals' texts and statuses are kept. */
+const GOVERNANCE_REPO =
+  'https://github.com/solana-foundation/solana-governance-proposals';
 
 /**
  * Solana governance (the svmgov program, mainnet): every proposal, newest
@@ -45,6 +49,17 @@ const Governance = () => {
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             Solana governance proposals and how validators voted
           </p>
+        </div>
+        <div className="col-auto">
+          <a
+            href={GOVERNANCE_REPO}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-soft-secondary btn-sm d-inline-flex align-items-center gap-1"
+          >
+            Proposals on GitHub
+            <FeatherIcon icon="arrow-up-right" size={12} />
+          </a>
         </div>
       </div>
 
