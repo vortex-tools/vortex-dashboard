@@ -45,7 +45,7 @@ const Brand = () => {
 
 /**
  * The fixed bar across the top: the menu button (below lg), the brand,
- * and on the right the build stamp (staging), the API picker (staging) or
+ * and on the right the build stamp, the API picker (staging) or
  * mainnet / testnet switch, and the theme toggle.
  */
 const TopBar = () => {
@@ -65,7 +65,7 @@ const TopBar = () => {
       </button>
       <Brand />
       <div className="vx-topbar-end">
-        {IS_STAGING && import.meta.env.VITE_SOURCE_URL && (
+        {import.meta.env.VITE_SOURCE_URL && (
           <a
             href={`${import.meta.env.VITE_SOURCE_URL}/commit/${__VX_BUILD__}`}
             target="_blank"
