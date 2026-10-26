@@ -533,7 +533,7 @@ const GovernanceProposal = () => {
             <SectionCard
               title="Staker Overrides"
               icon="corner-down-right"
-              info="Stake whose stakers voted it themselves, taken out of their validator's vote. By validator, then the stakers overriding 10,000 SOL or more and known pools, by address."
+              info="Stake whose stakers voted it themselves, taken out of their validator's vote. By validator, then the stakers overriding 10,000 SOL or more: stake pools by name (svmgov lets a pool's manager vote its stake), everyone else by address."
             >
               {obv.length ? (
                 <>
@@ -610,15 +610,23 @@ const GovernanceProposal = () => {
                         {data.largeOverrides.map(o => (
                           <tr key={o.delegator}>
                             <td>
-                              <span
-                                className="font-monospace"
-                                title={o.delegator}
-                              >
-                                {short(o.delegator)}
-                              </span>
-                              {o.pool && (
-                                <span className="badge badge-soft badge-soft-info ms-2">
-                                  {o.pool}
+                              {o.pool ? (
+                                <span
+                                  title={`${o.kind === 'stake-pool' ? 'Stake pool' : (o.kind ?? 'Pool')} manager ${o.delegator}${o.poolAccounts?.length ? ` · pool ${o.poolAccounts.join(', ')}` : ''}`}
+                                >
+                                  <span className="fw-semibold">{o.pool}</span>
+                                  <span className="badge badge-soft badge-soft-info ms-2">
+                                    {o.kind === 'stake-pool'
+                                      ? 'pool'
+                                      : (o.kind ?? 'pool')}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span
+                                  className="font-monospace"
+                                  title={o.delegator}
+                                >
+                                  {short(o.delegator)}
                                 </span>
                               )}
                             </td>

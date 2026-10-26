@@ -2232,8 +2232,12 @@ export const governanceProposalDetailSchema = z.object({
     .array(
       z.object({
         delegator: z.string(),
+        // A known stake pool's name ("JitoSOL"; a manager of several:
+        // "199 stake pools") and kind ("stake-pool"): svmgov gives pool
+        // stake to the pool's manager, who can vote it.
         pool: z.string().nullable().catch(null),
         kind: z.string().nullable().catch(null),
+        poolAccounts: z.array(z.string()).optional().catch([]),
         choice: z.string().nullable().catch(null),
         stakeAccounts: num,
         validators: num,
