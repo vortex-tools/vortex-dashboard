@@ -148,25 +148,6 @@ const rowColumns: ColumnDef<ValidatorRow>[] = [
   }
 ];
 
-/** Stakers' choices with their stake: "For ◎644K · Against ◎12K"
- *  (under 1 SOL left out). */
-const TallyChoices = ({ tally }: { tally: GovernanceTally | null }) => {
-  const parts = CHOICE.filter(c => (tally?.[c.key] ?? 0) >= 1e9).sort(
-    (a, b) => (tally?.[b.key] ?? 0) - (tally?.[a.key] ?? 0)
-  );
-  if (!parts.length) return <span className="text-body-quaternary">—</span>;
-  return (
-    <span className="fs-10">
-      {parts.map((c, i) => (
-        <span key={c.key}>
-          {i > 0 && <span className="text-body-quaternary"> · </span>}
-          <ChoiceTag choice={c.key}>{compactSol(tally?.[c.key])}</ChoiceTag>
-        </span>
-      ))}
-    </span>
-  );
-};
-
 type ValidatorOverrides =
   GovernanceProposalDetail['overridesByValidator'][number];
 /**
@@ -308,7 +289,6 @@ const GovernanceProposal = () => {
   useEffect(() => {
     if (address) fetchData?.(address);
   }, [address, fetchData]);
-  const [allObv, setAllObv] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
 
   // Each voter's split, and what its stakers' overrides changed.
@@ -642,7 +622,7 @@ const GovernanceProposal = () => {
             <AdvanceTable
               tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
             />
-            <AdvanceTableFooter />
+            <AdvanceTableFooter viewAll={false} />
           </AdvanceTableProvider>
         </SectionCard>
 
@@ -669,127 +649,60 @@ const GovernanceProposal = () => {
                   choice, which changes nothing, so it isn&apos;t counted here.
                 </span>
               </p>
-              <Row className="g-4">
-                <Col xs={12} xl={7}>
-                  <Table
-                    size="sm"
-                    className="data-table compact-rows fs-9 mb-0"
-                  >
-                    <thead>
-                      <tr>
-                        <th>Validator</th>
-                        <th>Its vote</th>
-                        <th>Overridden to</th>
-                        <th className="text-end">Stakers</th>
+              {data.largeOverrides.length > 0 && (
+                <Table size="sm" className="data-table compact-rows fs-9 mb-0">
+                  <thead>
+                    <tr>
+                      <th title="Stakers voting 10,000 SOL or more of their own stake, with any choice - including their validators' own">
+                        Largest stakers (any choice)
+                      </th>
+                      <th>Vote</th>
+                      <th className="text-end">Validators</th>
+                      <th className="text-end">Stake</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.largeOverrides.map(o => (
+                      <tr key={o.delegator}>
+                        <td>
+                          {o.pool ? (
+                            <span
+                              title={`${o.kind === 'stake-pool' ? 'Stake pool' : (o.kind ?? 'Pool')} manager ${o.delegator}${o.poolAccounts?.length ? ` · pool ${o.poolAccounts.join(', ')}` : ''}`}
+                            >
+                              <span className="fw-semibold">{o.pool}</span>
+                              <span className="badge badge-soft badge-soft-info ms-2">
+                                pool
+                              </span>
+                            </span>
+                          ) : (
+                            <span
+                              className="font-monospace"
+                              title={o.delegator}
+                            >
+                              {short(o.delegator)}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <VoteChoice choice={o.choice} />
+                        </td>
+                        <td className="text-end font-monospace">
+                          {o.validators?.toLocaleString() ?? '—'}
+                        </td>
+                        <td className="text-end font-monospace">
+                          {compactSol(tallySum(o.tally))}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {(allObv ? effects : effects.slice(0, 10)).map(
-                        ({ o, moved }) => (
-                          <tr key={o.voteAccount ?? o.identity}>
-                            <td>
-                              <ValidatorLink
-                                identity={o.identity}
-                                name={o.name}
-                              />
-                            </td>
-                            <td>
-                              {o.validatorVoted ? (
-                                <VoteChoice
-                                  choice={o.validatorChoice}
-                                  basisPoints={
-                                    o.identity
-                                      ? bpByIdentity.get(o.identity)
-                                      : null
-                                  }
-                                />
-                              ) : (
-                                <span className="text-body-tertiary">
-                                  Didn&apos;t vote
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <TallyChoices tally={moved} />
-                            </td>
-                            <td className="text-end font-monospace">
-                              {o.stakers?.toLocaleString() ?? '—'}
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </Table>
-                  {effects.length > 10 && (
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 fs-10 mt-2"
-                      onClick={() => setAllObv(a => !a)}
-                    >
-                      {allObv ? 'Show fewer' : `Show all ${effects.length}`}
-                    </button>
-                  )}
-                </Col>
-                <Col xs={12} xl={5}>
-                  {data.largeOverrides.length > 0 && (
-                    <Table
-                      size="sm"
-                      className="data-table compact-rows fs-9 mb-0"
-                    >
-                      <thead>
-                        <tr>
-                          <th title="Stakers voting 10,000 SOL or more of their own stake, with any choice - including their validators' own">
-                            Largest stakers (any choice)
-                          </th>
-                          <th>Vote</th>
-                          <th className="text-end">Validators</th>
-                          <th className="text-end">Stake</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.largeOverrides.map(o => (
-                          <tr key={o.delegator}>
-                            <td>
-                              {o.pool ? (
-                                <span
-                                  title={`${o.kind === 'stake-pool' ? 'Stake pool' : (o.kind ?? 'Pool')} manager ${o.delegator}${o.poolAccounts?.length ? ` · pool ${o.poolAccounts.join(', ')}` : ''}`}
-                                >
-                                  <span className="fw-semibold">{o.pool}</span>
-                                  <span className="badge badge-soft badge-soft-info ms-2">
-                                    pool
-                                  </span>
-                                </span>
-                              ) : (
-                                <span
-                                  className="font-monospace"
-                                  title={o.delegator}
-                                >
-                                  {short(o.delegator)}
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <VoteChoice choice={o.choice} />
-                            </td>
-                            <td className="text-end font-monospace">
-                              {o.validators?.toLocaleString() ?? '—'}
-                            </td>
-                            <td className="text-end font-monospace">
-                              {compactSol(tallySum(o.tally))}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  )}
-                  {data.otherStakers ? (
-                    <p className="fs-10 text-body-tertiary mt-2 mb-0">
-                      {data.otherStakers.toLocaleString()} other stakers:{' '}
-                      {compactSol(tallySum(data.otherOverrides))} together.
-                    </p>
-                  ) : null}
-                </Col>
-              </Row>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+              {data.otherStakers ? (
+                <p className="fs-10 text-body-tertiary mt-2 mb-0">
+                  {data.otherStakers.toLocaleString()} other stakers:{' '}
+                  {compactSol(tallySum(data.otherOverrides))} together.
+                </p>
+              ) : null}
             </>
           ) : (
             <UntrackedState>

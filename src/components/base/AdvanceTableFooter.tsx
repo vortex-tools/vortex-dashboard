@@ -4,9 +4,10 @@ import { useRef, useState } from 'react';
 
 /**
  * The paging row under a table from useAdvanceTable: the rows shown out of
- * all of them, a View all / View less toggle, and numbered pages.
+ * all of them, a View all / View less toggle (unless `viewAll` is false),
+ * and numbered pages.
  */
-const AdvanceTableFooter = () => {
+const AdvanceTableFooter = ({ viewAll = true }: { viewAll?: boolean }) => {
   const table = useAdvanceTableContext();
   const { pageIndex, pageSize } = table.getState().pagination;
   const total = table.getPrePaginationRowModel().rows.length;
@@ -29,6 +30,7 @@ const AdvanceTableFooter = () => {
       pageSize={pageSize}
       shown={table.getRowModel().rows.length}
       extra={
+        viewAll &&
         total > paged.current && (
           <button
             type="button"
