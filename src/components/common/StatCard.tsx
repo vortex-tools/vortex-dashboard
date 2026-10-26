@@ -21,6 +21,9 @@ interface Props {
   /** A threshold it is judged against: met (a green check, the card
    *  tinted) or not (a red cross). */
   check?: boolean | null;
+  /** Something is wrong right now (e.g. the cluster halted): the whole
+   *  card in the danger tint, the value in its emphasis shade. */
+  alert?: boolean;
 }
 
 /**
@@ -41,7 +44,8 @@ const StatCard = ({
   mono = true,
   wrapSublabel = false,
   tone,
-  check
+  check,
+  alert = false
 }: Props) => {
   const body = (
     <>
@@ -67,7 +71,7 @@ const StatCard = ({
       {/* Truncate rather than overflow the card; the full value stays
           available on hover when it is plain text. */}
       <p
-        className={`fs-7 fw-bolder mb-0 text-truncate${mono ? ' font-monospace' : ''}${tone ? ` text-${tone}` : ''}`}
+        className={`fs-7 fw-bolder mb-0 text-truncate${mono ? ' font-monospace' : ''}${alert ? ' text-danger-emphasis' : tone ? ` text-${tone}` : ''}`}
         title={typeof value === 'string' ? value : undefined}
       >
         {value}
@@ -82,8 +86,9 @@ const StatCard = ({
       )}
     </>
   );
-  const frame =
-    check === true
+  const frame = alert
+    ? 'bg-danger-subtle border-danger-subtle'
+    : check === true
       ? 'bg-success-subtle border-success-subtle'
       : check === false
         ? 'bg-body-emphasis border-danger-subtle'

@@ -271,7 +271,7 @@ const Home = () => {
                     ? `~${Math.round(slotSeconds * 1000)} ms per slot this epoch`
                     : undefined
               }
-              tone={halt ? 'danger' : undefined}
+              alert={!!halt}
               linkTo="/live"
             />
           </Col>
