@@ -16,6 +16,9 @@ interface Props {
   wrapSublabel?: boolean;
   /** Needs attention: the value in warning / danger. */
   tone?: 'warning' | 'danger';
+  /** A threshold it is judged against: met (a green check, the card
+   *  tinted) or not (a red cross). */
+  check?: boolean | null;
 }
 
 /**
@@ -34,18 +37,28 @@ const StatCard = ({
   linkTo,
   mono = true,
   wrapSublabel = false,
-  tone
+  tone,
+  check
 }: Props) => {
   const body = (
     <>
       <div className="d-flex justify-content-between align-items-start">
         <p className="text-body-tertiary fs-10 mb-1 mt-0">{label}</p>
-        {linkTo && (
+        {check != null ? (
           <FeatherIcon
-            icon="arrow-up-right"
-            size={12}
-            className="text-body-tertiary"
+            icon={check ? 'check-circle' : 'x-circle'}
+            size={14}
+            className={check ? 'text-success' : 'text-danger'}
+            aria-label={check ? 'Met' : 'Not met'}
           />
+        ) : (
+          linkTo && (
+            <FeatherIcon
+              icon="arrow-up-right"
+              size={12}
+              className="text-body-tertiary"
+            />
+          )
         )}
       </div>
       {/* Truncate rather than overflow the card; the full value stays
@@ -66,11 +79,17 @@ const StatCard = ({
       )}
     </>
   );
+  const frame =
+    check === true
+      ? 'bg-success-subtle border-success-subtle'
+      : check === false
+        ? 'bg-body-emphasis border-danger-subtle'
+        : 'bg-body-emphasis border-translucent';
   if (linkTo) {
     return (
       <Link
         to={linkTo}
-        className={`stat-card d-block position-relative overflow-hidden bg-body-emphasis rounded border border-translucent px-3 py-2 h-100 text-decoration-none text-body`}
+        className={`stat-card d-block position-relative overflow-hidden rounded border ${frame} px-3 py-2 h-100 text-decoration-none text-body`}
       >
         {body}
       </Link>
@@ -78,7 +97,7 @@ const StatCard = ({
   }
   return (
     <div
-      className={`stat-card position-relative overflow-hidden bg-body-emphasis rounded border border-translucent px-3 py-2 h-100`}
+      className={`stat-card position-relative overflow-hidden rounded border ${frame} px-3 py-2 h-100`}
     >
       {body}
     </div>

@@ -173,55 +173,6 @@ const overrideEffect = (
   };
 };
 
-/** One condition of the rule, met or not. */
-const Check = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
-  <li className="d-flex align-items-center gap-2">
-    <FeatherIcon
-      icon={ok ? 'check-circle' : 'x-circle'}
-      size={14}
-      className={ok ? 'text-success' : 'text-danger'}
-    />
-    <span>{children}</span>
-  </li>
-);
-
-/** What the verdict was decided on: the rule's conditions, each met or
- *  not, with the numbers. */
-const RuleChecks = ({
-  proposal: p,
-  quorumShare
-}: {
-  proposal: Proposal;
-  quorumShare: number | null;
-}) => {
-  const share = ruleShare(p);
-  const decisive = p.rule === 'decisive';
-  return (
-    <div className="fs-9 mt-3">
-      <p className="mb-2 text-body-tertiary">
-        Decided by{' '}
-        {decisive
-          ? 'the decisive rule (Abstain not counted, no quorum)'
-          : "the Solana Constitution's rule (Abstain counts as a vote that isn't For)"}
-        :
-      </p>
-      <ul className="list-unstyled d-flex flex-column gap-1 mb-0">
-        {!decisive && quorumShare != null && (
-          <Check ok={!!p.quorumMet}>
-            Turnout <span className="fw-bold">{pct(p.turnout)}</span> of the
-            stake - needs at least {pct(quorumShare)}
-          </Check>
-        )}
-        <Check ok={share != null && share >= THRESHOLD}>
-          For <span className="fw-bold">{pct(share)}</span> of{' '}
-          {decisive ? 'For + Against' : 'all votes'} - needs at least{' '}
-          {pct(THRESHOLD)}
-        </Check>
-      </ul>
-    </div>
-  );
-};
-
 /** The outcome by client, country or provider: each group's vote and its
  *  stake that didn't vote. */
 const BreakdownCard = ({
@@ -451,7 +402,8 @@ const GovernanceProposal = () => {
             <StatCard
               label="For"
               value={pct(ruleShare(p))}
-              sublabel={`of ${p.rule === 'decisive' ? 'For + Against' : 'all votes'} · needs ${pct(THRESHOLD)}`}
+              sublabel={`of the ${p.rule === 'decisive' ? 'stake voting For or Against' : 'stake that voted'} · needs ${pct(THRESHOLD)}`}
+              check={ruleShare(p) != null ? ruleShare(p)! >= THRESHOLD : null}
             />
           </Col>
           <Col xs={6} lg={3}>
@@ -460,9 +412,10 @@ const GovernanceProposal = () => {
               value={pct(p.turnout)}
               sublabel={
                 quorumShare != null
-                  ? `quorum ${pct(quorumShare)}: ${p.quorumMet ? 'met' : 'not met'}`
-                  : 'of the snapshot stake'
+                  ? `of the snapshot stake voted · needs ${pct(quorumShare)}`
+                  : 'of the snapshot stake voted'
               }
+              check={quorumShare != null ? !!p.quorumMet : null}
             />
           </Col>
           <Col xs={6} lg={3}>
@@ -476,7 +429,7 @@ const GovernanceProposal = () => {
             <StatCard
               label="Overridden"
               value={compactSol(movedFromVoters + movedFromNonVoters)}
-              sublabel={`stakers' own votes that changed the tally · ${compactSol(reVoted)} more re-voted the same`}
+              sublabel="stake whose vote its stakers changed"
             />
           </Col>
         </Row>
@@ -498,7 +451,6 @@ const GovernanceProposal = () => {
               </ChoiceTag>
             ))}
           </div>
-          <RuleChecks proposal={p} quorumShare={quorumShare} />
           {p.official && (
             <p className="fs-9 text-body-tertiary mt-2 mb-0">
               Official status: {p.official.status ?? '—'}
