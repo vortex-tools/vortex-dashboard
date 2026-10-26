@@ -73,6 +73,16 @@ export const StatusChip = ({
         Active{state.epoch != null && ` · ${state.epoch.toLocaleString()}`}
       </Badge>
     );
+  if (state.status === 'skipped')
+    return (
+      <Badge
+        bg="secondary"
+        className="text-nowrap"
+        title="This cluster will not get the feature"
+      >
+        Won&apos;t activate
+      </Badge>
+    );
   if (state.status === 'queued')
     return (
       <Badge

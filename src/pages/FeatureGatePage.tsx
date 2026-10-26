@@ -42,6 +42,8 @@ const stateText = (s: FeatureClusterState | undefined) => {
           ? `since epoch ${s.epoch.toLocaleString()}${s.slot != null ? ` · slot ${s.slot.toLocaleString()}` : ''}`
           : 'activated'
     };
+  if (s.status === 'skipped')
+    return { value: "Won't activate", sub: 'this cluster will not get it' };
   if (s.status === 'queued')
     return { value: 'Next epoch', sub: 'activates at the next epoch boundary' };
   if (s.queuePosition != null)

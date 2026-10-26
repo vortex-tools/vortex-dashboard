@@ -32,6 +32,7 @@ const statusRank = (f: FeatureGate, cluster: string) => {
   if (s.status === 'queued') return 0;
   if (s.queuePosition != null) return s.queuePosition;
   if (s.status === 'active') return 1e9 - (s.epoch ?? 0);
+  if (s.status === 'skipped') return 3.5e9;
   return 3e9;
 };
 
@@ -120,7 +121,9 @@ const FeatureGates = () => {
         const s = f.clusters[served]?.status;
         return (
           filter === 'all' ||
-          (filter === 'active' ? s === 'active' : s !== 'active')
+          (filter === 'active'
+            ? s === 'active'
+            : s !== 'active' && s !== 'skipped')
         );
       }),
     [features, filter, served]
@@ -138,9 +141,18 @@ const FeatureGates = () => {
 
   const counts = useMemo(() => {
     let active = 0;
-    for (const f of features)
-      if (f.clusters[served]?.status === 'active') active++;
-    return { all: features.length, active, pending: features.length - active };
+    let skipped = 0;
+    for (const f of features) {
+      const s = f.clusters[served]?.status;
+      if (s === 'active') active++;
+      else if (s === 'skipped') skipped++;
+    }
+    // Gates this cluster won't get aren't pending.
+    return {
+      all: features.length,
+      active,
+      pending: features.length - active - skipped
+    };
   }, [features, served]);
   const floor = data?.clusters.find(c => c.cluster === served)?.versionFloor;
   const next = upcoming?.features[0];
@@ -335,7 +347,8 @@ const FeatureGates = () => {
               <AdvanceTableFooter viewAll={false} />
             </AdvanceTableProvider>
             <p className="fs-10 text-body-tertiary mt-2 mb-0">
-              Pending and Active are on {clusterLabel(served)}.
+              Pending and Active are on {clusterLabel(served)}; gates it
+              won&apos;t get are in All only.
             </p>
           </SectionCard>
         </div>
