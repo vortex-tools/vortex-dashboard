@@ -570,110 +570,120 @@ const LiveConsensus = () => {
           </div>
         )}
 
-        <Row className="g-3">
-          <Col xs={6} md>
-            <StatCard
-              label="Recent Skip Rate"
-              value={
-                stats.known
-                  ? `${((stats.skipped / stats.known) * 100).toFixed(1)}%`
-                  : '—'
-              }
-              sublabel={`${stats.skipped} of the last ${stats.known} slots`}
-            />
-          </Col>
-          <Col xs={6} md>
-            <StatCard
-              label="Avg Finalization"
-              value={
-                stats.lagMs != null
-                  ? `${Math.round(stats.lagMs).toLocaleString()} ms`
-                  : '—'
-              }
-              sublabel={
-                stats.lagSlots != null ? (
-                  <span
-                    title={`Mean time to finalization over the last ${stats.lagMsBlocks} finalized blocks, and the mean lag in slots`}
-                  >
-                    {stats.lagSlots.toFixed(2)} slots
-                  </span>
-                ) : undefined
-              }
-            />
-          </Col>
-          <Col xs={6} md>
-            <StatCard
-              label="Notarize Stake"
-              value={pctPpb(stats.notar)}
-              sublabel="mean, in reward certificates"
-            />
-          </Col>
-          <Col xs={6} md>
-            <StatCard
-              label="Fast Finalized"
-              value={
-                stats.finalizedBlocks
-                  ? `${((stats.fast / stats.finalizedBlocks) * 100).toFixed(1)}%`
-                  : '—'
-              }
-              sublabel={
-                <span title="Blocks finalized on the fast (80% of stake, one round) path">
-                  {stats.fast} of {stats.finalizedBlocks} blocks
-                </span>
-              }
-            />
-          </Col>
-        </Row>
+        {/* Live views: nothing to show while halted (the halt cards above
+            take their place). */}
+        {!halt && (
+          <>
+            <Row className="g-3">
+              <Col xs={6} md>
+                <StatCard
+                  label="Recent Skip Rate"
+                  value={
+                    stats.known
+                      ? `${((stats.skipped / stats.known) * 100).toFixed(1)}%`
+                      : '—'
+                  }
+                  sublabel={`${stats.skipped} of the last ${stats.known} slots`}
+                />
+              </Col>
+              <Col xs={6} md>
+                <StatCard
+                  label="Avg Finalization"
+                  value={
+                    stats.lagMs != null
+                      ? `${Math.round(stats.lagMs).toLocaleString()} ms`
+                      : '—'
+                  }
+                  sublabel={
+                    stats.lagSlots != null ? (
+                      <span
+                        title={`Mean time to finalization over the last ${stats.lagMsBlocks} finalized blocks, and the mean lag in slots`}
+                      >
+                        {stats.lagSlots.toFixed(2)} slots
+                      </span>
+                    ) : undefined
+                  }
+                />
+              </Col>
+              <Col xs={6} md>
+                <StatCard
+                  label="Notarize Stake"
+                  value={pctPpb(stats.notar)}
+                  sublabel="mean, in reward certificates"
+                />
+              </Col>
+              <Col xs={6} md>
+                <StatCard
+                  label="Fast Finalized"
+                  value={
+                    stats.finalizedBlocks
+                      ? `${((stats.fast / stats.finalizedBlocks) * 100).toFixed(1)}%`
+                      : '—'
+                  }
+                  sublabel={
+                    <span title="Blocks finalized on the fast (80% of stake, one round) path">
+                      {stats.fast} of {stats.finalizedBlocks} blocks
+                    </span>
+                  }
+                />
+              </Col>
+            </Row>
 
-        <Row className="g-3">
-          <Col xs={12} xl={7} {...hold}>
-            <SlotPlayer
-              held={held}
-              slot={cursor}
-              infoOf={s => infos.get(s)}
+            <Row className="g-3">
+              <Col xs={12} xl={7} {...hold}>
+                <SlotPlayer
+                  held={held}
+                  slot={cursor}
+                  infoOf={s => infos.get(s)}
+                  nameOf={nameOf}
+                />
+              </Col>
+              <Col xs={12} xl={5}>
+                <SectionCard
+                  title="Leaders"
+                  icon="globe"
+                  info="The current leader pulses; recent leaders fade with age, and a ball flies along each hand-off. Gray dots are every validator, sized by stake. Locations from IP geolocation (DB-IP)."
+                >
+                  <LeaderMap
+                    geo={geo}
+                    leaders={recentLeaders}
+                    nameOf={nameOf}
+                  />
+                </SectionCard>
+              </Col>
+            </Row>
+
+            <ConsensusHealth
+              pool={pool}
               nameOf={nameOf}
+              mode="detail"
+              halted={!!halt}
+              table={(slots, stale) => (
+                <InFlight pool={slots} stale={stale} nameOf={nameOf} />
+              )}
             />
-          </Col>
-          <Col xs={12} xl={5}>
-            <SectionCard
-              title="Leaders"
-              icon="globe"
-              info="The current leader pulses; recent leaders fade with age, and a ball flies along each hand-off. Gray dots are every validator, sized by stake. Locations from IP geolocation (DB-IP)."
-            >
-              <LeaderMap geo={geo} leaders={recentLeaders} nameOf={nameOf} />
-            </SectionCard>
-          </Col>
-        </Row>
 
-        <ConsensusHealth
-          pool={pool}
-          nameOf={nameOf}
-          mode="detail"
-          halted={!!halt}
-          table={(slots, stale) => (
-            <InFlight pool={slots} stale={stale} nameOf={nameOf} />
-          )}
-        />
-
-        <div {...hold}>
-          <SectionCard
-            title="Recent Leaders"
-            icon="list"
-            highlight={held}
-            badge={held ? <PausedBadge /> : undefined}
-          >
-            <RecentLeadersTable
-              infos={infos}
-              playhead={cursor}
-              windows={LEADER_ROWS}
-              geo={geo}
-              nameOf={nameOf}
-            />
-            <div className="mt-2 px-2">
-              <SlotDotLegend />
+            <div {...hold}>
+              <SectionCard
+                title="Recent Leaders"
+                icon="list"
+                highlight={held}
+                badge={held ? <PausedBadge /> : undefined}
+              >
+                <RecentLeadersTable
+                  infos={infos}
+                  playhead={cursor}
+                  windows={LEADER_ROWS}
+                  geo={geo}
+                  nameOf={nameOf}
+                />
+                <div className="mt-2 px-2">
+                  <SlotDotLegend />
+                </div>
+              </SectionCard>
             </div>
-          </SectionCard>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
-import { clientLabel } from 'helpers/clients';
+import { clientBase, clientFork } from 'helpers/clients';
 import { parseUserAgent } from 'helpers/userAgent';
 import { ClusterHalt } from 'hooks/useIngestion';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -42,19 +42,44 @@ const HaltRunUpCard = ({
   const last = data.slots.slice(-LAST_SLOTS).reverse();
   const fv = data.finalVoters;
   const window = data.endSlot - data.startSlot + 1;
-  // The largest voting groups, then every group that didn't vote.
-  const VOTED_ROWS = 10;
-  const voters = fv
-    ? [
-        ...fv.voted.slice(0, VOTED_ROWS).map(g => ({ ...g, voted: true })),
-        ...fv.missing.map(g => ({ ...g, voted: false }))
-      ]
-    : [];
-  const moreVoted = fv ? Math.max(0, fv.voted.length - VOTED_ROWS) : 0;
+  // Who voted (and didn't) by base client, flavor, then version; groups
+  // under 1% of stake left out.
+  const MIN_PPB = 1e7;
+  const voters = (() => {
+    if (!fv) return [];
+    const rows = [
+      ...fv.voted.map(g => ({ ...g, voted: true })),
+      ...fv.missing.map(g => ({ ...g, voted: false }))
+    ].map(g => ({
+      ...g,
+      base: g.client ? clientBase(g.client) : 'Not in gossip',
+      flavor: g.client ? (clientFork(g.client) ?? 'plain') : ''
+    }));
+    const baseStake = new Map<string, number>();
+    const flavorStake = new Map<string, number>();
+    for (const g of rows) {
+      baseStake.set(g.base, (baseStake.get(g.base) ?? 0) + g.stakePpb);
+      const k = `${g.base}/${g.flavor}`;
+      flavorStake.set(k, (flavorStake.get(k) ?? 0) + g.stakePpb);
+    }
+    return rows
+      .filter(g => g.stakePpb >= MIN_PPB)
+      .sort(
+        (a, b) =>
+          (baseStake.get(b.base) ?? 0) - (baseStake.get(a.base) ?? 0) ||
+          (flavorStake.get(`${b.base}/${b.flavor}`) ?? 0) -
+            (flavorStake.get(`${a.base}/${a.flavor}`) ?? 0) ||
+          (b.version ?? '').localeCompare(a.version ?? '', undefined, {
+            numeric: true
+          }) ||
+          Number(b.voted) - Number(a.voted)
+      );
+  })();
+  const hidden = fv ? fv.voted.length + fv.missing.length - voters.length : 0;
   return (
     <>
       <SectionCard
-        title="Before the Halt"
+        title="Last Slots"
         icon="list"
         info="The last finalized block, then the final slots before the halt, newest first: the leader, its client (from the block footer), the stake that notarized the block, and how many slots its finalization took. Votes for a slot arrive in slot + 8's block, so the last few slots before a halt often have none."
       >
@@ -145,7 +170,7 @@ const HaltRunUpCard = ({
 
       {fv && (
         <SectionCard
-          title="Voting at the End"
+          title="Before the Halt"
           icon="users"
           info="In the last block whose votes landed (its slot + 8 carried the reward certificates): the stake that voted, and the stake in neither certificate, by client and version. Clients and versions are what gossip reports now, not at the halt: a validator that has restarted on new software shows it."
         >
@@ -164,7 +189,8 @@ const HaltRunUpCard = ({
           >
             <thead>
               <tr>
-                <th>Client</th>
+                <th>Base</th>
+                <th>Flavor</th>
                 <th>Version</th>
                 <th>Vote</th>
                 <th className="text-end">Validators</th>
@@ -172,28 +198,36 @@ const HaltRunUpCard = ({
               </tr>
             </thead>
             <tbody>
-              {voters.map(g => (
-                <tr key={`${g.voted}-${g.client}-${g.version}`}>
-                  <td>{g.client ? clientLabel(g.client) : 'Not in gossip'}</td>
-                  <td className="font-monospace text-body-secondary">
-                    {g.version ?? '—'}
-                  </td>
-                  <td>
-                    <span
-                      className={`badge badge-soft badge-soft-${g.voted ? 'success' : 'warning'}`}
-                    >
-                      {g.voted ? 'voted' : 'missing'}
-                    </span>
-                  </td>
-                  <td className="text-end font-monospace">{g.validators}</td>
-                  <td className="text-end font-monospace">{ppb(g.stakePpb)}</td>
-                </tr>
-              ))}
+              {voters.map((g, i) => {
+                const prev = voters[i - 1];
+                const newBase = !prev || prev.base !== g.base;
+                const newFlavor = newBase || prev.flavor !== g.flavor;
+                return (
+                  <tr key={`${g.voted}-${g.client}-${g.version}`}>
+                    <td className="fw-semibold">{newBase ? g.base : ''}</td>
+                    <td className="text-body-secondary">
+                      {newFlavor ? g.flavor : ''}
+                    </td>
+                    <td className="font-monospace">{g.version ?? '—'}</td>
+                    <td>
+                      <span
+                        className={`badge badge-soft badge-soft-${g.voted ? 'success' : 'warning'}`}
+                      >
+                        {g.voted ? 'voted' : 'missing'}
+                      </span>
+                    </td>
+                    <td className="text-end font-monospace">{g.validators}</td>
+                    <td className="text-end font-monospace">
+                      {ppb(g.stakePpb)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
-          {moreVoted > 0 && (
+          {hidden > 0 && (
             <p className="fs-10 text-body-tertiary mt-2 mb-0">
-              {moreVoted} smaller groups that voted aren&apos;t listed.
+              {hidden} groups under 1% of stake aren&apos;t listed.
             </p>
           )}
         </SectionCard>
