@@ -1133,6 +1133,10 @@ export const slotPageSchema = z.object({
   slotIndex: z.number().nullable().catch(null),
   consensus: z.string().catch('tower'), // per slot: tower through G
   leader: z.string().nullable().catch(null),
+  // The block footer's producer time minus our node's wall clock when it
+  // saw the slot (pool.originAtMs), ms: normally a few hundred negative;
+  // hours negative after a cluster restart while block time catches up.
+  clockDriftMs: z.number().nullable().optional().catch(null),
   leaderWindow: z
     .object({
       firstSlot: z.number(),

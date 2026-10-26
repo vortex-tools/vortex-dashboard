@@ -2,7 +2,7 @@ import FeatherIcon from 'feather-icons-react';
 import SectionCard from 'components/common/SectionCard';
 import { footerUrl } from 'helpers/slotContext';
 import { parseUserAgent } from 'helpers/userAgent';
-import { formatLamports } from 'helpers/utils';
+import { formatDuration, formatLamports } from 'helpers/utils';
 import { SlotFooter, SlotInfo, SlotPage } from 'providers/vortex-schemas';
 import { Fragment, ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
@@ -18,6 +18,17 @@ const SlotLink = ({ slot }: { slot: number }) => (
 );
 
 /** A muted qualifier on the value's line: "· South Korea". */
+/** Beyond this the producer's clock is off, not just propagation. */
+const CLOCK_OFF_MS = 10_000;
+
+/** "310 ms behind ours" / "3h 12min behind ours" / "40 ms ahead of ours". */
+const driftText = (ms: number) => {
+  const a = Math.abs(ms);
+  const amount =
+    a < 60_000 ? `${a.toLocaleString()} ms` : formatDuration(a / 1000);
+  return `${amount} ${ms <= 0 ? 'behind' : 'ahead of'} ours`;
+};
+
 const Aside = ({ children }: { children: ReactNode }) => (
   <span className="text-body-tertiary fw-normal"> · {children}</span>
 );
@@ -299,6 +310,10 @@ export const ConsensusTable = ({
   const v = ag?.votes;
   const c = page.carried;
   const pool = page.pool;
+  // The producer's clock far off ours (block time catching up after a
+  // restart): timings from the block are off by as much.
+  const clockOff =
+    page.clockDriftMs != null && Math.abs(page.clockDriftMs) > CLOCK_OFF_MS;
   const carriedOk =
     ag?.outcome === 'block' &&
     c?.idealStakePpb != null &&
@@ -493,6 +508,24 @@ export const ConsensusTable = ({
             </>
           )
         },
+        // The producer's clock against ours: the footer's timestamp minus
+        // when our node saw the slot.
+        page.clockDriftMs != null && {
+          label: 'Producer clock',
+          icon: 'watch',
+          title:
+            "The block footer's producer timestamp minus when our node first saw the slot. A few hundred ms behind is normal (propagation). Far behind - after a cluster restart, while block time catches up - makes timings measured from the block (Since the block) read large by the same amount.",
+          value: (
+            <span className={clockOff ? 'text-warning' : undefined}>
+              {driftText(page.clockDriftMs)}
+              {clockOff && (
+                <Aside>
+                  block time is still catching up (after a restart?)
+                </Aside>
+              )}
+            </span>
+          )
+        },
         // Since the block: when our node had it notarized and final.
         pool?.afterBlock?.finalizedMs != null && {
           label: 'Since the block',
@@ -514,6 +547,7 @@ export const ConsensusTable = ({
               {pool.afterBlock.finalizedBy === 'fastFinalize' && (
                 <Aside>fast</Aside>
               )}
+              {clockOff && <Aside>off by the producer&apos;s clock gap</Aside>}
             </>
           )
         },
