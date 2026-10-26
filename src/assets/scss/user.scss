@@ -380,6 +380,11 @@ th.leaderboard-sticky-col {
   background-color: var(--#{$prefix}warning-bg-subtle);
   border-bottom: 1px solid var(--#{$prefix}warning-border-subtle);
 }
+// The cluster-halted notice: the same band, in danger tints.
+.cluster-halt-bar {
+  background-color: var(--#{$prefix}danger-bg-subtle);
+  border-bottom-color: var(--#{$prefix}danger-border-subtle);
+}
 .breadcrumb-bar {
   margin: 0 -1rem;
   padding: 0.4rem 1rem;

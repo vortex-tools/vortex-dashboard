@@ -7,7 +7,8 @@ import ValidatorSearch from 'components/common/ValidatorSearch';
 import { formatLamports } from 'helpers/utils';
 import useRefreshOnce from 'hooks/useRefreshOnce';
 import useLiveRefresh from 'hooks/useLiveRefresh';
-import { useEpochLive } from 'hooks/useIngestion';
+import { formatDuration } from 'helpers/utils';
+import { useEpochLive, useClusterHalt } from 'hooks/useIngestion';
 import useTrailingTotals from 'hooks/useTrailingTotals';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Col, Row } from 'react-bootstrap';
@@ -26,7 +27,7 @@ const SLOT_TICK_MAX_MS = 120_000;
  * The cluster's current slot: /epochs/current's reading, run on at the
  * epoch's observed slot time between polls (re-anchored on each).
  */
-const useTickingSlot = (progress: EpochProgress | null) => {
+const useTickingSlot = (progress: EpochProgress | null, halted: boolean) => {
   const [now, setNow] = useState(() => Date.now());
   const slotMs = (progress?.slotSeconds ?? 0) * 1000;
   useEffect(() => {
@@ -35,7 +36,9 @@ const useTickingSlot = (progress: EpochProgress | null) => {
     return () => clearInterval(t);
   }, [slotMs]);
   if (progress?.absoluteSlot == null) return null;
-  if (!slotMs || progress.readAt == null) return progress.absoluteSlot;
+  // A halted cluster stays at its last slot.
+  if (!slotMs || progress.readAt == null || halted)
+    return progress.absoluteSlot;
   const elapsed = Math.min(
     Math.max(now - progress.readAt * 1000, 0),
     SLOT_TICK_MAX_MS
@@ -222,7 +225,8 @@ const Home = () => {
       ? totals.blocksProduced / totals.processedSlots / slotSeconds
       : null;
   const trailing = useTrailingTotals(latest, countMs, blocksPerSec);
-  const currentSlot = useTickingSlot(live.progress);
+  const halt = useClusterHalt();
+  const currentSlot = useTickingSlot(live.progress, !!halt);
 
   return (
     <div>
@@ -261,10 +265,13 @@ const Home = () => {
               label="Current Slot"
               value={currentSlot != null ? currentSlot.toLocaleString() : '—'}
               sublabel={
-                slotSeconds
-                  ? `~${Math.round(slotSeconds * 1000)} ms per slot this epoch`
-                  : undefined
+                halt
+                  ? `halted ${formatDuration(Date.now() / 1000 - halt.since)} ago`
+                  : slotSeconds
+                    ? `~${Math.round(slotSeconds * 1000)} ms per slot this epoch`
+                    : undefined
               }
+              tone={halt ? 'danger' : undefined}
               linkTo="/live"
             />
           </Col>

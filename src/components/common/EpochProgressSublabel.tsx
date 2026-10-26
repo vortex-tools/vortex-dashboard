@@ -2,7 +2,7 @@ import {
   DataFreshnessSublabel,
   freshness
 } from 'components/common/DataFreshness';
-import { EpochLive, useEpochLive } from 'hooks/useIngestion';
+import { EpochLive, clusterHaltOf, useEpochLive } from 'hooks/useIngestion';
 
 /** "1d 4h" / "5h 12m" / "12m" / "<1m". */
 const formatEta = (seconds: number) => {
@@ -31,6 +31,8 @@ const EpochProgressSublabel = ({
 }) => {
   const polled = useEpochLive(!given);
   const { progress, ingestion } = given ?? polled;
+  // A halted cluster has no end time: say so instead of a stale ETA.
+  const halted = !!clusterHaltOf(given ?? polled);
   const pct =
     progress && progress.slotsInEpoch > 0
       ? Math.min(100, (progress.slotIndex / progress.slotsInEpoch) * 100)
@@ -46,7 +48,7 @@ const EpochProgressSublabel = ({
   // position-relative), taking no height.
   const title = [
     `slot ${progress.slotIndex.toLocaleString()} of ${progress.slotsInEpoch.toLocaleString()}`,
-    progress.estimatedEndTime != null
+    !halted && progress.estimatedEndTime != null
       ? `ends around ${new Date(progress.estimatedEndTime * 1000).toLocaleString()}`
       : null,
     freshness(ingestion, sources)?.title
@@ -56,7 +58,8 @@ const EpochProgressSublabel = ({
   return (
     <>
       <span title={title}>
-        {pct.toFixed(1)}%{left != null && ` · ~${formatEta(left)} left`}
+        {pct.toFixed(1)}%
+        {halted ? ' · halted' : left != null && ` · ~${formatEta(left)} left`}
       </span>
       <span
         className="position-absolute bottom-0 start-0 end-0 bg-body-secondary"

@@ -15,7 +15,8 @@ import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import { fetchSlots } from 'helpers/slotContext';
 import useConsensus from 'hooks/useConsensus';
-import { useEpochLive } from 'hooks/useIngestion';
+import { formatDuration as duration } from 'helpers/utils';
+import { clusterHaltOf, useEpochLive } from 'hooks/useIngestion';
 import useLiveConsensus from 'hooks/useLiveConsensus';
 import { LiveSlot, SlotInfo } from 'providers/vortex-schemas';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -52,7 +53,7 @@ const STUCK_TEXT: Record<Stuck['kind'], (secs: number) => string> = {
   offline: s =>
     `Can't reach the API (no response for ${s}s). Retrying - what's shown is from before.`,
   chain: s =>
-    `The chain hasn't advanced for ${s}s: no new slots are being produced. The finality card shows the cluster's view; Consensus Health opens below if votes are stuck.`,
+    `The cluster has halted: no new slots for ${duration(s)}. What's shown is the last slots before it stopped; playback resumes when the cluster restarts.`,
   data: s =>
     `The chain is moving, but no new slot data has arrived for ${s}s (ingestion stalled). Playback resumes when it does.`
 };
@@ -118,6 +119,7 @@ const LiveConsensus = () => {
     return () => clearInterval(id);
   }, []);
   const p = live.progress;
+  const halt = clusterHaltOf(live, now);
   const chainTip =
     p?.absoluteSlot != null
       ? p.readAt != null && p.slotSeconds
@@ -153,6 +155,11 @@ const LiveConsensus = () => {
         kind: 'offline',
         secs: Math.round((now - lastOk) / 1000)
       };
+    // The cluster has halted (the API reads fine, the slot doesn't move):
+    // say so straight away, timed from the last slot - not after a stall
+    // timer that starts when the page opens.
+    if (halt)
+      return { kind: 'chain', secs: Math.round(now / 1000 - halt.since) };
     const chainStill = (now - moved.current.chainAt) / 1000;
     // Halted only if the API's reading is fresh (it re-reads the chain
     // every few seconds) - a stale reading isn't the chain's fault.
@@ -513,6 +520,7 @@ const LiveConsensus = () => {
               pool={pool}
               nameOf={nameOf}
               mode="line"
+              halted={!!halt}
               table={() => null}
             />
           }
@@ -521,7 +529,8 @@ const LiveConsensus = () => {
           onToggle={togglePlay}
           onStep={step}
         />
-        {stuck && (
+        {/* A halt is already said above every page (ClusterHaltBanner). */}
+        {stuck && !halt && (
           <div
             className={`d-flex align-items-start gap-2 rounded border px-3 py-2 fs-9 ${
               stuck.kind === 'data'
@@ -618,6 +627,7 @@ const LiveConsensus = () => {
           pool={pool}
           nameOf={nameOf}
           mode="detail"
+          halted={!!halt}
           table={(slots, stale) => (
             <InFlight pool={slots} stale={stale} nameOf={nameOf} />
           )}

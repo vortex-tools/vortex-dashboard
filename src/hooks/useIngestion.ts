@@ -158,3 +158,46 @@ const useIngestion = (enabled = true): Ingestion | null =>
   useEpochLive(enabled).ingestion;
 
 export default useIngestion;
+
+/** No new slot for this long while the API is reading fine: halted. */
+export const HALT_SECS = 90;
+
+export interface ClusterHalt {
+  /** When the chain last advanced (unix s): the API's last slot reading. */
+  since: number;
+  /** The last slot it reached. */
+  slot: number;
+}
+
+/**
+ * Whether the cluster has halted, from /epochs/current: its slot reading
+ * (progress.readAt moves only when the slot does) is over HALT_SECS old
+ * while the API's other reading (totals.readAt) is fresh - so it's the
+ * chain that stopped, not the API's reader.
+ */
+export const clusterHaltOf = (
+  live: EpochLive,
+  nowMs = Date.now()
+): ClusterHalt | null => {
+  const p = live.progress;
+  const totalsAt = live.totals?.readAt;
+  if (p?.readAt == null || p.absoluteSlot == null || totalsAt == null)
+    return null;
+  const now = nowMs / 1000;
+  return now - p.readAt > HALT_SECS && now - totalsAt < HALT_SECS
+    ? { since: p.readAt, slot: p.absoluteSlot }
+    : null;
+};
+
+/** The cluster's halt, if it has halted (see clusterHaltOf), re-checked
+ *  every 15 s. */
+export const useClusterHalt = (enabled = true): ClusterHalt | null => {
+  const live = useEpochLive(enabled);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enabled) return;
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, [enabled]);
+  return clusterHaltOf(live, now);
+};

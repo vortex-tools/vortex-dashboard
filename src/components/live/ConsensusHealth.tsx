@@ -35,7 +35,8 @@ const ConsensusHealth = ({
   pool,
   nameOf,
   table,
-  mode
+  mode,
+  halted = false
 }: {
   pool: LiveConsensus | null;
   nameOf: (node: string | null | undefined) => string;
@@ -45,6 +46,8 @@ const ConsensusHealth = ({
    *  source on hover); 'detail': the
    *  in-flight card, only while something's wrong. */
   mode: 'line' | 'detail';
+  /** The cluster has halted (useClusterHalt): no slots, so no live view. */
+  halted?: boolean;
 }) => {
   const gap = pool?.finalityGapSlots ?? null;
   const split = pool?.slots.some(s => s.split) ?? false;
@@ -52,7 +55,10 @@ const ConsensusHealth = ({
 
   let level: Level = 'off';
   let line: ReactNode = 'Live consensus isn’t available from this API.';
-  if (pool?.available) {
+  if (halted) {
+    level = 'bad';
+    line = 'The cluster has halted: no new slots, so nothing is in flight.';
+  } else if (pool?.available) {
     if (pool.blind) {
       level = stillSecs != null && stillSecs > 20 ? 'bad' : 'warn';
       line =

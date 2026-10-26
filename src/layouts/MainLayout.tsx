@@ -1,4 +1,5 @@
 import ApiStatusBanner from 'components/common/ApiStatusBanner';
+import ClusterHaltBanner from 'components/common/ClusterHaltBanner';
 import Footer from 'components/layout/Footer';
 import Sidebar from 'components/layout/Sidebar';
 import TopBar from 'components/layout/TopBar';
@@ -14,6 +15,7 @@ const MainLayout = () => {
       <Sidebar />
       <main className="content">
         <ApiStatusBanner />
+        <ClusterHaltBanner />
         <Outlet />
         <Footer />
       </main>
