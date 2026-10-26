@@ -79,9 +79,9 @@ const HaltRunUpCard = ({
                 data.lastBlockSlot < halt.finalizedSlot) && (
                 <>
                   {' '}
-                  - our block footers end at{' '}
-                  {data.lastBlockSlot.toLocaleString()}, so the final blocks are
-                  missing below
+                  - our block data ends at {data.lastBlockSlot.toLocaleString()}
+                  : block {halt.finalizedSlot?.toLocaleString()} is finalized
+                  but not yet in our data, and fills in when our node uploads it
                 </>
               )}
             .
