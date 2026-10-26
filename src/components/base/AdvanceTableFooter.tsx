@@ -7,7 +7,14 @@ import { useRef, useState } from 'react';
  * all of them, a View all / View less toggle (unless `viewAll` is false),
  * and numbered pages.
  */
-const AdvanceTableFooter = ({ viewAll = true }: { viewAll?: boolean }) => {
+const AdvanceTableFooter = ({
+  viewAll = true,
+  className
+}: {
+  viewAll?: boolean;
+  /** E.g. side padding under a full-width table. */
+  className?: string;
+}) => {
   const table = useAdvanceTableContext();
   const { pageIndex, pageSize } = table.getState().pagination;
   const total = table.getPrePaginationRowModel().rows.length;
@@ -21,6 +28,7 @@ const AdvanceTableFooter = ({ viewAll = true }: { viewAll?: boolean }) => {
   };
   return (
     <Pager
+      className={className}
       page={pageIndex}
       pages={table.getPageCount()}
       onPrev={() => table.previousPage()}

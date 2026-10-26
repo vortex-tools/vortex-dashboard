@@ -26,7 +26,8 @@ const Pager = ({
   pageSize,
   shown,
   note,
-  extra
+  extra,
+  className
 }: {
   /** 0-based. */
   page: number;
@@ -46,6 +47,8 @@ const Pager = ({
   note?: ReactNode;
   /** After the count (e.g. a View all toggle). */
   extra?: ReactNode;
+  /** Extra classes on the row (e.g. padding in a full-width table). */
+  className?: string;
 }) => {
   const first = pageSize != null ? page * pageSize + 1 : null;
   const last =
@@ -58,7 +61,9 @@ const Pager = ({
     </Pagination.Item>
   );
   return (
-    <div className="d-flex align-items-center gap-3 fs-9 mt-3">
+    <div
+      className={`d-flex align-items-center gap-3 fs-9 mt-3${className ? ` ${className}` : ''}`}
+    >
       <p className="mb-0 d-none d-sm-block fw-semibold text-body">
         {total != null && first != null && last != null ? (
           <>

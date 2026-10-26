@@ -375,7 +375,7 @@ const EpochVotingLeaderboardTable = () => {
           className: 'data-table fs-9 table-striped table-with-padding'
         }}
       />
-      <AdvanceTableFooter />
+      <AdvanceTableFooter className="px-3 pb-3" />
     </div>
   );
 };
