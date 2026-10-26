@@ -46,7 +46,6 @@ type Concentration = {
   /** Fewest groups together over 1/3 of the stake: could halt consensus. */
   superminority: number;
   top1Share: number;
-  hhi: number;
 };
 
 /** Concentration of stake over groups (largest first), of `total`. */
@@ -62,8 +61,7 @@ const concentration = (groups: Group[], total: number): Concentration => {
   return {
     entities: sorted.filter(g => g.stake > 0).length,
     superminority,
-    top1Share: total ? (sorted[0]?.stake ?? 0) / total : 0,
-    hhi: total ? sorted.reduce((a, g) => a + (g.stake / total) ** 2, 0) : 0
+    top1Share: total ? (sorted[0]?.stake ?? 0) / total : 0
   };
 };
 
@@ -176,15 +174,6 @@ const providerCity = (
     ? city.replace(/\s+(am|an der|upon|on|in)\s.*$/i, '')
     : city;
   return `${flag(cc)} ${place} · ${org}`.trim();
-};
-
-/** 1 / HHI: how many equal-sized groups would be as concentrated. */
-const equalCount = (hhi: number) => {
-  if (!(hhi > 0)) return '—';
-  const n = 1 / hhi;
-  return n < 10
-    ? n.toFixed(1).replace(/\.0$/, '')
-    : Math.round(n).toLocaleString();
 };
 
 const pct = (share: number, digits = 1) => `${(share * 100).toFixed(digits)}%`;
@@ -366,15 +355,7 @@ const BreakdownCard = ({
             })}
           </div>
           <div className="d-flex flex-wrap align-items-center gap-3 fs-10 text-body-tertiary mt-3">
-            <span>
-              largest {pct(c.top1Share)} ·{' '}
-              <span
-                title={`HHI ${c.hhi.toFixed(3)} (Herfindahl-Hirschman: the sum of squared shares). Its inverse is how many equal-sized ${plural(noun)} would spread the stake as evenly.`}
-                style={{ cursor: 'help' }}
-              >
-                like ~{equalCount(c.hhi)} equal {plural(noun)}
-              </span>
-            </span>
+            <span>largest {pct(c.top1Share)}</span>
             {nakamoto && (
               <span className="d-inline-flex align-items-center gap-1">
                 <span
