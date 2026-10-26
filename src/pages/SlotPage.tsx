@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import useConsensus from 'hooks/useConsensus';
 import Button from 'components/base/Button';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageBreadcrumb from 'components/common/PageBreadcrumb';
@@ -65,7 +66,19 @@ const SlotPage = () => {
   // (dimmed) until it arrives, rather than blanking the page to a spinner.
   const lastPage = useRef<SlotPageData | undefined>(undefined);
   if (loaded) lastPage.current = loaded;
-  const page = loaded ?? (valid && !unavailable ? lastPage.current : undefined);
+  const shown =
+    loaded ?? (valid && !unavailable ? lastPage.current : undefined);
+  // The API's per-slot consensus, corrected by the cluster's cutover:
+  // every slot from its first Alpenglow epoch on is Alpenglow (an API
+  // answering 'tower' for a later slot is wrong, e.g. around a halt).
+  const { cutoverEpoch } = useConsensus();
+  const page =
+    shown &&
+    shown.consensus !== 'alpenglow' &&
+    cutoverEpoch != null &&
+    shown.epoch >= cutoverEpoch
+      ? { ...shown, consensus: 'alpenglow' as const }
+      : shown;
   const stale = !!page && page.slot !== slot;
 
   // Cohort fields (country, provider, client) and names: the slot's epoch
