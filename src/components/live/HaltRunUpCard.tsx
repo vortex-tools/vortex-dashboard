@@ -79,9 +79,7 @@ const HaltRunUpCard = ({
                 data.lastBlockSlot < halt.finalizedSlot) && (
                 <>
                   {' '}
-                  - our block data ends at {data.lastBlockSlot.toLocaleString()}
-                  : block {halt.finalizedSlot?.toLocaleString()} is finalized
-                  but not yet in our data, and fills in when our node uploads it
+                  {` - our block data ends at ${data.lastBlockSlot.toLocaleString()}: block ${halt.finalizedSlot?.toLocaleString()} is finalized but not yet in our block data`}
                 </>
               )}
             .
