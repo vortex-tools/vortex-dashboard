@@ -33,8 +33,14 @@ import {
   GovernanceProposalDetail,
   GovernanceTally
 } from 'providers/vortex-schemas';
-import FeatherIcon from 'feather-icons-react';
-import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  Fragment,
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
 
@@ -361,54 +367,67 @@ const GovernanceProposal = () => {
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col">
           <h3>{proposalName(p)}</h3>
-          <p className="text-body-tertiary lh-sm mb-0 mt-1">
-            {[
-              sgpTag(p),
-              epochSpan(p) && `voted in epochs ${epochSpan(p)}`,
-              p.snapshotEpoch != null &&
-                `stake from epoch ${p.snapshotEpoch.toLocaleString()}`
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            {p.author && (
-              <>
-                {' · by '}
-                <span className="font-monospace" title={p.author}>
-                  {short(p.author)}
-                </span>
-              </>
-            )}
-          </p>
         </div>
         <div className="col-auto d-flex flex-wrap align-items-center gap-2">
           <PhaseBadge phase={p.phase} />
-          <VerdictBadge verdict={p.verdict} projected={p.projected} />
-          {p.description && (
-            <a
-              href={p.description}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-soft-secondary btn-sm"
-            >
-              Proposal text
-            </a>
-          )}
         </div>
       </div>
 
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
-          <Col xs={6} lg={3}>
+          <Col xs={6} md={4} xl={2}>
+            <StatCard
+              label="Verdict"
+              wrapSublabel
+              mono={false}
+              value={p.verdict ?? (p.projected ? `${p.projected} so far` : '—')}
+              check={
+                p.verdict === 'Accepted'
+                  ? true
+                  : p.verdict === 'Rejected'
+                    ? false
+                    : null
+              }
+              tone={p.verdict === 'Inconclusive' ? 'warning' : undefined}
+              sublabel={
+                p.official ? (
+                  <>
+                    official: {p.official.status ?? '—'}
+                    {p.official.matches === false && ' (differs)'}
+                    {p.official.source && (
+                      <>
+                        {' · '}
+                        <a
+                          href={p.official.source}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          source
+                        </a>
+                      </>
+                    )}
+                  </>
+                ) : p.verdict ? (
+                  'under the rule'
+                ) : (
+                  'not final yet'
+                )
+              }
+            />
+          </Col>
+          <Col xs={6} md={4} xl={2}>
             <StatCard
               label="For"
+              wrapSublabel
               value={pct(ruleShare(p))}
               sublabel={`of the ${p.rule === 'decisive' ? 'stake voting For or Against' : 'stake that voted'} · needs ${pct(THRESHOLD)}`}
               check={ruleShare(p) != null ? ruleShare(p)! >= THRESHOLD : null}
             />
           </Col>
-          <Col xs={6} lg={3}>
+          <Col xs={6} md={4} xl={2}>
             <StatCard
               label="Turnout"
+              wrapSublabel
               value={pct(p.turnout)}
               sublabel={
                 quorumShare != null
@@ -418,109 +437,167 @@ const GovernanceProposal = () => {
               check={quorumShare != null ? !!p.quorumMet : null}
             />
           </Col>
-          <Col xs={6} lg={3}>
+          <Col xs={6} md={4} xl={2}>
             <StatCard
               label="Validators Voted"
+              wrapSublabel
               value={p.validatorVotes?.toLocaleString() ?? '—'}
               sublabel={`${data.nonVoters.length.toLocaleString()} staked validators didn't`}
             />
           </Col>
-          <Col xs={6} lg={3}>
+          <Col xs={6} md={4} xl={2}>
             <StatCard
               label="Overridden"
+              wrapSublabel
               value={compactSol(movedFromVoters + movedFromNonVoters)}
               sublabel="stake whose vote its stakers changed"
             />
           </Col>
+          <Col xs={6} md={4} xl={2}>
+            <StatCard
+              label="Proposal"
+              mono={false}
+              value={p.sgp ?? 'Text'}
+              href={p.description ?? undefined}
+              sublabel={p.description ? 'read the proposal' : 'no text linked'}
+            />
+          </Col>
         </Row>
 
-        <SectionCard
-          title="Result"
-          icon="check-square"
-          info="Weighted by each validator's stake in the snapshot epoch; a staker's override moves its stake to the staker's own choice. The program records only the tallies: the verdict applies the proposal's rule."
-        >
-          <VoteBar
-            tally={p.tally}
-            threshold={p.rule === 'constitution' ? THRESHOLD : null}
-            height={14}
-          />
-          <div className="d-flex flex-wrap gap-3 fs-9 mt-2">
-            {CHOICE.map(c => (
-              <ChoiceTag key={c.key} choice={c.key}>
-                {compactSol(p.tally?.[c.key])}
-              </ChoiceTag>
-            ))}
-          </div>
-          {p.official && (
-            <p className="fs-9 text-body-tertiary mt-2 mb-0">
-              Official status: {p.official.status ?? '—'}
-              {p.official.matches === false &&
-                ' (differs from the computed verdict)'}
-              {p.official.source && (
-                <>
-                  {' · '}
-                  <a href={p.official.source} target="_blank" rel="noreferrer">
-                    source
-                  </a>
-                </>
-              )}
-            </p>
-          )}
-          {p.contested && (
-            <div className="bg-warning-subtle border border-warning-subtle rounded p-2 fs-9 mt-3">
-              <span className="fw-semibold">Contested.</span>{' '}
-              {p.contested.rule === 'decisive' && (
-                <>
-                  Under the rule the proposal&apos;s own text used - two thirds
-                  of For + Against, Abstain not counted - For is{' '}
-                  <span className="fw-bold">
-                    {pct(ruleShare(p, 'decisive'))}
-                  </span>{' '}
-                  and it would be {p.contested.verdict ?? '—'}.{' '}
-                </>
-              )}
-              {p.contested.summary}
-              {p.contested.url && (
-                <>
-                  {' '}
-                  <a href={p.contested.url} target="_blank" rel="noreferrer">
-                    The dispute
-                  </a>
-                </>
-              )}
-            </div>
-          )}
-          {(p.simds.length > 0 || p.featureGates.length > 0) && (
-            <p className="fs-9 mt-3 mb-0">
-              <span className="text-body-tertiary">A For vote endorses </span>
-              {p.simds.map((s, i) => (
-                <span key={s.simd}>
-                  {i > 0 && ', '}
-                  {s.url ? (
-                    <a href={s.url} target="_blank" rel="noreferrer">
-                      {s.simd}
-                    </a>
-                  ) : (
-                    s.simd
+        <Row className="g-3">
+          <Col xs={12} lg={8}>
+            <SectionCard
+              title="Result"
+              icon="check-square"
+              info="Weighted by each validator's stake in the snapshot epoch; a staker's override moves its stake to the staker's own choice. The program records only the tallies: the verdict applies the proposal's rule."
+            >
+              <VoteBar
+                tally={p.tally}
+                threshold={p.rule === 'constitution' ? THRESHOLD : null}
+                height={14}
+              />
+              <div className="d-flex flex-wrap gap-3 fs-9 mt-2">
+                {CHOICE.map(c => (
+                  <ChoiceTag key={c.key} choice={c.key}>
+                    {compactSol(p.tally?.[c.key])}
+                  </ChoiceTag>
+                ))}
+              </div>
+              {p.contested && (
+                <div className="bg-warning-subtle border border-warning-subtle rounded p-2 fs-9 mt-3">
+                  <span className="fw-semibold">Contested.</span>{' '}
+                  {p.contested.rule === 'decisive' && (
+                    <>
+                      Under the rule the proposal&apos;s own text used - two
+                      thirds of For + Against, Abstain not counted - For is{' '}
+                      <span className="fw-bold">
+                        {pct(ruleShare(p, 'decisive'))}
+                      </span>{' '}
+                      and it would be {p.contested.verdict ?? '—'}.{' '}
+                    </>
                   )}
-                  {s.title && ` (${s.title})`}
-                </span>
-              ))}
-              {p.featureGates.map(g => (
-                <span
-                  key={g.id}
-                  className="font-monospace ms-2"
-                  title={g.description ?? undefined}
-                >
-                  {g.id.slice(0, 8)}…
-                </span>
-              ))}
-              <span className="text-body-tertiary">
-                ; the vote activates nothing by itself.
-              </span>
-            </p>
-          )}
-        </SectionCard>
+                  {p.contested.summary}
+                  {p.contested.url && (
+                    <>
+                      {' '}
+                      <a
+                        href={p.contested.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        The dispute
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
+            </SectionCard>
+          </Col>
+          <Col xs={12} lg={4}>
+            <SectionCard title="Details" icon="file-text">
+              <dl className="row fs-9 mb-0 gy-2">
+                {(
+                  [
+                    ['Proposal', p.sgp ?? '—'],
+                    ['Voting', epochSpan(p) ? `epochs ${epochSpan(p)}` : '—'],
+                    [
+                      'Stake snapshot',
+                      p.snapshotEpoch != null
+                        ? `epoch ${p.snapshotEpoch.toLocaleString()}${p.snapshotSlot != null ? ` · slot ${p.snapshotSlot.toLocaleString()}` : ''}`
+                        : '—'
+                    ],
+                    [
+                      'Created',
+                      [
+                        p.creationEpoch != null &&
+                          `epoch ${p.creationEpoch.toLocaleString()}`,
+                        p.creationTimestamp &&
+                          new Date(
+                            p.creationTimestamp * 1000
+                          ).toLocaleDateString()
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || '—'
+                    ],
+                    [
+                      'Support',
+                      p.supporters != null
+                        ? `${p.supporters.toLocaleString()} validators · ${compactSol(p.clusterSupportLamports)}`
+                        : '—'
+                    ],
+                    [
+                      'Author',
+                      p.author ? (
+                        <span className="font-monospace" title={p.author}>
+                          {short(p.author)}
+                        </span>
+                      ) : (
+                        '—'
+                      )
+                    ]
+                  ] as [string, ReactNode][]
+                ).map(([k, v]) => (
+                  <Fragment key={k}>
+                    <dt className="col-5 fw-normal text-body-tertiary">{k}</dt>
+                    <dd className="col-7 mb-0">{v}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+              {(p.simds.length > 0 || p.featureGates.length > 0) && (
+                <p className="fs-9 mt-3 mb-0 pt-3 border-top border-translucent">
+                  <span className="text-body-tertiary">
+                    A For vote endorses{' '}
+                  </span>
+                  {p.simds.map((s, i) => (
+                    <span key={s.simd}>
+                      {i > 0 && ', '}
+                      {s.url ? (
+                        <a href={s.url} target="_blank" rel="noreferrer">
+                          {s.simd}
+                        </a>
+                      ) : (
+                        s.simd
+                      )}
+                      {s.title && ` (${s.title})`}
+                    </span>
+                  ))}
+                  {p.featureGates.map(g => (
+                    <span
+                      key={g.id}
+                      className="font-monospace ms-2"
+                      title={g.description ?? undefined}
+                    >
+                      {g.id.slice(0, 8)}…
+                    </span>
+                  ))}
+                  <span className="text-body-tertiary">
+                    ; the vote activates nothing by itself.
+                  </span>
+                </p>
+              )}
+            </SectionCard>
+          </Col>
+        </Row>
 
         {data.timeline.length > 1 && p.snapshotStake ? (
           <SectionCard

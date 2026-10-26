@@ -10,6 +10,8 @@ interface Props {
   /** When set, the whole card becomes a link; an arrow-up-right icon shows in
    *  the top-right corner. */
   linkTo?: string;
+  /** Like linkTo, to another site (opens in a new tab). */
+  href?: string;
   /** Monospace value - right for numbers; turn off for words. */
   mono?: boolean;
   /** Let a long sublabel wrap instead of truncating. */
@@ -35,6 +37,7 @@ const StatCard = ({
   value,
   sublabel,
   linkTo,
+  href,
   mono = true,
   wrapSublabel = false,
   tone,
@@ -52,7 +55,7 @@ const StatCard = ({
             aria-label={check ? 'Met' : 'Not met'}
           />
         ) : (
-          linkTo && (
+          (linkTo || href) && (
             <FeatherIcon
               icon="arrow-up-right"
               size={12}
@@ -85,6 +88,18 @@ const StatCard = ({
       : check === false
         ? 'bg-body-emphasis border-danger-subtle'
         : 'bg-body-emphasis border-translucent';
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className={`stat-card d-block position-relative overflow-hidden rounded border ${frame} px-3 py-2 h-100 text-decoration-none text-body`}
+      >
+        {body}
+      </a>
+    );
+  }
   if (linkTo) {
     return (
       <Link
