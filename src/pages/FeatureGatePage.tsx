@@ -226,7 +226,9 @@ const FeatureGatePage = () => {
                 <tr>
                   <th>Cluster</th>
                   <th>Event</th>
-                  <th>Epoch / slot</th>
+                  <th>
+                    Epoch<span className="d-none d-md-inline"> / slot</span>
+                  </th>
                   <th className="text-end">Seen</th>
                 </tr>
               </thead>
@@ -246,7 +248,7 @@ const FeatureGatePage = () => {
                     <td className="font-monospace">
                       {e.epoch != null ? e.epoch.toLocaleString() : '—'}
                       {e.slot != null && (
-                        <span className="text-body-tertiary">
+                        <span className="text-body-tertiary d-none d-md-inline">
                           {' '}
                           · {e.slot.toLocaleString()}
                         </span>

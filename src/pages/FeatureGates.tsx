@@ -42,6 +42,13 @@ const FILTERS = [
 ] as const;
 type Filter = (typeof FILTERS)[number][0];
 
+// Columns shown from md up; phones get the feature and its served-cluster
+// state only.
+const WIDE = {
+  headerProps: { className: 'd-none d-md-table-cell' },
+  cellProps: { className: 'd-none d-md-table-cell' }
+};
+
 const columns = (served: string): ColumnDef<FeatureGate>[] => [
   {
     id: 'name',
@@ -56,7 +63,8 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
     id: 'simd',
     header: 'SIMD',
     accessorFn: f => f.simds[0] ?? 0,
-    cell: ({ row: { original: f } }) => <SimdLinks simds={f.simds} />
+    cell: ({ row: { original: f } }) => <SimdLinks simds={f.simds} />,
+    meta: WIDE
   },
   ...CLUSTERS.map(
     (c): ColumnDef<FeatureGate> => ({
@@ -66,10 +74,7 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
       cell: ({ row: { original: f } }) => (
         <StatusChip state={f.clusters[c.key]} />
       ),
-      meta:
-        c.key === served
-          ? { headerProps: { className: 'text-body' } }
-          : undefined
+      meta: c.key === served ? undefined : WIDE
     })
   )
 ];
@@ -225,12 +230,14 @@ const FeatureGates = () => {
                   <tr>
                     <th>#</th>
                     <th>Feature</th>
-                    <th>SIMD</th>
-                    <th>Minimum versions</th>
+                    <th className="d-none d-md-table-cell">SIMD</th>
+                    <th className="d-none d-lg-table-cell">Minimum versions</th>
                     {CLUSTERS.filter(c => c.key !== served).map(c => (
-                      <th key={c.key}>{c.label}</th>
+                      <th key={c.key} className="d-none d-md-table-cell">
+                        {c.label}
+                      </th>
                     ))}
-                    <th style={{ minWidth: '10rem' }}>Stake ready</th>
+                    <th style={{ minWidth: '7rem' }}>Stake ready</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -246,14 +253,14 @@ const FeatureGates = () => {
                           {featureName(f)}
                         </Link>
                       </td>
-                      <td>
+                      <td className="d-none d-md-table-cell">
                         <SimdLinks simds={f.simds} />
                       </td>
-                      <td className="fs-10">
+                      <td className="fs-10 d-none d-lg-table-cell">
                         <MinVersions versions={f.minVersions} />
                       </td>
                       {CLUSTERS.filter(c => c.key !== served).map(c => (
-                        <td key={c.key}>
+                        <td key={c.key} className="d-none d-md-table-cell">
                           <StatusChip state={f.clusters[c.key]} />
                         </td>
                       ))}
