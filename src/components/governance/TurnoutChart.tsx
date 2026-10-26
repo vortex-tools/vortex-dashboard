@@ -8,6 +8,7 @@ import {
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { useAppContext } from 'providers/AppProvider';
+import { GovernanceProposalDetail } from 'providers/vortex-schemas';
 
 echarts.use([
   LineChart,
@@ -17,16 +18,56 @@ echarts.use([
   CanvasRenderer
 ]);
 
-/** Turnout (share of the snapshot stake that has voted) as voting went
- *  on, with the quorum it needed. */
+/**
+ * The vote as it came in, hourly: for, against and abstain stacked as
+ * shares of the snapshot stake (their top is the turnout), with the quorum
+ * when the rule has one.
+ */
 const TurnoutChart = ({
-  points,
-  quorum
+  timeline,
+  snapshotStake,
+  quorumShare
 }: {
-  points: { t: number; share: number }[];
-  quorum?: number | null;
+  timeline: GovernanceProposalDetail['timeline'];
+  snapshotStake: number;
+  quorumShare: number | null;
 }) => {
   const { getThemeColor } = useAppContext();
+  const series = (
+    [
+      ['for', 'For', 'success'],
+      ['against', 'Against', 'danger'],
+      ['abstain', 'Abstain', 'quaternary-color']
+    ] as const
+  ).map(([key, name, color], i) => ({
+    name,
+    type: 'line',
+    stack: 'vote',
+    step: 'end',
+    symbol: 'none',
+    lineStyle: { width: 1 },
+    color: getThemeColor(color),
+    areaStyle: { opacity: 0.55 },
+    data: timeline.map(p => [
+      p.time * 1000,
+      (p.tally?.[key] ?? 0) / snapshotStake
+    ]),
+    markLine:
+      i === 0 && quorumShare != null
+        ? {
+            silent: true,
+            symbol: 'none',
+            lineStyle: { color: getThemeColor('body-color'), type: 'dashed' },
+            label: {
+              formatter: `quorum ${(quorumShare * 100).toFixed(1)}%`,
+              position: 'insideStartTop',
+              fontSize: 10,
+              color: getThemeColor('tertiary-color')
+            },
+            data: [{ yAxis: quorumShare }]
+          }
+        : undefined
+  }));
   const option = {
     animation: false,
     grid: { left: 4, right: 12, top: 16, bottom: 4, containLabel: true },
@@ -35,7 +76,7 @@ const TurnoutChart = ({
       backgroundColor: getThemeColor('body-highlight-bg'),
       borderColor: getThemeColor('border-color'),
       textStyle: { color: getThemeColor('body-color') },
-      valueFormatter: (v: number) => `${(v * 100).toFixed(1)}%`
+      valueFormatter: (v: number) => `${(v * 100).toFixed(1)}% of stake`
     },
     xAxis: {
       type: 'time',
@@ -50,7 +91,10 @@ const TurnoutChart = ({
       type: 'value',
       min: 0,
       max: (v: { max: number }) =>
-        Math.min(1, Math.max(v.max, quorum ?? 0) + 0.05),
+        Math.min(
+          1,
+          Math.ceil((Math.max(v.max, quorumShare ?? 0) + 0.05) * 10) / 10
+        ),
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -58,39 +102,14 @@ const TurnoutChart = ({
       },
       splitLine: { lineStyle: { color: getThemeColor('border-color') } }
     },
-    series: [
-      {
-        name: 'Turnout',
-        type: 'line',
-        step: 'end',
-        symbol: 'none',
-        color: getThemeColor('primary'),
-        areaStyle: { opacity: 0.12 },
-        data: points.map(p => [p.t * 1000, p.share]),
-        markLine:
-          quorum != null
-            ? {
-                silent: true,
-                symbol: 'none',
-                lineStyle: { color: getThemeColor('warning'), type: 'dashed' },
-                label: {
-                  formatter: `quorum ${(quorum * 100).toFixed(0)}%`,
-                  position: 'insideEndTop',
-                  fontSize: 10,
-                  color: getThemeColor('tertiary-color')
-                },
-                data: [{ yAxis: quorum }]
-              }
-            : undefined
-      }
-    ]
+    series
   };
   return (
     <ReactEChartsCore
       echarts={echarts}
       option={option}
       notMerge
-      style={{ height: 200, width: '100%' }}
+      style={{ height: 220, width: '100%' }}
     />
   );
 };

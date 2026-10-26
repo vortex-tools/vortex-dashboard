@@ -10,6 +10,8 @@ import TurnoutChart from 'components/governance/TurnoutChart';
 import {
   CHOICE,
   PhaseBadge,
+  RULE,
+  THRESHOLD,
   VerdictBadge,
   VoteBar,
   VoteChoice,
@@ -17,22 +19,22 @@ import {
   epochSpan,
   pct,
   proposalName,
-  proposalTag
+  ruleShare,
+  sgpTag,
+  tallySum
 } from 'components/governance/governance';
 import useAdvanceTable from 'hooks/useAdvanceTable';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { GovernanceProposalDetail } from 'providers/vortex-schemas';
+import {
+  GovernanceBreakdownRow,
+  GovernanceVote
+} from 'providers/vortex-schemas';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { Col, Row, Table } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
 
-type Vote = GovernanceProposalDetail['votes'][number];
-type SplitRow = NonNullable<
-  GovernanceProposalDetail['splits']
->['clients'][number];
-
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-6)}`;
+const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const when = (unixS: number | null | undefined) =>
   unixS
     ? new Date(unixS * 1000).toLocaleString(undefined, {
@@ -42,44 +44,63 @@ const when = (unixS: number | null | undefined) =>
         minute: '2-digit'
       })
     : '—';
+const ValidatorLink = ({
+  identity,
+  name
+}: {
+  identity: string | null;
+  name: string | null;
+}) =>
+  identity ? (
+    <Link to={`/validator/${identity}`}>{name ?? short(identity)}</Link>
+  ) : (
+    <span>{name ?? '—'}</span>
+  );
 
-const voteColumns: ColumnDef<Vote>[] = [
+const end = {
+  headerProps: { className: 'text-end' },
+  cellProps: { className: 'text-end font-monospace' }
+};
+const voteColumns: ColumnDef<GovernanceVote>[] = [
   {
     id: 'validator',
     header: 'Validator',
-    accessorFn: v => `${v.name ?? ''} ${v.identity}`,
+    accessorFn: v => `${v.name ?? ''} ${v.identity} ${v.voteAccount ?? ''}`,
     cell: ({ row: { original: v } }) => (
-      <Link to={`/validator/${v.identity}`}>{v.name ?? short(v.identity)}</Link>
+      <ValidatorLink identity={v.identity} name={v.name} />
     )
   },
   {
     id: 'vote',
     header: 'Vote',
-    accessorFn: v => v.bp?.for ?? 0,
-    cell: ({ row: { original: v } }) => <VoteChoice bp={v.bp} />
+    accessorFn: v => v.choice ?? '',
+    cell: ({ row: { original: v } }) => (
+      <VoteChoice choice={v.choice} basisPoints={v.basisPoints} />
+    )
   },
   {
     id: 'stake',
     header: 'Stake',
     accessorFn: v => v.stake ?? 0,
     cell: ({ row: { original: v } }) => compactSol(v.stake),
-    meta: {
-      headerProps: { className: 'text-end' },
-      cellProps: { className: 'text-end font-monospace' }
-    }
+    meta: end
   },
   {
-    id: 'effective',
-    header: 'After overrides',
-    accessorFn: v => v.effective ?? v.stake ?? 0,
-    cell: ({ row: { original: v } }) => compactSol(v.effective ?? v.stake),
+    id: 'overridden',
+    header: 'Overridden',
+    accessorFn: v => v.overridden ?? 0,
+    cell: ({ row: { original: v } }) =>
+      v.overridden ? (
+        compactSol(v.overridden)
+      ) : (
+        <span className="text-body-quaternary">—</span>
+      ),
     meta: {
       headerProps: {
         className: 'text-end',
-        title:
-          "The stake it voted with, once its stakers' own votes are taken out"
+        title: 'Its stake whose stakers voted it themselves'
       },
-      cellProps: { className: 'text-end font-monospace' }
+      cellProps: end.cellProps
     }
   },
   {
@@ -96,36 +117,51 @@ const voteColumns: ColumnDef<Vote>[] = [
   }
 ];
 
-/** A breakdown of the vote (by client, country or provider): each group's
- *  for / against / abstain, and its stake that didn't vote. */
-const SplitCard = ({
+/** The outcome by client, country or provider: each group's vote and its
+ *  stake that didn't vote. */
+const BreakdownCard = ({
   title,
   icon,
   rows
 }: {
   title: string;
   icon: string;
-  rows: SplitRow[];
+  rows: GovernanceBreakdownRow[];
 }) => {
-  const total = (r: SplitRow) =>
-    (r.for ?? 0) + (r.against ?? 0) + (r.abstain ?? 0) + (r.notVoted ?? 0);
-  const top = [...rows].sort((a, b) => total(b) - total(a)).slice(0, 8);
+  const [all, setAll] = useState(false);
+  const sorted = [...rows].sort((a, b) => (b.stake ?? 0) - (a.stake ?? 0));
   return (
     <SectionCard title={title} icon={icon}>
-      {top.length ? (
-        <div className="d-flex flex-column gap-2">
-          {top.map(r => (
-            <div key={r.key}>
-              <div className="d-flex justify-content-between fs-9 mb-1">
-                <span className="text-truncate">{r.label ?? r.key}</span>
-                <span className="text-body-tertiary font-monospace">
-                  {compactSol(total(r))}
-                </span>
+      {sorted.length ? (
+        <>
+          <div className="d-flex flex-column gap-2">
+            {(all ? sorted : sorted.slice(0, 8)).map(r => (
+              <div key={r.key}>
+                <div className="d-flex justify-content-between gap-2 fs-9 mb-1">
+                  <span className="text-truncate" title={r.key}>
+                    {r.name ?? r.key}
+                  </span>
+                  <span className="text-body-tertiary text-nowrap">
+                    {r.voted ?? 0}/{r.validators ?? 0} voted ·{' '}
+                    <span className="font-monospace">
+                      {compactSol(r.stake)}
+                    </span>
+                  </span>
+                </div>
+                <VoteBar tally={r.tally} notVoted={r.notVoting} height={6} />
               </div>
-              <VoteBar values={r} notVoted={r.notVoted} height={6} />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {sorted.length > 8 && (
+            <button
+              type="button"
+              className="btn btn-link p-0 fs-10 mt-2"
+              onClick={() => setAll(a => !a)}
+            >
+              {all ? 'Show fewer' : `Show all ${sorted.length}`}
+            </button>
+          )}
+        </>
       ) : (
         <UntrackedState>No breakdown.</UntrackedState>
       )}
@@ -134,9 +170,10 @@ const SplitCard = ({
 };
 
 /**
- * One governance proposal: its result under its own rule, turnout over
- * time, every validator's vote, the largest stake that didn't vote,
- * stakers' overrides, and the vote by client, country and provider.
+ * One governance proposal: the verdict under its rule (and any dispute
+ * about it), the vote as it came in, every validator's vote, who didn't
+ * vote, stakers' overrides, and the outcome by client, country and
+ * provider.
  */
 const GovernanceProposal = () => {
   const { address = '' } = useParams();
@@ -148,6 +185,7 @@ const GovernanceProposal = () => {
     if (address) fetchData?.(address);
   }, [address, fetchData]);
   const [allNon, setAllNon] = useState(false);
+  const [allObv, setAllObv] = useState(false);
 
   const votes = useMemo(() => data?.votes ?? [], [data]);
   const table = useAdvanceTable({
@@ -176,18 +214,14 @@ const GovernanceProposal = () => {
     );
 
   const p = data.proposal;
-  const rule = p.verdict?.rule;
-  const forShare =
-    rule?.abstainCounted === false ? p.forShareExAbstain : p.forShare;
-  const nonVoters = [...data.nonVoters].sort(
-    (a, b) => (b.stake ?? 0) - (a.stake ?? 0)
-  );
-  const byValidator = [...(data.overrides?.byValidator ?? [])].sort(
-    (a, b) => (b.lamports ?? 0) - (a.lamports ?? 0)
-  );
-  const entries = [...(data.overrides?.entries ?? [])].sort(
-    (a, b) => (b.lamports ?? 0) - (a.lamports ?? 0)
-  );
+  const rule = p.rule ? RULE[p.rule] : null;
+  const quorumShare =
+    p.quorum != null && p.snapshotStake ? p.quorum / p.snapshotStake : null;
+  const nonVoters = data.nonVoters;
+  const obv = data.overridesByValidator;
+  const overridden =
+    obv.reduce((a, o) => a + tallySum(o.tally), 0) +
+    tallySum(data.breakdown?.unattributed);
 
   return (
     <div className="mb-9">
@@ -195,42 +229,35 @@ const GovernanceProposal = () => {
         <div className="col">
           <h3>{proposalName(p)}</h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
-            {[proposalTag(p), epochSpan(p)].filter(Boolean).join(' · ')}
+            {[
+              sgpTag(p),
+              epochSpan(p) && `voted in epochs ${epochSpan(p)}`,
+              p.snapshotEpoch != null &&
+                `stake from epoch ${p.snapshotEpoch.toLocaleString()}`
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             {p.author && (
               <>
                 {' · by '}
-                {p.author.identity ? (
-                  <Link to={`/validator/${p.author.identity}`}>
-                    {p.author.name ?? short(p.author.identity)}
-                  </Link>
-                ) : (
-                  p.author.name
-                )}
+                <span className="font-monospace" title={p.author}>
+                  {short(p.author)}
+                </span>
               </>
             )}
           </p>
         </div>
-        <div className="col-auto d-flex align-items-center gap-2">
+        <div className="col-auto d-flex flex-wrap align-items-center gap-2">
           <PhaseBadge phase={p.phase} />
-          <VerdictBadge result={p.verdict?.result} />
-          {p.docUrl && (
+          <VerdictBadge verdict={p.verdict} projected={p.projected} />
+          {p.description && (
             <a
-              href={p.docUrl}
+              href={p.description}
               target="_blank"
               rel="noreferrer"
               className="btn btn-soft-secondary btn-sm"
             >
               Proposal text
-            </a>
-          )}
-          {p.voteUrl && p.phase !== 'finalized' && (
-            <a
-              href={p.voteUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-primary btn-sm"
-            >
-              Vote
             </a>
           )}
         </div>
@@ -241,12 +268,8 @@ const GovernanceProposal = () => {
           <Col xs={6} lg={3}>
             <StatCard
               label="For"
-              value={pct(forShare)}
-              sublabel={
-                rule?.threshold != null
-                  ? `needs ${pct(rule.threshold, 0)}${rule.abstainCounted === false ? ', abstain not counted' : ''}`
-                  : 'of the stake that voted'
-              }
+              value={pct(ruleShare(p))}
+              sublabel={`needs ${pct(THRESHOLD)} of ${p.rule === 'decisive' ? 'for + against' : 'all votes'}`}
             />
           </Col>
           <Col xs={6} lg={3}>
@@ -254,24 +277,24 @@ const GovernanceProposal = () => {
               label="Turnout"
               value={pct(p.turnout)}
               sublabel={
-                rule?.quorum != null
-                  ? `quorum ${pct(rule.quorum, 0)} of epoch ${p.snapshotEpoch?.toLocaleString() ?? '—'} stake`
-                  : `of epoch ${p.snapshotEpoch?.toLocaleString() ?? '—'} stake`
+                quorumShare != null
+                  ? `quorum ${pct(quorumShare)}: ${p.quorumMet ? 'met' : 'not met'}`
+                  : 'of the snapshot stake'
               }
             />
           </Col>
           <Col xs={6} lg={3}>
             <StatCard
-              label="Validators voted"
-              value={p.voters?.toLocaleString() ?? '—'}
-              sublabel={`${nonVoters.length.toLocaleString()} didn't`}
+              label="Validators Voted"
+              value={p.validatorVotes?.toLocaleString() ?? '—'}
+              sublabel={`${nonVoters.length.toLocaleString()} staked validators didn't`}
             />
           </Col>
           <Col xs={6} lg={3}>
             <StatCard
-              label="Staker overrides"
-              value={p.overrides?.toLocaleString() ?? '—'}
-              sublabel="stakers who voted their own stake"
+              label="Staker Overrides"
+              value={p.stakerOverrides?.toLocaleString() ?? '—'}
+              sublabel={`${compactSol(overridden)} voted by stakers themselves`}
             />
           </Col>
         </Row>
@@ -279,11 +302,11 @@ const GovernanceProposal = () => {
         <SectionCard
           title="Result"
           icon="check-square"
-          info="Stake-weighted, after stakers' overrides. The program records only tallies; the verdict follows the rule in the proposal's own text."
+          info="Weighted by each validator's stake in the snapshot epoch; a staker's override moves its stake to the staker's own choice. The program records only the tallies: the verdict applies the proposal's rule."
         >
           <VoteBar
-            values={p.tallies ?? {}}
-            threshold={rule?.threshold}
+            tally={p.tally}
+            threshold={p.rule === 'constitution' ? THRESHOLD : null}
             height={14}
           />
           <div className="d-flex flex-wrap gap-3 fs-9 mt-2">
@@ -295,36 +318,112 @@ const GovernanceProposal = () => {
                 />
                 {c.label}{' '}
                 <span className="font-monospace">
-                  {compactSol(p.tallies?.[c.key])}
+                  {compactSol(p.tally?.[c.key])}
                 </span>
               </span>
             ))}
+            <span className="text-body-tertiary ms-auto">
+              {pct(p.shares?.ofParticipating)} of all votes ·{' '}
+              {pct(p.shares?.ofDecisive)} of for + against
+            </span>
           </div>
-          {(rule?.text || rule?.source) && (
-            <p className="fs-9 text-body-tertiary mt-3 mb-0">
-              {rule.text ?? 'The rule this verdict follows'}
-              {rule.source && (
+          {rule && (
+            <p className="fs-9 mt-3 mb-0">
+              <span className="fw-semibold">{rule.label} rule.</span>{' '}
+              <span className="text-body-tertiary">{rule.text}</span>
+            </p>
+          )}
+          {p.official && (
+            <p className="fs-9 text-body-tertiary mt-2 mb-0">
+              Official status: {p.official.status ?? '—'}
+              {p.official.matches === false &&
+                ' (differs from the computed verdict)'}
+              {p.official.source && (
                 <>
-                  {' '}
-                  <a href={rule.source} target="_blank" rel="noreferrer">
-                    Source
+                  {' · '}
+                  <a href={p.official.source} target="_blank" rel="noreferrer">
+                    source
                   </a>
                 </>
               )}
             </p>
           )}
+          {p.contested && (
+            <div className="bg-warning-subtle border border-warning-subtle rounded p-2 fs-9 mt-3">
+              <span className="fw-semibold">
+                Contested
+                {p.contested.rule && p.contested.verdict && (
+                  <>
+                    {': '}
+                    {p.contested.verdict} under the{' '}
+                    {RULE[p.contested.rule]?.label.toLowerCase() ??
+                      p.contested.rule}{' '}
+                    rule ({pct(ruleShare(p, p.contested.rule))})
+                  </>
+                )}
+                .
+              </span>{' '}
+              {p.contested.summary}
+              {p.contested.url && (
+                <>
+                  {' '}
+                  <a href={p.contested.url} target="_blank" rel="noreferrer">
+                    The dispute
+                  </a>
+                </>
+              )}
+            </div>
+          )}
+          {(p.simds.length > 0 || p.featureGates.length > 0) && (
+            <p className="fs-9 mt-3 mb-0">
+              <span className="text-body-tertiary">A yes vote endorses </span>
+              {p.simds.map((s, i) => (
+                <span key={s.simd}>
+                  {i > 0 && ', '}
+                  {s.url ? (
+                    <a href={s.url} target="_blank" rel="noreferrer">
+                      {s.simd}
+                    </a>
+                  ) : (
+                    s.simd
+                  )}
+                  {s.title && ` (${s.title})`}
+                </span>
+              ))}
+              {p.featureGates.map(g => (
+                <span
+                  key={g.id}
+                  className="font-monospace ms-2"
+                  title={g.description ?? undefined}
+                >
+                  {g.id.slice(0, 8)}…
+                </span>
+              ))}
+              <span className="text-body-tertiary">
+                ; the vote activates nothing by itself.
+              </span>
+            </p>
+          )}
         </SectionCard>
 
-        {!!data.turnoutOverTime?.length && (
-          <SectionCard title="Turnout Over Time" icon="trending-up">
-            <TurnoutChart points={data.turnoutOverTime} quorum={rule?.quorum} />
+        {data.timeline.length > 1 && p.snapshotStake ? (
+          <SectionCard
+            title="As the Votes Came In"
+            icon="trending-up"
+            info="Hourly: for, against and abstain stacked as shares of the snapshot stake (their top is the turnout), replaying votes and overrides by their timestamps."
+          >
+            <TurnoutChart
+              timeline={data.timeline}
+              snapshotStake={p.snapshotStake}
+              quorumShare={quorumShare}
+            />
           </SectionCard>
-        )}
+        ) : null}
 
         <SectionCard
           title="Votes"
           icon="users"
-          info="Every validator that voted, by stake."
+          info="Every validator that voted, with its stake in the snapshot epoch and how much of it its stakers voted themselves."
         >
           <AdvanceTableProvider {...table}>
             <SearchBox
@@ -344,7 +443,7 @@ const GovernanceProposal = () => {
             <SectionCard
               title="Didn't Vote"
               icon="user-x"
-              info="The largest validators by stake with no vote on this proposal."
+              info="Validators staked in the snapshot epoch with no vote, largest first; their stakers could still vote their own stake."
             >
               {nonVoters.length ? (
                 <>
@@ -352,16 +451,31 @@ const GovernanceProposal = () => {
                     size="sm"
                     className="data-table compact-rows fs-9 mb-0"
                   >
+                    <thead>
+                      <tr>
+                        <th>Validator</th>
+                        <th className="text-end">Stake</th>
+                        <th className="text-end">Stakers voted</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {(allNon ? nonVoters : nonVoters.slice(0, 10)).map(v => (
                         <tr key={v.identity}>
                           <td>
-                            <Link to={`/validator/${v.identity}`}>
-                              {v.name ?? short(v.identity)}
-                            </Link>
+                            <ValidatorLink
+                              identity={v.identity}
+                              name={v.name}
+                            />
                           </td>
                           <td className="text-end font-monospace">
                             {compactSol(v.stake)}
+                          </td>
+                          <td className="text-end font-monospace">
+                            {tallySum(v.overrides) ? (
+                              compactSol(tallySum(v.overrides))
+                            ) : (
+                              <span className="text-body-quaternary">—</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -378,7 +492,7 @@ const GovernanceProposal = () => {
                   )}
                 </>
               ) : (
-                <UntrackedState>Every validator voted.</UntrackedState>
+                <UntrackedState>Every staked validator voted.</UntrackedState>
               )}
             </SectionCard>
           </Col>
@@ -386,75 +500,115 @@ const GovernanceProposal = () => {
             <SectionCard
               title="Staker Overrides"
               icon="corner-down-right"
-              info="Stake whose stakers voted it themselves, taken out of their validator's vote: totals per validator, and stakers of 10,000 SOL or more and known stake pools (by address)."
+              info="Stake whose stakers voted it themselves, taken out of their validator's vote. By validator, then the stakers overriding 10,000 SOL or more and known pools, by address."
             >
-              {byValidator.length || entries.length ? (
+              {obv.length ? (
                 <>
-                  {byValidator.length > 0 && (
-                    <Table
-                      size="sm"
-                      className="data-table compact-rows fs-9 mb-3"
-                    >
-                      <thead>
-                        <tr>
-                          <th>Validator</th>
-                          <th className="text-end">Overrides</th>
-                          <th className="text-end">Stake</th>
+                  <Table
+                    size="sm"
+                    className="data-table compact-rows fs-9 mb-0"
+                  >
+                    <thead>
+                      <tr>
+                        <th>Validator</th>
+                        <th>Its vote</th>
+                        <th className="text-end">Stakers</th>
+                        <th className="text-end">Overridden</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(allObv ? obv : obv.slice(0, 8)).map(o => (
+                        <tr key={o.voteAccount ?? o.identity}>
+                          <td>
+                            <ValidatorLink
+                              identity={o.identity}
+                              name={o.name}
+                            />
+                          </td>
+                          <td>
+                            {o.validatorVoted ? (
+                              <VoteChoice choice={o.validatorChoice} />
+                            ) : (
+                              <span className="text-body-tertiary">
+                                didn&apos;t vote
+                              </span>
+                            )}
+                          </td>
+                          <td className="text-end font-monospace">
+                            {o.stakers?.toLocaleString() ?? '—'}
+                          </td>
+                          <td className="text-end">
+                            <div className="d-flex align-items-center justify-content-end gap-2">
+                              <div style={{ width: 48 }}>
+                                <VoteBar tally={o.tally} height={6} />
+                              </div>
+                              <span className="font-monospace">
+                                {compactSol(tallySum(o.tally))}
+                              </span>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {byValidator.slice(0, 8).map(o => (
-                          <tr key={o.identity}>
-                            <td>
-                              <Link to={`/validator/${o.identity}`}>
-                                {o.name ?? short(o.identity)}
-                              </Link>
-                            </td>
-                            <td className="text-end font-monospace">
-                              {o.count?.toLocaleString() ?? '—'}
-                            </td>
-                            <td className="text-end font-monospace">
-                              {compactSol(o.lamports)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
+                      ))}
+                    </tbody>
+                  </Table>
+                  {obv.length > 8 && (
+                    <button
+                      type="button"
+                      className="btn btn-link p-0 fs-10 mt-2"
+                      onClick={() => setAllObv(a => !a)}
+                    >
+                      {allObv ? 'Show fewer' : `Show all ${obv.length}`}
+                    </button>
                   )}
-                  {entries.length > 0 && (
+                  {data.largeOverrides.length > 0 && (
                     <Table
                       size="sm"
-                      className="data-table compact-rows fs-9 mb-0"
+                      className="data-table compact-rows fs-9 mt-3 mb-0"
                     >
                       <thead>
                         <tr>
-                          <th>Staker</th>
+                          <th>Largest stakers</th>
                           <th>Vote</th>
+                          <th className="text-end">Validators</th>
                           <th className="text-end">Stake</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {entries.slice(0, 10).map(e => (
-                          <tr key={`${e.staker}-${e.validator ?? ''}`}>
-                            <td className="font-monospace">
-                              {short(e.staker)}
-                              {e.pool && (
+                        {data.largeOverrides.map(o => (
+                          <tr key={o.delegator}>
+                            <td>
+                              <span
+                                className="font-monospace"
+                                title={o.delegator}
+                              >
+                                {short(o.delegator)}
+                              </span>
+                              {o.pool && (
                                 <span className="badge badge-soft badge-soft-info ms-2">
-                                  pool
+                                  {o.pool}
                                 </span>
                               )}
                             </td>
                             <td>
-                              <VoteChoice bp={e.bp} />
+                              <VoteChoice choice={o.choice} />
                             </td>
                             <td className="text-end font-monospace">
-                              {compactSol(e.lamports)}
+                              {o.validators?.toLocaleString() ?? '—'}
+                            </td>
+                            <td className="text-end font-monospace">
+                              {compactSol(tallySum(o.tally))}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </Table>
                   )}
+                  {data.otherStakers ? (
+                    <p className="fs-10 text-body-tertiary mt-2 mb-0">
+                      {data.otherStakers.toLocaleString()} other stakers:{' '}
+                      {compactSol(tallySum(data.otherOverrides))} together.
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <UntrackedState>No staker overrides.</UntrackedState>
@@ -463,27 +617,27 @@ const GovernanceProposal = () => {
           </Col>
         </Row>
 
-        {data.splits && (
+        {data.breakdown && (
           <Row className="g-3">
             <Col xs={12} lg={4}>
-              <SplitCard
+              <BreakdownCard
                 title="By Client"
                 icon="cpu"
-                rows={data.splits.clients}
+                rows={data.breakdown.byClient}
               />
             </Col>
             <Col xs={12} lg={4}>
-              <SplitCard
+              <BreakdownCard
                 title="By Country"
                 icon="globe"
-                rows={data.splits.countries}
+                rows={data.breakdown.byCountry}
               />
             </Col>
             <Col xs={12} lg={4}>
-              <SplitCard
+              <BreakdownCard
                 title="By Provider"
                 icon="server"
-                rows={data.splits.asns}
+                rows={data.breakdown.byAsn}
               />
             </Col>
           </Row>

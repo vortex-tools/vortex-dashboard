@@ -1,13 +1,18 @@
+import Badge from 'components/base/Badge';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import UntrackedState from 'components/common/UntrackedState';
 import {
   PhaseBadge,
+  RULE,
+  THRESHOLD,
   VerdictBadge,
   VoteBar,
+  bySgpDesc,
   epochSpan,
   pct,
   proposalName,
-  proposalTag
+  ruleShare,
+  sgpTag
 } from 'components/governance/governance';
 import {
   GOVERNANCE_KEY,
@@ -18,9 +23,9 @@ import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 /**
- * Solana governance (the svmgov program): every proposal, newest first,
- * with its phase, how the stake voted, turnout and the verdict under the
- * proposal's own rule. Voting happens on the Foundation's site.
+ * Solana governance (the svmgov program, mainnet): every proposal, newest
+ * first, with its phase, verdict, how the stake voted and turnout. Voting
+ * itself happens elsewhere.
  */
 const Governance = () => {
   const context = useContext(VortexDataContext);
@@ -30,9 +35,7 @@ const Governance = () => {
   useEffect(() => {
     fetchData?.(GOVERNANCE_KEY);
   }, [fetchData]);
-  const proposals = [...(data?.proposals ?? [])].sort(
-    (a, b) => (b.index ?? 0) - (a.index ?? 0)
-  );
+  const proposals = [...(data?.proposals ?? [])].sort(bySgpDesc);
 
   return (
     <div className="mb-9">
@@ -48,7 +51,7 @@ const Governance = () => {
       {!data ? (
         slice?.error ? (
           <UntrackedState>
-            Governance isn&apos;t available from this API yet.
+            Governance isn&apos;t available from this API (it is mainnet only).
           </UntrackedState>
         ) : (
           <DelayedSpinner loading label="Loading proposals…" />
@@ -65,12 +68,10 @@ const Governance = () => {
             <tr>
               <th className="ps-3">Proposal</th>
               <th>Status</th>
-              <th style={{ minWidth: '12rem' }}>
-                Vote (for · against · abstain)
-              </th>
+              <th style={{ minWidth: '12rem' }}>For · against · abstain</th>
               <th className="text-end">For</th>
               <th className="text-end">Turnout</th>
-              <th className="text-end">Voters</th>
+              <th className="text-end">Validators voted</th>
               <th className="text-end pe-3">Epochs</th>
             </tr>
           </thead>
@@ -81,37 +82,53 @@ const Governance = () => {
                   <Link to={`/governance/${p.address}`} className="fw-semibold">
                     {proposalName(p)}
                   </Link>
-                  {proposalTag(p) && (
+                  {sgpTag(p) && (
                     <div className="fs-10 text-body-tertiary font-monospace">
-                      {proposalTag(p)}
+                      {sgpTag(p)}
                     </div>
                   )}
                 </td>
-                <td className="text-nowrap">
+                <td>
                   <div className="d-flex gap-1 flex-wrap">
                     <PhaseBadge phase={p.phase} />
-                    <VerdictBadge result={p.verdict?.result} />
+                    <VerdictBadge verdict={p.verdict} projected={p.projected} />
+                    {p.contested && (
+                      <Badge
+                        bg="warning"
+                        title={
+                          p.contested.summary ??
+                          'The official verdict is disputed'
+                        }
+                      >
+                        Contested
+                      </Badge>
+                    )}
                   </div>
                 </td>
                 <td className="align-middle">
+                  {/* The mark is the pass line on the whole bar: what the
+                      constitution's rule (all votes) is judged on. */}
                   <VoteBar
-                    values={p.tallies ?? {}}
-                    threshold={p.verdict?.rule?.threshold}
+                    tally={p.tally}
+                    threshold={p.rule === 'constitution' ? THRESHOLD : null}
                   />
                 </td>
-                <td className="text-end font-monospace">
-                  {pct(
-                    p.verdict?.rule?.abstainCounted === false
-                      ? p.forShareExAbstain
-                      : p.forShare
-                  )}
+                <td
+                  className="text-end font-monospace"
+                  title={
+                    p.rule
+                      ? `Under the ${RULE[p.rule]?.label.toLowerCase() ?? p.rule} rule`
+                      : undefined
+                  }
+                >
+                  {pct(ruleShare(p))}
                 </td>
                 <td className="text-end font-monospace">{pct(p.turnout)}</td>
                 <td className="text-end font-monospace">
-                  {p.voters?.toLocaleString() ?? '—'}
+                  {p.validatorVotes?.toLocaleString() ?? '—'}
                 </td>
                 <td className="text-end text-body-tertiary text-nowrap pe-3">
-                  {epochSpan(p)?.replace(/^Epochs? /, '') ?? '—'}
+                  {epochSpan(p) ?? '—'}
                 </td>
               </tr>
             ))}
@@ -119,10 +136,12 @@ const Governance = () => {
         </Table>
       )}
       <p className="fs-10 text-body-tertiary mt-3 mb-0">
-        Tallies are stake-weighted, after stakers&apos; overrides. The program
-        records only the tallies; whether a proposal passed follows the rule in
-        its own text (quorum, threshold, whether abstain counts), shown on each
-        proposal.
+        Votes are weighted by each validator&apos;s stake in the snapshot epoch,
+        after stakers&apos; own votes (overrides). The program records only the
+        tallies; the verdict applies the proposal&apos;s rule - so far the
+        Solana Constitution&apos;s: for at least two thirds of all votes, with a
+        third of the stake voting. For is the share that rule counts; the bar is
+        marked at two thirds.
       </p>
     </div>
   );
