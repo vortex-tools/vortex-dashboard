@@ -13,11 +13,11 @@ const ppb = (v: number | null | undefined) =>
 const LAST_SLOTS = 16;
 
 /**
- * While halted: what the last 300 slots before the halt looked like
- * (/cluster/halt) - blocks, skips and finalization every 25 slots, the
- * final slots one by one (leader, its client, notarize stake), and who
- * was still voting at the end. Votes for the last few slots are often
- * missing: they'd have landed in blocks that never came.
+ * While halted (/cluster/halt): Before the Halt - the last finalized
+ * block and the final slots one by one (leader, its client, notarize
+ * stake, finalization lag) - and Voting at the End, who was still voting
+ * in the last block whose votes landed. Votes for the last few slots are
+ * often missing: they'd have landed in blocks that never came.
  */
 const HaltRunUpCard = ({
   halt,
@@ -55,8 +55,8 @@ const HaltRunUpCard = ({
     <>
       <SectionCard
         title="Before the Halt"
-        icon="activity"
-        info="The last slots before the chain stopped, from the block footers: every 25 slots, the blocks, skips, blocks finalized and the mean stake in each notarization."
+        icon="list"
+        info="The last finalized block, then the final slots before the halt, newest first: the leader, its client (from the block footer), the stake that notarized the block, and how many slots its finalization took. Votes for a slot arrive in slot + 8's block, so the last few slots before a halt often have none."
       >
         <p className="fs-9 mb-3">
           {halt.finalizedSlot != null ? (
@@ -85,47 +85,6 @@ const HaltRunUpCard = ({
             .
           </span>
         </p>
-        <Table
-          size="sm"
-          responsive
-          className="data-table compact-rows fs-9 mb-0 text-nowrap"
-        >
-          <thead>
-            <tr>
-              <th>Every 25 slots, from</th>
-              <th className="text-end">Blocks</th>
-              <th className="text-end">Skipped</th>
-              <th className="text-end">Finalized</th>
-              <th className="text-end">Notarize stake</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...data.trend].reverse().map(t => (
-              <tr key={t.firstSlot}>
-                <td className="font-monospace">
-                  {t.firstSlot.toLocaleString()}
-                </td>
-                <td className="text-end font-monospace">{t.blocks}</td>
-                <td
-                  className={`text-end font-monospace${t.skipped ? ' text-warning' : ''}`}
-                >
-                  {t.skipped}
-                </td>
-                <td className="text-end font-monospace">{t.finalized}</td>
-                <td className="text-end font-monospace">
-                  {ppb(t.meanNotarStakePpb)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </SectionCard>
-
-      <SectionCard
-        title="Last Slots"
-        icon="list"
-        info="The final slots before the halt, newest first: the leader, its client (from the block footer), the stake that notarized the block, and how many slots its finalization took. Votes for a slot arrive in slot + 8's block, so the last few slots before a halt often have none."
-      >
         <Table
           size="sm"
           responsive
