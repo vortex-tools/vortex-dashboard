@@ -9,11 +9,11 @@ export const getColor = (name: string) =>
     .getPropertyValue(`--vx-${name}`)
     .trim();
 
-/** A span of seconds for people: "45s", "12 min", "3 h 5 min". */
+/** A span of seconds for people: "45s", "12min", "1h 47min". */
 export const formatDuration = (secs: number) => {
   if (secs < 90) return `${Math.round(secs)}s`;
   const m = Math.round(secs / 60);
-  return m < 90 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+  return m < 90 ? `${m}min` : `${Math.floor(m / 60)}h ${m % 60}min`;
 };
 
 /** "block-income" -> "Block income". */

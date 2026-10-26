@@ -646,10 +646,10 @@ const ClientVersionsCard = () => {
 const ago = (unixS: number) => {
   const s = Math.max(0, Date.now() / 1000 - unixS);
   return s < 3600
-    ? `${Math.max(1, Math.round(s / 60))} min ago`
+    ? `${Math.max(1, Math.round(s / 60))}min ago`
     : s < 86400
-      ? `${Math.round(s / 3600)} h ago`
-      : `${Math.round(s / 86400)} d ago`;
+      ? `${Math.round(s / 3600)}h ago`
+      : `${Math.round(s / 86400)}d ago`;
 };
 
 export default ClientVersionsCard;
