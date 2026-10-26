@@ -18,12 +18,20 @@ export const pct = (share: number | null | undefined, digits = 1) =>
 export const tallySum = (t: GovernanceTally | null | undefined) =>
   t ? t.for + t.against + t.abstain : 0;
 
-export const proposalName = (p: { title: string | null; address: string }) =>
-  p.title ?? `${p.address.slice(0, 6)}…${p.address.slice(-6)}`;
+/** "SGP-0002: Double Disinflation": the title, led by its SGP number
+ *  when the title doesn't already start with it. */
+export const proposalName = (p: {
+  sgp?: string | null;
+  title: string | null;
+  address: string;
+}) => {
+  const title = p.title ?? `${p.address.slice(0, 6)}…${p.address.slice(-6)}`;
+  return p.sgp && !title.startsWith(p.sgp) ? `${p.sgp}: ${title}` : title;
+};
 
-/** The SGP tag beside a title - unless the title already starts with it. */
+/** A separate SGP tag: only when the name can't carry it (no title). */
 export const sgpTag = (p: { sgp: string | null; title: string | null }) =>
-  p.sgp && !p.title?.startsWith(p.sgp) ? p.sgp : null;
+  p.sgp && !p.title ? p.sgp : null;
 
 /** Newest proposal first: by SGP number (creation order differs - SGP-0003
  *  was created first), unnumbered ones last. */

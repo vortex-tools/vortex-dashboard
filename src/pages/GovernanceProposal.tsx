@@ -2,6 +2,8 @@ import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import DelayedSpinner from 'components/common/DelayedSpinner';
+import Pager from 'components/common/Pager';
+import { clientBase, clientFork, isKnownClient } from 'helpers/clients';
 import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -44,6 +46,11 @@ import {
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
 
+/** "◎142,844,092". */
+const fullSol = (lamports: number) =>
+  `◎${Math.round(lamports / 1e9).toLocaleString()}`;
+/** Rows a page in the largest-stakers table. */
+const OV_PAGE = 10;
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const when = (unixS: number | null | undefined) =>
   unixS
@@ -179,6 +186,98 @@ const overrideEffect = (
   };
 };
 
+const sumRows = (
+  key: string,
+  rows: GovernanceBreakdownRow[]
+): GovernanceBreakdownRow => ({
+  key,
+  name: key,
+  validators: rows.reduce((a, r) => a + (r.validators ?? 0), 0),
+  voted: rows.reduce((a, r) => a + (r.voted ?? 0), 0),
+  stake: rows.reduce((a, r) => a + (r.stake ?? 0), 0),
+  notVoting: rows.reduce((a, r) => a + (r.notVoting ?? 0), 0),
+  tally: {
+    for: rows.reduce((a, r) => a + (r.tally?.for ?? 0), 0),
+    against: rows.reduce((a, r) => a + (r.tally?.against ?? 0), 0),
+    abstain: rows.reduce((a, r) => a + (r.tally?.abstain ?? 0), 0)
+  }
+});
+
+const BreakdownLine = ({
+  row,
+  label,
+  sub = false
+}: {
+  row: GovernanceBreakdownRow;
+  label: ReactNode;
+  sub?: boolean;
+}) => (
+  <div className={sub ? 'ps-3' : undefined}>
+    <div
+      className={`d-flex justify-content-between gap-2 mb-1 ${sub ? 'fs-10 text-body-secondary' : 'fs-9 fw-semibold'}`}
+    >
+      <span className="text-truncate">{label}</span>
+      <span className="text-body-tertiary text-nowrap fw-normal">
+        {row.voted ?? 0}/{row.validators ?? 0} voted ·{' '}
+        <span className="font-monospace">{compactSol(row.stake)}</span>
+      </span>
+    </div>
+    <VoteBar tally={row.tally} notVoted={row.notVoting} height={sub ? 4 : 6} />
+  </div>
+);
+
+/** The outcome by client: each base client (Agave, Firedancer, ...) with
+ *  its forks (Jito, BAM, Harmonic, ...; the plain client as "plain") under
+ *  it. Ids we can't place go under Other. */
+const ClientBreakdownCard = ({ rows }: { rows: GovernanceBreakdownRow[] }) => {
+  const groups = new Map<string, GovernanceBreakdownRow[]>();
+  for (const r of rows) {
+    const base = clientBase(r.key);
+    groups.set(base, [...(groups.get(base) ?? []), r]);
+  }
+  const sorted = [...groups.entries()]
+    .map(([base, members]) => ({
+      base,
+      total: sumRows(base, members),
+      members
+    }))
+    .sort((a, b) => (b.total.stake ?? 0) - (a.total.stake ?? 0));
+  return (
+    <SectionCard
+      title="By Client"
+      icon="cpu"
+      info="Each base client with its block-building forks beneath (the plain client as 'plain'), from the snapshot epoch's recorded client. Bars: For / Against / Abstain, then the stake that didn't vote."
+    >
+      {sorted.length ? (
+        <div className="d-flex flex-column gap-3">
+          {sorted.map(g => (
+            <div key={g.base} className="d-flex flex-column gap-2">
+              <BreakdownLine row={g.total} label={g.base} />
+              {g.members.length > 1 &&
+                [...g.members]
+                  .sort((a, b) => (b.stake ?? 0) - (a.stake ?? 0))
+                  .map(m => (
+                    <BreakdownLine
+                      key={m.key}
+                      row={m}
+                      sub
+                      label={
+                        isKnownClient(m.key)
+                          ? (clientFork(m.key) ?? 'plain')
+                          : (m.name ?? m.key)
+                      }
+                    />
+                  ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <UntrackedState>No breakdown.</UntrackedState>
+      )}
+    </SectionCard>
+  );
+};
+
 /** The outcome by client, country or provider: each group's vote and its
  *  stake that didn't vote. */
 const BreakdownCard = ({
@@ -247,6 +346,8 @@ const GovernanceProposal = () => {
     if (address) fetchData?.(address);
   }, [address, fetchData]);
   const [filter, setFilter] = useState<Filter>('all');
+  const [ovPage, setOvPage] = useState(0);
+  useEffect(() => setOvPage(0), [address]);
 
   // Each voter's split, and what its stakers' overrides changed.
   const bpByIdentity = useMemo(
@@ -336,6 +437,7 @@ const GovernanceProposal = () => {
   const p = data.proposal;
   const quorumShare =
     p.quorum != null && p.snapshotStake ? p.quorum / p.snapshotStake : null;
+  const voted = tallySum(p.tally);
   const obv = data.overridesByValidator;
   // Overrides by what they changed (see overrideEffect), largest first;
   // dust under 1 SOL left out.
@@ -391,22 +493,34 @@ const GovernanceProposal = () => {
               tone={p.verdict === 'Inconclusive' ? 'warning' : undefined}
               sublabel={
                 p.official ? (
-                  <>
-                    official: {p.official.status ?? '—'}
-                    {p.official.matches === false && ' (differs)'}
-                    {p.official.source && (
-                      <>
-                        {' · '}
-                        <a
-                          href={p.official.source}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          source
-                        </a>
-                      </>
-                    )}
-                  </>
+                  p.official.matches === false ? (
+                    // Only a disagreement is worth spelling out.
+                    <>
+                      official: {p.official.status ?? '—'}
+                      {p.official.source && (
+                        <>
+                          {' · '}
+                          <a
+                            href={p.official.source}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            source
+                          </a>
+                        </>
+                      )}
+                    </>
+                  ) : p.official.source ? (
+                    <a
+                      href={p.official.source}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      official record
+                    </a>
+                  ) : (
+                    'as officially recorded'
+                  )
                 ) : p.verdict ? (
                   'under the rule'
                 ) : (
@@ -419,8 +533,16 @@ const GovernanceProposal = () => {
             <StatCard
               label="For"
               wrapSublabel
-              value={pct(ruleShare(p))}
-              sublabel={`of the ${p.rule === 'decisive' ? 'stake voting For or Against' : 'stake that voted'} · needs ${pct(THRESHOLD)}`}
+              value={
+                <>
+                  {pct(ruleShare(p))}
+                  <span className="fs-9 fw-semibold text-body-tertiary">
+                    {' '}
+                    / {pct(THRESHOLD)}
+                  </span>
+                </>
+              }
+              sublabel={`of the ${p.rule === 'decisive' ? 'stake voting For or Against' : 'stake that voted'} · ${pct(THRESHOLD)} to pass`}
               check={ruleShare(p) != null ? ruleShare(p)! >= THRESHOLD : null}
             />
           </Col>
@@ -428,10 +550,20 @@ const GovernanceProposal = () => {
             <StatCard
               label="Turnout"
               wrapSublabel
-              value={pct(p.turnout)}
+              value={
+                <>
+                  {pct(p.turnout)}
+                  {quorumShare != null && (
+                    <span className="fs-9 fw-semibold text-body-tertiary">
+                      {' '}
+                      / {pct(quorumShare)}
+                    </span>
+                  )}
+                </>
+              }
               sublabel={
                 quorumShare != null
-                  ? `of the snapshot stake voted · needs ${pct(quorumShare)}`
+                  ? `of the snapshot stake voted · ${pct(quorumShare)} quorum`
                   : 'of the snapshot stake voted'
               }
               check={quorumShare != null ? !!p.quorumMet : null}
@@ -469,20 +601,63 @@ const GovernanceProposal = () => {
             <SectionCard
               title="Result"
               icon="check-square"
-              info="Weighted by each validator's stake in the snapshot epoch; a staker's override moves its stake to the staker's own choice. The program records only the tallies: the verdict applies the proposal's rule."
+              info="Stake-weighted: each validator votes its stake in the snapshot epoch, less what its stakers voted themselves (their own choice). The program records only these tallies; the verdict applies the proposal's rule."
             >
-              <VoteBar
-                tally={p.tally}
-                threshold={p.rule === 'constitution' ? THRESHOLD : null}
-                height={14}
-              />
-              <div className="d-flex flex-wrap gap-3 fs-9 mt-2">
-                {CHOICE.map(c => (
-                  <ChoiceTag key={c.key} choice={c.key}>
-                    {compactSol(p.tally?.[c.key])}
-                  </ChoiceTag>
-                ))}
-              </div>
+              <Table size="sm" className="data-table fs-9 mb-0">
+                <thead>
+                  <tr>
+                    <th>Vote</th>
+                    <th className="text-end">Stake</th>
+                    <th className="text-end">Of the stake that voted</th>
+                    <th className="text-end">Of the snapshot stake</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CHOICE.map(c => {
+                    const v = p.tally?.[c.key] ?? 0;
+                    return (
+                      <tr key={c.key}>
+                        <td>
+                          <ChoiceTag choice={c.key} />
+                        </td>
+                        <td className="text-end font-monospace">
+                          {fullSol(v)}
+                        </td>
+                        <td className="text-end font-monospace">
+                          {pct(voted ? v / voted : null)}
+                        </td>
+                        <td className="text-end font-monospace">
+                          {pct(p.snapshotStake ? v / p.snapshotStake : null)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="fw-semibold">
+                    <td>Voted</td>
+                    <td className="text-end font-monospace">
+                      {fullSol(voted)}
+                    </td>
+                    <td className="text-end font-monospace">100%</td>
+                    <td className="text-end font-monospace">
+                      {pct(p.turnout)}
+                    </td>
+                  </tr>
+                  <tr className="text-body-tertiary">
+                    <td>Didn&apos;t vote</td>
+                    <td className="text-end font-monospace">
+                      {p.snapshotStake != null
+                        ? fullSol(p.snapshotStake - voted)
+                        : '—'}
+                    </td>
+                    <td />
+                    <td className="text-end font-monospace">
+                      {pct(
+                        p.snapshotStake ? 1 - voted / p.snapshotStake : null
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </Table>
               {p.contested && (
                 <div className="bg-warning-subtle border border-warning-subtle rounded p-2 fs-9 mt-3">
                   <span className="fw-semibold">Contested.</span>{' '}
@@ -691,40 +866,66 @@ const GovernanceProposal = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.largeOverrides.map(o => (
-                      <tr key={o.delegator}>
-                        <td>
-                          {o.pool ? (
-                            <span
-                              title={`${o.kind === 'stake-pool' ? 'Stake pool' : (o.kind ?? 'Pool')} manager ${o.delegator}${o.poolAccounts?.length ? ` · pool ${o.poolAccounts.join(', ')}` : ''}`}
-                            >
-                              <span className="fw-semibold">{o.pool}</span>
-                              <span className="badge badge-soft badge-soft-info ms-2">
-                                pool
+                    {data.largeOverrides
+                      .slice(ovPage * OV_PAGE, (ovPage + 1) * OV_PAGE)
+                      .map(o => (
+                        <tr key={o.delegator}>
+                          <td>
+                            {o.pool ? (
+                              <span
+                                title={`${o.kind === 'stake-pool' ? 'Stake pool' : (o.kind ?? 'Pool')} manager ${o.delegator}${o.poolAccounts?.length ? ` · pool ${o.poolAccounts.join(', ')}` : ''}`}
+                              >
+                                <span className="fw-semibold">{o.pool}</span>
+                                <span className="badge badge-soft badge-soft-info ms-2">
+                                  pool
+                                </span>
                               </span>
-                            </span>
-                          ) : (
-                            <span
-                              className="font-monospace"
-                              title={o.delegator}
-                            >
-                              {short(o.delegator)}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          <VoteChoice choice={o.choice} />
-                        </td>
-                        <td className="text-end font-monospace">
-                          {o.validators?.toLocaleString() ?? '—'}
-                        </td>
-                        <td className="text-end font-monospace">
-                          {compactSol(tallySum(o.tally))}
-                        </td>
-                      </tr>
-                    ))}
+                            ) : (
+                              <span
+                                className="font-monospace"
+                                title={o.delegator}
+                              >
+                                {short(o.delegator)}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <VoteChoice choice={o.choice} />
+                          </td>
+                          <td className="text-end font-monospace">
+                            {o.validators?.toLocaleString() ?? '—'}
+                          </td>
+                          <td className="text-end font-monospace">
+                            {compactSol(tallySum(o.tally))}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </Table>
+              )}
+              {data.largeOverrides.length > OV_PAGE && (
+                <Pager
+                  page={ovPage}
+                  pages={Math.ceil(data.largeOverrides.length / OV_PAGE)}
+                  onPrev={() => setOvPage(x => Math.max(0, x - 1))}
+                  onNext={() =>
+                    setOvPage(x =>
+                      Math.min(
+                        Math.ceil(data.largeOverrides.length / OV_PAGE) - 1,
+                        x + 1
+                      )
+                    )
+                  }
+                  onPage={setOvPage}
+                  total={data.largeOverrides.length}
+                  pageSize={OV_PAGE}
+                  shown={
+                    data.largeOverrides.slice(
+                      ovPage * OV_PAGE,
+                      (ovPage + 1) * OV_PAGE
+                    ).length
+                  }
+                />
               )}
               {data.otherStakers ? (
                 <p className="fs-10 text-body-tertiary mt-2 mb-0">
@@ -743,11 +944,7 @@ const GovernanceProposal = () => {
         {data.breakdown && (
           <Row className="g-3">
             <Col xs={12} lg={4}>
-              <BreakdownCard
-                title="By Client"
-                icon="cpu"
-                rows={data.breakdown.byClient}
-              />
+              <ClientBreakdownCard rows={data.breakdown.byClient} />
             </Col>
             <Col xs={12} lg={4}>
               <BreakdownCard
