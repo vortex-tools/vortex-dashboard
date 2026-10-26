@@ -1,0 +1,192 @@
+// Component styles on top of Bootstrap's.
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Tables: tight header rows; data tables' headers small caps-style.
+.table > thead > tr > th {
+  padding-block: 0.6rem;
+  line-height: 1.1;
+}
+.table.data-table > thead > tr > th {
+  vertical-align: middle;
+  font-size: map-get($font-sizes, 10);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+// Sortable headers (AdvanceTable adds .sort, plus .asc / .desc when
+// sorted): a mark after the label in the text color - both triangles,
+// faint, until sorted, then just the sorted direction's.
+@function vx-tri($d) {
+  @return url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 10'%3e%3cpath d='#{$d}'/%3e%3c/svg%3e");
+}
+.table > thead > tr > th.sort {
+  cursor: pointer;
+  white-space: nowrap;
+  &::after {
+    content: '';
+    display: inline-block;
+    width: 0.4rem;
+    height: 0.55rem;
+    margin-left: 0.3rem;
+    vertical-align: -0.05rem;
+    background-color: currentColor;
+    mask: vx-tri('M4 0 8 4H0zM0 6h8L4 10z') center / contain no-repeat;
+    opacity: 0.35;
+  }
+  &.asc::after {
+    mask-image: vx-tri('M4 0 8 4H0z');
+    opacity: 0.9;
+  }
+  &.desc::after {
+    mask-image: vx-tri('M0 6h8L4 10z');
+    opacity: 0.9;
+  }
+}
+
+// Soft badges: tinted chip, colored text, a matching border.
+.badge-soft {
+  padding: 0.15rem 0.5rem;
+  text-transform: uppercase;
+  color: var(--#{$prefix}badge-color);
+  background-color: var(--#{$prefix}badge-bg);
+  border: 1px solid var(--#{$prefix}badge-border);
+}
+@each $c in (primary, secondary, success, info, warning, danger) {
+  .badge-soft-#{$c} {
+    --#{$prefix}badge-color: var(--#{$prefix}#{$c}-text-emphasis);
+    --#{$prefix}badge-bg: var(--#{$prefix}#{$c}-bg-subtle);
+    --#{$prefix}badge-border: var(--#{$prefix}#{$c}-border-subtle);
+  }
+}
+
+// Soft buttons: the card surface with a quiet border, the label in the
+// variant's color (toggle groups use them).
+@each $c in (primary, secondary, success, info, warning, danger) {
+  .btn-soft-#{$c} {
+    --#{$prefix}btn-color: var(--#{$prefix}#{$c});
+    --#{$prefix}btn-bg: var(--#{$prefix}emphasis-bg);
+    --#{$prefix}btn-border-color: var(--#{$prefix}soft-btn-border);
+    --#{$prefix}btn-hover-color: var(--#{$prefix}#{$c}-text-emphasis);
+    --#{$prefix}btn-hover-bg: var(--#{$prefix}soft-btn-hover-bg);
+    --#{$prefix}btn-hover-border-color: var(--#{$prefix}soft-btn-border);
+    --#{$prefix}btn-active-color: var(--#{$prefix}#{$c});
+    --#{$prefix}btn-active-bg: var(--#{$prefix}soft-btn-hover-bg);
+    --#{$prefix}btn-active-border-color: var(--#{$prefix}soft-btn-border);
+    --#{$prefix}btn-disabled-color: var(--#{$prefix}#{$c});
+    --#{$prefix}btn-disabled-bg: var(--#{$prefix}emphasis-bg);
+    --#{$prefix}btn-disabled-border-color: var(--#{$prefix}soft-btn-border);
+  }
+}
+.btn-soft-secondary {
+  --#{$prefix}btn-color: var(--#{$prefix}soft-btn-secondary);
+  --#{$prefix}btn-hover-color: var(--#{$prefix}emphasis-color);
+  --#{$prefix}btn-active-color: var(--#{$prefix}soft-btn-secondary);
+}
+
+// Search: an input with an icon inside on the left.
+.search-field {
+  position: relative;
+  font-size: map-get($font-sizes, 9);
+  width: 20rem;
+  max-width: 100%;
+  > .search-field-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    transform: translateY(-50%);
+    color: var(--#{$prefix}quaternary-color);
+    pointer-events: none;
+  }
+  > input {
+    padding-left: 2.4rem;
+    font-size: inherit;
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+// The top bar's small pills: the theme toggle and the site / API pickers.
+.topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.05rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 50rem;
+  font-size: map-get($font-sizes, 10);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--#{$prefix}pill-color);
+  background-color: var(--#{$prefix}pill-bg);
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+  &:hover {
+    color: var(--#{$prefix}pill-hover-color);
+    background-color: var(--#{$prefix}pill-hover-bg);
+  }
+}
+
+// Thin scrollbars where content scrolls inside a box.
+.scrollbar {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--#{$prefix}scrollbar-bg) transparent;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Compact controls: small, bold labels.
+.form-check {
+  font-size: map-get($font-sizes, 9);
+}
+.form-check-label {
+  font-weight: 600;
+  color: var(--#{$prefix}tertiary-color);
+}
+// Switches: a gray track without a border, primary when on.
+.form-switch .form-check-input {
+  border: 0;
+  background-color: var(--#{$prefix}gray-400);
+  --#{$prefix}form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+  &:checked {
+    background-color: var(--#{$prefix}primary);
+  }
+}
+.btn-link {
+  --#{$prefix}btn-font-weight: 700;
+}
+
+// Tabs (the validator pages' tab bar): body-colored, bold, the active tab
+// in primary.
+.nav-underline .nav-link {
+  font-size: map-get($font-sizes, 9);
+  font-weight: 700;
+  color: var(--#{$prefix}body-color);
+}
+
+// Pager: compact bold page buttons with rounded corners, no borders.
+.page-link {
+  padding: 0.5rem 0.75rem;
+  font-size: map-get($font-sizes, 9);
+  font-weight: 700;
+  line-height: 1.2;
+  border-radius: var(--#{$prefix}border-radius);
+}
+.pagination {
+  --#{$prefix}pagination-hover-color: var(--#{$prefix}primary);
+  // Disabled buttons (the chevron at either end, the gap marker) are just
+  // faint, not boxed.
+  --#{$prefix}pagination-disabled-bg: transparent;
+  --#{$prefix}pagination-disabled-color: var(--#{$prefix}quaternary-color);
+}

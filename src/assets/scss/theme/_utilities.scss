@@ -1,0 +1,88 @@
+// Utility additions: the 11-step font scale (fs-1 .. fs-11), semibold /
+// bolder weights, the extra text / background / border colors, and a few
+// helpers.
+$utilities: map-merge(
+  $utilities,
+  (
+    'font-size': map-merge(
+        map-get($utilities, 'font-size'),
+        (
+          values: $font-sizes,
+          rfs: false
+        )
+      ),
+    'font-weight': map-merge(
+        map-get($utilities, 'font-weight'),
+        (
+          values: map-merge(
+              map-get(map-get($utilities, 'font-weight'), 'values'),
+              (
+                semibold: 600,
+                bolder: 800
+              )
+            )
+        )
+      ),
+    'color': map-merge(
+        map-get($utilities, 'color'),
+        (
+          values: map-merge(
+              map-get(map-get($utilities, 'color'), 'values'),
+              (
+                'body-quaternary': var(--#{$prefix}quaternary-color),
+                'body-highlight': var(--#{$prefix}body-highlight-color)
+              )
+            )
+        )
+      ),
+    'background-color': map-merge(
+        map-get($utilities, 'background-color'),
+        (
+          values: map-merge(
+              map-get(map-get($utilities, 'background-color'), 'values'),
+              (
+                'body-emphasis': var(--#{$prefix}emphasis-bg),
+                'body-highlight': var(--#{$prefix}body-highlight-bg),
+                'body-quaternary': var(--#{$prefix}quaternary-bg)
+              )
+            )
+        )
+      ),
+    'border-color': map-merge(
+        map-get($utilities, 'border-color'),
+        (
+          values: map-merge(
+              map-get(map-get($utilities, 'border-color'), 'values'),
+              (
+                'translucent': var(--#{$prefix}border-color-translucent)
+              )
+            )
+        )
+      ),
+    'top': map-merge(
+        map-get($utilities, 'top'),
+        (
+          values: map-merge(
+              map-get(map-get($utilities, 'top'), 'values'),
+              (
+                1: 1px
+              )
+            )
+        )
+      ),
+    'min-width': (
+      property: min-width,
+      class: min-w,
+      values: (
+        0: 0
+      )
+    ),
+    'vx-nowrap': (
+      property: white-space,
+      class: white-space,
+      values: (
+        nowrap: nowrap
+      )
+    )
+  )
+);

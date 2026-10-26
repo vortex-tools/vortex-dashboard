@@ -1,0 +1,62 @@
+// The accent: the color the theme is drawn in - purple, or on the staging
+// build (VITE_DEPLOY_ENV=staging, passed in as $vx-deploy-env by
+// vite.config.ts) orange, so staging.vx.tools is unmistakable. Its 25-1000
+// ramp drives the primary color, body text and the light surfaces.
+$vx-deploy-env: '' !default;
+
+$accent: (
+  25: #fefcff,
+  50: #fcf9ff,
+  100: #f6eeff,
+  200: #e9d8ff,
+  300: #d8bfff,
+  400: #c7a6ff,
+  500: #b38cff,
+  600: #9a65ff,
+  700: #7f3fff,
+  800: #6424d1,
+  900: #481a9a,
+  1000: #2d0f5c
+);
+@if $vx-deploy-env == 'staging' {
+  $accent: (
+    25: #fffcf9,
+    50: #fff7f0,
+    100: #ffeedd,
+    200: #ffdcbb,
+    300: #ffc48f,
+    400: #ffa866,
+    500: #ff8a3d,
+    600: #f56a14,
+    700: #e0520a,
+    800: #c2410c,
+    900: #9a3412,
+    1000: #3d1606
+  );
+}
+$accent-25: map-get($accent, 25);
+$accent-50: map-get($accent, 50);
+$accent-100: map-get($accent, 100);
+$accent-200: map-get($accent, 200);
+$accent-300: map-get($accent, 300);
+$accent-400: map-get($accent, 400);
+$accent-500: map-get($accent, 500);
+$accent-600: map-get($accent, 600);
+$accent-700: map-get($accent, 700);
+$accent-800: map-get($accent, 800);
+$accent-900: map-get($accent, 900);
+$accent-1000: map-get($accent, 1000);
+
+$primary: $accent-800;
+$primary-text-emphasis: $accent-900;
+$primary-bg-subtle: $accent-200;
+$primary-border-subtle: $accent-300;
+$link-hover-color: $accent-900;
+
+$body-color: $accent-1000;
+$body-bg: #fff;
+$body-emphasis-bg: #fff;
+$body-quaternary-bg: $accent-200;
+
+$table-striped-bg: rgba(var(--vx-quaternary-bg-rgb), 0.1);
+$table-striped-order: odd;

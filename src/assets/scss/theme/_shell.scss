@@ -1,0 +1,264 @@
+// The app shell: a fixed top bar, the sidebar (full width, an icon rail
+// when collapsed, a drop-down menu below lg), the content column and its
+// footer.
+
+:root {
+  --#{$prefix}footer-height: 5.5rem;
+  --#{$prefix}sidebar-rail-width: #{$vx-sidebar-rail-width};
+  @include media-breakpoint-up(sm) {
+    --#{$prefix}footer-height: 3.5rem;
+  }
+}
+
+.vx-topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: $zindex-fixed;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: var(--#{$prefix}navbar-top-height);
+  padding: 0 1rem;
+  font-size: map-get($font-sizes, 9);
+  background-color: var(--#{$prefix}topbar-bg);
+  border-bottom: 1px solid var(--#{$prefix}topbar-border);
+}
+.vx-brand {
+  font-size: map-get($font-sizes, 8);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--#{$prefix}brand-color);
+  text-decoration: none !important;
+  white-space: nowrap;
+  .vx-brand-name {
+    color: var(--#{$prefix}emphasis-color);
+  }
+}
+.vx-topbar-end {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+// Below lg: opens the sidebar as a menu.
+.vx-menu-button {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  > span {
+    display: block;
+    height: 2px;
+    border-radius: 1px;
+    background-color: var(--#{$prefix}sidebar-link);
+  }
+  @include media-breakpoint-up(lg) {
+    display: none;
+  }
+}
+
+.vx-sidebar {
+  position: fixed;
+  top: var(--#{$prefix}navbar-top-height);
+  left: 0;
+  z-index: $zindex-fixed - 1;
+  display: none;
+  flex-direction: column;
+  font-size: map-get($font-sizes, 9);
+  background-color: var(--#{$prefix}sidebar-bg);
+  // Below lg: a menu under the top bar, when opened.
+  &.is-open {
+    display: flex;
+    right: 0;
+    max-height: calc(100vh - var(--#{$prefix}navbar-top-height));
+    border-bottom: 1px solid var(--#{$prefix}sidebar-border);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+  }
+  @include media-breakpoint-up(lg) {
+    display: flex;
+    bottom: 0;
+    width: var(--#{$prefix}navbar-vertical-width);
+    border-right: 1px solid var(--#{$prefix}sidebar-border);
+    &.is-open {
+      right: auto;
+      max-height: none;
+      border-bottom: 0;
+      box-shadow: none;
+    }
+  }
+}
+.vx-sidebar-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.5rem 0.75rem 1rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.vx-sidebar-group + .vx-sidebar-group {
+  margin-top: 0.75rem;
+}
+.vx-sidebar-label {
+  margin: 0.25rem 0.5rem 0.35rem;
+  font-size: map-get($font-sizes, 10);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--#{$prefix}sidebar-label);
+}
+.vx-sidebar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vx-sidebar-item {
+  position: relative;
+}
+.vx-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  border-radius: $border-radius;
+  background: none;
+  font-weight: 600;
+  text-align: left;
+  color: var(--#{$prefix}sidebar-link);
+  text-decoration: none !important;
+  white-space: nowrap;
+  &:hover {
+    color: var(--#{$prefix}sidebar-link-hover);
+    background-color: var(--#{$prefix}sidebar-link-hover-bg);
+  }
+  &.active {
+    color: var(--#{$prefix}sidebar-link-active);
+  }
+  .vx-sidebar-icon {
+    flex: 0 0 1rem;
+    display: inline-flex;
+    justify-content: center;
+  }
+  .vx-sidebar-text {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+.vx-sidebar-caret {
+  flex: 0 0 auto;
+  transition: transform 0.15s;
+  .is-expanded > .vx-sidebar-link > & {
+    transform: rotate(90deg);
+  }
+}
+.vx-sidebar-sub {
+  padding-left: 1.6rem !important;
+  .vx-sidebar-link {
+    padding-block: 0.25rem;
+    font-weight: 600;
+  }
+}
+// The name (and sub-pages) beside a rail icon, on hover.
+.vx-sidebar-flyout {
+  display: none;
+}
+.vx-sidebar-foot {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--#{$prefix}sidebar-border);
+  @include media-breakpoint-down(lg) {
+    display: none;
+  }
+}
+
+// Collapsed (lg and up): an icon rail.
+@include media-breakpoint-up(lg) {
+  .vx-shell.is-rail {
+    .vx-sidebar {
+      width: var(--#{$prefix}sidebar-rail-width);
+    }
+    .vx-sidebar-nav {
+      overflow: visible;
+    }
+    .vx-sidebar-label,
+    .vx-sidebar-text,
+    .vx-sidebar-caret,
+    .vx-sidebar-item > .vx-sidebar-sub {
+      display: none;
+    }
+    .vx-sidebar-group + .vx-sidebar-group {
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--#{$prefix}sidebar-border);
+    }
+    .vx-sidebar-link {
+      justify-content: center;
+    }
+    .vx-sidebar-item:hover > .vx-sidebar-flyout {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: calc(100% + 0.25rem);
+      z-index: 1;
+      min-width: 12rem;
+      padding: 0.35rem;
+      border: 1px solid var(--#{$prefix}sidebar-border);
+      border-radius: $border-radius;
+      background-color: var(--#{$prefix}sidebar-bg);
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+      .vx-sidebar-flyout-title {
+        padding: 0.3rem 0.5rem;
+        font-weight: 700;
+        color: var(--#{$prefix}emphasis-color);
+      }
+      .vx-sidebar-link {
+        justify-content: flex-start;
+      }
+    }
+    // A hover bridge across the gap to the flyout.
+    .vx-sidebar-item:hover::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 100%;
+      width: 0.5rem;
+      height: 100%;
+    }
+  }
+}
+
+.content {
+  position: relative;
+  min-height: 100vh;
+  padding: var(--#{$prefix}navbar-top-height) 1rem
+    var(--#{$prefix}footer-height);
+  @include media-breakpoint-up(lg) {
+    margin-left: var(--#{$prefix}navbar-vertical-width);
+    .vx-shell.is-rail & {
+      margin-left: var(--#{$prefix}sidebar-rail-width);
+    }
+  }
+}
+.vx-footer {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  min-height: var(--#{$prefix}footer-height);
+  padding: 0.5rem 2.5rem;
+  font-size: map-get($font-sizes, 9);
+  border-top: 1px solid var(--#{$prefix}border-color-translucent);
+  @include media-breakpoint-down(sm) {
+    justify-content: center;
+    text-align: center;
+  }
+}

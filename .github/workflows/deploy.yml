@@ -1,0 +1,165 @@
+# Deploys vortex-dashboard to Cloudflare Workers (Static Assets).
+#
+#   push to main    -> staging.vx.tools  (vortex-dashboard-staging)
+#   push to testnet -> testnet.vx.tools  (vortex-dashboard-testnet; built
+#                      against api.testnet.vx.tools)
+#   push to release -> app.vx.tools      (vortex-dashboard)
+#
+# testnet and release are both public: each is fast-forwarded to a commit
+# already verified on staging, independently (the testnet API and
+# api.vx.tools run different vortex-data versions, so the two sites can
+# move at different paces).
+#
+# Shipping to production = moving `release` forward to a commit that has
+# already been verified on staging.
+#
+# Required secrets (in the `cloudflare` environment): CLOUDFLARE_API_TOKEN,
+# CLOUDFLARE_ACCOUNT_ID.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main, release, testnet]
+
+# The jobs only read the repository; deploys authenticate to Cloudflare.
+permissions:
+  contents: read
+
+# One deploy at a time per branch; cancel superseded runs.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # The Cloudflare secrets live in this environment, which only the
+    # deploy branches (main, release, testnet) may use.
+    environment: cloudflare
+    env:
+      # False until the Cloudflare secrets are added. The
+      # deploy steps skip rather than fail, so landing this workflow before
+      # the credentials exist doesn't leave a permanent red X on main.
+      HAS_CLOUDFLARE_CREDS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      # release / testnet: the site built for this commit by main's
+      # prebuild job (key below); a hit skips the build.
+      SITE_MODE: ${{ github.ref == 'refs/heads/release' && 'production' || github.ref == 'refs/heads/testnet' && 'testnet' || 'staging' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # No npm download cache: node_modules itself is cached below, and
+      # restoring ~/.npm as well on every run only cost time.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # node_modules keyed on the lockfile (and Node major): a hit skips
+      # npm ci entirely. wrangler (and the Worker's deps) run from it.
+      - uses: actions/cache@v4
+        id: node-modules
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
+
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # release / testnet move only to commits main already built: take
+      # that build (same commit, same mode) instead of building again.
+      - name: Restore prebuilt site
+        if: github.ref != 'refs/heads/main'
+        id: site
+        uses: actions/cache/restore@v4
+        with:
+          path: build
+          key: site-${{ env.SITE_MODE }}-${{ github.sha }}
+
+      # Staging: typecheck and build side by side; both must pass before
+      # anything is published. release / testnet skip the typecheck (their
+      # commits were verified on staging) and build only on a cache miss.
+      - name: Typecheck + build (staging)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          npx tsc --noEmit -p tsconfig.json & tsc=$!
+          npm run build:staging
+          wait $tsc
+
+      - name: Build (production)
+        if: github.ref == 'refs/heads/release' && steps.site.outputs.cache-hit != 'true'
+        run: npm run build
+
+      # wrangler is a pinned devDependency, so `npm ci` above already installed
+      # it - no per-run install. `--no-install` makes npx fail loudly rather
+      # than silently fetch a different version.
+      - name: Deploy to staging
+        if: github.ref == 'refs/heads/main' && env.HAS_CLOUDFLARE_CREDS == 'true'
+        run: npx --no-install wrangler deploy --env staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # testnet.vx.tools: the testnet branch built for the testnet API (its
+      # own build - the API URL and palette are baked in at build time).
+      - name: Build (testnet)
+        if: github.ref == 'refs/heads/testnet' && steps.site.outputs.cache-hit != 'true'
+        run: npm run build:testnet
+
+      - name: Deploy to testnet
+        if: github.ref == 'refs/heads/testnet' && env.HAS_CLOUDFLARE_CREDS == 'true'
+        run: npx --no-install wrangler deploy --env testnet
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # --env="" targets the top-level (production) config explicitly;
+      # without it wrangler warns that multiple environments are defined.
+      - name: Deploy to production
+        if: github.ref == 'refs/heads/release' && env.HAS_CLOUDFLARE_CREDS == 'true'
+        run: npx --no-install wrangler deploy --env=""
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Notice - Cloudflare credentials not configured
+        if: env.HAS_CLOUDFLARE_CREDS != 'true'
+        run: |
+          echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set."
+          echo "::warning::The build was verified but nothing was deployed."
+
+  # On main, beside the staging deploy (it doesn't hold staging up): build
+  # this commit for production and testnet and cache each by commit, so
+  # fast-forwarding release / testnet to it only uploads. Cache entries
+  # made on main (the default branch) are readable from other branches.
+  prebuild:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: actions/cache@v4
+        id: node-modules
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
+
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - run: npm run build
+
+      - uses: actions/cache/save@v4
+        with:
+          path: build
+          key: site-production-${{ github.sha }}
+
+      - run: rm -rf build && npm run build:testnet
+
+      - uses: actions/cache/save@v4
+        with:
+          path: build
+          key: site-testnet-${{ github.sha }}

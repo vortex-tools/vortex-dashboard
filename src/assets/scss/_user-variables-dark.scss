@@ -1,0 +1,45 @@
+// The accent's dark ramp (darkest first), for dark mode's surfaces.
+$accent-dark: (
+  50: #07040a,
+  100: #0d0612,
+  200: #150a1d,
+  300: #1e0e2a,
+  400: #2a133a,
+  500: #391a4d,
+  600: #502463,
+  700: #6a3b80,
+  800: #8a62a4,
+  900: #b295c8,
+  1000: #d8c6e7,
+  1100: #f5f1fa
+);
+@if $vx-deploy-env == 'staging' {
+  $accent-dark: (
+    50: #0a0603,
+    100: #120904,
+    200: #1d0e06,
+    300: #2a1408,
+    400: #3a1c0b,
+    500: #4d2610,
+    600: #663217,
+    700: #874521,
+    800: #a8653d,
+    900: #c99574,
+    1000: #e7c9b5,
+    1100: #faf3ee
+  );
+}
+
+$primary-dark: $accent-400;
+$primary-text-emphasis-dark: $accent-400;
+$primary-bg-subtle-dark: map-get($accent-dark, 300);
+$primary-border-subtle-dark: map-get($accent-dark, 500);
+$link-color-dark: $accent-400;
+$link-hover-color-dark: $accent-600;
+
+$body-color-dark: $accent-25;
+$body-bg-dark: map-get($accent-dark, 100);
+$body-emphasis-color-dark: $accent-25;
+$body-emphasis-bg-dark: map-get($accent-dark, 100);
+$body-highlight-bg-dark: map-get($accent-dark, 200);
+$body-tertiary-color-dark: $accent-300;

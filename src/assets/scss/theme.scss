@@ -1,0 +1,49 @@
+// The Vortex theme: Bootstrap 5.3 with our settings, tokens, utilities,
+// components and app shell (theme/). The accent palette (purple; orange on
+// staging) is in _user-variables*, loaded first.
+
+@import 'bootstrap/scss/functions';
+
+@import 'user-variables';
+@import 'user-variables-dark';
+@import 'theme/settings';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/utilities';
+@import 'theme/utilities';
+
+@import 'bootstrap/scss/root';
+@import 'theme/tokens';
+
+@import 'bootstrap/scss/reboot';
+@import 'bootstrap/scss/type';
+@import 'bootstrap/scss/images';
+@import 'bootstrap/scss/containers';
+@import 'bootstrap/scss/grid';
+@import 'bootstrap/scss/tables';
+@import 'bootstrap/scss/forms';
+@import 'bootstrap/scss/buttons';
+@import 'bootstrap/scss/transitions';
+@import 'bootstrap/scss/dropdown';
+@import 'bootstrap/scss/button-group';
+@import 'bootstrap/scss/nav';
+@import 'bootstrap/scss/card';
+@import 'bootstrap/scss/pagination';
+@import 'bootstrap/scss/badge';
+@import 'bootstrap/scss/alert';
+@import 'bootstrap/scss/progress';
+@import 'bootstrap/scss/list-group';
+@import 'bootstrap/scss/close';
+@import 'bootstrap/scss/modal';
+@import 'bootstrap/scss/tooltip';
+@import 'bootstrap/scss/popover';
+@import 'bootstrap/scss/spinners';
+@import 'bootstrap/scss/placeholders';
+@import 'bootstrap/scss/helpers';
+@import 'bootstrap/scss/utilities/api';
+
+@import 'theme/components';
+@import 'theme/shell';

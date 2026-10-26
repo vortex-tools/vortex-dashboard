@@ -1,0 +1,485 @@
+// App-specific styles, after the theme (theme.scss). Imports the theme's
+// settings for its variables and mixins.
+@import 'bootstrap/scss/functions';
+@import 'user-variables';
+@import 'user-variables-dark';
+@import 'theme/settings';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+
+.table-with-padding > thead > tr > th:first-child,
+.table-with-padding > tbody > tr > td:first-child {
+  padding-left: 1rem !important;
+}
+
+.table-with-padding > thead > tr > th:last-child,
+.table-with-padding > tbody > tr > td:last-child {
+  padding-right: 1rem !important;
+}
+
+// $theme-hover-colors.primary still points at $blue-600 even though we
+// override $primary to purple in _user-variables.scss, so .btn-soft-primary
+// hovers to blue by default. Pin the hover color to the purple family.
+.btn-soft-primary {
+  --vx-btn-hover-color: #{$accent-700};
+}
+
+// Same for solid .btn-primary: its hover background is $blue-600 too. Use a
+// darker shade of the primary (orange on staging, purple in production),
+// and keep the pressed state in the family.
+.btn-primary {
+  --vx-btn-hover-bg: #{$accent-900};
+  --vx-btn-hover-border-color: #{$accent-900};
+  --vx-btn-active-bg: #{$accent-900};
+  --vx-btn-active-border-color: #{$accent-900};
+}
+
+// Underline all anchor descendants on hover, for tables that carry many links.
+// `!important` is needed because the Bootstrap `text-decoration-none` utility
+// applied directly on the Link components wins on specificity otherwise.
+.hover-underline-links a:hover {
+  text-decoration: underline !important;
+}
+
+// Pinned summary rows (ideal-voter row in voting leaderboard, totals row in
+// per-epoch vote record table). Tint the background with the primary-subtle
+// fill so the row reads as a header/baseline rather than a data row.
+.data-table > tbody > tr.pinned-row > td {
+  background-color: var(--vx-primary-bg-subtle) !important;
+  border-bottom: 2px solid var(--vx-border-color);
+  font-weight: 600;
+}
+
+// External-link affordance: reveal a small arrow icon on link hover so the
+// row reads cleanly at rest but signals "leaves the app" once focused.
+.external-link-icon {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  vertical-align: -2px;
+}
+
+.external-link:hover .external-link-icon,
+.external-link:focus-visible .external-link-icon {
+  opacity: 1;
+}
+
+// Sticky columns on wide leaderboard tables. The Rank + Validator
+// pair stays glued to the left edge as the rest scrolls. Variants
+// `-rank` / `-validator` set their own `left` and `width`; the
+// validator narrows on smaller viewports so the sticky region doesn't
+// eat too much of the visible table on phones / split panes.
+//
+// Our theme compiles Bootstrap's table custom properties under its own
+// `--vx-` prefix (not `--bs-`), so all of the table-bg-*
+// variables below are namespaced accordingly — referring to
+// `--bs-table-bg-state` here is a silent no-op.
+//
+// The opaque base uses --vx-emphasis-bg (not -body-emphasis-bg —
+// that var doesn't exist) and resolves to $white in light mode /
+// $gray-1100 in dark, both solid so scrolled-under content is fully
+// obscured during horizontal scroll. On top of that solid base we
+// stack a background-image layer that reads --vx-table-bg-type
+// (the custom property `.table-striped` sets to its stripe color on
+// alternating rows). On non-striped rows the var inherits the table's
+// `initial` value, falls through to transparent, and the overlay
+// disappears — so the sticky cells alternate in lockstep with the
+// rest of the row.
+//
+// We pin --vx-table-bg-state to transparent so the cell's
+// inset-box-shadow stripe (Bootstrap uses it to paint the stripe
+// elsewhere) reads transparent on these cells and doesn't
+// double-apply on top of our background-image. The box-shadow channel
+// then stays free for the right-edge divider on -last. We bypass the
+// bg-state level on the background-image side because var() with a
+// defined value (`transparent`) doesn't fall through to its fallback
+// — so reading bg-state would just yield transparent and never reach
+// the stripe color carried on bg-type.
+.leaderboard-sticky-col {
+  position: sticky;
+  z-index: 2;
+  background-color: var(--vx-emphasis-bg) !important;
+  background-image: linear-gradient(
+    var(--vx-table-bg-type, transparent),
+    var(--vx-table-bg-type, transparent)
+  ) !important;
+  --vx-table-bg-state: transparent;
+}
+
+th.leaderboard-sticky-col {
+  z-index: 3;
+}
+
+.leaderboard-sticky-col-rank {
+  left: 0;
+  width: 4rem;
+  min-width: 4rem;
+  max-width: 4rem;
+}
+
+.leaderboard-sticky-col-validator {
+  left: 4rem;
+  width: 12rem;
+  min-width: 12rem;
+  max-width: 12rem;
+}
+
+// On narrow viewports the sticky pair was eating most of the visible
+// table. Drop the rank's "(tie)" suffix (handled inline via Bootstrap
+// `d-none d-md-inline`), shrink rank to fit just the number, and
+// truncate the validator name harder. Validator's `left:` follows the
+// shrunk rank width. Bootstrap's `md` breakpoint = 768px.
+@media (max-width: 767.98px) {
+  .leaderboard-sticky-col-rank {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    max-width: 2.75rem;
+  }
+  .leaderboard-sticky-col-validator {
+    left: 2.75rem;
+    width: 7rem;
+    min-width: 7rem;
+    max-width: 7rem;
+  }
+}
+
+// For tables where the validator column is the first sticky column (no Rank
+// column to its left): pin it to the edge at every width. The compound
+// selector outranks the -validator `left` offsets above, including the
+// narrow-viewport one inside the media query.
+.leaderboard-sticky-col-validator.leaderboard-sticky-col-start {
+  left: 0;
+}
+
+// `border-right` doesn't render reliably in a `border-collapse: collapse`
+// table — adjacent cells share borders and the next column's left edge
+// often wins. An inset box-shadow paints a 1px line inside the cell
+// that's immune to border collapsing and stays glued to the sticky
+// cell as it holds position during horizontal scroll. The stripe lives
+// on background-image instead of box-shadow (see .leaderboard-sticky-col
+// above), so this rule can own box-shadow outright.
+.leaderboard-sticky-col-last,
+.leaderboard-sticky-col-last:hover {
+  box-shadow: inset -1px 0 0 var(--vx-border-color) !important;
+}
+
+// Validator pills on the vote record page: split buttons (name | chevron,
+// name | x). Inside a .btn-group the segments overlap by one border width,
+// so the shared border reads as the divider between them.
+//
+// Sets Bootstrap's button *variables* rather than background/border
+// directly: .btn:hover, :focus-visible and :active assign border-color from
+// --vx-btn-{hover,active}-border-color, which on a plain .btn is
+// transparent - overriding the properties would make the divider vanish on
+// hover. Each segment gets its own hover background so it is clear they are
+// separate click targets.
+.validator-pill-segment {
+  --vx-btn-bg: var(--vx-emphasis-bg);
+  --vx-btn-border-color: var(--vx-border-color-translucent);
+  --vx-btn-hover-bg: var(--vx-body-highlight-bg);
+  --vx-btn-hover-border-color: var(--vx-border-color-translucent);
+  --vx-btn-active-bg: var(--vx-body-highlight-bg);
+  --vx-btn-active-border-color: var(--vx-border-color-translucent);
+}
+
+// The top bar's pickers (API on staging, mainnet / testnet elsewhere):
+// a pill like the theme toggle, with a caret.
+.topbar-select {
+  appearance: none;
+  padding-right: 1.1rem;
+  background-image: escape-svg($form-select-indicator);
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+  background-size: 8px 6px;
+  cursor: pointer;
+}
+
+// Validator page SFDP box title: the full program name when its row has
+// room, "SFDP" otherwise. The container is the title wrapper only, so the
+// box's own width still comes from its rows.
+.sfdp-title {
+  container-type: inline-size;
+  white-space: nowrap;
+  .sfdp-title-full {
+    display: none;
+  }
+}
+@container (min-width: 18rem) {
+  .sfdp-title .sfdp-title-full {
+    display: inline;
+  }
+  .sfdp-title .sfdp-title-short {
+    display: none;
+  }
+}
+
+// A SectionCard that takes its row's height from the NEIGHBOURING column
+// (from lg up) instead of its own content: the card is pulled out of flow
+// to fill its column, and its body (the last child) scrolls, with the
+// table header pinned. Used for Recent Voting beside the tile grid.
+@media (min-width: 992px) {
+  .fit-row-height-lg {
+    position: relative;
+    height: 100%;
+    min-height: 14rem;
+    > .section-card {
+      position: absolute;
+      inset: 0;
+      > :last-child {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+      }
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background-color: rgba(var(--vx-emphasis-bg-rgb), 1);
+    }
+  }
+}
+
+// Live consensus: table rows added one at a time ease in instead of
+// popping (the animation runs once, when the row mounts).
+@keyframes vx-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.vx-row-in > td {
+  animation: vx-row-in 300ms ease-out;
+}
+
+// Not-yet-reached steps (the /alpenglow phases): a neutral gray in every
+// palette, where the body text tones are tinted (purple / orange / pink).
+.text-pending {
+  color: #{$gray-500};
+}
+.bg-pending {
+  background-color: #{$gray-400};
+}
+
+// Live voting strip: "unrewardable" (no reward certificate to land in)
+// is a light gray-green - not a miss, and nothing to act on.
+.bg-vote-unrewardable {
+  background-color: #bfd3c0 !important;
+}
+
+// Live voting strip (LiveVoteStrip): the row slides (inline transform);
+// each new leader-window column fades in under the "now" backing, dots
+// fill in rather than pop, and the oldest columns fade out at the edge.
+@keyframes vx-col-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.vx-col-in {
+  animation: vx-col-in 0.32s ease-out;
+}
+.vx-dot {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.15s ease;
+}
+.vx-dot-hover .vx-dot {
+  transform: scale(1.35);
+  box-shadow:
+    0 0 0 2px var(--vx-emphasis-bg),
+    0 0 0 3px var(--vx-primary);
+}
+.vx-live-row {
+  mask-image: linear-gradient(to right, #000 calc(100% - 4rem), transparent);
+}
+// The hover card glides from dot to dot.
+@keyframes vx-hover-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.vx-hover-card {
+  transition: left 0.15s ease-out;
+  animation: vx-hover-in 0.12s ease-out;
+}
+@keyframes vx-live-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--vx-success-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(var(--vx-success-rgb), 0);
+  }
+}
+.vx-live-dot {
+  animation: vx-live-dot 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vx-col-in,
+  .vx-live-dot,
+  .vx-hover-card {
+    animation: none;
+    transition: none;
+  }
+  .vx-dot {
+    transition: none;
+  }
+}
+
+// Slot page label / value tables (InfoTable): stack label over value on
+// phones, full width. The theme's table-stats stacks via table-row cells,
+// which shrink-wrap the value column.
+@include media-breakpoint-down(sm) {
+  .info-table.table-stats {
+    &,
+    tbody,
+    tr,
+    td {
+      display: block;
+    }
+    thead {
+      display: none;
+    }
+  }
+}
+
+// Compact density (2026-10-23): tight breadcrumbs and tabs.
+.breadcrumb {
+  margin-bottom: 0.25rem;
+}
+.nav-underline {
+  --#{$prefix}nav-link-padding-y: 0.3rem;
+}
+
+// Boxy frame (2026-10-23): the content is padded 1rem a side and starts
+// flush under the top bar (theme/_shell); the breadcrumb is its own bar,
+// the page header a band below it, both ruled edge to edge (mx-n3 /
+// -1rem margins cancel the side padding). Rules only - no fills.
+// The API-unreachable notice: a band flush under the top bar, edge to
+// edge like the breadcrumb bar, kept in view while scrolling.
+.api-status-bar {
+  position: sticky;
+  top: var(--#{$prefix}navbar-top-height);
+  z-index: $zindex-sticky;
+  display: flex;
+  align-items: center;
+  margin: 0 -1rem;
+  padding: 0.4rem 1rem;
+  background-color: var(--#{$prefix}warning-bg-subtle);
+  border-bottom: 1px solid var(--#{$prefix}warning-border-subtle);
+}
+.breadcrumb-bar {
+  margin: 0 -1rem;
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid var(--#{$prefix}border-color-translucent);
+  .breadcrumb {
+    margin-bottom: 0;
+  }
+}
+.page-header {
+  --#{$prefix}gutter-x: 0;
+  --#{$prefix}gutter-y: 0;
+  margin: 0 -1rem 1rem !important;
+  // One height on every page (with or without controls), all centered.
+  min-height: 3.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--#{$prefix}border-color-translucent);
+  align-items: center !important;
+}
+.validator-title {
+  min-height: 3.75rem;
+  // Phones: the name and the search stack - give them room, the search
+  // the full width.
+  @include media-breakpoint-down(md) {
+    padding-top: 0.85rem !important;
+    padding-bottom: 0.85rem !important;
+    row-gap: 0.75rem !important;
+    > :last-child {
+      width: 100% !important;
+    }
+  }
+}
+// One compact row: the title, its subtitle on the same line (muted),
+// the controls at the right.
+// The title block is a flex row on the title's baseline, so it's as tall
+// as the title (inline text left space under it) and centers in the band.
+.page-header > :first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.75rem;
+  row-gap: 0.15rem;
+}
+// Small widths: the title block and the controls wrap onto their own
+// lines - space between them, and a little more around.
+.page-header {
+  row-gap: 0.5rem;
+}
+@include media-breakpoint-down(md) {
+  .page-header {
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+    h3 + p {
+      line-height: 1.3;
+    }
+    // Phones: the title (and subtitle) centered, the controls under it too.
+    > :first-child {
+      justify-content: center;
+      text-align: center;
+      width: 100%;
+    }
+    > :not(:first-child) {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+  }
+  .validator-title > :first-child {
+    justify-content: center;
+    width: 100%;
+  }
+}
+.page-header,
+.validator-title {
+  h2,
+  h3 {
+    display: inline;
+    font-size: 1.25rem;
+    margin: 0;
+  }
+  h3 + p {
+    display: inline;
+    margin: 0 !important;
+    font-size: map-get($font-sizes, 9);
+  }
+}
+// In a flex stack with a gap (slot, live, migration pages) the gap spaces
+// it already.
+.d-flex.flex-column > .page-header {
+  margin-bottom: 0 !important;
+}
+
+// The live playback strip straight after the header band: flush against
+// it (no gap), the band's rule doing for both.
+.page-header + .playback-strip {
+  margin-top: -1rem;
+  border-top: 0 !important;
+}
+
+// Tighter rows for small lists inside cards (Biggest Blocks).
+.data-table.compact-rows > :not(caption) > * > * {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}

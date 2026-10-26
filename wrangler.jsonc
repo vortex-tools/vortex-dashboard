@@ -1,0 +1,70 @@
+{
+  // Cloudflare Workers Static Assets config for vortex-dashboard.
+  //
+  // Static assets plus one small Worker. Cloudflare serves the Vite build
+  // directly, and `not_found_handling: "single-page-application"` returns
+  // /index.html with 200 for any path that isn't a real file — which is what
+  // makes react-router deep links (/validator/<addr>/votes/epoch/1034) work
+  // on refresh.
+  //
+  // The Worker (worker/index.tsx) renders the shareable "Ready for
+  // Alpenglow" X cards. `run_worker_first` limits it to /share/*: every
+  // other request is a static asset and never invokes it.
+  //
+  // Cost note: static asset requests are free and unmetered on every plan,
+  // including Free, and Cloudflare charges no egress. Only /share/* requests
+  // count as Worker invocations (Free: 100k a day).
+  //
+  // `assets` is repeated under each env on purpose — per Wrangler docs,
+  // bindings are NOT inherited by environments and must be declared explicitly.
+
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "vortex-dashboard",
+  "compatibility_date": "2026-09-14",
+  "main": "worker/index.tsx",
+
+  "assets": {
+    "directory": "./build/",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/share/*"]
+  },
+  // The API the share cards read (vars aren't inherited: set per env).
+  "vars": { "API_BASE": "https://api.vx.tools", "CLUSTER": "mainnet" },
+
+  // PRODUCTION — app.vx.tools. Deployed from the `release` branch.
+  // custom_domain: Cloudflare owns this hostname's DNS record and certificate.
+  // Routes are declared per environment on purpose: an env that inherited
+  // these would claim app.vx.tools for itself (workers-sdk #13925).
+  "routes": [{ "pattern": "app.vx.tools", "custom_domain": true }],
+
+  "env": {
+    // STAGING — staging.vx.tools. Deployed on every push to main.
+    "staging": {
+      "name": "vortex-dashboard-staging",
+      "assets": {
+        "directory": "./build/",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/share/*"]
+      },
+      "vars": { "API_BASE": "https://api.staging.vx.tools", "CLUSTER": "mainnet" },
+      "routes": [{ "pattern": "staging.vx.tools", "custom_domain": true }]
+    },
+    // TESTNET - testnet.vx.tools. Built against the testnet API (npm run
+    // build:testnet), deployed from the `testnet` branch (fast-forwarded to
+    // a commit verified on staging, like `release`). custom_domain:
+    // Cloudflare creates the DNS record and cert.
+    "testnet": {
+      "name": "vortex-dashboard-testnet",
+      "assets": {
+        "directory": "./build/",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/share/*"]
+      },
+      "vars": { "API_BASE": "https://api.testnet.vx.tools", "CLUSTER": "testnet" },
+      "routes": [{ "pattern": "testnet.vx.tools", "custom_domain": true }]
+    }
+  }
+}

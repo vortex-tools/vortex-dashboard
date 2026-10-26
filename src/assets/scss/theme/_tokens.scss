@@ -1,0 +1,79 @@
+// CSS variables the theme adds to Bootstrap's: two more surface / text
+// levels (highlight, quaternary), the card surface (emphasis-bg), light
+// status shades for charts, and the app shell's colors.
+$body-quaternary-color: ink(500) !default;
+$body-highlight-color: ink(1000) !default;
+$body-highlight-bg: ink(100) !default;
+
+@mixin vx-rgb-var($name, $color) {
+  --#{$prefix}#{$name}: #{$color};
+  --#{$prefix}#{$name}-rgb: #{to-rgb($color)};
+}
+
+:root,
+[data-bs-theme='light'] {
+  @include vx-rgb-var(quaternary-color, $body-quaternary-color);
+  @include vx-rgb-var(quaternary-bg, $body-quaternary-bg);
+  @include vx-rgb-var(body-highlight-color, $body-highlight-color);
+  @include vx-rgb-var(body-highlight-bg, $body-highlight-bg);
+  @include vx-rgb-var(emphasis-bg, $body-emphasis-bg);
+  --#{$prefix}success-light: #{tint-color($success, 45%)};
+  --#{$prefix}warning-light: #{tint-color($warning, 45%)};
+  --#{$prefix}danger-light: #{tint-color($danger, 45%)};
+  --#{$prefix}scrollbar-bg: rgba(var(--#{$prefix}quaternary-bg-rgb), 0.55);
+
+  --#{$prefix}navbar-top-height: #{$vx-topbar-height};
+  --#{$prefix}topbar-bg: #{$accent-50};
+  --#{$prefix}topbar-border: #{ink(300)};
+  --#{$prefix}brand-color: #{$accent-700};
+  --#{$prefix}navbar-vertical-width: #{$vx-sidebar-width};
+  --#{$prefix}sidebar-bg: var(--#{$prefix}emphasis-bg);
+  --#{$prefix}sidebar-border: #{ink(300)};
+  --#{$prefix}sidebar-label: #{ink(600)};
+  --#{$prefix}sidebar-link: #{ink(700)};
+  --#{$prefix}sidebar-link-hover: #{ink(900)};
+  --#{$prefix}sidebar-link-hover-bg: #{ink(100)};
+  --#{$prefix}sidebar-link-active: var(--#{$prefix}primary);
+  --#{$prefix}pill-bg: #{$accent-100};
+  --#{$prefix}pill-color: #{$primary};
+  --#{$prefix}pill-hover-bg: #{$accent-700};
+  --#{$prefix}pill-hover-color: #{$accent-50};
+  --#{$prefix}soft-btn-border: #{ink(200)};
+  --#{$prefix}soft-btn-hover-bg: #{ink(200)};
+  --#{$prefix}soft-btn-secondary: #{ink(900)};
+}
+
+[data-bs-theme='dark'] {
+  // Bootstrap keeps the light theme colors in dark mode; these lighten.
+  @include vx-rgb-var(primary, $primary-dark);
+  @include vx-rgb-var(secondary, $secondary-dark);
+  @include vx-rgb-var(success, $success-dark);
+  @include vx-rgb-var(info, $info-dark);
+  @include vx-rgb-var(warning, $warning-dark);
+  @include vx-rgb-var(danger, $danger-dark);
+  @include vx-rgb-var(quaternary-color, ink(500));
+  @include vx-rgb-var(quaternary-bg, ink(800));
+  @include vx-rgb-var(body-highlight-color, ink(300));
+  @include vx-rgb-var(body-highlight-bg, $body-highlight-bg-dark);
+  @include vx-rgb-var(emphasis-bg, $body-emphasis-bg-dark);
+  --#{$prefix}success-light: #{$success};
+  --#{$prefix}warning-light: #{$warning};
+  --#{$prefix}danger-light: #{$danger};
+
+  --#{$prefix}topbar-bg: #{map-get($accent-dark, 200)};
+  --#{$prefix}topbar-border: #{ink(900)};
+  --#{$prefix}brand-color: #{$accent-500};
+  --#{$prefix}sidebar-border: #{ink(900)};
+  --#{$prefix}sidebar-label: #{ink(500)};
+  --#{$prefix}sidebar-link: #{ink(400)};
+  --#{$prefix}sidebar-link-hover: #{ink(100)};
+  --#{$prefix}sidebar-link-hover-bg: #{ink(900)};
+  --#{$prefix}sidebar-link-active: #fff;
+  --#{$prefix}pill-bg: #{rgba($accent-500, 0.5)};
+  --#{$prefix}pill-color: #{rgba($accent-50, 0.6)};
+  --#{$prefix}pill-hover-bg: #{$accent-600};
+  --#{$prefix}pill-hover-color: #{$accent-50};
+  --#{$prefix}soft-btn-border: #{ink(900)};
+  --#{$prefix}soft-btn-hover-bg: var(--#{$prefix}body-highlight-bg);
+  --#{$prefix}soft-btn-secondary: #{ink(400)};
+}
