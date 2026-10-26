@@ -221,14 +221,16 @@ const FeatureGatePage = () => {
           info="As our writer saw it, newest first: entering or leaving the tracker's queue, the feature account appearing (queued) or removed before activating (revoked), and activation. Its first run recorded every activation already on chain."
         >
           {events.length ? (
-            <Table size="sm" className="data-table compact-rows fs-9 mb-0">
+            <Table
+              size="sm"
+              responsive
+              className="data-table compact-rows fs-9 mb-0 text-nowrap"
+            >
               <thead>
                 <tr>
                   <th>Cluster</th>
                   <th>Event</th>
-                  <th>
-                    Epoch<span className="d-none d-md-inline"> / slot</span>
-                  </th>
+                  <th>Epoch / slot</th>
                   <th className="text-end">Seen</th>
                 </tr>
               </thead>
@@ -248,7 +250,7 @@ const FeatureGatePage = () => {
                     <td className="font-monospace">
                       {e.epoch != null ? e.epoch.toLocaleString() : '—'}
                       {e.slot != null && (
-                        <span className="text-body-tertiary d-none d-md-inline">
+                        <span className="text-body-tertiary">
                           {' '}
                           · {e.slot.toLocaleString()}
                         </span>

@@ -42,11 +42,14 @@ const FILTERS = [
 ] as const;
 type Filter = (typeof FILTERS)[number][0];
 
-// Columns shown from md up; phones get the feature and its served-cluster
-// state only.
-const WIDE = {
-  headerProps: { className: 'd-none d-md-table-cell' },
-  cellProps: { className: 'd-none d-md-table-cell' }
+// A feature's name is cut short past this, so on a phone its first state
+// column stays in view; the full name is on hover and its own page.
+const NAME_WIDTH = { maxWidth: 'min(60vw, 32rem)' };
+
+// Cells don't wrap: on a narrow screen the table scrolls sideways.
+const NOWRAP = {
+  headerProps: { className: 'text-nowrap' },
+  cellProps: { className: 'text-nowrap' }
 };
 
 const columns = (served: string): ColumnDef<FeatureGate>[] => [
@@ -56,27 +59,37 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
     accessorFn: f =>
       `${featureName(f)} ${f.name ?? ''} ${f.id} ${f.simds.join(' ')}`,
     cell: ({ row: { original: f } }) => (
-      <Link to={`/feature/${f.id}`}>{featureName(f)}</Link>
-    )
+      <Link
+        to={`/feature/${f.id}`}
+        className="d-block text-truncate"
+        style={NAME_WIDTH}
+        title={featureName(f)}
+      >
+        {featureName(f)}
+      </Link>
+    ),
+    meta: NOWRAP
   },
+  ...[...CLUSTERS]
+    .sort((a, b) => Number(b.key === served) - Number(a.key === served))
+    .map(
+      (c): ColumnDef<FeatureGate> => ({
+        id: c.key,
+        header: c.label,
+        accessorFn: f => statusRank(f, c.key),
+        cell: ({ row: { original: f } }) => (
+          <StatusChip state={f.clusters[c.key]} />
+        ),
+        meta: NOWRAP
+      })
+    ),
   {
     id: 'simd',
     header: 'SIMD',
     accessorFn: f => f.simds[0] ?? 0,
     cell: ({ row: { original: f } }) => <SimdLinks simds={f.simds} />,
-    meta: WIDE
-  },
-  ...CLUSTERS.map(
-    (c): ColumnDef<FeatureGate> => ({
-      id: c.key,
-      header: c.label,
-      accessorFn: f => statusRank(f, c.key),
-      cell: ({ row: { original: f } }) => (
-        <StatusChip state={f.clusters[c.key]} />
-      ),
-      meta: c.key === served ? undefined : WIDE
-    })
-  )
+    meta: NOWRAP
+  }
 ];
 
 /**
@@ -230,14 +243,14 @@ const FeatureGates = () => {
                   <tr>
                     <th>#</th>
                     <th>Feature</th>
-                    <th className="d-none d-md-table-cell">SIMD</th>
-                    <th className="d-none d-lg-table-cell">Minimum versions</th>
+                    <th style={{ minWidth: '7rem' }}>Stake ready</th>
+                    <th className="text-nowrap">SIMD</th>
+                    <th className="text-nowrap">Minimum versions</th>
                     {CLUSTERS.filter(c => c.key !== served).map(c => (
-                      <th key={c.key} className="d-none d-md-table-cell">
+                      <th key={c.key} className="text-nowrap">
                         {c.label}
                       </th>
                     ))}
-                    <th style={{ minWidth: '7rem' }}>Stake ready</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,24 +262,29 @@ const FeatureGates = () => {
                           : i + 1}
                       </td>
                       <td>
-                        <Link to={`/feature/${f.id}`} className="fw-semibold">
+                        <Link
+                          to={`/feature/${f.id}`}
+                          className="fw-semibold d-block text-truncate"
+                          style={NAME_WIDTH}
+                          title={featureName(f)}
+                        >
                           {featureName(f)}
                         </Link>
                       </td>
-                      <td className="d-none d-md-table-cell">
-                        <SimdLinks simds={f.simds} />
-                      </td>
-                      <td className="fs-10 d-none d-lg-table-cell">
-                        <MinVersions versions={f.minVersions} />
-                      </td>
-                      {CLUSTERS.filter(c => c.key !== served).map(c => (
-                        <td key={c.key} className="d-none d-md-table-cell">
-                          <StatusChip state={f.clusters[c.key]} />
-                        </td>
-                      ))}
                       <td>
                         <ReadinessBar readiness={f.readiness} />
                       </td>
+                      <td className="text-nowrap">
+                        <SimdLinks simds={f.simds} />
+                      </td>
+                      <td className="fs-10 text-nowrap">
+                        <MinVersions versions={f.minVersions} />
+                      </td>
+                      {CLUSTERS.filter(c => c.key !== served).map(c => (
+                        <td key={c.key} className="text-nowrap">
+                          <StatusChip state={f.clusters[c.key]} />
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
