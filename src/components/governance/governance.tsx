@@ -1,5 +1,6 @@
 import Badge, { BadgeBg } from 'components/base/Badge';
 import { GovernanceProposal, GovernanceTally } from 'providers/vortex-schemas';
+import { ReactNode } from 'react';
 
 /** "◎12.3M" / "◎450K" / "◎812". */
 export const compactSol = (lamports: number | null | undefined) => {
@@ -40,11 +41,11 @@ export const THRESHOLD = 2 / 3;
 export const RULE: Record<string, { label: string; text: string }> = {
   constitution: {
     label: 'Constitution',
-    text: 'For must be at least two thirds of all votes (for + against + abstain), with at least a third of the snapshot stake voting; below that quorum the result is Inconclusive.'
+    text: 'For must be at least two thirds of all votes (For + Against + Abstain), with at least a third of the snapshot stake voting; below that quorum the result is Inconclusive.'
   },
   decisive: {
     label: 'Decisive',
-    text: 'For must be at least two thirds of for + against; abstain is not counted and there is no quorum.'
+    text: 'For must be at least two thirds of For + Against; Abstain is not counted and there is no quorum.'
   }
 };
 /** The for share the proposal's rule judges by. */
@@ -91,17 +92,44 @@ export const VerdictBadge = ({
   );
 };
 
-// For / against / abstain colors, shared by bars and charts.
+// The three choices - always "For", "Against", "Abstain" - and their
+// colors (theme tokens: CSS var for the page, the name for charts).
 export const CHOICE = [
-  { key: 'for', label: 'For', color: 'var(--vx-success)' },
-  { key: 'against', label: 'Against', color: 'var(--vx-danger)' },
-  { key: 'abstain', label: 'Abstain', color: 'var(--vx-quaternary-color)' }
+  { key: 'for', label: 'For', token: 'success' },
+  { key: 'against', label: 'Against', token: 'danger' },
+  { key: 'abstain', label: 'Abstain', token: 'quaternary-color' }
 ] as const;
-export const choiceColor = (choice: string | null | undefined) =>
-  CHOICE.find(c => c.key === choice)?.color;
+export type ChoiceKey = (typeof CHOICE)[number]['key'];
+const cssColor = (token: string) => `var(--vx-${token})`;
+const choiceOf = (key: string | null | undefined) =>
+  CHOICE.find(c => c.key === key);
+
+/** A choice as the UI shows it everywhere: its color dot and label, with
+ *  an optional amount after ("For ◎142.8M", "Abstain 99.5%"). */
+export const ChoiceTag = ({
+  choice,
+  children
+}: {
+  choice: ChoiceKey;
+  children?: ReactNode;
+}) => {
+  const c = choiceOf(choice)!;
+  return (
+    <span className="text-nowrap">
+      <span
+        className="d-inline-block rounded-circle me-1 align-middle"
+        style={{ width: 8, height: 8, background: cssColor(c.token) }}
+      />
+      <span className="fw-semibold">{c.label}</span>
+      {children != null && (
+        <span className="font-monospace ms-1">{children}</span>
+      )}
+    </span>
+  );
+};
 
 /**
- * A for / against / abstain bar (with `notVoted`, the stake that didn't
+ * A For / Against / Abstain bar (with `notVoted`, the stake that didn't
  * vote as an empty tail). `threshold`: a mark at that share of the bar.
  */
 export const VoteBar = ({
@@ -120,7 +148,7 @@ export const VoteBar = ({
     v: Math.max(0, tally?.[c.key] ?? 0)
   }));
   const total = parts.reduce((a, p) => a + p.v, 0) + Math.max(0, notVoted ?? 0);
-  if (!total) return <div className="text-body-quaternary fs-10">no votes</div>;
+  if (!total) return <div className="text-body-quaternary fs-10">No votes</div>;
   return (
     <div
       className="position-relative d-flex rounded-1 overflow-hidden bg-body-highlight"
@@ -134,7 +162,10 @@ export const VoteBar = ({
         p.v ? (
           <div
             key={p.key}
-            style={{ width: `${(p.v / total) * 100}%`, background: p.color }}
+            style={{
+              width: `${(p.v / total) * 100}%`,
+              background: cssColor(p.token)
+            }}
           />
         ) : null
       )}
@@ -153,7 +184,8 @@ export const VoteBar = ({
   );
 };
 
-/** A vote: its choice, or a split's parts ("99.5% abstain · 0.5% against"). */
+/** A vote: its choice, or a split's parts, largest first ("Abstain 99.5% ·
+ *  Against 0.5%"). */
 export const VoteChoice = ({
   choice,
   basisPoints
@@ -163,14 +195,10 @@ export const VoteChoice = ({
 }) => {
   if (!choice) return <span className="text-body-quaternary">—</span>;
   if (choice !== 'split' || !basisPoints) {
-    const c = CHOICE.find(x => x.key === choice);
-    return (
-      <span className="fw-semibold" style={{ color: c?.color }}>
-        {c?.label ?? choice}
-      </span>
-    );
+    const c = choiceOf(choice);
+    return c ? <ChoiceTag choice={c.key} /> : <span>{choice}</span>;
   }
-  const parts = CHOICE.map(c => ({ ...c, v: basisPoints[c.key] }))
+  const parts = CHOICE.map(c => ({ key: c.key, v: basisPoints[c.key] }))
     .filter(p => p.v > 0)
     .sort((a, b) => b.v - a.v);
   return (
@@ -178,9 +206,9 @@ export const VoteChoice = ({
       {parts.map((p, i) => (
         <span key={p.key}>
           {i > 0 && <span className="text-body-quaternary"> · </span>}
-          <span style={{ color: p.color }}>
-            {(p.v / 100).toFixed(p.v % 100 ? 1 : 0)}% {p.label.toLowerCase()}
-          </span>
+          <ChoiceTag choice={p.key}>
+            {(p.v / 100).toFixed(p.v % 100 ? 1 : 0)}%
+          </ChoiceTag>
         </span>
       ))}
     </span>

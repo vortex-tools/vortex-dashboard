@@ -8,6 +8,7 @@ import {
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { useAppContext } from 'providers/AppProvider';
+import { CHOICE } from 'components/governance/governance';
 import { GovernanceProposalDetail } from 'providers/vortex-schemas';
 
 echarts.use([
@@ -19,7 +20,7 @@ echarts.use([
 ]);
 
 /**
- * The vote as it came in, hourly: for, against and abstain stacked as
+ * The vote as it came in, hourly: For, Against and Abstain stacked as
  * shares of the snapshot stake (their top is the turnout), with the quorum
  * when the rule has one.
  */
@@ -33,13 +34,7 @@ const TurnoutChart = ({
   quorumShare: number | null;
 }) => {
   const { getThemeColor } = useAppContext();
-  const series = (
-    [
-      ['for', 'For', 'success'],
-      ['against', 'Against', 'danger'],
-      ['abstain', 'Abstain', 'quaternary-color']
-    ] as const
-  ).map(([key, name, color], i) => ({
+  const series = CHOICE.map(({ key, label: name, token: color }, i) => ({
     name,
     type: 'line',
     stack: 'vote',

@@ -9,6 +9,7 @@ import UntrackedState from 'components/common/UntrackedState';
 import TurnoutChart from 'components/governance/TurnoutChart';
 import {
   CHOICE,
+  ChoiceTag,
   PhaseBadge,
   RULE,
   THRESHOLD,
@@ -267,9 +268,9 @@ const GovernanceProposal = () => {
         <Row className="g-3">
           <Col xs={6} lg={3}>
             <StatCard
-              label="For"
+              label="For share"
               value={pct(ruleShare(p))}
-              sublabel={`needs ${pct(THRESHOLD)} of ${p.rule === 'decisive' ? 'for + against' : 'all votes'}`}
+              sublabel={`needs ${pct(THRESHOLD)} of ${p.rule === 'decisive' ? 'For + Against' : 'all votes'}`}
             />
           </Col>
           <Col xs={6} lg={3}>
@@ -311,20 +312,32 @@ const GovernanceProposal = () => {
           />
           <div className="d-flex flex-wrap gap-3 fs-9 mt-2">
             {CHOICE.map(c => (
-              <span key={c.key}>
-                <span
-                  className="d-inline-block rounded-1 me-1 align-middle"
-                  style={{ width: 9, height: 9, background: c.color }}
-                />
-                {c.label}{' '}
-                <span className="font-monospace">
-                  {compactSol(p.tally?.[c.key])}
-                </span>
-              </span>
+              <ChoiceTag key={c.key} choice={c.key}>
+                {compactSol(p.tally?.[c.key])}
+              </ChoiceTag>
             ))}
-            <span className="text-body-tertiary ms-auto">
-              {pct(p.shares?.ofParticipating)} of all votes ·{' '}
-              {pct(p.shares?.ofDecisive)} of for + against
+            <span className="ms-auto text-body-tertiary">
+              For share:{' '}
+              <span
+                className={
+                  p.rule !== 'decisive' ? 'fw-bold text-body' : undefined
+                }
+              >
+                {pct(p.shares?.ofParticipating)} of all votes
+              </span>{' '}
+              ·{' '}
+              <span
+                className={
+                  p.rule === 'decisive' ? 'fw-bold text-body' : undefined
+                }
+              >
+                {pct(p.shares?.ofDecisive)} of For + Against
+              </span>
+              <span>
+                {' '}
+                (bold: what the {rule?.label.toLowerCase() ?? p.rule} rule
+                counts; it needs {pct(THRESHOLD)})
+              </span>
             </span>
           </div>
           {rule && (
@@ -376,7 +389,7 @@ const GovernanceProposal = () => {
           )}
           {(p.simds.length > 0 || p.featureGates.length > 0) && (
             <p className="fs-9 mt-3 mb-0">
-              <span className="text-body-tertiary">A yes vote endorses </span>
+              <span className="text-body-tertiary">A For vote endorses </span>
               {p.simds.map((s, i) => (
                 <span key={s.simd}>
                   {i > 0 && ', '}
@@ -410,7 +423,7 @@ const GovernanceProposal = () => {
           <SectionCard
             title="As the Votes Came In"
             icon="trending-up"
-            info="Hourly: for, against and abstain stacked as shares of the snapshot stake (their top is the turnout), replaying votes and overrides by their timestamps."
+            info="Hourly: For, Against and Abstain stacked as shares of the snapshot stake (their top is the turnout), replaying votes and overrides by their timestamps."
           >
             <TurnoutChart
               timeline={data.timeline}

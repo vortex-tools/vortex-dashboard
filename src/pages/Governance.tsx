@@ -68,8 +68,8 @@ const Governance = () => {
             <tr>
               <th className="ps-3">Proposal</th>
               <th>Status</th>
-              <th style={{ minWidth: '12rem' }}>For · against · abstain</th>
-              <th className="text-end">For</th>
+              <th style={{ minWidth: '12rem' }}>For · Against · Abstain</th>
+              <th className="text-end">For share</th>
               <th className="text-end">Turnout</th>
               <th className="text-end">Validators voted</th>
               <th className="text-end pe-3">Epochs</th>
@@ -138,10 +138,10 @@ const Governance = () => {
       <p className="fs-10 text-body-tertiary mt-3 mb-0">
         Votes are weighted by each validator&apos;s stake in the snapshot epoch,
         after stakers&apos; own votes (overrides). The program records only the
-        tallies; the verdict applies the proposal&apos;s rule - so far the
-        Solana Constitution&apos;s: for at least two thirds of all votes, with a
-        third of the stake voting. For is the share that rule counts; the bar is
-        marked at two thirds.
+        tallies; the verdict applies the proposal&apos;s rule - so far always
+        the Solana Constitution&apos;s: For at least two thirds of all votes
+        (For + Against + Abstain), with a third of the stake voting. For share
+        is the share that rule counts; the bar is marked at two thirds.
       </p>
     </div>
   );
