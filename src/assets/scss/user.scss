@@ -253,7 +253,8 @@ th.leaderboard-sticky-col {
     transform: none;
   }
 }
-.vx-row-in > td {
+.vx-row-in > td,
+.vx-window-in {
   animation: vx-row-in 300ms ease-out;
 }
 
