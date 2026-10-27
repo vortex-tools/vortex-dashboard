@@ -175,8 +175,12 @@ const LiveSlotStrip = ({
   footnoteTitle,
   waiting = 'waiting for the record…',
   lead = LEAD,
-  className = 'bg-body-emphasis rounded border border-translucent p-3 mb-3'
+  onHeldChange,
+  className
 }: {
+  /** Told when playback is held (paused or hovered), e.g. to highlight
+   *  the card the strip sits in. */
+  onHeldChange?: (held: boolean) => void;
   /** How far the playhead trails `recorded`: more than the slots a data
    *  refresh brings at once, so it never has to wait for one. */
   lead?: number;
@@ -197,6 +201,8 @@ const LiveSlotStrip = ({
   footnote?: ReactNode;
   footnoteTitle?: string;
   waiting?: string;
+  /** The strip's own box; by default a bordered card whose border turns
+   *  primary while held. */
   className?: string;
 }) => {
   // How many columns fit the row (it falls off at the edge). A callback
@@ -223,6 +229,11 @@ const LiveSlotStrip = ({
   // pointer); it resumes when the pointer leaves.
   const [hovering, setHovering] = useState(false);
   const held = paused || hovering;
+  const heldRef = useRef(onHeldChange);
+  heldRef.current = onHeldChange;
+  useEffect(() => {
+    heldRef.current?.(held);
+  }, [held]);
   const cursorRef = useRef(cursor);
   cursorRef.current = cursor;
   // Set when a hold ends: fast-forward until back at the present.
@@ -365,7 +376,12 @@ const LiveSlotStrip = ({
   const hoverLeader = hoverCol?.leader ?? null;
 
   return (
-    <div className={className}>
+    <div
+      className={
+        className ??
+        `bg-body-emphasis rounded border p-3 mb-3 ${held ? 'border-primary' : 'border-translucent'}`
+      }
+    >
       <div className="d-flex align-items-center gap-2 mb-2">
         <span
           className={`d-inline-block rounded-circle flex-shrink-0 ${held ? 'bg-body-quaternary' : 'bg-success vx-live-dot'}`}

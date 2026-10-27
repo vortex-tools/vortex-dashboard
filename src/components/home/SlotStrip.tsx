@@ -20,7 +20,9 @@ const LEAD = 16;
 // as a white dot with a ring.
 const CELL: Record<Exclude<SlotKind, 'upcoming'>, StripCell> = {
   fast: { cls: 'bg-success', label: 'block, fast-finalized' },
+  // Its own certificate on the two-round path.
   slow: { cls: 'bg-warning', label: 'block, slow-finalized' },
+  // No certificate of its own: final because a later block on it was.
   block: {
     cls: 'bg-success opacity-50',
     label: 'block, finalized via a later block'
@@ -35,11 +37,13 @@ const CELL: Record<Exclude<SlotKind, 'upcoming'>, StripCell> = {
   },
   noData: { cls: 'bg-body-secondary opacity-50', label: 'no data' }
 };
+// No "finalizing": the playhead trails the newest loaded slot by LEAD,
+// and a block's finalization is known within a couple of slots, so it's
+// all but never drawn (a ring if it is).
 const LEGEND: Array<[string, string]> = [
   [CELL.fast.cls, 'fast-finalized'],
-  [CELL.block.cls, 'via a later block'],
   [CELL.slow.cls, 'slow-finalized'],
-  [CELL.finalizing.cls, 'finalizing'],
+  [CELL.block.cls, 'finalized via a later block'],
   [CELL.skipped.cls, 'skipped']
 ];
 
@@ -120,6 +124,7 @@ const SlotStrip = () => {
     [dir]
   );
 
+  const [held, setHeld] = useState(false);
   if (tip == null) return null;
   return (
     <SectionCard
@@ -127,6 +132,7 @@ const SlotStrip = () => {
       icon="radio"
       linkTo="/status"
       linkLabel="Cluster status"
+      highlight={held}
     >
       <LiveSlotStrip
         recorded={newest}
@@ -143,6 +149,7 @@ const SlotStrip = () => {
         footnoteTitle="Each slot as the chain recorded it - its block or skip, and how the block finalized - shown one per slot-time a little behind the chain."
         waiting="waiting for slots…"
         className=""
+        onHeldChange={setHeld}
       />
     </SectionCard>
   );
