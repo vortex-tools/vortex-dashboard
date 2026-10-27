@@ -2756,27 +2756,39 @@ export const throughputSchema = z.object({
 });
 export type Throughput = z.infer<typeof throughputSchema>;
 
-// ---- Blocks per minute (/cluster/blocks) -------------------------------
-// The block ingestor's blocks bucketed by block time, a minute each,
-// oldest first (the newest may be partial): compute units and income in
+// ---- Blocks over time (/cluster/blocks) --------------------------------
+// The block ingestor's blocks bucketed by block time, oldest first (the
+// newest may be partial): transactions, compute units and income in
 // lamports. 404 where there is no block ingestor (testnet).
-export const clusterBlocksSchema = z.object({
-  windowSecs: z.number().catch(0),
-  readAt: z.number().nullable().catch(null),
-  throughSlot: z.number().nullable().catch(null),
-  minutes: z
-    .array(
-      z.object({
-        t: z.number(),
-        blocks: z.number().catch(0),
-        computeUnits: z.number().catch(0),
-        baseFees: z.number().catch(0),
-        priorityFees: z.number().catch(0),
-        mevTips: z.number().catch(0)
-      })
-    )
-    .catch([])
+const clusterBlockBucketSchema = z.object({
+  t: z.number(),
+  blocks: z.number().catch(0),
+  // Null on APIs before the finer buckets (per-minute `minutes` only).
+  transactions: z.number().nullable().optional().catch(null),
+  computeUnits: z.number().catch(0),
+  baseFees: z.number().catch(0),
+  priorityFees: z.number().catch(0),
+  mevTips: z.number().catch(0)
 });
+// `buckets` of `bucketSecs` each (`?bucket=`); older APIs answer
+// per-minute `minutes`, read as 60 s buckets.
+export const clusterBlocksSchema = z.preprocess(
+  raw => {
+    const r = (raw ?? {}) as Record<string, unknown>;
+    return {
+      ...r,
+      buckets: r.buckets ?? r.minutes,
+      bucketSecs: r.bucketSecs ?? 60
+    };
+  },
+  z.object({
+    windowSecs: z.number().catch(0),
+    bucketSecs: z.number().catch(60),
+    readAt: z.number().nullable().catch(null),
+    throughSlot: z.number().nullable().catch(null),
+    buckets: z.array(clusterBlockBucketSchema).catch([])
+  })
+);
 export type ClusterBlocks = z.infer<typeof clusterBlocksSchema>;
 
 // ---- Halt run-up (/cluster/halt) ----------------------------------------

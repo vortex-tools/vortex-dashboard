@@ -129,13 +129,45 @@ const ThroughputCard = () => {
   });
   const data = slice?.data.get(win);
   const points = useMemo(() => data?.points ?? [], [data]);
-  // Whole minutes only: the newest stored minute is usually still
-  // filling (ingest runs behind the clock, so it can be partial even
-  // minutes ago) - always left off.
-  const minutes = useMemo(
-    () => (blocksData?.minutes ?? []).slice(0, -1),
+  // Whole buckets only: the newest stored one is usually still filling
+  // (ingest runs behind the clock, so it can be partial even minutes
+  // ago) - always left off.
+  const bucketSecs = blocksData?.bucketSecs ?? 60;
+  const buckets = useMemo(
+    () => (blocksData?.buckets ?? []).slice(0, -1),
     [blocksData]
   );
+  // TPS history from the block buckets when they count transactions
+  // (exact, and as fine as the buckets), else the per-minute samples.
+  const tpsFromBlocks =
+    buckets.length > 0 && buckets.every(b => b.transactions != null);
+  // Income is a per-minute figure: its buckets summed into whole minutes.
+  const minutes = useMemo(() => {
+    if (bucketSecs >= 60) return buckets;
+    const per = Math.round(60 / bucketSecs);
+    const byMin = new Map<number, (typeof buckets)[number] & { n: number }>();
+    for (const b of buckets) {
+      const t = Math.floor(b.t / 60) * 60;
+      const m = byMin.get(t) ?? {
+        ...b,
+        t,
+        blocks: 0,
+        computeUnits: 0,
+        baseFees: 0,
+        priorityFees: 0,
+        mevTips: 0,
+        n: 0
+      };
+      m.blocks += b.blocks;
+      m.computeUnits += b.computeUnits;
+      m.baseFees += b.baseFees;
+      m.priorityFees += b.priorityFees;
+      m.mevTips += b.mevTips;
+      m.n += 1;
+      byMin.set(t, m);
+    }
+    return [...byMin.values()].filter(m => m.n === per);
+  }, [buckets, bucketSecs]);
   // Block metrics are offered once block data has loaded.
   const offered = hasBlocks ? METRICS : METRICS.slice(0, 1);
   const shown: Metric = hasBlocks ? metric : 'tps';
@@ -151,7 +183,14 @@ const ThroughputCard = () => {
   // the epoch's slot time (block times are whole seconds).
   // Income is a per-minute figure: always over a full minute (scaling a
   // 10 s span up would read one large tip as a minute's worth).
-  const span = win === '1m' && metric !== 'income' ? 10 : 60;
+  const span =
+    metric === 'income'
+      ? 60
+      : win === '1m'
+        ? 10
+        : metric === 'cu' || tpsFromBlocks
+          ? bucketSecs
+          : 60;
   const slotSecs =
     context?.currentEpochState.progress?.slotSeconds ?? DEFAULT_SLOT_SECS;
   const spanSlots = Math.max(1, Math.round(span / slotSecs));
@@ -246,7 +285,8 @@ const ThroughputCard = () => {
 
   // Remounted (drawn at once, not animated) on a metric or window switch
   // and when that window's history arrives, so only live updates animate.
-  const historyLoaded = shown === 'tps' ? !!data : !!blocksData;
+  const historyLoaded =
+    shown === 'tps' && !tpsFromBlocks ? !!data : !!blocksData;
 
   const primary = getThemeColor('primary');
   const view = useMemo(() => {
@@ -256,9 +296,16 @@ const ThroughputCard = () => {
       xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0;
     if (shown === 'tps') {
       const data: Array<[number, number]> = [
-        ...points
-          .filter(p => keep(p.t))
-          .map((p): [number, number] => [p.t, p.tps]),
+        ...(tpsFromBlocks
+          ? buckets
+              .filter(b => keep(b.t + bucketSecs))
+              .map((b): [number, number] => [
+                b.t + bucketSecs,
+                (b.transactions ?? 0) / bucketSecs
+              ])
+          : points
+              .filter(p => keep(p.t))
+              .map((p): [number, number] => [p.t, p.tps])),
         ...rolling.map((w): [number, number] => [w.end, w.tx / spanSecs])
       ];
       if (!data.length) return null;
@@ -281,15 +328,17 @@ const ThroughputCard = () => {
         xRange: bars ? ([bars.from, bars.to] as [number, number]) : undefined
       };
     }
-    // Block metrics: the per-minute buckets (at each minute's end), then
-    // the live part.
+    // Block metrics: the buckets (at each one's end) - whole minutes for
+    // income - then the live part.
     const hist = minutes.filter(m => keep(m.t + 60));
     if (shown === 'cu') {
       const data: Array<[number, number]> = [
-        ...hist.map((m): [number, number] => [
-          m.t + 60,
-          m.blocks ? m.computeUnits / m.blocks : 0
-        ]),
+        ...buckets
+          .filter(b => keep(b.t + bucketSecs))
+          .map((b): [number, number] => [
+            b.t + bucketSecs,
+            b.blocks ? b.computeUnits / b.blocks : 0
+          ]),
         ...rolling.map((w): [number, number] => [
           w.end,
           w.blocks ? w.cu / w.blocks : 0
@@ -361,6 +410,9 @@ const ThroughputCard = () => {
   }, [
     shown,
     points,
+    buckets,
+    bucketSecs,
+    tpsFromBlocks,
     minutes,
     rolling,
     bars,
