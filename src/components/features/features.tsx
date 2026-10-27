@@ -17,11 +17,13 @@ export const CLUSTERS = [
 export const clusterLabel = (key: string | null | undefined) =>
   CLUSTERS.find(c => c.key === key)?.label ?? key ?? '—';
 
-/** A gate's name without its SIMD prefix ("SIMD-0512: SHA512 Syscall"
- *  -> "SHA512 Syscall"; "SIMD-0437-3: ..." too): the SIMD has its own
- *  column and link. */
-export const gateName = (name: string) =>
-  name.replace(/^SIMD-?\d+(-\d+)?\s*:\s*/i, '') || name;
+/** A gate's name without its SIMD prefix, the SIMD having its own column
+ *  and link: "SIMD-0512: SHA512 Syscall", "SIMD-0437-3: ...",
+ *  "SIMD-0178/0189/0377: ...", "SIMD-0340 validate ..." (capitalized). */
+export const gateName = (name: string) => {
+  const rest = name.replace(/^SIMD-?\d+(?:[-/]\d+)*(?:\s*:\s*|\s+)/i, '');
+  return rest ? rest[0].toUpperCase() + rest.slice(1) : name;
+};
 
 /** The tracker's title, else agave's name, else the id. */
 export const featureName = (f: Pick<FeatureGate, 'id' | 'name' | 'title'>) => {
@@ -45,6 +47,36 @@ export const SimdLinks = ({ simds }: { simds: number[] }) =>
   ) : (
     <span className="text-body-quaternary">—</span>
   );
+
+/** Why a gate needs no SIMD, short, for a table's SIMD column. */
+const EXEMPT_SHORT: Record<string, string> = {
+  'pre-simd': 'pre-SIMD',
+  implementation: 'implementation',
+  rollout: 'rollout',
+  'security-toggle': 'security toggle'
+};
+
+/** A gate's SIMD column: its SIMDs, else (gray) why it needs none. */
+export const SimdCell = ({
+  f
+}: {
+  f: Pick<FeatureGate, 'simds' | 'simdExempt' | 'simdExemptReason'>;
+}) => {
+  if (f.simds.length || !f.simdExempt) return <SimdLinks simds={f.simds} />;
+  const reason = f.simdExemptReason ?? null;
+  return (
+    <span
+      className="text-body-tertiary text-nowrap"
+      title={
+        reason && SIMD_EXEMPT_REASON[reason]
+          ? `No SIMD needed: it ${SIMD_EXEMPT_REASON[reason]}`
+          : 'No SIMD needed (most such gates predate the SIMD process)'
+      }
+    >
+      {(reason && EXEMPT_SHORT[reason]) ?? 'not needed'}
+    </span>
+  );
+};
 
 /** A place in the tracker's queue: "Next in line", "2nd in line". */
 export const inLine = (position: number) => {

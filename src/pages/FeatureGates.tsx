@@ -12,7 +12,7 @@ import {
   CLUSTERS,
   MinVersions,
   ReadinessBar,
-  SimdLinks,
+  SimdCell,
   StatusChip,
   clusterLabel,
   featureName,
@@ -99,8 +99,8 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
   {
     id: 'simd',
     header: 'SIMD',
-    accessorFn: f => f.simds[0] ?? 0,
-    cell: ({ row: { original: f } }) => <SimdLinks simds={f.simds} />,
+    accessorFn: f => f.simds[0] ?? (f.simdExempt ? -1 : 0),
+    cell: ({ row: { original: f } }) => <SimdCell f={f} />,
     meta: NOWRAP
   },
   {
@@ -323,7 +323,7 @@ const FeatureGates = () => {
                           : i + 1}
                       </td>
                       <td className="text-nowrap">
-                        <SimdLinks simds={f.simds} />
+                        <SimdCell f={f} />
                       </td>
                       <td>
                         <Link

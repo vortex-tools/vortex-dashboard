@@ -90,18 +90,6 @@ const columns = (served: string): ColumnDef<SimdSummary>[] => [
     },
     meta: NOWRAP
   },
-  {
-    id: 'status',
-    header: 'Repo status',
-    accessorFn: s => s.repoStatus ?? '',
-    cell: ({ row: { original: s } }) =>
-      s.repoStatus ? (
-        <span className="text-body-secondary">{s.repoStatus}</span>
-      ) : (
-        <span className="text-body-quaternary">—</span>
-      ),
-    meta: NOWRAP
-  },
   ...[...CLUSTERS]
     .sort((a, b) => Number(b.key === served) - Number(a.key === served))
     .map(
@@ -243,7 +231,7 @@ const Simds = () => {
           <SectionCard
             title="All SIMDs"
             icon="file-text"
-            info="Every proposal in the SIMD repository, read hourly, and SIMDs only an open pull request proposes. A cluster's column covers the gates that implement the SIMD: active once all are, partly active while some are. Repo status is the proposal's own front matter, kept by hand and often behind the chain."
+            info="Every proposal in the SIMD repository, read hourly, and SIMDs only an open pull request proposes. A cluster's column covers the gates that implement the SIMD: active once all are, partly active while some are."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
