@@ -3,6 +3,8 @@ import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';
 import FeatherIcon from 'feather-icons-react';
 import StatCard from 'components/common/StatCard';
+import SlotStrip from 'components/home/SlotStrip';
+import WhatsNext from 'components/home/WhatsNext';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import { formatLamports } from 'helpers/utils';
 import useRefreshOnce from 'hooks/useRefreshOnce';
@@ -44,6 +46,24 @@ const useTickingSlot = (progress: EpochProgress | null, halted: boolean) => {
     SLOT_TICK_MAX_MS
   );
   return progress.absoluteSlot + Math.floor(elapsed / slotMs);
+};
+
+const FAMILY_NAME: Record<string, string> = {
+  agave: 'Agave',
+  firedancer: 'Firedancer',
+  frankendancer: 'Frankendancer',
+  solanaLabs: 'Solana Labs',
+  sig: 'Sig'
+};
+
+/** "◎437.7M". */
+const compactSol = (lamports: number) => {
+  const sol = lamports / 1e9;
+  return sol >= 1e6
+    ? `◎${(sol / 1e6).toFixed(1)}M`
+    : sol >= 1e3
+      ? `◎${(sol / 1e3).toFixed(1)}K`
+      : `◎${Math.round(sol)}`;
 };
 
 const LeaderboardCard = ({
@@ -104,7 +124,7 @@ const Home = () => {
     }
   );
 
-  const { blockIncomeTracked } = useCluster();
+  const { blockIncomeTracked, isTestnet } = useCluster();
   const totals =
     live.totals && live.totals.epoch === currentEpoch ? live.totals : null;
   // Counters count up to each refreshed figure over the refresh interval:
@@ -137,10 +157,10 @@ const Home = () => {
   // Active = staked and not delinquent, from the same summary as the
   // Validators page (a cluster-wide count, not just this epoch's leaders).
   const fetchSummary = context?.validatorStatusSummaryState.fetchData;
-  const needSummary = live.loaded && live.totals?.activeValidators == null;
+  // Stake, decentralization and the client mix come from the summary.
   useEffect(() => {
-    if (needSummary) fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
-  }, [needSummary, fetchSummary]);
+    fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
+  }, [fetchSummary]);
   const summary = context?.validatorStatusSummaryState.data.get(
     VALIDATOR_STATUS_SUMMARY_KEY
   );
@@ -157,6 +177,37 @@ const Home = () => {
             staked: summary.validators.length
           }
         : undefined;
+
+  // The cluster snapshot's second row, from the status summary.
+  const snapshot = useMemo(() => {
+    if (!summary?.validators.length) return null;
+    const vs = summary.validators;
+    const total = vs.reduce((a, v) => a + v.activatedStake, 0);
+    if (!total) return null;
+    const delinquent = vs
+      .filter(v => v.delinquent)
+      .reduce((a, v) => a + v.activatedStake, 0);
+    // Nakamoto: the fewest validators together over a third of the stake.
+    const stakes = vs.map(v => v.activatedStake).sort((a, b) => b - a);
+    let sum = 0;
+    let nakamoto = 0;
+    for (const st of stakes) {
+      if (sum > total / 3) break;
+      sum += st;
+      nakamoto++;
+    }
+    const byFamily = new Map<string, number>();
+    for (const v of vs) {
+      const f = v.software?.family ?? 'unknown';
+      byFamily.set(f, (byFamily.get(f) ?? 0) + v.activatedStake);
+    }
+    const families = [...byFamily.entries()]
+      .filter(([f]) => f !== 'unknown')
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([f, st]) => ({ family: f, share: st / total }));
+    return { total, delinquentShare: delinquent / total, nakamoto, families };
+  }, [summary]);
 
   // Without block data (testnet), the validator KPIs come from the
   // Alpenglow participation leaderboard instead.
@@ -225,6 +276,10 @@ const Home = () => {
       ? totals.blocksProduced / totals.processedSlots / slotSeconds
       : null;
   const trailing = useTrailingTotals(latest, countMs, blocksPerSec);
+  const skipRate =
+    totals?.processedSlots && totals.skippedSlots != null
+      ? totals.skippedSlots / totals.processedSlots
+      : null;
   const halt = useClusterHalt();
   // Halted: the halted chain's last slot (the epoch reading can show the
   // restart snapshot's slot once our node has restarted onto it).
@@ -234,12 +289,10 @@ const Home = () => {
   return (
     <div>
       <div className="mb-9">
-        {/* Hero + search */}
-        {/* mt-5: the content no longer pads 2rem under the top bar (the
-            breadcrumb bar sits flush there), and the hero has none. */}
-        <div className="text-center py-5 mt-5 mb-4">
-          <h2 className="mb-2">Welcome to Vortex</h2>
-          <p className="text-body-tertiary mb-4">
+        {/* Search, then the cluster at a glance. */}
+        <div className="text-center pt-5 mt-3 mb-4">
+          <h2 className="mb-1">Vortex</h2>
+          <p className="text-body-tertiary mb-3">
             Solana validator performance, vote quality, and block income.
           </p>
           <div className="mx-auto" style={{ maxWidth: '40rem' }}>
@@ -247,8 +300,24 @@ const Home = () => {
           </div>
         </div>
 
-        {/* KPI strip */}
         <Row className="g-3 mb-3">
+          <Col xs={6} md={3}>
+            <StatCard
+              label="Status"
+              mono={false}
+              value={live.loaded ? (halt ? 'Halted' : 'Running') : '—'}
+              check={live.loaded && !halt ? true : null}
+              alert={!!halt}
+              sublabel={
+                halt
+                  ? `since ${formatDuration(Date.now() / 1000 - halt.since)} ago`
+                  : skipRate != null
+                    ? `skip rate ${(skipRate * 100).toFixed(1)}% this epoch`
+                    : undefined
+              }
+              linkTo="/status"
+            />
+          </Col>
           <Col xs={6} md={3}>
             <StatCard
               label="Current Epoch"
@@ -278,60 +347,99 @@ const Home = () => {
               linkTo="/status"
             />
           </Col>
-          {blockIncomeTracked ? (
-            <>
-              <Col xs={6} md={3}>
-                <StatCard
-                  label="Active Validators"
-                  value={active ? active.active.toLocaleString() : '—'}
-                  sublabel={
-                    active
-                      ? `of ${active.staked.toLocaleString()} staked`
-                      : undefined
-                  }
-                  linkTo="/validators"
-                />
-              </Col>
-              <Col xs={6} md={3}>
-                <StatCard
-                  label="Total Epoch Revenue"
-                  value={
-                    trailing.revenue != null
-                      ? formatLamports(trailing.revenue, 2)
-                      : '—'
-                  }
-                  sublabel="block fees + MEV tips, so far"
-                />
-              </Col>
-            </>
-          ) : (
-            <>
-              <Col xs={6} md={3}>
-                <StatCard
-                  label="In Consensus"
-                  value={
-                    consensusKpis
-                      ? `${consensusKpis.admitted.toLocaleString()} / ${consensusKpis.validators.toLocaleString()}`
-                      : '—'
-                  }
-                  sublabel="validators admitted this epoch"
-                  linkTo="/leaderboards/consensus"
-                />
-              </Col>
-              <Col xs={6} md={3}>
-                <StatCard
-                  label="Consensus Participation"
-                  value={
-                    consensusKpis?.participation != null
-                      ? `${(consensusKpis.participation * 100).toFixed(2)}%`
-                      : '—'
-                  }
-                  sublabel="of admitted stake"
-                  linkTo="/leaderboards/consensus"
-                />
-              </Col>
-            </>
-          )}
+          <Col xs={6} md={3}>
+            {blockIncomeTracked ? (
+              <StatCard
+                label="Epoch Revenue"
+                value={
+                  trailing.revenue != null
+                    ? formatLamports(trailing.revenue, 2)
+                    : '—'
+                }
+                sublabel="block fees + MEV tips, so far"
+                linkTo="/leaderboards/block-income"
+              />
+            ) : (
+              <StatCard
+                label="Consensus Participation"
+                value={
+                  consensusKpis?.participation != null
+                    ? `${(consensusKpis.participation * 100).toFixed(2)}%`
+                    : '—'
+                }
+                sublabel="of admitted stake"
+                linkTo="/leaderboards/consensus"
+              />
+            )}
+          </Col>
+          <Col xs={6} md={3}>
+            <StatCard
+              label="Active Stake"
+              value={snapshot ? compactSol(snapshot.total) : '—'}
+              sublabel={
+                snapshot
+                  ? `${(snapshot.delinquentShare * 100).toFixed(2)}% delinquent`
+                  : undefined
+              }
+              tone={
+                snapshot && snapshot.delinquentShare > 0.05
+                  ? 'warning'
+                  : undefined
+              }
+              linkTo="/validators"
+            />
+          </Col>
+          <Col xs={6} md={3}>
+            <StatCard
+              label="Validators"
+              value={
+                active
+                  ? `${active.active.toLocaleString()} / ${active.staked.toLocaleString()}`
+                  : '—'
+              }
+              sublabel={
+                consensusKpis
+                  ? `active of staked · ${consensusKpis.admitted.toLocaleString()} in consensus`
+                  : 'active of staked'
+              }
+              linkTo="/validators"
+            />
+          </Col>
+          <Col xs={6} md={3}>
+            <StatCard
+              label="Nakamoto Coefficient"
+              value={snapshot ? snapshot.nakamoto.toLocaleString() : '—'}
+              sublabel="fewest validators to halt consensus"
+              wrapSublabel
+              linkTo="/decentralization"
+            />
+          </Col>
+          <Col xs={6} md={3}>
+            <StatCard
+              label="Clients"
+              mono={false}
+              value={
+                snapshot?.families[0]
+                  ? `${FAMILY_NAME[snapshot.families[0].family] ?? snapshot.families[0].family} ${Math.round(snapshot.families[0].share * 100)}%`
+                  : '—'
+              }
+              sublabel={
+                snapshot?.families[1]
+                  ? `${FAMILY_NAME[snapshot.families[1].family] ?? snapshot.families[1].family} ${Math.round(snapshot.families[1].share * 100)}% of stake`
+                  : 'of stake'
+              }
+              linkTo={isTestnet ? '/decentralization' : '/client-versions'}
+            />
+          </Col>
+        </Row>
+
+        <Row className="g-3 mb-3">
+          <Col xs={12} lg={8}>
+            <SlotStrip />
+          </Col>
+          <Col xs={12} lg={4}>
+            <WhatsNext />
+          </Col>
         </Row>
 
         {/* Leaderboard quick-launch. On Alpenglow clusters the consensus
@@ -340,14 +448,6 @@ const Home = () => {
         <Row className="g-3">
           {alpenglowActive ? (
             <>
-              <Col xs={12}>
-                <LeaderboardCard
-                  title="Cluster Status"
-                  description="The cluster's latest slots as they happen: skips, votes, finalization. Jump into any slot."
-                  linkTo="/status"
-                  icon="radio"
-                />
-              </Col>
               <Col xs={12} md={6}>
                 <LeaderboardCard
                   title="Consensus Leaderboard"
