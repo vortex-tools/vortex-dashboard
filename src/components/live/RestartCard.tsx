@@ -35,7 +35,14 @@ const startStage = (p: string) =>
  * stake moving onto a new version; the cluster resumes once one version
  * holds the supermajority (80%) of all activated stake.
  */
-const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
+const RestartCard = ({
+  halt,
+  announcedShredVersion = null
+}: {
+  halt: ClusterHalt;
+  /** The new shred version the restart announcement names, if any. */
+  announcedShredVersion?: number | null;
+}) => {
   const r = halt.restart;
   if (!r) return null;
   const need = r.supermajority;
@@ -123,6 +130,13 @@ const RestartCard = ({ halt }: { halt: ClusterHalt }) => {
                         · the halted version
                       </span>
                     )}
+                    {v.shredVersion === announcedShredVersion &&
+                      v.shredVersion !== r.haltedShredVersion && (
+                        <span className="text-body-tertiary fw-normal">
+                          {' '}
+                          · the announced version
+                        </span>
+                      )}
                   </>
                 ) : (
                   'Not in gossip'

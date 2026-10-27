@@ -4,6 +4,7 @@ import { formatDuration } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
 import { Link } from 'react-router';
 import { useClusterHalt } from 'hooks/useIngestion';
+import useRestartAnnouncement from 'hooks/useRestartAnnouncement';
 
 const CLUSTER_NAME: Record<string, string> = {
   'mainnet-beta': 'Mainnet',
@@ -20,6 +21,7 @@ const CLUSTER_NAME: Record<string, string> = {
 const ClusterHaltBanner = () => {
   const halt = useClusterHalt();
   const { cluster } = useCluster();
+  const post = useRestartAnnouncement(halt);
   if (!halt) return null;
   const progress = halt.restart ? restartProgress(halt.restart) : null;
   const name = (cluster && CLUSTER_NAME[cluster]) ?? 'The cluster';
@@ -56,6 +58,20 @@ const ClusterHaltBanner = () => {
           ) : (
             ' No restart visible yet (observer on the old version).'
           ))}
+        {post && (
+          <>
+            {' '}
+            A restart has been{' '}
+            {post.url ? (
+              <a href={post.url} target="_blank" rel="noreferrer">
+                announced
+              </a>
+            ) : (
+              'announced'
+            )}
+            : <Link to="/status">instructions</Link>.
+          </>
+        )}
       </span>
     </div>
   );

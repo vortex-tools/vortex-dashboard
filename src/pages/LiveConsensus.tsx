@@ -16,7 +16,9 @@ import UntrackedState from 'components/common/UntrackedState';
 import { fetchSlots } from 'helpers/slotContext';
 import useConsensus from 'hooks/useConsensus';
 import HaltRunUpCard from 'components/live/HaltRunUpCard';
+import RestartAnnouncementCard from 'components/live/RestartAnnouncementCard';
 import RestartCard from 'components/live/RestartCard';
+import useRestartAnnouncement from 'hooks/useRestartAnnouncement';
 import { formatDuration as duration } from 'helpers/utils';
 import { clusterHaltOf, useEpochLive } from 'hooks/useIngestion';
 import useLiveConsensus from 'hooks/useLiveConsensus';
@@ -140,6 +142,7 @@ const LiveConsensus = () => {
   }, []);
   const p = live.progress;
   const halt = clusterHaltOf(live, now);
+  const restartPost = useRestartAnnouncement(halt);
   const chainTip =
     p?.absoluteSlot != null
       ? p.readAt != null && p.slotSeconds
@@ -576,7 +579,15 @@ const LiveConsensus = () => {
           onToggle={togglePlay}
           onStep={step}
         />
-        {halt?.restart && <RestartCard halt={halt} />}
+        {restartPost && <RestartAnnouncementCard post={restartPost} />}
+        {halt?.restart && (
+          <RestartCard
+            halt={halt}
+            announcedShredVersion={
+              restartPost?.restart?.expectedShredVersion ?? null
+            }
+          />
+        )}
         {halt && <HaltRunUpCard halt={halt} nameOf={nameOf} />}
         {/* A halt is already said above every page (ClusterHaltBanner). */}
         {stuck && !halt && (
