@@ -791,13 +791,9 @@ const throughputRequest = (window: string) => ({
   timeout: 20_000
 });
 // Blocks per minute (CUs, income) by window; 404 on testnet.
-// Bucket size per window (the API allows up to 720 points; Home's live
-// stats use 6h at 30 s).
-const CLUSTER_BLOCKS_BUCKET: Record<string, string> = {
-  '30m': '10s',
-  '2h': '30s',
-  '6h': '30s'
-};
+// Bucket size per window: Home's live stats use only 6h, at 30 s (the
+// API's 720-point maximum).
+const CLUSTER_BLOCKS_BUCKET: Record<string, string> = { '6h': '30s' };
 const clusterBlocksRequest = (window: string) => ({
   path: '/cluster/blocks',
   params: CLUSTER_BLOCKS_BUCKET[window]
