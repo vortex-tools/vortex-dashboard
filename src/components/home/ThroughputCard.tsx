@@ -38,7 +38,7 @@ const INFO: Record<Metric, string> = {
   tps: "Transactions per second, a point per minute, from the cluster's performance samples (there is no finer source). Under Alpenglow votes aren't transactions, so every one counted is a user transaction. Refreshed every minute.",
   cu: 'Compute units used per block, averaged over each minute of block time, against the block limit. From the block ingestor; refreshed every minute.',
   income:
-    "Every block's fees (base + priority) and MEV tips, summed per minute of block time. From the block ingestor; refreshed every minute."
+    "What leaders earned from their blocks, summed per minute of block time: fees (the leader's share of base fees after the burn, plus priority fees) and MEV tips. From the block ingestor; refreshed every minute; the minute still filling is left off."
 };
 
 // The block compute-unit limit, a protocol constant (100M since SIMD-0286
@@ -105,14 +105,13 @@ const ThroughputCard = () => {
   });
   const data = slice?.data.get(win);
   const points = useMemo(() => data?.points ?? [], [data]);
-  // Whole minutes only: the newest may still be filling.
-  const minutes = useMemo(() => {
-    const m = blocksData?.minutes ?? [];
-    const readAt = blocksData?.readAt;
-    return readAt != null && m.length && m[m.length - 1].t + 60 > readAt
-      ? m.slice(0, -1)
-      : m;
-  }, [blocksData]);
+  // Whole minutes only: the newest stored minute is usually still
+  // filling (ingest runs behind the clock, so it can be partial even
+  // minutes ago) - always left off.
+  const minutes = useMemo(
+    () => (blocksData?.minutes ?? []).slice(0, -1),
+    [blocksData]
+  );
   // Block metrics are offered once block data has loaded.
   const offered = hasBlocks ? METRICS : METRICS.slice(0, 1);
   const shown: Metric = hasBlocks ? metric : 'tps';
