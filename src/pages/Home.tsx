@@ -75,7 +75,10 @@ const ClientSplitBar = ({
     >
       <span className="bg-primary" style={{ width: `${agave * 100}%` }} />
       <span style={{ width: `${other * 100}%` }} />
-      <span className="bg-info" style={{ width: `${firedancer * 100}%` }} />
+      <span
+        className="bg-client-firedancer"
+        style={{ width: `${firedancer * 100}%` }}
+      />
     </span>
     <span className="d-flex justify-content-between gap-2 mt-1">
       <span>Agave</span>
@@ -341,7 +344,7 @@ const Home = () => {
                     <span className="text-primary">
                       {pctShare(snapshot.clients.agave)}
                     </span>
-                    <span className="text-info">
+                    <span className="text-client-firedancer">
                       {pctShare(snapshot.clients.firedancer)}
                     </span>
                   </span>

@@ -26,6 +26,8 @@ $body-highlight-bg: ink(100) !default;
   --#{$prefix}vote-for: #3f9f5c;
   --#{$prefix}vote-against: #d4573f;
   --#{$prefix}vote-abstain: #{ink(400)};
+  // Clients: Firedancer's teal (Agave takes the accent).
+  --#{$prefix}client-firedancer: rgb(26 153 131);
 
   --#{$prefix}navbar-top-height: #{$vx-topbar-height};
   --#{$prefix}topbar-bg: #{$accent-50};
@@ -65,6 +67,8 @@ $body-highlight-bg: ink(100) !default;
   --#{$prefix}vote-for: #4daa69;
   --#{$prefix}vote-against: #dc6650;
   --#{$prefix}vote-abstain: #{ink(600)};
+  // Lifted a step to hold its contrast on the dark surfaces.
+  --#{$prefix}client-firedancer: rgb(52 189 164);
   --#{$prefix}warning-light: #{$warning};
   --#{$prefix}danger-light: #{$danger};
 

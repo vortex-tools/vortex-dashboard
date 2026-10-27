@@ -272,6 +272,14 @@ th.leaderboard-sticky-col {
   background-color: #bfd3c0 !important;
 }
 
+// Firedancer, wherever clients are told apart by color (Home's split).
+.bg-client-firedancer {
+  background-color: var(--vx-client-firedancer) !important;
+}
+.text-client-firedancer {
+  color: var(--vx-client-firedancer) !important;
+}
+
 // Live voting strip (LiveVoteStrip): the row slides (inline transform);
 // each new leader-window column fades in under the "now" backing, dots
 // fill in rather than pop, and the oldest columns fade out at the edge.
