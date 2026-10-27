@@ -1,5 +1,8 @@
 import SectionCard from 'components/common/SectionCard';
-import LiveSlotStrip, { StripCell } from 'components/live/LiveSlotStrip';
+import LiveSlotStrip, {
+  StripCell,
+  StripLook
+} from 'components/live/LiveSlotStrip';
 import { SlotKind, slotKind } from 'components/live/slotDots';
 import { fetchSlots, noteIngestTip } from 'helpers/slotContext';
 import { useClusterHalt, useEpochLive } from 'hooks/useIngestion';
@@ -20,6 +23,9 @@ const SPAN = 512;
 /** Slots this close to the tip are refetched while still missing their
  *  outcome or (a block) finalization. */
 const REFETCH_DEPTH = 64;
+
+// Room for more than dots here: slightly bigger blocks, spaced wider.
+const LOOK: StripLook = { size: 14, gap: 5, shape: 'block' };
 
 /** Polled this often: the strip's data refresh. */
 const POLL_MS = 2_000;
@@ -186,6 +192,7 @@ const SlotStrip = () => {
           className=""
           onHeldChange={setHeld}
           headerless
+          look={LOOK}
         />
       </div>
     </SectionCard>

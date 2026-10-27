@@ -1,6 +1,8 @@
 import FeatherIcon from 'feather-icons-react';
 import {
+  createContext,
   CSSProperties,
+  useContext,
   ReactNode,
   useEffect,
   useLayoutEffect,
@@ -12,6 +14,7 @@ import { Link } from 'react-router';
 
 const WINDOW = 4;
 // Dot size and the gap between columns (px): how many columns fit.
+// Defaults; a strip can draw bigger cells (`look`).
 const DOT = 10;
 const COL_GAP = 4;
 // The playhead aims to stay this far behind the newest recorded slot (by
@@ -51,12 +54,22 @@ type Col = {
   cells: Array<{ slot: number; cell: StripCell }>;
 };
 
-export const StripDot = ({ cls }: { cls: string }) => (
-  <span
-    className={`vx-dot d-inline-block rounded-circle ${cls}`}
-    style={{ width: DOT, height: DOT }}
-  />
-);
+/** How a strip's cells are drawn: size, gap, and dots or blocks. */
+export type StripLook = { size: number; gap: number; shape: 'dot' | 'block' };
+const DEFAULT_LOOK: StripLook = { size: DOT, gap: COL_GAP, shape: 'dot' };
+const LookContext = createContext<StripLook>(DEFAULT_LOOK);
+const roundOf = (shape: StripLook['shape']) =>
+  shape === 'block' ? 'rounded-1' : 'rounded-circle';
+
+export const StripDot = ({ cls }: { cls: string }) => {
+  const look = useContext(LookContext);
+  return (
+    <span
+      className={`vx-dot d-inline-block ${roundOf(look.shape)} ${cls}`}
+      style={{ width: look.size, height: look.size }}
+    />
+  );
+};
 
 const Column = ({
   col,
@@ -68,26 +81,29 @@ const Column = ({
   className?: string;
   hoverSlot: number | null;
   onHover: (slot: number | null) => void;
-}) => (
-  <div
-    data-col={col.start}
-    className={`position-relative d-flex flex-column flex-shrink-0 ${className}`}
-    style={{ gap: COL_GAP }}
-  >
-    {col.cells.map(({ slot, cell }) => (
-      <Link
-        key={slot}
-        to={`/slot/${slot}`}
-        className={`d-inline-flex rounded-circle${slot === hoverSlot ? ' vx-dot-hover' : ''}`}
-        aria-label={`Slot ${slot.toLocaleString()}: ${cell.label}`}
-        onMouseEnter={() => onHover(slot)}
-        onFocus={() => onHover(slot)}
-      >
-        <StripDot cls={cell.cls} />
-      </Link>
-    ))}
-  </div>
-);
+}) => {
+  const look = useContext(LookContext);
+  return (
+    <div
+      data-col={col.start}
+      className={`position-relative d-flex flex-column flex-shrink-0 ${className}`}
+      style={{ gap: look.gap }}
+    >
+      {col.cells.map(({ slot, cell }) => (
+        <Link
+          key={slot}
+          to={`/slot/${slot}`}
+          className={`d-inline-flex ${roundOf(look.shape)}${slot === hoverSlot ? ' vx-dot-hover' : ''}`}
+          aria-label={`Slot ${slot.toLocaleString()}: ${cell.label}`}
+          onMouseEnter={() => onHover(slot)}
+          onFocus={() => onHover(slot)}
+        >
+          <StripDot cls={cell.cls} />
+        </Link>
+      ))}
+    </div>
+  );
+};
 
 /** A slot, its window's leader and (when given) what was recorded. */
 const SlotCard = ({
@@ -177,8 +193,11 @@ const LiveSlotStrip = ({
   lead = LEAD,
   onHeldChange,
   headerless = false,
+  look = DEFAULT_LOOK,
   className
 }: {
+  /** Cell size, gap and shape (bigger blocks where there's room). */
+  look?: StripLook;
   /** Inside a card that already names it: no label row; the pause
    *  control goes to the legend line (and the hold shows via
    *  onHeldChange). */
@@ -210,6 +229,10 @@ const LiveSlotStrip = ({
    *  primary while held. */
   className?: string;
 }) => {
+  // This strip's geometry (shadowing the defaults).
+  const DOT = look.size;
+  const COL_GAP = look.gap;
+  const STEP = DOT + COL_GAP;
   // How many columns fit the row (it falls off at the edge). A callback
   // ref: the row mounts only once there's a column to draw.
   const [rowEl, setRowEl] = useState<HTMLDivElement | null>(null);
@@ -223,7 +246,7 @@ const LiveSlotStrip = ({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [rowEl]);
+  }, [rowEl, STEP, COL_GAP]);
 
   // The playhead: one slot per slot-time, never past the record.
   const edgeRef = useRef(recorded);
@@ -381,131 +404,133 @@ const LiveSlotStrip = ({
   const hoverLeader = hoverCol?.leader ?? null;
 
   return (
-    <div
-      className={
-        className ??
-        `bg-body-emphasis rounded border p-3 mb-3 ${held ? 'border-primary' : 'border-translucent'}`
-      }
-    >
+    <LookContext.Provider value={look}>
       <div
-        className={`align-items-center gap-2 mb-2 ${headerless ? 'd-none' : 'd-flex'}`}
+        className={
+          className ??
+          `bg-body-emphasis rounded border p-3 mb-3 ${held ? 'border-primary' : 'border-translucent'}`
+        }
       >
-        <span
-          className={`d-inline-block rounded-circle flex-shrink-0 ${held ? 'bg-body-quaternary' : 'bg-success vx-live-dot'}`}
-          style={{ width: 8, height: 8 }}
-        />
-        <span className="fs-9 fw-bold text-body-emphasis">
-          {paused ? 'Paused' : hovering ? `${label} · held` : label}
-        </span>
-        {shown.length === 0 && (
-          <span className="fs-10 text-body-tertiary">{waiting}</span>
-        )}
-        <button
-          type="button"
-          className="btn btn-link btn-sm ms-auto p-0 text-body-tertiary d-inline-flex align-items-center gap-1 fs-10 text-decoration-none"
-          onClick={() => setPaused(p => !p)}
-          aria-pressed={paused}
-          title={paused ? 'Resume' : 'Pause'}
-        >
-          <FeatherIcon icon={paused ? 'play' : 'pause'} size={14} />
-          {paused ? 'Resume' : 'Pause'}
-        </button>
-      </div>
-      {!newest ? (
         <div
-          className="d-flex align-items-center fs-10 text-body-tertiary"
-          style={{ height: WINDOW * STEP - COL_GAP + 2 * PAD }}
+          className={`align-items-center gap-2 mb-2 ${headerless ? 'd-none' : 'd-flex'}`}
         >
-          Connecting…
-        </div>
-      ) : (
-        <div
-          ref={bodyRef}
-          className="d-flex align-items-stretch gap-3 position-relative"
-          onMouseEnter={() => setHovering(true)}
-          onMouseLeave={() => {
-            setHoverSlot(null);
-            setHovering(false);
-          }}
-        >
-          {/* The live slot and its leader. */}
-          <SlotCard
-            slot={cursor ?? newest.start}
-            leaderNode={liveLeader}
-            leaderName={nameOf(liveLeader)}
-            className="flex-shrink-0 bg-body-highlight border-translucent"
+          <span
+            className={`d-inline-block rounded-circle flex-shrink-0 ${held ? 'bg-body-quaternary' : 'bg-success vx-live-dot'}`}
+            style={{ width: 8, height: 8 }}
           />
-          {/* Every window, newest first under the "now" backing; the row
-              slides right as windows enter and fades out at the edge. */}
-          <div
-            ref={setRowEl}
-            className="vx-live-row position-relative overflow-hidden flex-grow-1 d-flex align-items-center"
-            style={{ minWidth: 0, padding: PAD }}
-          >
-            <span
-              className="position-absolute rounded-pill bg-primary-subtle"
-              style={{ left: 0, top: 0, bottom: 0, width: DOT + 2 * PAD }}
-            />
-            <div
-              ref={trackRef}
-              className="d-flex position-relative"
-              style={{ gap: COL_GAP }}
-            >
-              {columns.slice(0, fit + 1).map((col, i) => (
-                <Column
-                  key={col.start}
-                  col={col}
-                  className={i === 0 ? 'vx-col-in' : ''}
-                  hoverSlot={hoverSlot}
-                  onHover={setHoverSlot}
-                />
-              ))}
-            </div>
-          </div>
-          {/* The hovered dot's card, beside its column. */}
-          {hoverSlot != null && hoverPos && (
-            <SlotCard
-              key="hover"
-              slot={hoverSlot}
-              leaderNode={hoverLeader}
-              leaderName={nameOf(hoverLeader)}
-              cell={hoverCell}
-              className="vx-hover-card position-absolute bg-body-emphasis border-primary-subtle shadow"
-              style={{ left: hoverPos.left, top: 0, bottom: 0, zIndex: 2 }}
-            />
-          )}
-        </div>
-      )}
-      <div className="d-flex flex-wrap align-items-center column-gap-3 row-gap-1 fs-10 text-body-tertiary mt-2">
-        {legend.map(([cls, text]) => (
-          <span key={text} className="d-inline-flex align-items-center gap-1">
-            <StripDot cls={cls} />
-            {text}
+          <span className="fs-9 fw-bold text-body-emphasis">
+            {paused ? 'Paused' : hovering ? `${label} · held` : label}
           </span>
-        ))}
-        {headerless ? (
+          {shown.length === 0 && (
+            <span className="fs-10 text-body-tertiary">{waiting}</span>
+          )}
           <button
             type="button"
             className="btn btn-link btn-sm ms-auto p-0 text-body-tertiary d-inline-flex align-items-center gap-1 fs-10 text-decoration-none"
             onClick={() => setPaused(p => !p)}
             aria-pressed={paused}
-            title={footnoteTitle}
+            title={paused ? 'Resume' : 'Pause'}
           >
-            <FeatherIcon icon={paused ? 'play' : 'pause'} size={12} />
+            <FeatherIcon icon={paused ? 'play' : 'pause'} size={14} />
             {paused ? 'Resume' : 'Pause'}
           </button>
+        </div>
+        {!newest ? (
+          <div
+            className="d-flex align-items-center fs-10 text-body-tertiary"
+            style={{ height: WINDOW * STEP - COL_GAP + 2 * PAD }}
+          >
+            Connecting…
+          </div>
         ) : (
-          footnote && (
-            <span
-              className="ms-auto text-body-quaternary"
+          <div
+            ref={bodyRef}
+            className="d-flex align-items-stretch gap-3 position-relative"
+            onMouseEnter={() => setHovering(true)}
+            onMouseLeave={() => {
+              setHoverSlot(null);
+              setHovering(false);
+            }}
+          >
+            {/* The live slot and its leader. */}
+            <SlotCard
+              slot={cursor ?? newest.start}
+              leaderNode={liveLeader}
+              leaderName={nameOf(liveLeader)}
+              className="flex-shrink-0 bg-body-highlight border-translucent"
+            />
+            {/* Every window, newest first under the "now" backing; the row
+              slides right as windows enter and fades out at the edge. */}
+            <div
+              ref={setRowEl}
+              className="vx-live-row position-relative overflow-hidden flex-grow-1 d-flex align-items-center"
+              style={{ minWidth: 0, padding: PAD }}
+            >
+              <span
+                className="position-absolute rounded-pill bg-primary-subtle"
+                style={{ left: 0, top: 0, bottom: 0, width: DOT + 2 * PAD }}
+              />
+              <div
+                ref={trackRef}
+                className="d-flex position-relative"
+                style={{ gap: COL_GAP }}
+              >
+                {columns.slice(0, fit + 1).map((col, i) => (
+                  <Column
+                    key={col.start}
+                    col={col}
+                    className={i === 0 ? 'vx-col-in' : ''}
+                    hoverSlot={hoverSlot}
+                    onHover={setHoverSlot}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* The hovered dot's card, beside its column. */}
+            {hoverSlot != null && hoverPos && (
+              <SlotCard
+                key="hover"
+                slot={hoverSlot}
+                leaderNode={hoverLeader}
+                leaderName={nameOf(hoverLeader)}
+                cell={hoverCell}
+                className="vx-hover-card position-absolute bg-body-emphasis border-primary-subtle shadow"
+                style={{ left: hoverPos.left, top: 0, bottom: 0, zIndex: 2 }}
+              />
+            )}
+          </div>
+        )}
+        <div className="d-flex flex-wrap align-items-center column-gap-3 row-gap-1 fs-10 text-body-tertiary mt-2">
+          {legend.map(([cls, text]) => (
+            <span key={text} className="d-inline-flex align-items-center gap-1">
+              <StripDot cls={cls} />
+              {text}
+            </span>
+          ))}
+          {headerless ? (
+            <button
+              type="button"
+              className="btn btn-link btn-sm ms-auto p-0 text-body-tertiary d-inline-flex align-items-center gap-1 fs-10 text-decoration-none"
+              onClick={() => setPaused(p => !p)}
+              aria-pressed={paused}
               title={footnoteTitle}
             >
-              {footnote}
-            </span>
-          )
-        )}
+              <FeatherIcon icon={paused ? 'play' : 'pause'} size={12} />
+              {paused ? 'Resume' : 'Pause'}
+            </button>
+          ) : (
+            footnote && (
+              <span
+                className="ms-auto text-body-quaternary"
+                title={footnoteTitle}
+              >
+                {footnote}
+              </span>
+            )
+          )}
+        </div>
       </div>
-    </div>
+    </LookContext.Provider>
   );
 };
 
