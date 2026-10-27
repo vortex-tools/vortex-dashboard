@@ -200,11 +200,10 @@ const ThroughputCard = () => {
     return [t, view?.stacked ? v : first[first.length - 1][1]];
   })();
   const option = {
-    // Drawn in on load and on a metric / window switch (the chart is
-    // remounted); a refresh morphs the line into its new shape.
+    // Only new data animates: loading a window (or switching to one)
+    // draws it at once; each refresh morphs the line into its new shape.
     animation: true,
-    animationDuration: 900,
-    animationEasing: 'cubicOut',
+    animationDuration: 0,
     animationDurationUpdate: 600,
     animationEasingUpdate: 'cubicInOut',
     grid: { left: 4, right: 8, top: 20, bottom: 4, containLabel: true },
@@ -274,8 +273,6 @@ const ThroughputCard = () => {
               color: primary,
               rippleEffect: { scale: 3, brushType: 'stroke', period: 2.5 },
               tooltip: { show: false },
-              // Appears once the line has drawn in to it.
-              animationDelay: 900,
               z: 5,
               data: [lastPoint]
             }
