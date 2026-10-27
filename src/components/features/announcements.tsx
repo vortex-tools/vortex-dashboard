@@ -106,3 +106,53 @@ const AnnouncementsTable = ({
 );
 
 export default AnnouncementsTable;
+
+/** "Restart · 4.4.0-beta.1, 26.10.4": what a post is, in a line. */
+const summary = (a: Announcement) =>
+  [
+    a.restart?.lastConfirmedSlot != null &&
+      `last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
+    (a.versions.length > 0 || a.minVersions.length > 0) && versionsText(a),
+    a.epochs.length > 0 &&
+      `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+/** The latest announcements as a short list: kind, when, what it says,
+ *  linking the post. */
+export const AnnouncementList = ({
+  announcements
+}: {
+  announcements: Announcement[];
+}) => (
+  <ul className="list-unstyled mb-0 d-flex flex-column gap-2 fs-9">
+    {announcements.map(a => (
+      <li key={`${a.cluster}-${a.id}`}>
+        <div className="d-flex align-items-baseline gap-2">
+          {a.url ? (
+            <a
+              href={a.url}
+              target="_blank"
+              rel="noreferrer"
+              className="fw-semibold"
+            >
+              {ANNOUNCEMENT_KIND[a.kind] ?? a.kind}
+            </a>
+          ) : (
+            <span className="fw-semibold">
+              {ANNOUNCEMENT_KIND[a.kind] ?? a.kind}
+            </span>
+          )}
+          {a.urgent && <Badge bg="danger">Urgent</Badge>}
+          <span className="text-body-tertiary fs-10 ms-auto text-nowrap">
+            {postedWhen(a.postedAt)}
+          </span>
+        </div>
+        {summary(a) && (
+          <div className="text-body-tertiary fs-10">{summary(a)}</div>
+        )}
+      </li>
+    ))}
+  </ul>
+);

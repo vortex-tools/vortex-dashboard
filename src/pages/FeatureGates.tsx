@@ -3,7 +3,6 @@ import FeatherIcon from 'feather-icons-react';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import DelayedSpinner from 'components/common/DelayedSpinner';
-import AnnouncementsTable from 'components/features/announcements';
 import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -154,13 +153,6 @@ const FeatureGates = () => {
     fetchUpcoming?.('');
   }, [fetchAll, fetchUpcoming]);
   const served = upcoming?.cluster ?? 'mainnet-beta';
-  // The served cluster's announcements (devnet has no channel).
-  const fetchAnnouncements = context?.announcementsState.fetchData;
-  useEffect(() => {
-    if (upcoming?.cluster) fetchAnnouncements?.(upcoming.cluster);
-  }, [upcoming?.cluster, fetchAnnouncements]);
-  const announcements =
-    context?.announcementsState.data.get(served)?.announcements ?? [];
   const [filter, setFilter] = useState<Filter>('pending');
 
   const features = useMemo(() => data?.features ?? [], [data]);
@@ -357,19 +349,6 @@ const FeatureGates = () => {
               </UntrackedState>
             )}
           </SectionCard>
-
-          {announcements.length > 0 && (
-            <SectionCard
-              title={`Announcements on ${clusterLabel(served)}`}
-              icon="volume-2"
-              info="Restarts, upgrades and feature activations as Solana Tech's announcement channel posts them, newest first. Only the facts read from each post are kept (and from the Agave wiki pages it links); check the post before acting on them."
-            >
-              <AnnouncementsTable
-                announcements={announcements.slice(0, 10)}
-                showCluster={false}
-              />
-            </SectionCard>
-          )}
 
           <SectionCard
             title="All Feature Gates"

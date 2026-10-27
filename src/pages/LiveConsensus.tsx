@@ -19,6 +19,8 @@ import HaltRunUpCard from 'components/live/HaltRunUpCard';
 import RestartAnnouncementCard from 'components/live/RestartAnnouncementCard';
 import RestartCard from 'components/live/RestartCard';
 import useRestartAnnouncement from 'hooks/useRestartAnnouncement';
+import useAnnouncements from 'hooks/useAnnouncements';
+import AnnouncementsTable from 'components/features/announcements';
 import { formatDuration as duration } from 'helpers/utils';
 import { clusterHaltOf, useEpochLive } from 'hooks/useIngestion';
 import useLiveConsensus from 'hooks/useLiveConsensus';
@@ -143,6 +145,7 @@ const LiveConsensus = () => {
   const p = live.progress;
   const halt = clusterHaltOf(live, now);
   const restartPost = useRestartAnnouncement(halt);
+  const announcements = useAnnouncements();
   const chainTip =
     p?.absoluteSlot != null
       ? p.readAt != null && p.slotSeconds
@@ -721,6 +724,19 @@ const LiveConsensus = () => {
               </SectionCard>
             </div>
           </>
+        )}
+
+        {announcements && announcements.length > 0 && (
+          <SectionCard
+            title="Announcements"
+            icon="volume-2"
+            info="Restarts, upgrades and feature activations as Solana Tech's announcement channel posts them, newest first. Only the facts read from each post are kept (and from the Agave wiki pages it links); check the post before acting on them."
+          >
+            <AnnouncementsTable
+              announcements={announcements.slice(0, 10)}
+              showCluster={false}
+            />
+          </SectionCard>
         )}
       </div>
     </div>

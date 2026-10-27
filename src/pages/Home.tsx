@@ -5,6 +5,7 @@ import FeatherIcon from 'feather-icons-react';
 import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
 import ThroughputCard from 'components/home/ThroughputCard';
+import HomeAnnouncements from 'components/home/HomeAnnouncements';
 import WhatsNext from 'components/home/WhatsNext';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import { formatDuration } from 'helpers/utils';
@@ -368,8 +369,9 @@ const Home = () => {
           <Col xs={12} lg={8}>
             <ThroughputCard />
           </Col>
-          <Col xs={12} lg={4}>
+          <Col xs={12} lg={4} className="d-flex flex-column gap-3">
             <WhatsNext />
+            <HomeAnnouncements />
           </Col>
         </Row>
 
