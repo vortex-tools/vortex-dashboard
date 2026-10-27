@@ -75,6 +75,8 @@ export const routes: RouteItems[] = [
         icon: 'toggle-right',
         path: '/features'
       },
+      // SIMDs and how far their gates have activated.
+      { name: 'SIMDs', icon: 'file-text', path: '/simds' },
       // Solana governance proposals (mainnet only).
       { name: 'Governance', icon: 'check-square', path: '/governance' }
     ]

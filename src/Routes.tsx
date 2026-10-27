@@ -31,6 +31,8 @@ import Validators from 'pages/Validators';
 import ClientVersions from 'pages/ClientVersions';
 import FeatureGatePage from 'pages/FeatureGatePage';
 import FeatureGates from 'pages/FeatureGates';
+import SimdPage from 'pages/SimdPage';
+import Simds from 'pages/Simds';
 import Governance from 'pages/Governance';
 import GovernanceProposal from 'pages/GovernanceProposal';
 import Decentralization from 'pages/Decentralization';
@@ -166,6 +168,8 @@ const routes: RouteObject[] = [
               },
               { path: '/features', element: <FeatureGates /> },
               { path: '/feature/:id', element: <FeatureGatePage /> },
+              { path: '/simds', element: <Simds /> },
+              { path: '/simd/:simd', element: <SimdPage /> },
               { path: '/governance', element: <Governance /> },
               {
                 path: '/governance/:address',

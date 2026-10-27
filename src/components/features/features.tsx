@@ -1,6 +1,8 @@
 import Badge from 'components/base/Badge';
+import { Link } from 'react-router';
 import {
   ClientVersionLists,
+  SimdRollup,
   FeatureClusterState,
   FeatureGate,
   FeatureReadiness
@@ -19,20 +21,16 @@ export const clusterLabel = (key: string | null | undefined) =>
 export const featureName = (f: Pick<FeatureGate, 'id' | 'name' | 'title'>) =>
   f.title ?? f.name ?? `${f.id.slice(0, 6)}…${f.id.slice(-6)}`;
 
-/** A SIMD's number is its pull request in the SIMD repository. */
-export const simdUrl = (n: number) =>
-  `https://github.com/solana-foundation/solana-improvement-documents/pull/${n}`;
 export const simdLabel = (n: number) => `SIMD-${String(n).padStart(4, '0')}`;
 
+/** SIMDs as links to their pages here. */
 export const SimdLinks = ({ simds }: { simds: number[] }) =>
   simds.length ? (
     <span className="text-nowrap">
       {simds.map((n, i) => (
         <span key={n}>
           {i > 0 && ', '}
-          <a href={simdUrl(n)} target="_blank" rel="noreferrer">
-            {simdLabel(n)}
-          </a>
+          <Link to={`/simd/${n}`}>{simdLabel(n)}</Link>
         </span>
       ))}
     </span>
@@ -189,4 +187,65 @@ export const pctOf = (v: number, total: number) => {
     : p > 99.9 && p < 100
       ? '>99.9%'
       : `${p.toFixed(1)}%`;
+};
+
+/** How far a SIMD's own gates have activated on one cluster. */
+export const StageChip = ({ rollup }: { rollup: SimdRollup | undefined }) => {
+  if (!rollup || rollup.stage === 'noGate' || !rollup.gates)
+    return <span className="text-body-quaternary">No gate</span>;
+  const of = rollup.gates > 1 ? ` · ${rollup.active} of ${rollup.gates}` : '';
+  if (rollup.stage === 'active')
+    return (
+      <Badge bg="success" className="text-nowrap">
+        Active
+        {rollup.lastActivationEpoch != null &&
+          ` · ${rollup.lastActivationEpoch.toLocaleString()}`}
+      </Badge>
+    );
+  if (rollup.stage === 'partial')
+    return (
+      <Badge
+        bg="info"
+        className="text-nowrap"
+        title={`${rollup.active} of its ${rollup.gates} gates active`}
+      >
+        Partly active{of}
+      </Badge>
+    );
+  if (rollup.queued)
+    return (
+      <Badge bg="primary" className="text-nowrap">
+        Next epoch
+      </Badge>
+    );
+  if (rollup.nextQueuePosition != null)
+    return (
+      <Badge bg="info" className="text-nowrap">
+        {inLine(rollup.nextQueuePosition)}
+      </Badge>
+    );
+  return (
+    <Badge bg="secondary" className="text-nowrap">
+      Not scheduled
+    </Badge>
+  );
+};
+
+/** Where a SIMD-to-feature claim comes from. */
+export const SIMD_SOURCE: Record<string, string> = {
+  wiki: 'Feature Gate Tracker',
+  agaveName: "agave's feature name",
+  simdFrontMatter: "the SIMD's feature line",
+  trackingIssue: 'the tracking issue',
+  simdText: "the SIMD's text",
+  curated: 'Vortex review'
+};
+
+/** Why a feature needs no SIMD. */
+export const SIMD_EXEMPT_REASON: Record<string, string> = {
+  'pre-simd': 'predates the SIMD process',
+  implementation:
+    'changes how agave does something, not what programs or validators see',
+  rollout: 'only coordinates a rollout',
+  'security-toggle': "switches a SIMD's program off or back on around a fix"
 };
