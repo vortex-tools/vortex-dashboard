@@ -94,7 +94,14 @@ const Figure = ({ label, value }: { label: string; value: string }) => (
 const ThroughputCard = () => {
   const context = useContext(VortexDataContext);
   const { getThemeColor } = useAppContext();
-  const [win, setWin] = useState<Window>('30m');
+  const [picked, setWin] = useState<Window>('30m');
+  // The block feed (for the live tail; see below). The 5m window is
+  // offered only while it answers: from per-minute samples alone it's
+  // five points.
+  const recent = useRecentBlocks(true);
+  const live = !!recent?.length;
+  const windows = live ? WINDOWS : WINDOWS.filter(([k]) => k !== '5m');
+  const win: Window = !live && picked === '5m' ? '30m' : picked;
   const [metric, setMetric] = useState<Metric>('tps');
   const slice = context?.throughputState;
   const fetchData = slice?.fetchData;
@@ -130,7 +137,6 @@ const ThroughputCard = () => {
   // (whole seconds, so nothing finer). Where it reaches, it replaces the
   // per-minute samples. Only complete spans: one ends once a block at or
   // past its end has arrived.
-  const recent = useRecentBlocks(true);
   const tail = useMemo<Array<[number, number]>>(() => {
     if (!recent?.length) return [];
     const firstT = recent[0].t;
@@ -370,7 +376,7 @@ const ThroughputCard = () => {
             </ButtonGroup>
           )}
           <ButtonGroup size="sm">
-            {WINDOWS.map(([k, label]) => (
+            {windows.map(([k, label]) => (
               <ToggleButton
                 key={k}
                 id={`tps-window-${k}`}
