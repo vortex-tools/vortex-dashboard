@@ -72,16 +72,26 @@ const WhatsNext = () => {
         )}
         <Item icon="toggle-right">
           {next ? (
-            <>
-              <Link to={`/feature/${next.id}`} className="fw-semibold">
-                {featureName(next)}
-              </Link>{' '}
-              <span className="text-body-tertiary">
-                {next.clusters[served]?.status === 'queued'
-                  ? 'activates at the next epoch boundary'
-                  : 'is next in line to activate'}
-              </span>
-            </>
+            next.clusters[served]?.status === 'queued' ? (
+              <>
+                <span className="text-body-tertiary">Feature gate</span>{' '}
+                <Link to={`/feature/${next.id}`} className="fw-semibold">
+                  {featureName(next)}
+                </Link>{' '}
+                <span className="text-body-tertiary">
+                  activates at the next epoch boundary
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-body-tertiary">
+                  Next feature gate to activate:
+                </span>{' '}
+                <Link to={`/feature/${next.id}`} className="fw-semibold">
+                  {featureName(next)}
+                </Link>
+              </>
+            )
           ) : (
             <span className="text-body-tertiary">
               No feature gate scheduled.
