@@ -11,6 +11,7 @@ import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import useLiveRefresh from 'hooks/useLiveRefresh';
 import useRecentBlocks from 'hooks/useRecentBlocks';
+import usePlayhead from 'hooks/usePlayhead';
 import { useAppContext } from 'providers/AppProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -43,8 +44,11 @@ const INFO: Record<Metric, string> = {
     "What leaders earned from their blocks, summed per minute of block time: fees (the leader's share of base fees after the burn, plus priority fees) and MEV tips. From the block ingestor; refreshed every minute; the minute still filling is left off."
 };
 
-/** The live part's step (s): the feed's poll. */
-const TAIL_STEP = 2;
+/** The live part: a point every LIVE_STEP_SLOTS (~2 s) behind the
+ *  playhead, which trails the newest block by LIVE_LEAD slots. */
+const LIVE_STEP_SLOTS = 10;
+const LIVE_LEAD = 24;
+const DEFAULT_SLOT_SECS = 0.4;
 
 // The block compute-unit limit, a protocol constant (100M since SIMD-0286
 // activated on mainnet): drawn as the CU chart's reference line.
@@ -138,57 +142,85 @@ const ThroughputCard = () => {
   const shown: Metric = hasBlocks ? metric : 'tps';
 
   // The live part: the newest blocks (/cluster/blocks/recent, polled
-  // every 2 s, ~4 minutes of them) over a rolling span of block time,
-  // stepped every 2 s, so the newest point moves each poll. The span
-  // matches what it continues: a minute beside the per-minute history
-  // (30m / 2h / 6h), 10 s in the 5m window, which is the live part alone.
-  // Block times are whole seconds; the first second may hold only part
-  // of its blocks, so spans start after it, and the newest is still
-  // arriving.
+  // every 2 s, ~4 minutes of them), played back like Live Slots: a
+  // playhead trails the newest block by LIVE_LEAD slots (more than a
+  // poll brings) and steps a slot per slot-time, easing by its gap to the
+  // data, so the newest point moves every slot. Rates are over a rolling
+  // window of slots (a minute beside the per-minute history, 10 s in the
+  // 5m window, which is the live part alone) - skipped slots count as
+  // empty time - and a slot's time is placed from the newest block's at
+  // the epoch's slot time (block times are whole seconds).
   const span = win === '5m' ? 10 : 60;
+  const slotSecs =
+    context?.currentEpochState.progress?.slotSeconds ?? DEFAULT_SLOT_SECS;
+  const spanSlots = Math.max(1, Math.round(span / slotSecs));
+  const newestSlot = recent?.length ? recent[recent.length - 1].slot : null;
+  const playhead = usePlayhead(newestSlot, slotSecs * 1000, LIVE_LEAD);
+  // Running sums by slot, from the oldest block held.
+  const prefix = useMemo(() => {
+    if (!recent?.length) return null;
+    const first = recent[0].slot;
+    const n = recent[recent.length - 1].slot - first + 1;
+    const cols = ['tx', 'cu', 'blocks', 'fees', 'tips'] as const;
+    const p = Object.fromEntries(
+      cols.map(c => [c, new Float64Array(n + 1)])
+    ) as Record<(typeof cols)[number], Float64Array>;
+    const by = new Map(recent.map(b => [b.slot, b]));
+    for (let i = 0; i < n; i++) {
+      const b = by.get(first + i);
+      p.tx[i + 1] = p.tx[i] + (b?.transactions ?? 0);
+      p.cu[i + 1] = p.cu[i] + (b?.computeUnits ?? 0);
+      p.blocks[i + 1] = p.blocks[i] + (b ? 1 : 0);
+      p.fees[i + 1] = p.fees[i] + (b ? b.baseFees + b.priorityFees : 0);
+      p.tips[i + 1] = p.tips[i] + (b?.mevTips ?? 0);
+    }
+    // A slot's time: slot x slot time plus an offset averaged over every
+    // block held (block times are whole seconds, so one block's would
+    // shift the line by up to a second at each poll).
+    let off = 0;
+    for (const b of recent) off += b.t + 0.5 - b.slot * slotSecs;
+    off /= recent.length;
+    return {
+      p,
+      first,
+      n,
+      anchorSlot: recent[recent.length - 1].slot,
+      timeOf: (slot: number) => off + slot * slotSecs
+    };
+  }, [recent, slotSecs]);
   const rolling = useMemo(() => {
-    if (!recent?.length) return [];
-    const firstT = recent[0].t;
-    const newestT = recent[recent.length - 1].t;
-    const bySec = new Map<
-      number,
-      { tx: number; cu: number; blocks: number; fees: number; tips: number }
-    >();
-    for (const b of recent) {
-      const x = bySec.get(b.t) ?? { tx: 0, cu: 0, blocks: 0, fees: 0, tips: 0 };
-      x.tx += b.transactions;
-      x.cu += b.computeUnits;
-      x.blocks += 1;
-      x.fees += b.baseFees + b.priorityFees;
-      x.tips += b.mevTips;
-      bySec.set(b.t, x);
-    }
-    const out: Array<{
-      end: number;
-      tx: number;
-      cu: number;
-      blocks: number;
-      fees: number;
-      tips: number;
-    }> = [];
-    const firstEnd = Math.ceil((firstT + 1 + span) / TAIL_STEP) * TAIL_STEP;
-    for (let end = firstEnd; end <= newestT; end += TAIL_STEP) {
-      const w = { end, tx: 0, cu: 0, blocks: 0, fees: 0, tips: 0 };
-      for (let t = end - span; t < end; t++) {
-        const x = bySec.get(t);
-        if (!x) continue;
-        w.tx += x.tx;
-        w.cu += x.cu;
-        w.blocks += x.blocks;
-        w.fees += x.fees;
-        w.tips += x.tips;
-      }
-      out.push(w);
-    }
-    return out;
-  }, [recent, span]);
+    if (!prefix || playhead == null) return [];
+    const { p, first, anchorSlot, timeOf: at } = prefix;
+    const sum = (col: Float64Array, slot: number) => {
+      // Sum over (slot - spanSlots, slot].
+      const hi = slot - first + 1;
+      const lo = hi - spanSlots;
+      return col[hi] - col[lo];
+    };
+    const head = Math.min(playhead, anchorSlot);
+    const firstEnd = first + spanSlots;
+    if (head < firstEnd) return [];
+    const ends: number[] = [];
+    // A point every LIVE_STEP_SLOTS behind the playhead, and the playhead.
+    for (
+      let e = Math.ceil(firstEnd / LIVE_STEP_SLOTS) * LIVE_STEP_SLOTS;
+      e < head;
+      e += LIVE_STEP_SLOTS
+    )
+      ends.push(e);
+    ends.push(head);
+    return ends.map(e => ({
+      end: at(e),
+      tx: sum(p.tx, e),
+      cu: sum(p.cu, e),
+      blocks: sum(p.blocks, e),
+      fees: sum(p.fees, e),
+      tips: sum(p.tips, e)
+    }));
+  }, [prefix, playhead, spanSlots]);
   // Where the live part begins: history stops there (all of it in 5m).
-  const liveFrom = rolling.length ? rolling[0].end - span : null;
+  const spanSecs = spanSlots * slotSecs;
+  const liveFrom = rolling.length ? rolling[0].end - spanSecs : null;
   const keep = (t: number) =>
     liveFrom == null ? true : win !== '5m' && t <= liveFrom;
 
@@ -207,7 +239,7 @@ const ThroughputCard = () => {
         ...points
           .filter(p => keep(p.t))
           .map((p): [number, number] => [p.t, p.tps]),
-        ...rolling.map((w): [number, number] => [w.end, w.tx / span])
+        ...rolling.map((w): [number, number] => [w.end, w.tx / spanSecs])
       ];
       if (!data.length) return null;
       const vals = data.map(d => d[1]);
@@ -256,7 +288,7 @@ const ThroughputCard = () => {
       };
     }
     // Income as a per-minute rate (a 10 s span scaled up).
-    const perMin = 60 / span;
+    const perMin = 60 / spanSecs;
     const fees: Array<[number, number]> = [
       ...hist.map((m): [number, number] => [
         m.t + 60,
@@ -290,7 +322,7 @@ const ThroughputCard = () => {
         { name: 'MEV tips', data: tips }
       ]
     };
-  }, [shown, points, minutes, rolling, span, win, recent, liveFrom]);
+  }, [shown, points, minutes, rolling, span, spanSecs, win, recent, liveFrom]);
   // The newest point, pulsing: the stack's top for income.
   const lastPoint = (() => {
     const sers = view?.series ?? [];
@@ -304,12 +336,12 @@ const ThroughputCard = () => {
     return [t, view?.stacked ? v : first[first.length - 1][1]];
   })();
   const option = {
-    // Only new data animates: loading a window (or switching to one)
-    // draws it at once; each refresh morphs the line into its new shape.
+    // Every change draws at once - the line and its newest point step
+    // together each poll (a morph made the dot trail the line); the
+    // pulse on the newest point is the motion.
     animation: true,
     animationDuration: 0,
-    animationDurationUpdate: 600,
-    animationEasingUpdate: 'cubicInOut',
+    animationDurationUpdate: 0,
     grid: { left: 4, right: 8, top: 20, bottom: 4, containLabel: true },
     tooltip: {
       trigger: 'axis',
