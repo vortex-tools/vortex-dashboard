@@ -366,7 +366,7 @@ const Home = () => {
             <SlotStrip />
           </Col>
           <Col xs={12} lg={6}>
-            <ThroughputCard metrics={['tps', 'cu']} />
+            <ThroughputCard metrics={['tps', 'cu']} compact />
           </Col>
         </Row>
 

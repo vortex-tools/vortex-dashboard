@@ -99,7 +99,14 @@ type Pt = [number, number];
  * `metrics` picks what it can show: more than one gets a toggle in the
  * header. Block metrics need the block ingestor (not on testnet).
  */
-const ThroughputCard = ({ metrics }: { metrics: Metric[] }) => {
+const ThroughputCard = ({
+  metrics,
+  compact = false
+}: {
+  metrics: Metric[];
+  /** The chart alone, shorter (no figures): beside Live Slots. */
+  compact?: boolean;
+}) => {
   const context = useContext(VortexDataContext);
   const { getThemeColor } = useAppContext();
   const [picked, setMetric] = useState<Metric>(metrics[0]);
@@ -469,6 +476,7 @@ const ThroughputCard = ({ metrics }: { metrics: Metric[] }) => {
     ]
   };
 
+  const chartHeight = compact ? 140 : 200;
   // Nothing to show at all (income without a block ingestor): no card.
   if (!shown) return null;
   // Remounted (drawn at once) on a metric switch and when the history
@@ -500,7 +508,7 @@ const ThroughputCard = ({ metrics }: { metrics: Metric[] }) => {
         ) : undefined
       }
     >
-      <div className="d-flex gap-4 mb-2">
+      <div className={`d-flex gap-4 mb-2${compact ? ' d-none' : ''}`}>
         {(
           view?.figures ?? [
             ['Last minute', '—'],
@@ -517,7 +525,7 @@ const ThroughputCard = ({ metrics }: { metrics: Metric[] }) => {
             key={`${shown}-${historyLoaded ? 1 : 0}`}
             echarts={echarts}
             option={option}
-            style={{ height: 200, width: '100%' }}
+            style={{ height: chartHeight, width: '100%' }}
           />
           {view.stacked && (
             <div className="d-flex gap-3 fs-10 text-body-tertiary mt-1">
@@ -541,7 +549,7 @@ const ThroughputCard = ({ metrics }: { metrics: Metric[] }) => {
           Throughput isn&apos;t available from this API.
         </UntrackedState>
       ) : (
-        <div style={{ height: 200 }} />
+        <div style={{ height: chartHeight }} />
       )}
     </SectionCard>
   );
