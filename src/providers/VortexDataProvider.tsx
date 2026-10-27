@@ -83,6 +83,12 @@ import {
   FeaturesUpcoming,
   featureDetailSchema,
   FeatureDetail,
+  simdsSchema,
+  Simds,
+  simdDetailSchema,
+  SimdDetail,
+  announcementsSchema,
+  Announcements,
   GovernanceProposals,
   governanceProposalDetailSchema,
   GovernanceProposalDetail,
@@ -760,6 +766,26 @@ const featureRequest = (id: string) => ({
   schema: featureDetailSchema,
   timeout: 20_000
 });
+// SIMDs: all of them (FEATURES_KEY), one by number.
+const simdsRequest = () => ({
+  path: '/simds',
+  params: {},
+  schema: simdsSchema,
+  timeout: 20_000
+});
+const simdRequest = (simd: number) => ({
+  path: '/simd',
+  params: { simd },
+  schema: simdDetailSchema,
+  timeout: 20_000
+});
+// Announcements by cluster ('' = both).
+const announcementsRequest = (cluster: string) => ({
+  path: '/announcements',
+  params: cluster ? { cluster, limit: 50 } : { limit: 50 },
+  schema: announcementsSchema,
+  timeout: 20_000
+});
 
 const hostChangesRequest = (identity: string) => ({
   path: '/validators/host-changes',
@@ -1328,6 +1354,9 @@ interface VortexDataState {
   clusterHaltState: KeyedSlice<number, ClusterHaltRunUp>;
   featuresUpcomingState: KeyedSlice<string, FeaturesUpcoming>;
   featureState: KeyedSlice<string, FeatureDetail>;
+  simdsState: KeyedSlice<string, Simds>;
+  simdState: KeyedSlice<number, SimdDetail>;
+  announcementsState: KeyedSlice<string, Announcements>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
   validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
   clusterVersionsState: KeyedSlice<number, ClusterVersions>;
@@ -1430,6 +1459,18 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
   const featuresUpcomingState = useKeyedSlice({
     request: featuresUpcomingRequest,
     toEntries: keyed<string, FeaturesUpcoming>()
+  });
+  const simdsState = useKeyedSlice({
+    request: simdsRequest,
+    toEntries: keyed<string, Simds>()
+  });
+  const simdState = useKeyedSlice({
+    request: simdRequest,
+    toEntries: keyed<number, SimdDetail>()
+  });
+  const announcementsState = useKeyedSlice({
+    request: announcementsRequest,
+    toEntries: keyed<string, Announcements>()
   });
   const featureState = useKeyedSlice({
     request: featureRequest,
@@ -1537,6 +1578,9 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       clusterHaltState,
       featuresUpcomingState,
       featureState,
+      simdsState,
+      simdState,
+      announcementsState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,
@@ -1578,6 +1622,9 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       clusterHaltState,
       featuresUpcomingState,
       featureState,
+      simdsState,
+      simdState,
+      announcementsState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,

@@ -2379,14 +2379,82 @@ const clientVersionsSchema = z
   .catch({ agave: [], firedancer: [], frankendancer: [], jito: [] });
 export type ClientVersionLists = z.infer<typeof clientVersionsSchema>;
 
+// ---- Announcements (/announcements) -------------------------------------
+// Restarts, upgrades and feature activations as Solana Tech's announcement
+// channels post them; only the facts parsed from each post (and the Agave
+// wiki pages it links), never its text.
+const restartFactsSchema = z.object({
+  // The halted chain's last optimistically confirmed slot.
+  lastConfirmedSlot: z.number().nullable().catch(null),
+  // The restart snapshot's slot: lastConfirmedSlot, or a block built on
+  // it by the restart. Never the slot the chain halted at.
+  waitForSupermajority: z.number().nullable().catch(null),
+  hardFork: z.number().nullable().catch(null),
+  expectedBankHash: z.string().nullable().catch(null),
+  expectedShredVersion: z.number().nullable().catch(null)
+});
+export type RestartFacts = z.infer<typeof restartFactsSchema>;
+
+const announcementFactsSchema = {
+  // 'restart' | 'upgrade' | 'feature' | 'other'
+  kind: z.string().catch('other'),
+  restart: restartFactsSchema.nullable().catch(null),
+  versions: z.array(z.string()).catch([]),
+  minVersions: z.array(z.string()).catch([]),
+  featureIds: z.array(z.string()).catch([]),
+  epochs: z.array(z.number()).catch([]),
+  simds: z.array(z.number()).catch([])
+};
+
+export const announcementSchema = z.object({
+  cluster: z.string(),
+  id: z.string(),
+  postedAt: z.number(),
+  editedAt: z.number().nullable().catch(null),
+  // The original post.
+  url: z.string().nullable().catch(null),
+  urgent: z.boolean().catch(false),
+  ...announcementFactsSchema,
+  // The Agave wiki pages the post links, each with its own facts (the
+  // top-level facts are the post's, filled in from these).
+  linked: z
+    .array(
+      z.object({
+        url: z.string(),
+        fetchedAt: z.number().nullable().catch(null),
+        ...announcementFactsSchema
+      })
+    )
+    .catch([])
+});
+export type Announcement = z.infer<typeof announcementSchema>;
+
+export const announcementsSchema = z.object({
+  announcements: z.array(announcementSchema).catch([])
+});
+export type Announcements = z.infer<typeof announcementsSchema>;
+
 const featureClusterStateSchema = z.object({
-  // 'active' | 'queued' (activates at the next epoch boundary) | 'inactive'
+  // 'active' | 'queued' (activates at the next epoch boundary) |
+  // 'inactive' | 'skipped' (a cluster that won't get it)
   status: z.string().catch('inactive'),
   slot: z.number().nullable().catch(null),
   epoch: z.number().nullable().catch(null),
   queuedAtSlot: z.number().nullable().catch(null),
   // 1-based place in the tracker's pending list for this cluster.
-  queuePosition: z.number().nullable().catch(null)
+  queuePosition: z.number().nullable().catch(null),
+  // The newest announcement naming it here, while it isn't active.
+  announced: z
+    .object({
+      epoch: z.number().nullable().catch(null),
+      postedAt: z.number().nullable().catch(null),
+      url: z.string().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  // Features it requires that aren't active here (while it isn't either).
+  blockedBy: z.array(z.string()).optional().catch([])
 });
 export type FeatureClusterState = z.infer<typeof featureClusterStateSchema>;
 
@@ -2410,14 +2478,97 @@ const featureReadinessSchema = z.object({
 });
 export type FeatureReadiness = z.infer<typeof featureReadinessSchema>;
 
+const simdRefSchema = z.object({
+  simd: z.number(),
+  url: z.string().nullable().catch(null)
+});
+export type SimdRef = z.infer<typeof simdRefSchema>;
+
+const gitRefSchema = z.object({
+  repo: z.string().nullable().catch(null),
+  pr: z.number().nullable().catch(null),
+  commit: z.string().nullable().catch(null),
+  date: z.string().nullable().catch(null),
+  url: z.string().nullable().catch(null)
+});
+export type GitRef = z.infer<typeof gitRefSchema>;
+
 export const featureGateSchema = z.object({
   id: z.string(),
   name: z.string().nullable().catch(null),
   title: z.string().nullable().catch(null),
+  // Our reading of the SIMDs that specify it (see simdSources).
   simds: z.array(z.number()).catch([]),
   minVersions: clientVersionsSchema,
   clusters: z.record(z.string(), featureClusterStateSchema).catch({}),
-  readiness: featureReadinessSchema.nullable().optional().catch(null)
+  readiness: featureReadinessSchema.nullable().optional().catch(null),
+  // Where it came from in agave's code.
+  links: z
+    .object({
+      introducedIn: gitRefSchema.nullable().catch(null),
+      source: z.string().nullable().catch(null),
+      trackingIssues: z.array(z.string()).catch([]),
+      simds: z.array(simdRefSchema).catch([])
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  // SIMDs it depends on or descends from (not ones specifying it).
+  relatedSimds: z.array(simdRefSchema).optional().catch([]),
+  // Every SIMD any source ties to it, and which sources say so: no source
+  // is authoritative.
+  simdSources: z
+    .array(
+      simdRefSchema.extend({
+        // 'wiki' | 'agaveName' | 'simdFrontMatter' | 'trackingIssue' |
+        // 'simdText' | 'curated'
+        sources: z.array(z.string()).catch([]),
+        // 'simd' | 'related'
+        role: z.string().catch('simd')
+      })
+    )
+    .optional()
+    .catch([]),
+  simdConflict: z.boolean().optional().catch(false),
+  // No SIMD specifies it and it needs none.
+  simdExempt: z.boolean().optional().catch(false),
+  // 'pre-simd' | 'implementation' | 'rollout' | 'security-toggle' | null
+  simdExemptReason: z.string().nullable().optional().catch(null),
+  // Tracking issues saying it needed no SIMD.
+  noSimdEvidence: z.array(z.string()).optional().catch([]),
+  // Features that must be active for it to take effect.
+  requires: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string().nullable().catch(null),
+        simds: z.array(z.number()).catch([])
+      })
+    )
+    .optional()
+    .catch([]),
+  // Ids before agave rekeyed it, oldest first.
+  previousIds: z
+    .array(
+      z.object({
+        id: z.string(),
+        replacedIn: gitRefSchema.nullable().catch(null),
+        activations: z
+          .record(
+            z.string(),
+            z
+              .object({
+                slot: z.number().nullable().catch(null),
+                epoch: z.number().nullable().catch(null)
+              })
+              .nullable()
+          )
+          .catch({})
+      })
+    )
+    .optional()
+    .catch([]),
+  announcements: z.array(announcementSchema).optional().catch([])
 });
 export type FeatureGate = z.infer<typeof featureGateSchema>;
 
@@ -2472,6 +2623,115 @@ export const featureDetailSchema = z.object({
     .catch([])
 });
 export type FeatureDetail = z.infer<typeof featureDetailSchema>;
+
+// ---- SIMDs (/simds, /simd) ----------------------------------------------
+// The feature gates organized by SIMD, with every proposal in the SIMD
+// repo (and SIMDs only an open PR proposes).
+const simdRollupSchema = z.object({
+  // 'noGate' | 'pending' | 'partial' | 'active'
+  stage: z.string().catch('noGate'),
+  gates: z.number().catch(0),
+  active: z.number().catch(0),
+  queued: z.number().catch(0),
+  scheduled: z.number().catch(0),
+  nextQueuePosition: z.number().nullable().catch(null),
+  firstActivationEpoch: z.number().nullable().catch(null),
+  lastActivationEpoch: z.number().nullable().catch(null)
+});
+export type SimdRollup = z.infer<typeof simdRollupSchema>;
+
+export const simdSummarySchema = z.object({
+  simd: z.number(),
+  title: z.string().nullable().catch(null),
+  inRepo: z.boolean().catch(true),
+  // The proposal's own front matter: kept by hand, often behind the
+  // chain - trust `rollup` for activation.
+  repoStatus: z.string().nullable().catch(null),
+  authors: z.array(z.string()).catch([]),
+  kind: z.string().nullable().catch(null),
+  category: z.string().nullable().catch(null),
+  created: z.string().nullable().catch(null),
+  extends: z.array(z.number()).catch([]),
+  supersedes: z.array(z.number()).catch([]),
+  supersededBy: z.array(z.number()).catch([]),
+  openPrs: z
+    .array(
+      z.object({
+        pr: z.number(),
+        title: z.string().nullable().catch(null),
+        url: z.string().nullable().catch(null),
+        author: z.string().nullable().catch(null),
+        draft: z.boolean().catch(false),
+        // 'proposal' | 'amendment'
+        kind: z.string().catch('proposal'),
+        created: z.string().nullable().catch(null),
+        updated: z.string().nullable().catch(null)
+      })
+    )
+    .catch([]),
+  url: z.string().nullable().catch(null),
+  gates: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string().nullable().catch(null),
+        // 'simd' (implements it) | 'related'
+        role: z.string().catch('simd'),
+        clusters: z
+          .record(
+            z.string(),
+            z.object({
+              status: z.string().catch('inactive'),
+              epoch: z.number().nullable().catch(null),
+              queuePosition: z.number().nullable().catch(null)
+            })
+          )
+          .catch({})
+      })
+    )
+    .catch([]),
+  rollup: z.record(z.string(), simdRollupSchema).catch({})
+});
+export type SimdSummary = z.infer<typeof simdSummarySchema>;
+
+const simdsHeader = {
+  ...featuresHeader,
+  repoUpdatedAt: z.number().nullable().catch(null),
+  repoCheckedAt: z.number().nullable().catch(null)
+};
+
+export const simdsSchema = z.object({
+  ...simdsHeader,
+  simds: z.array(simdSummarySchema).catch([])
+});
+export type Simds = z.infer<typeof simdsSchema>;
+
+export const simdDetailSchema = z.object({
+  ...simdsHeader,
+  simd: simdSummarySchema,
+  features: z.array(featureGateSchema).catch([]),
+  relatedFeatures: z.array(featureGateSchema).catch([]),
+  events: z
+    .array(
+      z.object({
+        // 'proposed' | 'amendmentProposed' | 'prClosed' | 'merged' |
+        // 'statusChanged' | 'featureChanged' | 'removed'
+        kind: z.string(),
+        date: z.string().nullable().catch(null),
+        observedAt: z.number().nullable().catch(null),
+        commit: z.string().nullable().catch(null),
+        pr: z.number().nullable().catch(null),
+        title: z.string().nullable().catch(null),
+        file: z.string().nullable().catch(null),
+        from: z.string().nullable().catch(null),
+        to: z.string().nullable().catch(null),
+        fromIds: z.array(z.string()).catch([]),
+        toIds: z.array(z.string()).catch([])
+      })
+    )
+    .catch([])
+});
+export type SimdDetail = z.infer<typeof simdDetailSchema>;
 
 // ---- Halt run-up (/cluster/halt) ----------------------------------------
 // The last slots before a halt (Alpenglow footers): blocks, skips,
