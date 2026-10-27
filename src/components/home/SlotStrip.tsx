@@ -16,17 +16,18 @@ const POLL_MS = 2_000;
  *  plus its fetch brings (~2.5 s of slots), so it never waits on data. */
 const LEAD = 16;
 
-// In the Voting tab's live strip's palette: green blocks, a skipped slot
-// as a white dot with a ring.
+// In the Voting tab's live strip's palette: green blocks (fainter when
+// not fast-finalized), a skipped slot as a white dot with a ring.
+const SLOW: StripCell = {
+  cls: 'bg-success opacity-50',
+  label: 'block, slow-finalized'
+};
 const CELL: Record<Exclude<SlotKind, 'upcoming'>, StripCell> = {
   fast: { cls: 'bg-success', label: 'block, fast-finalized' },
-  // Its own certificate on the two-round path.
-  slow: { cls: 'bg-warning', label: 'block, slow-finalized' },
-  // No certificate of its own: final because a later block on it was.
-  block: {
-    cls: 'bg-success opacity-50',
-    label: 'block, finalized via a later block'
-  },
+  // Not fast: its own certificate on the two-round path, or none of its
+  // own (final because a later block on it was) - one color for both.
+  slow: SLOW,
+  block: SLOW,
   finalizing: {
     cls: 'bg-body-emphasis border border-2 border-success border-opacity-50',
     label: 'block, finalizing'
@@ -42,8 +43,7 @@ const CELL: Record<Exclude<SlotKind, 'upcoming'>, StripCell> = {
 // all but never drawn (a ring if it is).
 const LEGEND: Array<[string, string]> = [
   [CELL.fast.cls, 'fast-finalized'],
-  [CELL.slow.cls, 'slow-finalized'],
-  [CELL.block.cls, 'finalized via a later block'],
+  [SLOW.cls, 'slow-finalized'],
   [CELL.skipped.cls, 'skipped']
 ];
 

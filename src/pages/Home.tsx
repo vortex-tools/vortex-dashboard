@@ -44,13 +44,45 @@ const useTickingSlot = (progress: EpochProgress | null, halted: boolean) => {
   return progress.absoluteSlot + Math.floor(elapsed / slotMs);
 };
 
-const FAMILY_NAME: Record<string, string> = {
-  agave: 'Agave',
-  firedancer: 'Firedancer',
-  frankendancer: 'Frankendancer',
-  solanaLabs: 'Solana Labs',
-  sig: 'Sig'
+/** "84%", or "<1%" / ">99%" at the ends. */
+const pctShare = (x: number) => {
+  const p = x * 100;
+  return p > 0 && p < 1
+    ? '<1%'
+    : p > 99 && p < 100
+      ? '>99%'
+      : `${Math.round(p)}%`;
 };
+
+/** Activated stake by client: Agave from the left, Firedancer from the
+ *  right, anything else between. */
+const ClientSplitBar = ({
+  agave,
+  firedancer,
+  other
+}: {
+  agave: number;
+  firedancer: number;
+  other: number;
+}) => (
+  <span
+    className="d-block"
+    title={`Agave ${pctShare(agave)} · Firedancer ${pctShare(firedancer)}${other >= 0.005 ? ` · other / unknown ${pctShare(other)}` : ''} of activated stake`}
+  >
+    <span
+      className="d-flex rounded-1 overflow-hidden bg-body-highlight"
+      style={{ height: 6 }}
+    >
+      <span className="bg-primary" style={{ width: `${agave * 100}%` }} />
+      <span style={{ width: `${other * 100}%` }} />
+      <span className="bg-info" style={{ width: `${firedancer * 100}%` }} />
+    </span>
+    <span className="d-flex justify-content-between gap-2 mt-1">
+      <span>Agave</span>
+      <span>Firedancer</span>
+    </span>
+  </span>
+);
 
 /** "◎437.7M". */
 const compactSol = (lamports: number) => {
@@ -140,12 +172,15 @@ const Home = () => {
       const f = v.software?.family ?? 'unknown';
       byFamily.set(f, (byFamily.get(f) ?? 0) + v.activatedStake);
     }
-    const families = [...byFamily.entries()]
-      .filter(([f]) => f !== 'unknown')
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 2)
-      .map(([f, st]) => ({ family: f, share: st / total }));
-    return { total, delinquentShare: delinquent / total, families };
+    // The client split: Agave (Jito included) vs Firedancer, of all
+    // activated stake; the rest (other clients, unknown) is "other".
+    const agave = (byFamily.get('agave') ?? 0) / total;
+    const firedancer = (byFamily.get('firedancer') ?? 0) / total;
+    return {
+      total,
+      delinquentShare: delinquent / total,
+      clients: { agave, firedancer, other: Math.max(0, 1 - agave - firedancer) }
+    };
   }, [summary]);
 
   // Without block data (testnet), the validator KPIs come from the
@@ -301,14 +336,21 @@ const Home = () => {
               label="Clients"
               mono={false}
               value={
-                snapshot?.families[0]
-                  ? `${FAMILY_NAME[snapshot.families[0].family] ?? snapshot.families[0].family} ${Math.round(snapshot.families[0].share * 100)}%`
-                  : '—'
+                snapshot ? (
+                  <span className="d-flex justify-content-between gap-2">
+                    <span className="text-primary">
+                      {pctShare(snapshot.clients.agave)}
+                    </span>
+                    <span className="text-info">
+                      {pctShare(snapshot.clients.firedancer)}
+                    </span>
+                  </span>
+                ) : (
+                  '—'
+                )
               }
               sublabel={
-                snapshot?.families[1]
-                  ? `${FAMILY_NAME[snapshot.families[1].family] ?? snapshot.families[1].family} ${Math.round(snapshot.families[1].share * 100)}% of stake`
-                  : 'of stake'
+                snapshot ? <ClientSplitBar {...snapshot.clients} /> : 'of stake'
               }
               linkTo={isTestnet ? '/decentralization' : '/client-versions'}
             />
