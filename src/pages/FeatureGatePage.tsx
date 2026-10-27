@@ -10,6 +10,7 @@ import {
   CLUSTERS,
   MinVersions,
   ReadinessBar,
+  EXEMPT_SHORT,
   SIMD_EXEMPT_REASON,
   SIMD_SOURCE,
   SimdLinks,
@@ -211,7 +212,7 @@ const FeatureGatePage = () => {
                       None needed
                       {f.simdExemptReason &&
                         SIMD_EXEMPT_REASON[f.simdExemptReason] &&
-                        `: ${SIMD_EXEMPT_REASON[f.simdExemptReason]}`}
+                        ` (${EXEMPT_SHORT[f.simdExemptReason] ?? f.simdExemptReason}): it ${SIMD_EXEMPT_REASON[f.simdExemptReason]}`}
                     </span>
                   ) : (
                     <SimdLinks simds={[]} />

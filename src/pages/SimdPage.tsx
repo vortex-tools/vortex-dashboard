@@ -8,6 +8,7 @@ import {
   CLUSTERS,
   StatusChip,
   featureName,
+  gateName,
   inLine,
   simdLabel
 } from 'components/features/features';
@@ -160,7 +161,8 @@ const SimdPage = () => {
     );
 
   const s = data.simd;
-  const title = s.title ?? s.openPrs[0]?.title ?? null;
+  const prTitle = s.openPrs[0]?.title;
+  const title = s.title ?? (prTitle ? gateName(prTitle) : null);
   const events = [...data.events].reverse();
 
   return (

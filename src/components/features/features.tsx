@@ -49,9 +49,9 @@ export const SimdLinks = ({ simds }: { simds: number[] }) =>
   );
 
 /** Why a gate needs no SIMD, short, for a table's SIMD column. */
-const EXEMPT_SHORT: Record<string, string> = {
+export const EXEMPT_SHORT: Record<string, string> = {
   'pre-simd': 'pre-SIMD',
-  implementation: 'implementation',
+  implementation: 'client internal',
   rollout: 'rollout',
   'security-toggle': 'security toggle'
 };
@@ -69,7 +69,7 @@ export const SimdCell = ({
       className="text-body-tertiary text-nowrap"
       title={
         reason && SIMD_EXEMPT_REASON[reason]
-          ? `No SIMD needed: it ${SIMD_EXEMPT_REASON[reason]}`
+          ? `No SIMD needed (${EXEMPT_SHORT[reason] ?? reason}): it ${SIMD_EXEMPT_REASON[reason]}`
           : 'No SIMD needed (most such gates predate the SIMD process)'
       }
     >
@@ -290,7 +290,7 @@ export const SIMD_SOURCE: Record<string, string> = {
 export const SIMD_EXEMPT_REASON: Record<string, string> = {
   'pre-simd': 'predates the SIMD process',
   implementation:
-    'changes how agave does something, not what programs or validators see',
+    'changes how the client works, not what programs or validators see',
   rollout: 'only coordinates a rollout',
   'security-toggle': "switches a SIMD's program off or back on around a fix"
 };

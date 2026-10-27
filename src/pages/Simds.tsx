@@ -12,6 +12,7 @@ import {
   CLUSTERS,
   StageChip,
   clusterLabel,
+  gateName,
   simdLabel
 } from 'components/features/features';
 import useAdvanceTable from 'hooks/useAdvanceTable';
@@ -41,6 +42,7 @@ const FILTERS = [
   ['gated', 'With gates'],
   ['pending', 'Pending'],
   ['active', 'Active'],
+  ['review', 'In review'],
   ['all', 'All']
 ] as const;
 type Filter = (typeof FILTERS)[number][0];
@@ -69,7 +71,8 @@ const columns = (served: string): ColumnDef<SimdSummary>[] => [
     accessorFn: s =>
       `${s.title ?? s.openPrs[0]?.title ?? ''} ${s.authors.join(' ')} ${s.gates.map(g => g.name ?? g.id).join(' ')}`,
     cell: ({ row: { original: s } }) => {
-      const title = s.title ?? s.openPrs[0]?.title ?? null;
+      const prTitle = s.openPrs[0]?.title;
+      const title = s.title ?? (prTitle ? gateName(prTitle) : null);
       return (
         <span className="d-flex align-items-center gap-2">
           <Link
@@ -80,9 +83,15 @@ const columns = (served: string): ColumnDef<SimdSummary>[] => [
           >
             {title ?? <span className="text-body-tertiary">Untitled</span>}
           </Link>
-          {!s.inRepo && s.openPrs.length > 0 && (
-            <Badge bg="secondary" className="text-nowrap">
-              Open PR
+          {s.openPrs.length > 0 && (
+            <Badge
+              bg="secondary"
+              className="text-nowrap"
+              title={s.openPrs
+                .map(p => `#${p.pr}${p.title ? `: ${p.title}` : ''}`)
+                .join('\n')}
+            >
+              {s.inRepo ? 'Amendment PR' : 'Open PR'}
             </Badge>
           )}
         </span>
@@ -124,7 +133,13 @@ const Simds = () => {
 
   const simds = useMemo(() => data?.simds ?? [], [data]);
   const counts = useMemo(() => {
-    const c = { all: simds.length, gated: 0, pending: 0, active: 0 };
+    const c = {
+      all: simds.length,
+      gated: 0,
+      pending: 0,
+      active: 0,
+      review: 0
+    };
     let partial = 0;
     for (const s of simds) {
       const st = s.rollup[served]?.stage ?? 'noGate';
@@ -132,6 +147,7 @@ const Simds = () => {
       if (st === 'active') c.active++;
       else if (st === 'pending' || st === 'partial') c.pending++;
       if (st === 'partial') partial++;
+      if (s.openPrs.length) c.review++;
     }
     return { ...c, partial };
   }, [simds, served]);
@@ -141,11 +157,13 @@ const Simds = () => {
         const st = s.rollup[served]?.stage ?? 'noGate';
         return filter === 'all'
           ? true
-          : filter === 'gated'
-            ? st !== 'noGate'
-            : filter === 'active'
-              ? st === 'active'
-              : st === 'pending' || st === 'partial';
+          : filter === 'review'
+            ? s.openPrs.length > 0
+            : filter === 'gated'
+              ? st !== 'noGate'
+              : filter === 'active'
+                ? st === 'active'
+                : st === 'pending' || st === 'partial';
       }),
     [simds, filter, served]
   );
@@ -231,7 +249,7 @@ const Simds = () => {
           <SectionCard
             title="All SIMDs"
             icon="file-text"
-            info="Every proposal in the SIMD repository, read hourly, and SIMDs only an open pull request proposes. A cluster's column covers the gates that implement the SIMD: active once all are, partly active while some are."
+            info="Every proposal in the SIMD repository, read hourly, and SIMDs only an open pull request proposes. In review: a proposal or amendment open as a pull request. A cluster's column covers the gates that implement the SIMD: active once all are, partly active while some are."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
