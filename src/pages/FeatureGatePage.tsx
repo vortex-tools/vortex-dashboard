@@ -340,29 +340,31 @@ const FeatureGatePage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {r.byClient.map(c => (
-                        <tr key={c.client}>
-                          <td>{clientLabel(c.client)}</td>
-                          <td className="font-monospace fs-10">
-                            {c.minVersions
-                              .map(v => v.replace(/^v/, ''))
-                              .join(' / ') || '—'}
-                          </td>
-                          <td className="text-end font-monospace">
-                            {pctOf(c.readyStake, r.totalStake)}
-                          </td>
-                          <td className="text-end font-monospace">
-                            {c.notReadyStake
-                              ? pctOf(c.notReadyStake, r.totalStake)
-                              : '—'}
-                          </td>
-                          <td className="text-end font-monospace">
-                            {c.unknownStake
-                              ? pctOf(c.unknownStake, r.totalStake)
-                              : '—'}
-                          </td>
-                        </tr>
-                      ))}
+                      {r.byClient
+                        .filter(c => c.client !== 'frankendancer')
+                        .map(c => (
+                          <tr key={c.client}>
+                            <td>{clientLabel(c.client)}</td>
+                            <td className="font-monospace fs-10">
+                              {c.minVersions
+                                .map(v => v.replace(/^v/, ''))
+                                .join(' / ') || '—'}
+                            </td>
+                            <td className="text-end font-monospace">
+                              {pctOf(c.readyStake, r.totalStake)}
+                            </td>
+                            <td className="text-end font-monospace">
+                              {c.notReadyStake
+                                ? pctOf(c.notReadyStake, r.totalStake)
+                                : '—'}
+                            </td>
+                            <td className="text-end font-monospace">
+                              {c.unknownStake
+                                ? pctOf(c.unknownStake, r.totalStake)
+                                : '—'}
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </Table>
                   <p className="fs-10 text-body-tertiary mt-2 mb-0">

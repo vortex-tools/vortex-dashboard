@@ -110,6 +110,13 @@ const CLIENT_LABEL: Record<string, string> = {
 };
 export const clientLabel = (c: string) => CLIENT_LABEL[c] ?? c;
 
+// Min versions are shown for these clients only: Frankendancer is end of
+// life, and Jito is held to Agave's.
+const MIN_VERSION_CLIENTS: (keyof ClientVersionLists)[] = [
+  'agave',
+  'firedancer'
+];
+
 /** "Agave 4.1.0-beta.0 · Firedancer 1.0", the clients with a listed min. */
 export const MinVersions = ({
   versions,
@@ -118,12 +125,10 @@ export const MinVersions = ({
   versions: ClientVersionLists;
   className?: string;
 }) => {
-  const parts = (Object.keys(CLIENT_LABEL) as (keyof ClientVersionLists)[])
-    .filter(c => versions[c].length)
-    .map(
-      c =>
-        `${CLIENT_LABEL[c]} ${versions[c].map(v => v.replace(/^v/, '')).join(' / ')}`
-    );
+  const parts = MIN_VERSION_CLIENTS.filter(c => versions[c].length).map(
+    c =>
+      `${CLIENT_LABEL[c]} ${versions[c].map(v => v.replace(/^v/, '')).join(' / ')}`
+  );
   return parts.length ? (
     <span className={className}>{parts.join(' · ')}</span>
   ) : (
