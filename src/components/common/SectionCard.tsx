@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import InfoTip from 'components/common/InfoTip';
 import { ReactNode } from 'react';
 import { Link } from 'react-router';
 
@@ -56,19 +57,7 @@ const SectionCard = ({
         <FeatherIcon icon={icon} size={16} className="text-primary me-2" />
         <h6 className="mb-0">{title}</h6>
         {badge}
-        {info && (
-          <span
-            title={info}
-            className="d-inline-flex ms-2"
-            style={{ cursor: 'help' }}
-          >
-            <FeatherIcon
-              icon="info"
-              size={13}
-              className="text-body-quaternary"
-            />
-          </span>
-        )}
+        {info && <InfoTip>{info}</InfoTip>}
       </div>
       {aside}
       {linkTo && linkLabel && (

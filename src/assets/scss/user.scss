@@ -488,3 +488,18 @@ th.leaderboard-sticky-col {
   padding-top: 0.3rem;
   padding-bottom: 0.3rem;
 }
+
+// InfoTip: the popover a bit narrower and quieter than Bootstrap's.
+.info-tip {
+  --#{$prefix}popover-max-width: 22rem;
+  --#{$prefix}popover-body-padding-y: 0.5rem;
+  --#{$prefix}popover-body-padding-x: 0.75rem;
+  --#{$prefix}popover-body-color: var(--#{$prefix}body-color);
+}
+.info-tip-button {
+  cursor: pointer;
+  &:hover,
+  &:focus-visible {
+    color: var(--#{$prefix}primary) !important;
+  }
+}

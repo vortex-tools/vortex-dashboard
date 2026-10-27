@@ -1,4 +1,5 @@
 import { Header, flexRender } from '@tanstack/react-table';
+import InfoTip from 'components/common/InfoTip';
 import { useAdvanceTableContext } from 'providers/AdvanceTableProvider';
 import { Table, TableProps } from 'react-bootstrap';
 
@@ -26,7 +27,8 @@ const AdvanceTable = ({ tableProps }: { tableProps?: TableProps }) => {
           {table.getHeaderGroups().map(group => (
             <tr key={group.id}>
               {group.headers.map(h => {
-                const meta = h.column.columnDef.meta?.headerProps;
+                const { title: hint, ...meta } =
+                  h.column.columnDef.meta?.headerProps ?? {};
                 const sort = sortClass(h);
                 return (
                   <th
@@ -34,7 +36,7 @@ const AdvanceTable = ({ tableProps }: { tableProps?: TableProps }) => {
                     colSpan={h.colSpan > 1 ? h.colSpan : undefined}
                     {...meta}
                     className={
-                      [meta?.className, sort].filter(Boolean).join(' ') ||
+                      [meta.className, sort].filter(Boolean).join(' ') ||
                       undefined
                     }
                     onClick={
@@ -43,6 +45,13 @@ const AdvanceTable = ({ tableProps }: { tableProps?: TableProps }) => {
                   >
                     {!h.isPlaceholder &&
                       flexRender(h.column.columnDef.header, h.getContext())}
+                    {/* A header's explanation: an InfoTip, not a slow
+                        title attribute (it stops the click from sorting). */}
+                    {hint && (
+                      <InfoTip size={11} className="ms-1">
+                        {hint}
+                      </InfoTip>
+                    )}
                   </th>
                 );
               })}

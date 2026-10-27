@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import InfoTip from 'components/common/InfoTip';
 import SectionCard from 'components/common/SectionCard';
 import { footerUrl } from 'helpers/slotContext';
 import { parseUserAgent } from 'helpers/userAgent';
@@ -93,12 +94,13 @@ export const InfoTable = ({
           if ('heading' in (r as InfoRow)) {
             const h = r as Extract<InfoRow, { heading: string }>;
             return (
-              <tr key={h.heading} title={h.title}>
+              <tr key={h.heading}>
                 <td
                   colSpan={3}
                   className="pt-3 pb-1 ps-2 fs-10 fw-bold text-uppercase text-body-tertiary"
                 >
                   {h.heading}
+                  {h.title && <InfoTip size={11}>{h.title}</InfoTip>}
                   {h.aside}
                 </td>
               </tr>
@@ -106,7 +108,7 @@ export const InfoTable = ({
           }
           const row = r as InfoValueRow;
           return (
-            <tr key={row.label} title={row.title}>
+            <tr key={row.label}>
               <td className="pt-2 pb-1 py-sm-2 ps-2 align-middle">
                 <div className="d-inline-flex align-items-center">
                   <div
@@ -122,6 +124,7 @@ export const InfoTable = ({
                   <span className="fw-bold text-body-highlight text-nowrap">
                     {row.label}
                   </span>
+                  {row.title && <InfoTip size={12}>{row.title}</InfoTip>}
                 </div>
               </td>
               <td className="py-2 pe-2 align-middle d-none d-sm-table-cell text-body-tertiary">
