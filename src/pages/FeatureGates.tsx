@@ -3,6 +3,7 @@ import FeatherIcon from 'feather-icons-react';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import DelayedSpinner from 'components/common/DelayedSpinner';
+import AnnouncementsTable from 'components/features/announcements';
 import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -34,6 +35,45 @@ const statusRank = (f: FeatureGate, cluster: string) => {
   if (s.status === 'active') return 1e9 - (s.epoch ?? 0);
   if (s.status === 'skipped') return 3.5e9;
   return 3e9;
+};
+
+/** Under a gate's name in Up Next: required gates not active yet (it
+ *  can't take effect before them), and an announcement naming it. */
+const UpNextNotes = ({ f, cluster }: { f: FeatureGate; cluster: string }) => {
+  const s = f.clusters[cluster];
+  const blocked = s?.blockedBy ?? [];
+  const a = s?.announced;
+  if (!blocked.length && !a) return null;
+  return (
+    <div className="fs-10 d-flex flex-wrap gap-2 mt-1">
+      {blocked.length > 0 && (
+        <span className="text-warning-emphasis">
+          After{' '}
+          {blocked.map((id, i) => (
+            <span key={id}>
+              {i > 0 && ', '}
+              <Link to={`/feature/${id}`} className="text-warning-emphasis">
+                {f.requires?.find(q => q.id === id)?.name ??
+                  `${id.slice(0, 6)}…`}
+              </Link>
+            </span>
+          ))}
+        </span>
+      )}
+      {a && (
+        <span className="text-body-tertiary">
+          {a.url ? (
+            <a href={a.url} target="_blank" rel="noreferrer">
+              Announced
+            </a>
+          ) : (
+            'Announced'
+          )}
+          {a.epoch != null && ` for epoch ${a.epoch.toLocaleString()}`}
+        </span>
+      )}
+    </div>
+  );
 };
 
 const FILTERS = [
@@ -112,6 +152,13 @@ const FeatureGates = () => {
     fetchUpcoming?.('');
   }, [fetchAll, fetchUpcoming]);
   const served = upcoming?.cluster ?? 'mainnet-beta';
+  // The served cluster's announcements (devnet has no channel).
+  const fetchAnnouncements = context?.announcementsState.fetchData;
+  useEffect(() => {
+    if (upcoming?.cluster) fetchAnnouncements?.(upcoming.cluster);
+  }, [upcoming?.cluster, fetchAnnouncements]);
+  const announcements =
+    context?.announcementsState.data.get(served)?.announcements ?? [];
   const [filter, setFilter] = useState<Filter>('pending');
 
   const features = useMemo(() => data?.features ?? [], [data]);
@@ -247,7 +294,7 @@ const FeatureGates = () => {
           <SectionCard
             title={`Up Next on ${clusterLabel(served)}`}
             icon="clock"
-            info="Queued gates activate at the next epoch boundary; the rest wait in the tracker's order (it plans no epochs). Ready: activated stake whose node runs at least the gate's minimum version for its client (Jito is held to Agave's); unknown when the node isn't in gossip, its version doesn't parse, or no minimum is listed."
+            info="Queued gates activate at the next epoch boundary; the rest wait in the tracker's order (it plans no epochs). 'After' names required gates not active yet: it can't take effect before them. Ready: activated stake whose node runs at least the gate's minimum version for its client (Jito is held to Agave's); unknown when the node isn't in gossip, its version doesn't parse, or no minimum is listed."
           >
             {upcoming?.features.length ? (
               <Table responsive size="sm" className="data-table fs-9 mb-0">
@@ -282,6 +329,7 @@ const FeatureGates = () => {
                         >
                           {featureName(f)}
                         </Link>
+                        <UpNextNotes f={f} cluster={served} />
                       </td>
                       <td>
                         <ReadinessBar readiness={f.readiness} />
@@ -307,6 +355,19 @@ const FeatureGates = () => {
               </UntrackedState>
             )}
           </SectionCard>
+
+          {announcements.length > 0 && (
+            <SectionCard
+              title={`Announcements on ${clusterLabel(served)}`}
+              icon="volume-2"
+              info="Restarts, upgrades and feature activations as Solana Tech's announcement channel posts them, newest first. Only the facts read from each post are kept (and from the Agave wiki pages it links); check the post before acting on them."
+            >
+              <AnnouncementsTable
+                announcements={announcements.slice(0, 10)}
+                showCluster={false}
+              />
+            </SectionCard>
+          )}
 
           <SectionCard
             title="All Feature Gates"
