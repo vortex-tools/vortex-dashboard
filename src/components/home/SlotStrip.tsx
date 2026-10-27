@@ -1,38 +1,60 @@
 import SectionCard from 'components/common/SectionCard';
 import LiveSlotStrip, { StripCell } from 'components/live/LiveSlotStrip';
-import { SLOT_KIND, SlotKind, slotKind } from 'components/live/slotDots';
+import { SlotKind, slotKind } from 'components/live/slotDots';
 import { fetchSlots, noteIngestTip } from 'helpers/slotContext';
 import { useClusterHalt, useEpochLive } from 'hooks/useIngestion';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { SlotInfo } from 'providers/vortex-schemas';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 /** Slots fetched behind the tip: more than the widest strip shows. */
 const SPAN = 256;
 
-const LEGEND_KINDS: SlotKind[] = [
-  'fast',
-  'slow',
-  'block',
-  'finalizing',
-  'skipped'
+/** Polled this often: the strip's data refresh. */
+const POLL_MS = 2_000;
+/** Slots the playhead trails the newest loaded one by: more than a poll
+ *  plus its fetch brings (~2.5 s of slots), so it never waits on data. */
+const LEAD = 16;
+
+// In the Voting tab's live strip's palette: green blocks, a skipped slot
+// as a white dot with a ring.
+const CELL: Record<Exclude<SlotKind, 'upcoming'>, StripCell> = {
+  fast: { cls: 'bg-success', label: 'block, fast-finalized' },
+  slow: { cls: 'bg-warning', label: 'block, slow-finalized' },
+  block: {
+    cls: 'bg-success opacity-50',
+    label: 'block, finalized via a later block'
+  },
+  finalizing: {
+    cls: 'bg-body-emphasis border border-2 border-success border-opacity-50',
+    label: 'block, finalizing'
+  },
+  skipped: {
+    cls: 'bg-body-emphasis border border-2 border-warning',
+    label: 'skipped'
+  },
+  noData: { cls: 'bg-body-secondary opacity-50', label: 'no data' }
+};
+const LEGEND: Array<[string, string]> = [
+  [CELL.fast.cls, 'fast-finalized'],
+  [CELL.block.cls, 'via a later block'],
+  [CELL.slow.cls, 'slow-finalized'],
+  [CELL.finalizing.cls, 'finalizing'],
+  [CELL.skipped.cls, 'skipped']
 ];
-const LEGEND: Array<[string, string]> = LEGEND_KINDS.map(k => [
-  SLOT_KIND[k].cls,
-  SLOT_KIND[k].label
-]);
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 
 /**
- * The cluster's latest slots on the live slot strip (Cluster Status's
- * colors): a column per leader window, newest at the left, revealed at
- * block pace a little behind the ingested tip (/epochs/current), the
- * slots from /slots. A halted cluster stops at its last slot.
+ * The cluster's latest slots on the live slot strip, in the Voting tab
+ * strip's palette: a column per leader window, newest at the left,
+ * revealed at block pace a little behind the newest loaded slot (/slots,
+ * behind /epochs/current's ingested tip). A halted cluster stops at its
+ * last slot.
  */
 const SlotStrip = () => {
   const context = useContext(VortexDataContext);
-  const live = useEpochLive(true, 5_000);
+  const live = useEpochLive(true, POLL_MS);
   const halt = useClusterHalt();
   const ingested = live.ingestion?.footers?.lastSlot ?? null;
   const tip =
@@ -69,13 +91,24 @@ const SlotStrip = () => {
       stop = true;
     };
   }, [tip, ingested]);
-  const oldest = infos.size ? Math.min(...infos.keys()) : null;
+  // The oldest slot held, and the newest with an outcome: the playhead
+  // never reveals a slot that hasn't loaded (it would pop in late).
+  const { oldest, newest } = useMemo(() => {
+    let lo: number | null = null;
+    let hi: number | null = null;
+    for (const [s, v] of infos) {
+      if (lo == null || s < lo) lo = s;
+      if (v?.outcome && (hi == null || s > hi)) hi = s;
+    }
+    return { oldest: lo, newest: hi };
+  }, [infos]);
 
   const cellOf = useCallback(
     (s: number): StripCell | null => {
       const info = infos.get(s);
       if (!info?.outcome) return null;
-      return SLOT_KIND[slotKind(s, info, s)];
+      const k = slotKind(s, info, s);
+      return k === 'upcoming' ? null : CELL[k];
     },
     [infos]
   );
@@ -96,7 +129,8 @@ const SlotStrip = () => {
       linkLabel="Cluster status"
     >
       <LiveSlotStrip
-        recorded={infos.size ? tip : null}
+        recorded={newest}
+        lead={LEAD}
         oldest={oldest}
         epochStart={epochStart}
         slotMs={slotMs}

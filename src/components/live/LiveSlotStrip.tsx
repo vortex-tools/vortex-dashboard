@@ -14,9 +14,15 @@ const WINDOW = 4;
 // Dot size and the gap between columns (px): how many columns fit.
 const DOT = 10;
 const COL_GAP = 4;
-// The playhead starts this far behind the newest recorded slot, and jumps
-// forward if it falls further behind than JUMP (an ingest batch).
+// The playhead aims to stay this far behind the newest recorded slot (by
+// default; data that arrives in bigger batches wants more), and jumps
+// forward if it falls further behind than JUMP.
 const LEAD = 8;
+// Pacing: a step takes the slot time scaled by how far the playhead is
+// from its lead (slower as it nears the data, faster when behind), within
+// these bounds, so it glides instead of catching the edge and waiting.
+const PACE_MIN = 0.6;
+const PACE_MAX = 1.6;
 const JUMP = 96;
 // One column's step (px), and how long the row takes to slide one step.
 const STEP = DOT + COL_GAP;
@@ -168,8 +174,12 @@ const LiveSlotStrip = ({
   footnote,
   footnoteTitle,
   waiting = 'waiting for the record…',
+  lead = LEAD,
   className = 'bg-body-emphasis rounded border border-translucent p-3 mb-3'
 }: {
+  /** How far the playhead trails `recorded`: more than the slots a data
+   *  refresh brings at once, so it never has to wait for one. */
+  lead?: number;
   /** The newest slot with data: the playhead never passes it. */
   recorded: number | null;
   /** The oldest slot with data: columns stop at the first full window
@@ -218,8 +228,8 @@ const LiveSlotStrip = ({
   // Set when a hold ends: fast-forward until back at the present.
   const catchUp = useRef(false);
   useEffect(() => {
-    if (cursor == null && recorded != null) setCursor(recorded - LEAD);
-  }, [cursor, recorded]);
+    if (cursor == null && recorded != null) setCursor(recorded - lead);
+  }, [cursor, recorded, lead]);
   useEffect(() => {
     if (held) return;
     catchUp.current = true;
@@ -230,18 +240,28 @@ const LiveSlotStrip = ({
       if (c != null && edge != null && c < edge) {
         const next =
           edge - c > JUMP
-            ? edge - LEAD
-            : catchUp.current && edge - c > LEAD
-              ? Math.min(c + WINDOW, edge - LEAD)
+            ? edge - lead
+            : catchUp.current && edge - c > lead
+              ? Math.min(c + WINDOW, edge - lead)
               : c + 1;
-        if (edge - next <= LEAD) catchUp.current = false;
+        if (edge - next <= lead) catchUp.current = false;
         setCursor(next);
       } else catchUp.current = false;
-      t = setTimeout(tick, catchUp.current ? FF_MS : slotMs);
+      t = setTimeout(tick, delay());
     };
-    t = setTimeout(tick, catchUp.current ? FF_MS : slotMs);
+    // The next step's wait: the slot time, eased by the gap to the data.
+    const delay = () => {
+      if (catchUp.current) return FF_MS;
+      const c = cursorRef.current;
+      const edge = edgeRef.current;
+      if (c == null || edge == null) return slotMs;
+      const gap = edge - c;
+      if (gap <= 0) return slotMs;
+      return slotMs * Math.min(PACE_MAX, Math.max(PACE_MIN, lead / gap));
+    };
+    t = setTimeout(tick, delay());
     return () => clearTimeout(t);
-  }, [slotMs, held]);
+  }, [slotMs, held, lead]);
 
   const liveColumns = useMemo<Col[]>(() => {
     if (cursor == null) return [];
