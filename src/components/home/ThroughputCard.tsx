@@ -285,8 +285,7 @@ const ThroughputCard = () => {
 
   // Remounted (drawn at once, not animated) on a metric or window switch
   // and when that window's history arrives, so only live updates animate.
-  const historyLoaded =
-    shown === 'tps' && !tpsFromBlocks ? !!data : !!blocksData;
+  const historyLoaded = shown === 'tps' ? !!data : !!blocksData;
 
   const primary = getThemeColor('primary');
   const view = useMemo(() => {
@@ -296,6 +295,12 @@ const ThroughputCard = () => {
       xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0;
     if (shown === 'tps') {
       const data: Array<[number, number]> = [
+        // The per-minute samples up to the first bucket (the block
+        // store's history refills over 6 h after a reset), then the
+        // buckets.
+        ...points
+          .filter(p => keep(p.t) && (!tpsFromBlocks || p.t <= buckets[0].t))
+          .map((p): [number, number] => [p.t, p.tps]),
         ...(tpsFromBlocks
           ? buckets
               .filter(b => keep(b.t + bucketSecs))
@@ -303,9 +308,7 @@ const ThroughputCard = () => {
                 b.t + bucketSecs,
                 (b.transactions ?? 0) / bucketSecs
               ])
-          : points
-              .filter(p => keep(p.t))
-              .map((p): [number, number] => [p.t, p.tps])),
+          : []),
         ...rolling.map((w): [number, number] => [w.end, w.tx / spanSecs])
       ];
       if (!data.length) return null;
