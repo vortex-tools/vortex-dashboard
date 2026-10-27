@@ -15,7 +15,8 @@ import {
   SimdLinks,
   StatusChip,
   clusterLabel,
-  featureName
+  featureName,
+  gateName
 } from 'components/features/features';
 import useAdvanceTable from 'hooks/useAdvanceTable';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
@@ -53,8 +54,9 @@ const UpNextNotes = ({ f, cluster }: { f: FeatureGate; cluster: string }) => {
             <span key={id}>
               {i > 0 && ', '}
               <Link to={`/feature/${id}`} className="text-warning-emphasis">
-                {f.requires?.find(q => q.id === id)?.name ??
-                  `${id.slice(0, 6)}…`}
+                {(n => (n ? gateName(n) : `${id.slice(0, 6)}…`))(
+                  f.requires?.find(q => q.id === id)?.name
+                )}
               </Link>
             </span>
           ))}
@@ -95,6 +97,13 @@ const NOWRAP = {
 
 const columns = (served: string): ColumnDef<FeatureGate>[] => [
   {
+    id: 'simd',
+    header: 'SIMD',
+    accessorFn: f => f.simds[0] ?? 0,
+    cell: ({ row: { original: f } }) => <SimdLinks simds={f.simds} />,
+    meta: NOWRAP
+  },
+  {
     id: 'name',
     header: 'Feature',
     accessorFn: f =>
@@ -123,14 +132,7 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
         ),
         meta: NOWRAP
       })
-    ),
-  {
-    id: 'simd',
-    header: 'SIMD',
-    accessorFn: f => f.simds[0] ?? 0,
-    cell: ({ row: { original: f } }) => <SimdLinks simds={f.simds} />,
-    meta: NOWRAP
-  }
+    )
 ];
 
 /**
@@ -301,9 +303,9 @@ const FeatureGates = () => {
                 <thead>
                   <tr>
                     <th>#</th>
+                    <th className="text-nowrap">SIMD</th>
                     <th>Feature</th>
                     <th style={{ minWidth: '7rem' }}>Stake ready</th>
-                    <th className="text-nowrap">SIMD</th>
                     <th className="text-nowrap">Minimum versions</th>
                     {CLUSTERS.filter(c => c.key !== served).map(c => (
                       <th key={c.key} className="text-nowrap">
@@ -320,6 +322,9 @@ const FeatureGates = () => {
                           ? 'next epoch'
                           : i + 1}
                       </td>
+                      <td className="text-nowrap">
+                        <SimdLinks simds={f.simds} />
+                      </td>
                       <td>
                         <Link
                           to={`/feature/${f.id}`}
@@ -333,9 +338,6 @@ const FeatureGates = () => {
                       </td>
                       <td>
                         <ReadinessBar readiness={f.readiness} />
-                      </td>
-                      <td className="text-nowrap">
-                        <SimdLinks simds={f.simds} />
                       </td>
                       <td className="fs-10 text-nowrap">
                         <MinVersions versions={f.minVersions} />

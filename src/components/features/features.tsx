@@ -17,9 +17,17 @@ export const CLUSTERS = [
 export const clusterLabel = (key: string | null | undefined) =>
   CLUSTERS.find(c => c.key === key)?.label ?? key ?? '—';
 
+/** A gate's name without its SIMD prefix ("SIMD-0512: SHA512 Syscall"
+ *  -> "SHA512 Syscall"; "SIMD-0437-3: ..." too): the SIMD has its own
+ *  column and link. */
+export const gateName = (name: string) =>
+  name.replace(/^SIMD-?\d+(-\d+)?\s*:\s*/i, '') || name;
+
 /** The tracker's title, else agave's name, else the id. */
-export const featureName = (f: Pick<FeatureGate, 'id' | 'name' | 'title'>) =>
-  f.title ?? f.name ?? `${f.id.slice(0, 6)}…${f.id.slice(-6)}`;
+export const featureName = (f: Pick<FeatureGate, 'id' | 'name' | 'title'>) => {
+  const n = f.title ?? f.name;
+  return n ? gateName(n) : `${f.id.slice(0, 6)}…${f.id.slice(-6)}`;
+};
 
 export const simdLabel = (n: number) => `SIMD-${String(n).padStart(4, '0')}`;
 

@@ -16,6 +16,7 @@ import {
   clientLabel,
   clusterLabel,
   featureName,
+  gateName,
   inLine,
   pctOf
 } from 'components/features/features';
@@ -95,7 +96,9 @@ const blockedText = (f: FeatureGate, s: FeatureClusterState | undefined) => {
     return (
       <Fragment key={id}>
         {i > 0 && ', '}
-        <Link to={`/feature/${id}`}>{req?.name ?? `${id.slice(0, 6)}…`}</Link>
+        <Link to={`/feature/${id}`}>
+          {req?.name ? gateName(req.name) : `${id.slice(0, 6)}…`}
+        </Link>
       </Fragment>
     );
   });
@@ -230,7 +233,7 @@ const FeatureGatePage = () => {
                       <Fragment key={q.id}>
                         {i > 0 && ', '}
                         <Link to={`/feature/${q.id}`}>
-                          {q.name ?? `${q.id.slice(0, 6)}…`}
+                          {q.name ? gateName(q.name) : `${q.id.slice(0, 6)}…`}
                         </Link>
                       </Fragment>
                     ))}
