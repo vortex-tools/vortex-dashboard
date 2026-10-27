@@ -89,6 +89,8 @@ import {
   SimdDetail,
   announcementsSchema,
   Announcements,
+  throughputSchema,
+  Throughput,
   GovernanceProposals,
   governanceProposalDetailSchema,
   GovernanceProposalDetail,
@@ -779,6 +781,13 @@ const simdRequest = (simd: number) => ({
   schema: simdDetailSchema,
   timeout: 20_000
 });
+// Throughput by window ('30m' | '2h' | '6h').
+const throughputRequest = (window: string) => ({
+  path: '/cluster/throughput',
+  params: { window },
+  schema: throughputSchema,
+  timeout: 20_000
+});
 // Announcements by cluster ('' = both).
 const announcementsRequest = (cluster: string) => ({
   path: '/announcements',
@@ -1357,6 +1366,7 @@ interface VortexDataState {
   simdsState: KeyedSlice<string, Simds>;
   simdState: KeyedSlice<number, SimdDetail>;
   announcementsState: KeyedSlice<string, Announcements>;
+  throughputState: KeyedSlice<string, Throughput>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
   validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
   clusterVersionsState: KeyedSlice<number, ClusterVersions>;
@@ -1467,6 +1477,10 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
   const simdState = useKeyedSlice({
     request: simdRequest,
     toEntries: keyed<number, SimdDetail>()
+  });
+  const throughputState = useKeyedSlice({
+    request: throughputRequest,
+    toEntries: keyed<string, Throughput>()
   });
   const announcementsState = useKeyedSlice({
     request: announcementsRequest,
@@ -1581,6 +1595,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       simdsState,
       simdState,
       announcementsState,
+      throughputState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,
@@ -1625,6 +1640,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       simdsState,
       simdState,
       announcementsState,
+      throughputState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,

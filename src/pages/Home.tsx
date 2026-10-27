@@ -4,6 +4,7 @@ import useConsensus from 'hooks/useConsensus';
 import FeatherIcon from 'feather-icons-react';
 import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
+import ThroughputCard from 'components/home/ThroughputCard';
 import WhatsNext from 'components/home/WhatsNext';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import { formatDuration } from 'helpers/utils';
@@ -361,8 +362,11 @@ const Home = () => {
         </Row>
 
         <Row className="g-3 mb-3">
-          <Col xs={12} lg={8}>
+          <Col xs={12}>
             <SlotStrip />
+          </Col>
+          <Col xs={12} lg={8}>
+            <ThroughputCard />
           </Col>
           <Col xs={12} lg={4}>
             <WhatsNext />

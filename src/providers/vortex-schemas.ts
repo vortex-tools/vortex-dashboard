@@ -2733,6 +2733,29 @@ export const simdDetailSchema = z.object({
 });
 export type SimdDetail = z.infer<typeof simdDetailSchema>;
 
+// ---- Throughput (/cluster/throughput) -----------------------------------
+// Transactions per minute over a window (getRecentPerformanceSamples),
+// oldest first; there is no finer source. Under Alpenglow votes aren't
+// transactions, so nonVoteTransactions = transactions.
+export const throughputSchema = z.object({
+  windowSecs: z.number().catch(0),
+  readAt: z.number().nullable().catch(null),
+  points: z
+    .array(
+      z.object({
+        t: z.number(),
+        periodSecs: z.number().catch(60),
+        slot: z.number().nullable().catch(null),
+        slots: z.number().catch(0),
+        transactions: z.number().catch(0),
+        nonVoteTransactions: z.number().nullable().catch(null),
+        tps: z.number().catch(0)
+      })
+    )
+    .catch([])
+});
+export type Throughput = z.infer<typeof throughputSchema>;
+
 // ---- Halt run-up (/cluster/halt) ----------------------------------------
 // The last slots before a halt (Alpenglow footers): blocks, skips,
 // finalization, votes per slot, and who was voting at the end.

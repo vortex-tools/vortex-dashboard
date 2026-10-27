@@ -8,7 +8,7 @@ import { SlotInfo } from 'providers/vortex-schemas';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 /** Slots fetched behind the tip: more than the widest strip shows. */
-const SPAN = 256;
+const SPAN = 512;
 
 /** Polled this often: the strip's data refresh. */
 const POLL_MS = 2_000;
