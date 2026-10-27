@@ -26,23 +26,27 @@ echarts.use([
   CanvasRenderer
 ]);
 
-const METRICS = [
-  ['tps', 'TPS'],
-  ['cu', 'CUs'],
-  ['income', 'Income']
-] as const;
-type Metric = (typeof METRICS)[number][0];
+export type Metric = 'tps' | 'cu' | 'income';
+const LABEL: Record<Metric, string> = {
+  tps: 'TPS',
+  cu: 'CUs',
+  income: 'Income'
+};
 const TITLE: Record<Metric, string> = {
   tps: 'Live TPS',
   cu: 'Live CUs per Block',
   income: 'Live Block Income'
 };
 const INFO: Record<Metric, string> = {
-  tps: "Transactions per second: a point per minute from the cluster's performance samples, then, where the block feed is available, the last few minutes over 10-second spans of block time, a few seconds behind the chain and updated every 2 seconds. Under Alpenglow votes aren't transactions, so every one counted is a user transaction.",
-  cu: 'Compute units used per block, averaged over each minute of block time, against the block limit. From the block ingestor; refreshed every minute.',
+  tps: "Transactions per second over the past 6 hours, from the block store in 30-second buckets (before it has them, the cluster's per-minute performance samples), then the newest blocks played back slot by slot a few seconds behind the chain. Under Alpenglow votes aren't transactions, so every one counted is a user transaction.",
+  cu: 'Compute units used per block over the past 6 hours, in 30-second buckets of block time, then the newest blocks played back slot by slot. The block limit is 100M; the share of it is in the figures. From the block ingestor.',
   income:
-    "What leaders earned from their blocks, summed per minute of block time: fees (the leader's share of base fees after the burn, plus priority fees) and MEV tips. From the block ingestor; refreshed every minute; the minute still filling is left off."
+    "What leaders earned from their blocks over the past 6 hours, per minute of block time: fees (the leader's share of base fees after the burn, plus priority fees) and MEV tips, then the newest blocks over a rolling minute, played back slot by slot. From the block ingestor."
 };
+
+/** The history window, and the bucket size the provider asks for at it
+ *  (30 s: the API's 720-point maximum over 6 h). */
+const WIN = '6h';
 
 /** The live part: a point every LIVE_STEP_SLOTS (~2 s) behind the
  *  playhead, which trails the newest block by LIVE_LEAD slots. */
@@ -53,6 +57,9 @@ const DEFAULT_SLOT_SECS = 0.4;
 // The block compute-unit limit, a protocol constant (100M since SIMD-0286
 // activated on mainnet): drawn as the CU chart's reference line.
 const BLOCK_CU_LIMIT = 100_000_000;
+
+/** History refresh: the API's rows move every 20 s to a minute. */
+const REFRESH_MS = 60_000;
 
 /** A round axis top ~8% over `m`: a multiple of half its magnitude. */
 const niceMax = (m: number) => {
@@ -70,18 +77,6 @@ const fmtSol = (lamports: number) => {
   const sol = lamports / 1e9;
   return `◎${sol >= 100 ? Math.round(sol).toLocaleString() : sol.toFixed(sol >= 10 ? 1 : 2)}`;
 };
-
-const WINDOWS = [
-  ['1m', '1m'],
-  ['30m', '30m'],
-  ['2h', '2h'],
-  ['6h', '6h']
-] as const;
-type Window = (typeof WINDOWS)[number][0];
-
-/** The API samples once a minute: refresh at that pace. */
-const REFRESH_MS = 60_000;
-
 const fmtTps = (v: number) =>
   v >= 10 ? Math.round(v).toLocaleString() : v.toFixed(1);
 
@@ -94,51 +89,45 @@ const Figure = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
+type Pt = [number, number];
+
 /**
- * Transactions per second, minute by minute, over the last 30 minutes,
- * 2 hours or 6 hours (/cluster/throughput, from the cluster's performance
- * samples): the latest minute, the window's average and peak, and the
- * line. Refreshed every minute, as the samples are.
+ * The cluster's activity over the past 6 hours, then live: history from
+ * /cluster/blocks (30 s buckets; TPS from the per-minute performance
+ * samples until the buckets count transactions), then the newest blocks
+ * (/cluster/blocks/recent) played back slot by slot like Live Slots.
+ * `metrics` picks what it can show: more than one gets a toggle in the
+ * header. Block metrics need the block ingestor (not on testnet).
  */
-const ThroughputCard = () => {
+const ThroughputCard = ({ metrics }: { metrics: Metric[] }) => {
   const context = useContext(VortexDataContext);
   const { getThemeColor } = useAppContext();
-  const [picked, setWin] = useState<Window>('30m');
-  // The block feed (for the live tail; see below). The 1m window is
-  // offered only while it answers: it's the live part alone.
-  const recent = useRecentBlocks(true);
-  const live = !!recent?.length;
-  const windows = live ? WINDOWS : WINDOWS.filter(([k]) => k !== '1m');
-  const win: Window = !live && picked === '1m' ? '30m' : picked;
-  const [metric, setMetric] = useState<Metric>('tps');
+  const [picked, setMetric] = useState<Metric>(metrics[0]);
   const slice = context?.throughputState;
   const fetchData = slice?.fetchData;
   const blocksSlice = context?.clusterBlocksState;
   const fetchBlocks = blocksSlice?.fetchData;
+  const wantsTps = metrics.includes('tps');
   useEffect(() => {
-    fetchData?.(win);
-    fetchBlocks?.(win);
-  }, [win, fetchData, fetchBlocks]);
-  const blocksData = blocksSlice?.data.get(win);
+    if (wantsTps) fetchData?.(WIN);
+    fetchBlocks?.(WIN);
+  }, [wantsTps, fetchData, fetchBlocks]);
+  const blocksData = blocksSlice?.data.get(WIN);
   // Block data is only refreshed once an answer showed there is some (no
   // block ingestor: a 404, not retried every minute).
   const hasBlocks = !!blocksData;
   useLiveRefresh(true, REFRESH_MS, () => {
-    fetchData?.(win, { force: true });
-    if (hasBlocks) fetchBlocks?.(win, { force: true });
+    if (wantsTps) fetchData?.(WIN, { force: true });
+    if (hasBlocks) fetchBlocks?.(WIN, { force: true });
   });
-  const data = slice?.data.get(win);
+  const data = slice?.data.get(WIN);
   const points = useMemo(() => data?.points ?? [], [data]);
-  // Whole buckets only: the newest stored one is usually still filling
-  // (ingest runs behind the clock, so it can be partial even minutes
-  // ago) - always left off.
+  // Whole buckets only: the newest stored one is usually still filling.
   const bucketSecs = blocksData?.bucketSecs ?? 60;
   const buckets = useMemo(
     () => (blocksData?.buckets ?? []).slice(0, -1),
     [blocksData]
   );
-  // TPS history from the block buckets when they count transactions
-  // (exact, and as fine as the buckets), else the per-minute samples.
   const tpsFromBlocks =
     buckets.length > 0 && buckets.every(b => b.transactions != null);
   // Income is a per-minute figure: its buckets summed into whole minutes.
@@ -151,15 +140,11 @@ const ThroughputCard = () => {
       const m = byMin.get(t) ?? {
         ...b,
         t,
-        blocks: 0,
-        computeUnits: 0,
         baseFees: 0,
         priorityFees: 0,
         mevTips: 0,
         n: 0
       };
-      m.blocks += b.blocks;
-      m.computeUnits += b.computeUnits;
       m.baseFees += b.baseFees;
       m.priorityFees += b.priorityFees;
       m.mevTips += b.mevTips;
@@ -169,34 +154,28 @@ const ThroughputCard = () => {
     return [...byMin.values()].filter(m => m.n === per);
   }, [buckets, bucketSecs]);
   // Block metrics are offered once block data has loaded.
-  const offered = hasBlocks ? METRICS : METRICS.slice(0, 1);
-  const shown: Metric = hasBlocks ? metric : 'tps';
+  const offered = metrics.filter(m => m === 'tps' || hasBlocks);
+  const shown: Metric | null = offered.includes(picked)
+    ? picked
+    : (offered[0] ?? null);
 
-  // The live part: the newest blocks (/cluster/blocks/recent, polled
-  // every 2 s, ~4 minutes of them), played back like Live Slots: a
-  // playhead trails the newest block by LIVE_LEAD slots (more than a
-  // poll brings) and steps a slot per slot-time, easing by its gap to the
-  // data, so the newest point moves every slot. Rates are over a rolling
-  // window of slots (a minute beside the per-minute history, 10 s in the
-  // 1m window, which is the live part alone) - skipped slots count as
-  // empty time - and a slot's time is placed from the newest block's at
-  // the epoch's slot time (block times are whole seconds).
-  // Income is a per-minute figure: always over a full minute (scaling a
-  // 10 s span up would read one large tip as a minute's worth).
+  // The live part: the newest blocks (polled every 2 s, ~4 minutes of
+  // them), played back like Live Slots: a playhead trails the newest
+  // block by LIVE_LEAD slots and steps a slot per slot-time, so the
+  // newest point moves every slot. Rates are over a rolling span of slots
+  // at the history's grain (skipped slots count as empty time); income
+  // always over a full minute.
+  const recent = useRecentBlocks(true);
   const span =
-    metric === 'income'
-      ? 60
-      : win === '1m'
-        ? 10
-        : metric === 'cu' || tpsFromBlocks
-          ? bucketSecs
-          : 60;
+    shown === 'income' ? 60 : shown === 'cu' || tpsFromBlocks ? bucketSecs : 60;
   const slotSecs =
     context?.currentEpochState.progress?.slotSeconds ?? DEFAULT_SLOT_SECS;
   const spanSlots = Math.max(1, Math.round(span / slotSecs));
   const newestSlot = recent?.length ? recent[recent.length - 1].slot : null;
   const playhead = usePlayhead(newestSlot, slotSecs * 1000, LIVE_LEAD);
-  // Running sums by slot, from the oldest block held.
+  // Running sums by slot, from the oldest block held, and a slot's time
+  // (slot x slot time plus an offset averaged over the blocks held, since
+  // block times are whole seconds).
   const prefix = useMemo(() => {
     if (!recent?.length) return null;
     const first = recent[0].slot;
@@ -214,34 +193,25 @@ const ThroughputCard = () => {
       p.fees[i + 1] = p.fees[i] + (b ? b.baseFees + b.priorityFees : 0);
       p.tips[i + 1] = p.tips[i] + (b?.mevTips ?? 0);
     }
-    // A slot's time: slot x slot time plus an offset averaged over every
-    // block held (block times are whole seconds, so one block's would
-    // shift the line by up to a second at each poll).
     let off = 0;
     for (const b of recent) off += b.t + 0.5 - b.slot * slotSecs;
     off /= recent.length;
     return {
       p,
       first,
-      n,
       anchorSlot: recent[recent.length - 1].slot,
       timeOf: (slot: number) => off + slot * slotSecs
     };
   }, [recent, slotSecs]);
   const rolling = useMemo(() => {
     if (!prefix || playhead == null) return [];
-    const { p, first, anchorSlot, timeOf: at } = prefix;
-    const sum = (col: Float64Array, slot: number) => {
-      // Sum over (slot - spanSlots, slot].
-      const hi = slot - first + 1;
-      const lo = hi - spanSlots;
-      return col[hi] - col[lo];
-    };
+    const { p, first, anchorSlot, timeOf } = prefix;
+    const sum = (col: Float64Array, slot: number) =>
+      col[slot - first + 1] - col[slot - first + 1 - spanSlots];
     const head = Math.min(playhead, anchorSlot);
     const firstEnd = first + spanSlots;
     if (head < firstEnd) return [];
     const ends: number[] = [];
-    // A point every LIVE_STEP_SLOTS behind the playhead, and the playhead.
     for (
       let e = Math.ceil(firstEnd / LIVE_STEP_SLOTS) * LIVE_STEP_SLOTS;
       e < head;
@@ -250,7 +220,7 @@ const ThroughputCard = () => {
       ends.push(e);
     ends.push(head);
     return ends.map(e => ({
-      end: at(e),
+      end: timeOf(e),
       tx: sum(p.tx, e),
       cu: sum(p.cu, e),
       blocks: sum(p.blocks, e),
@@ -258,61 +228,36 @@ const ThroughputCard = () => {
       tips: sum(p.tips, e)
     }));
   }, [prefix, playhead, spanSlots]);
-  // Where the live part begins: history stops there (all of it in 1m).
-  // In the 1m window, every block up to the playhead as a bar (TPS: its
-  // transactions over a slot's time, on the line's scale; CUs: its own),
-  // a new one each slot; skipped slots are gaps.
-  const bars = useMemo(() => {
-    if (win !== '1m' || !prefix || playhead == null) return null;
-    const { p, first, anchorSlot, timeOf } = prefix;
-    const head = Math.min(playhead, anchorSlot);
-    const from = Math.max(first, head - Math.round(60 / slotSecs) + 1);
-    const tps: Array<[number, number]> = [];
-    const cu: Array<[number, number]> = [];
-    for (let sl = from; sl <= head; sl++) {
-      const i = sl - first;
-      if (p.blocks[i + 1] - p.blocks[i] < 1) continue;
-      const t = timeOf(sl);
-      tps.push([t, (p.tx[i + 1] - p.tx[i]) / slotSecs]);
-      cu.push([t, p.cu[i + 1] - p.cu[i]]);
-    }
-    return { tps, cu, from: timeOf(from), to: timeOf(head) };
-  }, [win, prefix, playhead, slotSecs]);
   const spanSecs = spanSlots * slotSecs;
+  // Where the live part begins: history stops there.
   const liveFrom = rolling.length ? rolling[0].end - spanSecs : null;
-  const keep = (t: number) =>
-    liveFrom == null ? true : win !== '1m' && t <= liveFrom;
 
-  // Remounted (drawn at once, not animated) on a metric or window switch
-  // and when that window's history arrives, so only live updates animate.
-  const historyLoaded = shown === 'tps' ? !!data : !!blocksData;
-
-  const primary = getThemeColor('primary');
   const view = useMemo(() => {
-    const latestLabel =
-      rolling.length && span < 60 ? `Last ${span} s` : 'Last minute';
+    const keep = (t: number) => liveFrom == null || t <= liveFrom;
+    const latestLabel = span < 60 ? `Last ${span} s` : 'Last minute';
     const mean = (xs: number[]) =>
       xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0;
     if (shown === 'tps') {
-      const data: Array<[number, number]> = [
-        // The per-minute samples up to the first bucket (the block
-        // store's history refills over 6 h after a reset), then the
-        // buckets.
+      const series: Pt[] = [
+        // The per-minute samples up to the first bucket (the block store
+        // refills over 6 h after a reset), then the buckets.
         ...points
           .filter(p => keep(p.t) && (!tpsFromBlocks || p.t <= buckets[0].t))
-          .map((p): [number, number] => [p.t, p.tps]),
+          .map((p): Pt => [p.t, p.tps]),
         ...(tpsFromBlocks
           ? buckets
               .filter(b => keep(b.t + bucketSecs))
-              .map((b): [number, number] => [
-                b.t + bucketSecs,
-                (b.transactions ?? 0) / bucketSecs
-              ])
+              .map(
+                (b): Pt => [
+                  b.t + bucketSecs,
+                  (b.transactions ?? 0) / bucketSecs
+                ]
+              )
           : []),
-        ...rolling.map((w): [number, number] => [w.end, w.tx / spanSecs])
+        ...rolling.map((w): Pt => [w.end, w.tx / spanSecs])
       ];
-      if (!data.length) return null;
-      const vals = data.map(d => d[1]);
+      if (!series.length) return null;
+      const vals = series.map(d => d[1]);
       return {
         figures: [
           [latestLabel, fmtTps(vals[vals.length - 1])],
@@ -322,33 +267,23 @@ const ThroughputCard = () => {
         fmt: (v: number) => `${fmtTps(v)} TPS`,
         axis: (v: number) =>
           v >= 1000 ? `${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k` : `${v}`,
-        series: bars
-          ? [
-              { name: 'TPS', data: data.filter(d => d[0] >= bars.from) },
-              { name: 'Block', type: 'bar' as const, data: bars.tps }
-            ]
-          : [{ name: 'TPS', data }],
-        xRange: bars ? ([bars.from, bars.to] as [number, number]) : undefined
+        series: [{ name: 'TPS', data: series }]
       };
     }
-    // Block metrics: the buckets (at each one's end) - whole minutes for
-    // income - then the live part.
-    const hist = minutes.filter(m => keep(m.t + 60));
     if (shown === 'cu') {
-      const data: Array<[number, number]> = [
+      const series: Pt[] = [
         ...buckets
           .filter(b => keep(b.t + bucketSecs))
-          .map((b): [number, number] => [
-            b.t + bucketSecs,
-            b.blocks ? b.computeUnits / b.blocks : 0
-          ]),
-        ...rolling.map((w): [number, number] => [
-          w.end,
-          w.blocks ? w.cu / w.blocks : 0
-        ])
+          .map(
+            (b): Pt => [
+              b.t + bucketSecs,
+              b.blocks ? b.computeUnits / b.blocks : 0
+            ]
+          ),
+        ...rolling.map((w): Pt => [w.end, w.blocks ? w.cu / w.blocks : 0])
       ];
-      if (!data.length) return null;
-      const vals = data.map(d => d[1]);
+      if (!series.length) return null;
+      const vals = series.map(d => d[1]);
       const avg = mean(vals);
       return {
         figures: [
@@ -362,34 +297,24 @@ const ThroughputCard = () => {
         // line; the share is in the figures).
         limit:
           Math.max(...vals) > BLOCK_CU_LIMIT / 2 ? BLOCK_CU_LIMIT : undefined,
-        series: bars
-          ? [
-              {
-                name: 'CUs per block',
-                data: data.filter(d => d[0] >= bars.from)
-              },
-              { name: 'Block', type: 'bar' as const, data: bars.cu }
-            ]
-          : [{ name: 'CUs per block', data }],
-        xRange: bars ? ([bars.from, bars.to] as [number, number]) : undefined
+        series: [{ name: 'CUs per block', data: series }]
       };
     }
-    // Income as a per-minute rate (a 10 s span scaled up).
+    if (shown !== 'income') return null;
+    // Income per minute: whole minutes, then a rolling minute.
+    const hist = minutes.filter(m => keep(m.t + 60));
     const perMin = 60 / spanSecs;
-    const fees: Array<[number, number]> = [
-      ...hist.map((m): [number, number] => [
-        m.t + 60,
-        m.baseFees + m.priorityFees
-      ]),
-      ...rolling.map((w): [number, number] => [w.end, w.fees * perMin])
+    const fees: Pt[] = [
+      ...hist.map((m): Pt => [m.t + 60, m.baseFees + m.priorityFees]),
+      ...rolling.map((w): Pt => [w.end, w.fees * perMin])
     ];
-    const tips: Array<[number, number]> = [
-      ...hist.map((m): [number, number] => [m.t + 60, m.mevTips]),
-      ...rolling.map((w): [number, number] => [w.end, w.tips * perMin])
+    const tips: Pt[] = [
+      ...hist.map((m): Pt => [m.t + 60, m.mevTips]),
+      ...rolling.map((w): Pt => [w.end, w.tips * perMin])
     ];
     if (!fees.length) return null;
     const totals = fees.map((f, i) => f[1] + tips[i][1]);
-    // The window's total: its whole minutes, plus the blocks since.
+    // The 6 hours' total: their whole minutes, plus the blocks since.
     const total =
       hist.reduce((a, m) => a + m.baseFees + m.priorityFees + m.mevTips, 0) +
       (recent ?? [])
@@ -399,15 +324,14 @@ const ThroughputCard = () => {
       figures: [
         [latestLabel, fmtSol(totals[totals.length - 1])],
         ['Per minute', fmtSol(mean(totals))],
-        ['Window total', fmtSol(total)]
+        ['Past 6 h', fmtSol(total)]
       ],
       fmt: (v: number) => fmtSol(v),
       axis: (v: number) => fmtSol(v),
       stacked: true,
-      xRange: bars ? ([bars.from, bars.to] as [number, number]) : undefined,
       series: [
-        { name: 'Fees', data: fees.filter(d => !bars || d[0] >= bars.from) },
-        { name: 'MEV tips', data: tips.filter(d => !bars || d[0] >= bars.from) }
+        { name: 'Fees', data: fees },
+        { name: 'MEV tips', data: tips }
       ]
     };
   }, [
@@ -418,30 +342,17 @@ const ThroughputCard = () => {
     tpsFromBlocks,
     minutes,
     rolling,
-    bars,
     span,
     spanSecs,
-    win,
     recent,
     liveFrom
   ]);
-  // The bars' scale: their 97th percentile, or the line's top if higher.
-  const barCap = (() => {
-    if (!view || !bars) return null;
-    const barVals = view.series
-      .filter(sr => 'type' in sr && sr.type === 'bar')
-      .flatMap(sr => sr.data.map(d => d[1]))
-      .sort((a, b) => a - b);
-    const lineVals = view.series
-      .filter(sr => !('type' in sr))
-      .flatMap(sr => sr.data.map(d => d[1]));
-    if (!barVals.length) return null;
-    return Math.max(barVals[Math.floor(barVals.length * 0.97)], ...lineVals);
-  })();
-  // A zoomed line's axis (no bars, no stack): bottom, top and step on
-  // round values, so every label sits on a step.
+
+  // A line's axis (not the income stack, which stands on 0): zoomed onto
+  // its range - TPS moves within ~1-2k, flat from 0 - with bottom, top
+  // and step on round values, so every label sits on a step.
   const zoom = (() => {
-    if (!view || bars || view.stacked) return null;
+    if (!view || view.stacked) return null;
     const vals = view.series.flatMap(sr => sr.data.map(d => d[1]));
     if (!vals.length) return null;
     const lo = Math.min(...vals);
@@ -466,10 +377,11 @@ const ThroughputCard = () => {
     );
     return [t, view?.stacked ? v : first[first.length - 1][1]];
   })();
+
+  const primary = getThemeColor('primary');
   const option = {
-    // Every change draws at once - the line and its newest point step
-    // together each poll (a morph made the dot trail the line); the
-    // pulse on the newest point is the motion.
+    // Every change draws at once; the pulse on the newest point is the
+    // motion (a morph made the dot trail the line).
     animation: true,
     animationDuration: 0,
     animationDurationUpdate: 0,
@@ -484,9 +396,6 @@ const ThroughputCard = () => {
     xAxis: {
       type: 'time',
       splitNumber: 4,
-      // The 1m window slides with the playhead.
-      min: view?.xRange ? view.xRange[0] * 1000 : undefined,
-      max: view?.xRange ? view.xRange[1] * 1000 : undefined,
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -496,18 +405,9 @@ const ThroughputCard = () => {
     },
     yAxis: {
       type: 'value',
-      // Lines are zoomed to their range (TPS moves within ~1-2k: from 0
-      // it reads flat); bars and the income stack stand on 0.
       min: zoom ? zoom.min : 0,
       interval: zoom?.step,
-      // A round top a little over the data (or the block limit, when
-      // drawn), so the top label never crowds the one below it.
-      // Over bars, capped at their 97th percentile (and the line), so one
-      // outsized block doesn't flatten the rest; it's clipped.
-      max: zoom
-        ? zoom.max
-        : (v: { max: number }) =>
-            niceMax(Math.max(barCap ?? v.max, view?.limit ?? 0)),
+      max: zoom ? zoom.max : (v: { max: number }) => niceMax(v.max),
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -517,40 +417,22 @@ const ThroughputCard = () => {
     },
     series: [
       ...(view?.series ?? []).map((sr, i) => ({
-        ...sr,
-        // Keyed by time, so an update morphs each point into its own new
-        // value (not its neighbor's, as by index when the window slides).
+        name: sr.name,
+        // Keyed by time, so points stay matched as the line moves on.
         data: sr.data.map(([t, v]) => ({
           name: String(t),
           value: [t * 1000, v]
         })),
-        ...('type' in sr && sr.type === 'bar'
-          ? {
-              type: 'bar',
-              color: primary,
-              itemStyle: { opacity: 0.35 },
-              barMaxWidth: 3,
-              barMinWidth: 1,
-              clip: true,
-              z: 1
-            }
-          : {
-              type: 'line',
-              symbol: 'none',
-              smooth: 0.2,
-              stack: view?.stacked ? 'income' : undefined,
-              color: i === 0 ? primary : getThemeColor('info'),
-              lineStyle: { width: bars ? 2 : 1.5 },
-              // Over bars, the line alone; a zoomed line's area would
-              // start mid-chart.
-              areaStyle:
-                bars || !view?.stacked
-                  ? bars
-                    ? undefined
-                    : { opacity: 0.15, origin: 'start' }
-                  : { opacity: 0.35 },
-              z: 2
-            }),
+        type: 'line',
+        symbol: 'none',
+        smooth: 0.2,
+        stack: view?.stacked ? 'income' : undefined,
+        color: i === 0 ? primary : getThemeColor('info'),
+        lineStyle: { width: 1.5 },
+        // A zoomed line's area fills down to the axis bottom.
+        areaStyle: view?.stacked
+          ? { opacity: 0.35 }
+          : { opacity: 0.15, origin: 'start' },
         markLine:
           i === 0 && view?.limit
             ? {
@@ -587,64 +469,55 @@ const ThroughputCard = () => {
     ]
   };
 
+  // Nothing to show at all (income without a block ingestor): no card.
+  if (!shown) return null;
+  // Remounted (drawn at once) on a metric switch and when the history
+  // arrives, so the chart never animates a swap.
+  const historyLoaded = shown === 'tps' ? !!data : !!blocksData;
   return (
-    <SectionCard title={TITLE[shown]} icon="activity" info={INFO[shown]}>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-2">
-        <div className="d-flex gap-4">
-          {(
-            view?.figures ?? [
-              ['Last minute', '—'],
-              ['Average', '—'],
-              ['Peak', '—']
-            ]
-          ).map(([label, value]) => (
-            <Figure key={label} label={label} value={value} />
-          ))}
-        </div>
-        <div className="d-flex flex-wrap gap-2">
-          {offered.length > 1 && (
-            <ButtonGroup size="sm">
-              {offered.map(([k, label]) => (
-                <ToggleButton
-                  key={k}
-                  id={`activity-metric-${k}`}
-                  type="radio"
-                  name="activity-metric"
-                  variant="soft-secondary"
-                  value={k}
-                  checked={shown === k}
-                  onChange={() => setMetric(k)}
-                >
-                  {label}
-                </ToggleButton>
-              ))}
-            </ButtonGroup>
-          )}
+    <SectionCard
+      title={TITLE[shown]}
+      icon={shown === 'income' ? 'dollar-sign' : 'activity'}
+      info={INFO[shown]}
+      aside={
+        offered.length > 1 ? (
           <ButtonGroup size="sm">
-            {windows.map(([k, label]) => (
+            {offered.map(k => (
               <ToggleButton
                 key={k}
-                id={`tps-window-${k}`}
+                id={`live-metric-${k}`}
                 type="radio"
-                name="tps-window"
+                name={`live-metric-${metrics.join('-')}`}
                 variant="soft-secondary"
                 value={k}
-                checked={win === k}
-                onChange={() => setWin(k)}
+                checked={shown === k}
+                onChange={() => setMetric(k)}
               >
-                {label}
+                {LABEL[k]}
               </ToggleButton>
             ))}
           </ButtonGroup>
-        </div>
+        ) : undefined
+      }
+    >
+      <div className="d-flex gap-4 mb-2">
+        {(
+          view?.figures ?? [
+            ['Last minute', '—'],
+            ['Average', '—'],
+            ['Peak', '—']
+          ]
+        ).map(([label, value]) => (
+          <Figure key={label} label={label} value={value} />
+        ))}
       </div>
       {view ? (
         <>
           <ReactEChartsCore
-            key={`${shown}-${win}-${historyLoaded ? 1 : 0}`}
+            key={`${shown}-${historyLoaded ? 1 : 0}`}
             echarts={echarts}
             option={option}
-            style={{ height: 180, width: '100%' }}
+            style={{ height: 200, width: '100%' }}
           />
           {view.stacked && (
             <div className="d-flex gap-3 fs-10 text-body-tertiary mt-1">
@@ -668,7 +541,7 @@ const ThroughputCard = () => {
           Throughput isn&apos;t available from this API.
         </UntrackedState>
       ) : (
-        <div style={{ height: 180 }} />
+        <div style={{ height: 200 }} />
       )}
     </SectionCard>
   );
