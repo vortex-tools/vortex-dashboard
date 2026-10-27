@@ -5,10 +5,21 @@ import { fetchSlots, noteIngestTip } from 'helpers/slotContext';
 import { useClusterHalt, useEpochLive } from 'hooks/useIngestion';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { SlotInfo } from 'providers/vortex-schemas';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 
 /** Slots fetched behind the tip: more than the widest strip shows. */
 const SPAN = 512;
+
+/** Slots this close to the tip are refetched while still missing their
+ *  outcome or (a block) finalization. */
+const REFETCH_DEPTH = 64;
 
 /** Polled this often: the strip's data refresh. */
 const POLL_MS = 2_000;
@@ -70,16 +81,38 @@ const SlotStrip = () => {
       ? p.absoluteSlot - p.slotIndex
       : 0;
 
-  // The last SPAN slots, merged as the tip moves (slots near the tip are
-  // refetched until they settle - see fetchSlots).
+  // The last SPAN slots, merged as the tip moves. /slots reads its whole
+  // range from storage on every call, so after the first load a poll asks
+  // only for what's new - past the newest slot with an outcome - and the
+  // few blocks still waiting on their finalization (or rows not there
+  // yet) near the tip, not every unsettled slot.
   const [infos, setInfos] = useState<Map<number, SlotInfo | null>>(
     () => new Map()
   );
+  const infosRef = useRef(infos);
+  infosRef.current = infos;
   useEffect(() => {
     if (tip == null) return;
     noteIngestTip(ingested);
     let stop = false;
-    const slots = Array.from({ length: SPAN }, (_, i) => tip - SPAN + 1 + i);
+    const have = infosRef.current;
+    let newest: number | null = null;
+    for (const [sl, v] of have)
+      if (v?.outcome && (newest == null || sl > newest)) newest = sl;
+    const from = Math.max(tip - SPAN + 1, newest != null ? newest + 1 : 0);
+    const slots = Array.from(
+      { length: Math.max(0, tip - from + 1) },
+      (_, i) => from + i
+    );
+    if (newest != null)
+      for (const [sl, v] of have)
+        if (
+          sl > tip - REFETCH_DEPTH &&
+          sl <= newest &&
+          (!v?.outcome || (v.outcome === 'block' && !v.finalization))
+        )
+          slots.push(sl);
+    if (!slots.length) return;
     fetchSlots(slots)
       .then(m => {
         if (stop) return;
