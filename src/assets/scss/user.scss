@@ -265,6 +265,9 @@ th.leaderboard-sticky-col {
 .bg-pending {
   background-color: #{$gray-400};
 }
+.border-pending {
+  border-color: #{$gray-500} !important;
+}
 
 // Live voting strip: "unrewardable" (no reward certificate to land in)
 // is a light gray-green - not a miss, and nothing to act on.

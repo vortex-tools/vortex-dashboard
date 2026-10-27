@@ -17,7 +17,7 @@ const POLL_MS = 2_000;
 const LEAD = 16;
 
 // In the Voting tab's live strip's palette: green blocks (fainter when
-// not fast-finalized), a skipped slot as a white dot with a ring.
+// not fast-finalized), a skipped slot as a white dot with a gray ring.
 const SLOW: StripCell = {
   cls: 'bg-success opacity-50',
   label: 'block, slow-finalized'
@@ -33,7 +33,7 @@ const CELL: Record<Exclude<SlotKind, 'upcoming'>, StripCell> = {
     label: 'block, finalizing'
   },
   skipped: {
-    cls: 'bg-body-emphasis border border-2 border-warning',
+    cls: 'bg-body-emphasis border border-2 border-pending',
     label: 'skipped'
   },
   noData: { cls: 'bg-body-secondary opacity-50', label: 'no data' }
