@@ -10,6 +10,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import useLiveRefresh from 'hooks/useLiveRefresh';
+import useRecentBlocks from 'hooks/useRecentBlocks';
 import { useAppContext } from 'providers/AppProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -36,11 +37,17 @@ const TITLE: Record<Metric, string> = {
   income: 'Live Block Income'
 };
 const INFO: Record<Metric, string> = {
-  tps: "Transactions per second, a point per minute, from the cluster's performance samples (there is no finer source). Under Alpenglow votes aren't transactions, so every one counted is a user transaction. Refreshed every minute.",
+  tps: "Transactions per second: a point per minute from the cluster's performance samples, then, where the block feed is available, the last few minutes over 10-second spans of block time, a few seconds behind the chain and updated every 2 seconds. Under Alpenglow votes aren't transactions, so every one counted is a user transaction.",
   cu: 'Compute units used per block, averaged over each minute of block time, against the block limit. From the block ingestor; refreshed every minute.',
   income:
     "What leaders earned from their blocks, summed per minute of block time: fees (the leader's share of base fees after the burn, plus priority fees) and MEV tips. From the block ingestor; refreshed every minute; the minute still filling is left off."
 };
+
+/** The live tail: TPS over a rolling TAIL_SPAN seconds of block time
+ *  (whole seconds, so a span this long reads steadily), a point every
+ *  TAIL_STEP seconds - the feed's poll. */
+const TAIL_SPAN = 10;
+const TAIL_STEP = 2;
 
 // The block compute-unit limit, a protocol constant (100M since SIMD-0286
 // activated on mainnet): drawn as the CU chart's reference line.
@@ -56,6 +63,7 @@ const fmtSol = (lamports: number) => {
 };
 
 const WINDOWS = [
+  ['5m', '5m'],
   ['30m', '30m'],
   ['2h', '2h'],
   ['6h', '6h']
@@ -117,18 +125,61 @@ const ThroughputCard = () => {
   const offered = hasBlocks ? METRICS : METRICS.slice(0, 1);
   const shown: Metric = hasBlocks ? metric : 'tps';
 
+  // The live tail: the newest blocks (/cluster/blocks/recent, polled
+  // every 2 s, ~4 minutes of them) as TPS over 10 s spans of block time
+  // (whole seconds, so nothing finer). Where it reaches, it replaces the
+  // per-minute samples. Only complete spans: one ends once a block at or
+  // past its end has arrived.
+  const recent = useRecentBlocks(true);
+  const tail = useMemo<Array<[number, number]>>(() => {
+    if (!recent?.length) return [];
+    const firstT = recent[0].t;
+    const newestT = recent[recent.length - 1].t;
+    // Transactions per second of block time, then a rolling TAIL_SPAN
+    // window stepped every TAIL_STEP: a new point each poll, as smooth
+    // as a 10 s average. The first second may hold only part of its
+    // blocks, so windows start after it; the newest is still arriving.
+    const perSec = new Map<number, number>();
+    for (const b of recent)
+      perSec.set(b.t, (perSec.get(b.t) ?? 0) + b.transactions);
+    const out: Array<[number, number]> = [];
+    const firstEnd =
+      Math.ceil((firstT + 1 + TAIL_SPAN) / TAIL_STEP) * TAIL_STEP;
+    for (let end = firstEnd; end <= newestT; end += TAIL_STEP) {
+      let tx = 0;
+      for (let t = end - TAIL_SPAN; t < end; t++) tx += perSec.get(t) ?? 0;
+      out.push([end, tx / TAIL_SPAN]);
+    }
+    return out;
+  }, [recent]);
+  // The per-minute samples up to where the tail begins.
+  const tailStart = tail.length ? tail[0][0] - TAIL_SPAN : null;
+  const history = useMemo(
+    () => (tailStart == null ? points : points.filter(p => p.t <= tailStart)),
+    [points, tailStart]
+  );
+
   const primary = getThemeColor('primary');
   const fees = (m: (typeof minutes)[number]) => m.baseFees + m.priorityFees;
   const view = useMemo(() => {
     if (shown === 'tps') {
-      if (!points.length) return null;
+      if (!points.length && !tail.length) return null;
       const tx = points.reduce((a, p) => a + p.transactions, 0);
       const secs = points.reduce((a, p) => a + p.periodSecs, 0);
+      const latest = tail.length
+        ? ['Last 10 s', fmtTps(tail[tail.length - 1][1])]
+        : [
+            'Last minute',
+            points.length ? fmtTps(points[points.length - 1].tps) : '—'
+          ];
       return {
         figures: [
-          ['Last minute', fmtTps(points[points.length - 1].tps)],
-          ['Average', fmtTps(secs ? tx / secs : 0)],
-          ['Peak', fmtTps(Math.max(...points.map(p => p.tps)))]
+          latest,
+          ['Average', secs ? fmtTps(tx / secs) : '—'],
+          [
+            'Peak',
+            points.length ? fmtTps(Math.max(...points.map(p => p.tps))) : '—'
+          ]
         ],
         fmt: (v: number) => `${fmtTps(v)} TPS`,
         axis: (v: number) =>
@@ -136,7 +187,11 @@ const ThroughputCard = () => {
         series: [
           {
             name: 'TPS',
-            data: points.map(p => [p.t * 1000, p.tps])
+            // The per-minute samples, then the live 10 s tail after them.
+            data: [
+              ...history.map(p => [p.t * 1000, p.tps]),
+              ...tail.map(([t, v]) => [t * 1000, v])
+            ]
           }
         ]
       };
@@ -186,7 +241,7 @@ const ThroughputCard = () => {
         }
       ]
     };
-  }, [shown, points, minutes]);
+  }, [shown, points, history, minutes, tail]);
   // The newest point, pulsing: the stack's top for income.
   const lastPoint = (() => {
     const sers = view?.series ?? [];
