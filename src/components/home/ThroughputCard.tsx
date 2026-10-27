@@ -476,7 +476,7 @@ const ThroughputCard = ({
     ]
   };
 
-  const chartHeight = compact ? 140 : 200;
+  const chartHeight = compact ? 125 : 200;
   // Nothing to show at all (income without a block ingestor): no card.
   if (!shown) return null;
   // Remounted (drawn at once) on a metric switch and when the history

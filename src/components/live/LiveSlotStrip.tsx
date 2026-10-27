@@ -176,8 +176,13 @@ const LiveSlotStrip = ({
   waiting = 'waiting for the record…',
   lead = LEAD,
   onHeldChange,
+  headerless = false,
   className
 }: {
+  /** Inside a card that already names it: no label row; the pause
+   *  control goes to the legend line (and the hold shows via
+   *  onHeldChange). */
+  headerless?: boolean;
   /** Told when playback is held (paused or hovered), e.g. to highlight
    *  the card the strip sits in. */
   onHeldChange?: (held: boolean) => void;
@@ -382,7 +387,9 @@ const LiveSlotStrip = ({
         `bg-body-emphasis rounded border p-3 mb-3 ${held ? 'border-primary' : 'border-translucent'}`
       }
     >
-      <div className="d-flex align-items-center gap-2 mb-2">
+      <div
+        className={`align-items-center gap-2 mb-2 ${headerless ? 'd-none' : 'd-flex'}`}
+      >
         <span
           className={`d-inline-block rounded-circle flex-shrink-0 ${held ? 'bg-body-quaternary' : 'bg-success vx-live-dot'}`}
           style={{ width: 8, height: 8 }}
@@ -476,10 +483,26 @@ const LiveSlotStrip = ({
             {text}
           </span>
         ))}
-        {footnote && (
-          <span className="ms-auto text-body-quaternary" title={footnoteTitle}>
-            {footnote}
-          </span>
+        {headerless ? (
+          <button
+            type="button"
+            className="btn btn-link btn-sm ms-auto p-0 text-body-tertiary d-inline-flex align-items-center gap-1 fs-10 text-decoration-none"
+            onClick={() => setPaused(p => !p)}
+            aria-pressed={paused}
+            title={footnoteTitle}
+          >
+            <FeatherIcon icon={paused ? 'play' : 'pause'} size={12} />
+            {paused ? 'Resume' : 'Pause'}
+          </button>
+        ) : (
+          footnote && (
+            <span
+              className="ms-auto text-body-quaternary"
+              title={footnoteTitle}
+            >
+              {footnote}
+            </span>
+          )
         )}
       </div>
     </div>

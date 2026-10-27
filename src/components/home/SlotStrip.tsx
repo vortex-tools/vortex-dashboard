@@ -167,23 +167,27 @@ const SlotStrip = () => {
       linkLabel="Cluster status"
       highlight={held}
     >
-      <LiveSlotStrip
-        recorded={newest}
-        lead={LEAD}
-        oldest={oldest}
-        epochStart={epochStart}
-        slotMs={slotMs}
-        cellOf={cellOf}
-        leaderOf={leaderOf}
-        nameOf={nameOf}
-        label={halt ? 'Halted' : 'Live slots'}
-        legend={LEGEND}
-        footnote="Replayed at block pace"
-        footnoteTitle="Each slot as the chain recorded it - its block or skip, and how the block finalized - shown one per slot-time a little behind the chain."
-        waiting="waiting for slots…"
-        className=""
-        onHeldChange={setHeld}
-      />
+      {/* Centered in the card, which matches its neighbor's height. */}
+      <div className="flex-grow-1 d-flex flex-column justify-content-center">
+        <LiveSlotStrip
+          recorded={newest}
+          lead={LEAD}
+          oldest={oldest}
+          epochStart={epochStart}
+          slotMs={slotMs}
+          cellOf={cellOf}
+          leaderOf={leaderOf}
+          nameOf={nameOf}
+          label={halt ? 'Halted' : 'Live slots'}
+          legend={LEGEND}
+          footnote="Replayed at block pace"
+          footnoteTitle="Each slot as the chain recorded it - its block or skip, and how the block finalized - shown one per slot-time a little behind the chain."
+          waiting="waiting for slots…"
+          className=""
+          onHeldChange={setHeld}
+          headerless
+        />
+      </div>
     </SectionCard>
   );
 };
