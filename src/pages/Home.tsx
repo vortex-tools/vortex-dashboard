@@ -366,10 +366,10 @@ const Home = () => {
           <Col xs={12}>
             <SlotStrip />
           </Col>
-          <Col xs={12} lg={8}>
+          <Col xs={12} lg={6}>
             <ThroughputCard />
           </Col>
-          <Col xs={12} lg={4} className="d-flex flex-column gap-3">
+          <Col xs={12} lg={6} className="d-flex flex-column gap-3">
             <WhatsNext />
             <HomeAnnouncements />
           </Col>

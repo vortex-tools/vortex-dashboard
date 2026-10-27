@@ -1,5 +1,5 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
-import { LineChart } from 'echarts/charts';
+import { EffectScatterChart, LineChart } from 'echarts/charts';
 import {
   GridComponent,
   MarkLineComponent,
@@ -16,6 +16,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 
 echarts.use([
+  EffectScatterChart,
   LineChart,
   GridComponent,
   MarkLineComponent,
@@ -30,9 +31,9 @@ const METRICS = [
 ] as const;
 type Metric = (typeof METRICS)[number][0];
 const TITLE: Record<Metric, string> = {
-  tps: 'Transactions per Second',
-  cu: 'Compute Units per Block',
-  income: 'Block Income'
+  tps: 'Live TPS',
+  cu: 'Live CUs per Block',
+  income: 'Live Block Income'
 };
 const INFO: Record<Metric, string> = {
   tps: "Transactions per second, a point per minute, from the cluster's performance samples (there is no finer source). Under Alpenglow votes aren't transactions, so every one counted is a user transaction. Refreshed every minute.",
@@ -186,8 +187,26 @@ const ThroughputCard = () => {
       ]
     };
   }, [shown, points, minutes]);
+  // The newest point, pulsing: the stack's top for income.
+  const lastPoint = (() => {
+    const sers = view?.series ?? [];
+    const first = sers[0]?.data;
+    if (!first?.length) return null;
+    const t = first[first.length - 1][0];
+    const v = sers.reduce(
+      (a, sr) => a + (sr.data[sr.data.length - 1]?.[1] ?? 0),
+      0
+    );
+    return [t, view?.stacked ? v : first[first.length - 1][1]];
+  })();
   const option = {
-    animation: false,
+    // Drawn in on load and on a metric / window switch (the chart is
+    // remounted); a refresh morphs the line into its new shape.
+    animation: true,
+    animationDuration: 900,
+    animationEasing: 'cubicOut',
+    animationDurationUpdate: 600,
+    animationEasingUpdate: 'cubicInOut',
     grid: { left: 4, right: 8, top: 20, bottom: 4, containLabel: true },
     tooltip: {
       trigger: 'axis',
@@ -217,34 +236,52 @@ const ThroughputCard = () => {
       },
       splitLine: { lineStyle: { color: getThemeColor('border-color') } }
     },
-    series: (view?.series ?? []).map((sr, i) => ({
-      ...sr,
-      type: 'line',
-      symbol: 'none',
-      smooth: 0.2,
-      stack: view?.stacked ? 'income' : undefined,
-      color: i === 0 ? primary : getThemeColor('info'),
-      lineStyle: { width: 1.5 },
-      areaStyle: { opacity: view?.stacked ? 0.35 : 0.15 },
-      markLine:
-        i === 0 && view?.limit
-          ? {
-              silent: true,
-              symbol: 'none',
-              lineStyle: {
-                color: getThemeColor('tertiary-color'),
-                type: 'dashed'
-              },
-              label: {
-                formatter: `block limit ${fmtCu(view.limit)}`,
-                position: 'insideEndTop',
-                fontSize: 10,
-                color: getThemeColor('tertiary-color')
-              },
-              data: [{ yAxis: view.limit }]
+    series: [
+      ...(view?.series ?? []).map((sr, i) => ({
+        ...sr,
+        type: 'line',
+        symbol: 'none',
+        smooth: 0.2,
+        stack: view?.stacked ? 'income' : undefined,
+        color: i === 0 ? primary : getThemeColor('info'),
+        lineStyle: { width: 1.5 },
+        areaStyle: { opacity: view?.stacked ? 0.35 : 0.15 },
+        markLine:
+          i === 0 && view?.limit
+            ? {
+                silent: true,
+                symbol: 'none',
+                lineStyle: {
+                  color: getThemeColor('tertiary-color'),
+                  type: 'dashed'
+                },
+                label: {
+                  formatter: `block limit ${fmtCu(view.limit)}`,
+                  position: 'insideEndTop',
+                  fontSize: 10,
+                  color: getThemeColor('tertiary-color')
+                },
+                data: [{ yAxis: view.limit }]
+              }
+            : undefined
+      })),
+      ...(lastPoint
+        ? [
+            {
+              name: 'now',
+              type: 'effectScatter',
+              symbolSize: 7,
+              color: primary,
+              rippleEffect: { scale: 3, brushType: 'stroke', period: 2.5 },
+              tooltip: { show: false },
+              // Appears once the line has drawn in to it.
+              animationDelay: 900,
+              z: 5,
+              data: [lastPoint]
             }
-          : undefined
-    }))
+          ]
+        : [])
+    ]
   };
 
   return (
@@ -301,9 +338,9 @@ const ThroughputCard = () => {
       {view ? (
         <>
           <ReactEChartsCore
+            key={`${shown}-${win}`}
             echarts={echarts}
             option={option}
-            notMerge
             style={{ height: 180, width: '100%' }}
           />
           {view.series.length > 1 && (
