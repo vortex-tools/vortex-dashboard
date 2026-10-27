@@ -72,7 +72,7 @@ const fmtSol = (lamports: number) => {
 };
 
 const WINDOWS = [
-  ['5m', '5m'],
+  ['1m', '1m'],
   ['30m', '30m'],
   ['2h', '2h'],
   ['6h', '6h']
@@ -104,13 +104,12 @@ const ThroughputCard = () => {
   const context = useContext(VortexDataContext);
   const { getThemeColor } = useAppContext();
   const [picked, setWin] = useState<Window>('30m');
-  // The block feed (for the live tail; see below). The 5m window is
-  // offered only while it answers: from per-minute samples alone it's
-  // five points.
+  // The block feed (for the live tail; see below). The 1m window is
+  // offered only while it answers: it's the live part alone.
   const recent = useRecentBlocks(true);
   const live = !!recent?.length;
-  const windows = live ? WINDOWS : WINDOWS.filter(([k]) => k !== '5m');
-  const win: Window = !live && picked === '5m' ? '30m' : picked;
+  const windows = live ? WINDOWS : WINDOWS.filter(([k]) => k !== '1m');
+  const win: Window = !live && picked === '1m' ? '30m' : picked;
   const [metric, setMetric] = useState<Metric>('tps');
   const slice = context?.throughputState;
   const fetchData = slice?.fetchData;
@@ -147,10 +146,12 @@ const ThroughputCard = () => {
   // poll brings) and steps a slot per slot-time, easing by its gap to the
   // data, so the newest point moves every slot. Rates are over a rolling
   // window of slots (a minute beside the per-minute history, 10 s in the
-  // 5m window, which is the live part alone) - skipped slots count as
+  // 1m window, which is the live part alone) - skipped slots count as
   // empty time - and a slot's time is placed from the newest block's at
   // the epoch's slot time (block times are whole seconds).
-  const span = win === '5m' ? 10 : 60;
+  // Income is a per-minute figure: always over a full minute (scaling a
+  // 10 s span up would read one large tip as a minute's worth).
+  const span = win === '1m' && metric !== 'income' ? 10 : 60;
   const slotSecs =
     context?.currentEpochState.progress?.slotSeconds ?? DEFAULT_SLOT_SECS;
   const spanSlots = Math.max(1, Math.round(span / slotSecs));
@@ -218,11 +219,30 @@ const ThroughputCard = () => {
       tips: sum(p.tips, e)
     }));
   }, [prefix, playhead, spanSlots]);
-  // Where the live part begins: history stops there (all of it in 5m).
+  // Where the live part begins: history stops there (all of it in 1m).
+  // In the 1m window, every block up to the playhead as a bar (TPS: its
+  // transactions over a slot's time, on the line's scale; CUs: its own),
+  // a new one each slot; skipped slots are gaps.
+  const bars = useMemo(() => {
+    if (win !== '1m' || !prefix || playhead == null) return null;
+    const { p, first, anchorSlot, timeOf } = prefix;
+    const head = Math.min(playhead, anchorSlot);
+    const from = Math.max(first, head - Math.round(60 / slotSecs) + 1);
+    const tps: Array<[number, number]> = [];
+    const cu: Array<[number, number]> = [];
+    for (let sl = from; sl <= head; sl++) {
+      const i = sl - first;
+      if (p.blocks[i + 1] - p.blocks[i] < 1) continue;
+      const t = timeOf(sl);
+      tps.push([t, (p.tx[i + 1] - p.tx[i]) / slotSecs]);
+      cu.push([t, p.cu[i + 1] - p.cu[i]]);
+    }
+    return { tps, cu, from: timeOf(from), to: timeOf(head) };
+  }, [win, prefix, playhead, slotSecs]);
   const spanSecs = spanSlots * slotSecs;
   const liveFrom = rolling.length ? rolling[0].end - spanSecs : null;
   const keep = (t: number) =>
-    liveFrom == null ? true : win !== '5m' && t <= liveFrom;
+    liveFrom == null ? true : win !== '1m' && t <= liveFrom;
 
   // Remounted (drawn at once, not animated) on a metric or window switch
   // and when that window's history arrives, so only live updates animate.
@@ -252,7 +272,13 @@ const ThroughputCard = () => {
         fmt: (v: number) => `${fmtTps(v)} TPS`,
         axis: (v: number) =>
           v >= 1000 ? `${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k` : `${v}`,
-        series: [{ name: 'TPS', data }]
+        series: bars
+          ? [
+              { name: 'TPS', data: data.filter(d => d[0] >= bars.from) },
+              { name: 'Block', type: 'bar' as const, data: bars.tps }
+            ]
+          : [{ name: 'TPS', data }],
+        xRange: bars ? ([bars.from, bars.to] as [number, number]) : undefined
       };
     }
     // Block metrics: the per-minute buckets (at each minute's end), then
@@ -284,7 +310,16 @@ const ThroughputCard = () => {
         // line; the share is in the figures).
         limit:
           Math.max(...vals) > BLOCK_CU_LIMIT / 2 ? BLOCK_CU_LIMIT : undefined,
-        series: [{ name: 'CUs per block', data }]
+        series: bars
+          ? [
+              {
+                name: 'CUs per block',
+                data: data.filter(d => d[0] >= bars.from)
+              },
+              { name: 'Block', type: 'bar' as const, data: bars.cu }
+            ]
+          : [{ name: 'CUs per block', data }],
+        xRange: bars ? ([bars.from, bars.to] as [number, number]) : undefined
       };
     }
     // Income as a per-minute rate (a 10 s span scaled up).
@@ -317,12 +352,53 @@ const ThroughputCard = () => {
       fmt: (v: number) => fmtSol(v),
       axis: (v: number) => fmtSol(v),
       stacked: true,
+      xRange: bars ? ([bars.from, bars.to] as [number, number]) : undefined,
       series: [
-        { name: 'Fees', data: fees },
-        { name: 'MEV tips', data: tips }
+        { name: 'Fees', data: fees.filter(d => !bars || d[0] >= bars.from) },
+        { name: 'MEV tips', data: tips.filter(d => !bars || d[0] >= bars.from) }
       ]
     };
-  }, [shown, points, minutes, rolling, span, spanSecs, win, recent, liveFrom]);
+  }, [
+    shown,
+    points,
+    minutes,
+    rolling,
+    bars,
+    span,
+    spanSecs,
+    win,
+    recent,
+    liveFrom
+  ]);
+  // The bars' scale: their 97th percentile, or the line's top if higher.
+  const barCap = (() => {
+    if (!view || !bars) return null;
+    const barVals = view.series
+      .filter(sr => 'type' in sr && sr.type === 'bar')
+      .flatMap(sr => sr.data.map(d => d[1]))
+      .sort((a, b) => a - b);
+    const lineVals = view.series
+      .filter(sr => !('type' in sr))
+      .flatMap(sr => sr.data.map(d => d[1]));
+    if (!barVals.length) return null;
+    return Math.max(barVals[Math.floor(barVals.length * 0.97)], ...lineVals);
+  })();
+  // A zoomed line's axis (no bars, no stack): bottom, top and step on
+  // round values, so every label sits on a step.
+  const zoom = (() => {
+    if (!view || bars || view.stacked) return null;
+    const vals = view.series.flatMap(sr => sr.data.map(d => d[1]));
+    if (!vals.length) return null;
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals, view.limit ?? 0);
+    const range = Math.max(hi - lo, hi * 0.1, 1);
+    const raw = (range * 1.3) / 4;
+    const mag = 10 ** Math.floor(Math.log10(raw));
+    const step =
+      [1, 2, 2.5, 5, 10].map(k => k * mag).find(x => x >= raw) ?? 10 * mag;
+    const min = Math.max(0, Math.floor((lo - range * 0.15) / step) * step);
+    return { min, max: Math.ceil((hi + range * 0.08) / step) * step, step };
+  })();
   // The newest point, pulsing: the stack's top for income.
   const lastPoint = (() => {
     const sers = view?.series ?? [];
@@ -353,6 +429,9 @@ const ThroughputCard = () => {
     xAxis: {
       type: 'time',
       splitNumber: 4,
+      // The 1m window slides with the playhead.
+      min: view?.xRange ? view.xRange[0] * 1000 : undefined,
+      max: view?.xRange ? view.xRange[1] * 1000 : undefined,
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -362,10 +441,18 @@ const ThroughputCard = () => {
     },
     yAxis: {
       type: 'value',
-      min: 0,
+      // Lines are zoomed to their range (TPS moves within ~1-2k: from 0
+      // it reads flat); bars and the income stack stand on 0.
+      min: zoom ? zoom.min : 0,
+      interval: zoom?.step,
       // A round top a little over the data (or the block limit, when
       // drawn), so the top label never crowds the one below it.
-      max: (v: { max: number }) => niceMax(Math.max(v.max, view?.limit ?? 0)),
+      // Over bars, capped at their 97th percentile (and the line), so one
+      // outsized block doesn't flatten the rest; it's clipped.
+      max: zoom
+        ? zoom.max
+        : (v: { max: number }) =>
+            niceMax(Math.max(barCap ?? v.max, view?.limit ?? 0)),
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -382,13 +469,33 @@ const ThroughputCard = () => {
           name: String(t),
           value: [t * 1000, v]
         })),
-        type: 'line',
-        symbol: 'none',
-        smooth: 0.2,
-        stack: view?.stacked ? 'income' : undefined,
-        color: i === 0 ? primary : getThemeColor('info'),
-        lineStyle: { width: 1.5 },
-        areaStyle: { opacity: view?.stacked ? 0.35 : 0.15 },
+        ...('type' in sr && sr.type === 'bar'
+          ? {
+              type: 'bar',
+              color: primary,
+              itemStyle: { opacity: 0.35 },
+              barMaxWidth: 3,
+              barMinWidth: 1,
+              clip: true,
+              z: 1
+            }
+          : {
+              type: 'line',
+              symbol: 'none',
+              smooth: 0.2,
+              stack: view?.stacked ? 'income' : undefined,
+              color: i === 0 ? primary : getThemeColor('info'),
+              lineStyle: { width: bars ? 2 : 1.5 },
+              // Over bars, the line alone; a zoomed line's area would
+              // start mid-chart.
+              areaStyle:
+                bars || !view?.stacked
+                  ? bars
+                    ? undefined
+                    : { opacity: 0.15, origin: 'start' }
+                  : { opacity: 0.35 },
+              z: 2
+            }),
         markLine:
           i === 0 && view?.limit
             ? {
@@ -484,7 +591,7 @@ const ThroughputCard = () => {
             option={option}
             style={{ height: 180, width: '100%' }}
           />
-          {view.series.length > 1 && (
+          {view.stacked && (
             <div className="d-flex gap-3 fs-10 text-body-tertiary mt-1">
               {view.series.map((sr, i) => (
                 <span
