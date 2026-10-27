@@ -91,6 +91,8 @@ import {
   Announcements,
   throughputSchema,
   Throughput,
+  clusterBlocksSchema,
+  ClusterBlocks,
   GovernanceProposals,
   governanceProposalDetailSchema,
   GovernanceProposalDetail,
@@ -788,6 +790,13 @@ const throughputRequest = (window: string) => ({
   schema: throughputSchema,
   timeout: 20_000
 });
+// Blocks per minute (CUs, income) by window; 404 on testnet.
+const clusterBlocksRequest = (window: string) => ({
+  path: '/cluster/blocks',
+  params: { window },
+  schema: clusterBlocksSchema,
+  timeout: 20_000
+});
 // Announcements by cluster ('' = both).
 const announcementsRequest = (cluster: string) => ({
   path: '/announcements',
@@ -1367,6 +1376,7 @@ interface VortexDataState {
   simdState: KeyedSlice<number, SimdDetail>;
   announcementsState: KeyedSlice<string, Announcements>;
   throughputState: KeyedSlice<string, Throughput>;
+  clusterBlocksState: KeyedSlice<string, ClusterBlocks>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
   validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
   clusterVersionsState: KeyedSlice<number, ClusterVersions>;
@@ -1482,6 +1492,10 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: throughputRequest,
     toEntries: keyed<string, Throughput>()
   });
+  const clusterBlocksState = useKeyedSlice({
+    request: clusterBlocksRequest,
+    toEntries: keyed<string, ClusterBlocks>()
+  });
   const announcementsState = useKeyedSlice({
     request: announcementsRequest,
     toEntries: keyed<string, Announcements>()
@@ -1596,6 +1610,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       simdState,
       announcementsState,
       throughputState,
+      clusterBlocksState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,
@@ -1641,6 +1656,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       simdState,
       announcementsState,
       throughputState,
+      clusterBlocksState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,

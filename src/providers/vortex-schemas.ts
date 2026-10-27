@@ -2756,6 +2756,29 @@ export const throughputSchema = z.object({
 });
 export type Throughput = z.infer<typeof throughputSchema>;
 
+// ---- Blocks per minute (/cluster/blocks) -------------------------------
+// The block ingestor's blocks bucketed by block time, a minute each,
+// oldest first (the newest may be partial): compute units and income in
+// lamports. 404 where there is no block ingestor (testnet).
+export const clusterBlocksSchema = z.object({
+  windowSecs: z.number().catch(0),
+  readAt: z.number().nullable().catch(null),
+  throughSlot: z.number().nullable().catch(null),
+  minutes: z
+    .array(
+      z.object({
+        t: z.number(),
+        blocks: z.number().catch(0),
+        computeUnits: z.number().catch(0),
+        baseFees: z.number().catch(0),
+        priorityFees: z.number().catch(0),
+        mevTips: z.number().catch(0)
+      })
+    )
+    .catch([])
+});
+export type ClusterBlocks = z.infer<typeof clusterBlocksSchema>;
+
 // ---- Halt run-up (/cluster/halt) ----------------------------------------
 // The last slots before a halt (Alpenglow footers): blocks, skips,
 // finalization, votes per slot, and who was voting at the end.
