@@ -115,7 +115,22 @@ const LiveConsensus = () => {
     maxTip.current = reportedTip;
   const ingested = reportedTip != null ? maxTip.current : null;
   const [now, setNow] = useState(() => Date.now());
+  // When the page started counting: opened, or last shown again - a
+  // hidden tab doesn't poll, so time spent hidden (or asleep) isn't the
+  // API failing to answer.
   const pageStart = useRef(Date.now());
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible')
+        pageStart.current = Date.now();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, []);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), POLL_MS);
     return () => clearInterval(id);

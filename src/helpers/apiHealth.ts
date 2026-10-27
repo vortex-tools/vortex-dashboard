@@ -99,6 +99,15 @@ export const retryApiNow = () => {
   runProbe();
 };
 
+// Back from a hidden tab, a sleeping machine or a dropped connection:
+// check now rather than waiting out the backoff.
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => retryApiNow());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') retryApiNow();
+  });
+}
+
 export const noteApiSuccess = () => {
   if (!state.down) return;
   if (probe) clearTimeout(probe);
