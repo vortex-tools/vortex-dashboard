@@ -43,15 +43,20 @@ const INFO: Record<Metric, string> = {
     "What leaders earned from their blocks, summed per minute of block time: fees (the leader's share of base fees after the burn, plus priority fees) and MEV tips. From the block ingestor; refreshed every minute; the minute still filling is left off."
 };
 
-/** The live tail: TPS over a rolling TAIL_SPAN seconds of block time
- *  (whole seconds, so a span this long reads steadily), a point every
- *  TAIL_STEP seconds - the feed's poll. */
-const TAIL_SPAN = 10;
+/** The live part's step (s): the feed's poll. */
 const TAIL_STEP = 2;
 
 // The block compute-unit limit, a protocol constant (100M since SIMD-0286
 // activated on mainnet): drawn as the CU chart's reference line.
 const BLOCK_CU_LIMIT = 100_000_000;
+
+/** A round axis top ~8% over `m`: a multiple of half its magnitude. */
+const niceMax = (m: number) => {
+  if (m <= 0) return 1;
+  const x = m * 1.08;
+  const step = 10 ** Math.floor(Math.log10(x)) / 2;
+  return Math.ceil(x / step) * step;
+};
 
 const fmtCu = (v: number) =>
   v >= 1e6
@@ -132,128 +137,166 @@ const ThroughputCard = () => {
   const offered = hasBlocks ? METRICS : METRICS.slice(0, 1);
   const shown: Metric = hasBlocks ? metric : 'tps';
 
-  // The live tail: the newest blocks (/cluster/blocks/recent, polled
-  // every 2 s, ~4 minutes of them) as TPS over 10 s spans of block time
-  // (whole seconds, so nothing finer). Where it reaches, it replaces the
-  // per-minute samples. Only complete spans: one ends once a block at or
-  // past its end has arrived.
-  const tail = useMemo<Array<[number, number]>>(() => {
+  // The live part: the newest blocks (/cluster/blocks/recent, polled
+  // every 2 s, ~4 minutes of them) over a rolling span of block time,
+  // stepped every 2 s, so the newest point moves each poll. The span
+  // matches what it continues: a minute beside the per-minute history
+  // (30m / 2h / 6h), 10 s in the 5m window, which is the live part alone.
+  // Block times are whole seconds; the first second may hold only part
+  // of its blocks, so spans start after it, and the newest is still
+  // arriving.
+  const span = win === '5m' ? 10 : 60;
+  const rolling = useMemo(() => {
     if (!recent?.length) return [];
     const firstT = recent[0].t;
     const newestT = recent[recent.length - 1].t;
-    // Transactions per second of block time, then a rolling TAIL_SPAN
-    // window stepped every TAIL_STEP: a new point each poll, as smooth
-    // as a 10 s average. The first second may hold only part of its
-    // blocks, so windows start after it; the newest is still arriving.
-    const perSec = new Map<number, number>();
-    for (const b of recent)
-      perSec.set(b.t, (perSec.get(b.t) ?? 0) + b.transactions);
-    const out: Array<[number, number]> = [];
-    const firstEnd =
-      Math.ceil((firstT + 1 + TAIL_SPAN) / TAIL_STEP) * TAIL_STEP;
+    const bySec = new Map<
+      number,
+      { tx: number; cu: number; blocks: number; fees: number; tips: number }
+    >();
+    for (const b of recent) {
+      const x = bySec.get(b.t) ?? { tx: 0, cu: 0, blocks: 0, fees: 0, tips: 0 };
+      x.tx += b.transactions;
+      x.cu += b.computeUnits;
+      x.blocks += 1;
+      x.fees += b.baseFees + b.priorityFees;
+      x.tips += b.mevTips;
+      bySec.set(b.t, x);
+    }
+    const out: Array<{
+      end: number;
+      tx: number;
+      cu: number;
+      blocks: number;
+      fees: number;
+      tips: number;
+    }> = [];
+    const firstEnd = Math.ceil((firstT + 1 + span) / TAIL_STEP) * TAIL_STEP;
     for (let end = firstEnd; end <= newestT; end += TAIL_STEP) {
-      let tx = 0;
-      for (let t = end - TAIL_SPAN; t < end; t++) tx += perSec.get(t) ?? 0;
-      out.push([end, tx / TAIL_SPAN]);
+      const w = { end, tx: 0, cu: 0, blocks: 0, fees: 0, tips: 0 };
+      for (let t = end - span; t < end; t++) {
+        const x = bySec.get(t);
+        if (!x) continue;
+        w.tx += x.tx;
+        w.cu += x.cu;
+        w.blocks += x.blocks;
+        w.fees += x.fees;
+        w.tips += x.tips;
+      }
+      out.push(w);
     }
     return out;
-  }, [recent]);
-  // The per-minute samples up to where the tail begins.
-  const tailStart = tail.length ? tail[0][0] - TAIL_SPAN : null;
-  const history = useMemo(
-    () => (tailStart == null ? points : points.filter(p => p.t <= tailStart)),
-    [points, tailStart]
-  );
+  }, [recent, span]);
+  // Where the live part begins: history stops there (all of it in 5m).
+  const liveFrom = rolling.length ? rolling[0].end - span : null;
+  const keep = (t: number) =>
+    liveFrom == null ? true : win !== '5m' && t <= liveFrom;
+
+  // Remounted (drawn at once, not animated) on a metric or window switch
+  // and when that window's history arrives, so only live updates animate.
+  const historyLoaded = shown === 'tps' ? !!data : !!blocksData;
 
   const primary = getThemeColor('primary');
-  const fees = (m: (typeof minutes)[number]) => m.baseFees + m.priorityFees;
   const view = useMemo(() => {
+    const latestLabel =
+      rolling.length && span < 60 ? `Last ${span} s` : 'Last minute';
+    const mean = (xs: number[]) =>
+      xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0;
     if (shown === 'tps') {
-      if (!points.length && !tail.length) return null;
-      const tx = points.reduce((a, p) => a + p.transactions, 0);
-      const secs = points.reduce((a, p) => a + p.periodSecs, 0);
-      const latest = tail.length
-        ? ['Last 10 s', fmtTps(tail[tail.length - 1][1])]
-        : [
-            'Last minute',
-            points.length ? fmtTps(points[points.length - 1].tps) : '—'
-          ];
+      const data: Array<[number, number]> = [
+        ...points
+          .filter(p => keep(p.t))
+          .map((p): [number, number] => [p.t, p.tps]),
+        ...rolling.map((w): [number, number] => [w.end, w.tx / span])
+      ];
+      if (!data.length) return null;
+      const vals = data.map(d => d[1]);
       return {
         figures: [
-          latest,
-          ['Average', secs ? fmtTps(tx / secs) : '—'],
-          [
-            'Peak',
-            points.length ? fmtTps(Math.max(...points.map(p => p.tps))) : '—'
-          ]
+          [latestLabel, fmtTps(vals[vals.length - 1])],
+          ['Average', fmtTps(mean(vals))],
+          ['Peak', fmtTps(Math.max(...vals))]
         ],
         fmt: (v: number) => `${fmtTps(v)} TPS`,
         axis: (v: number) =>
           v >= 1000 ? `${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k` : `${v}`,
-        series: [
-          {
-            name: 'TPS',
-            // The per-minute samples, then the live 10 s tail after them.
-            data: [
-              ...history.map(p => [p.t * 1000, p.tps]),
-              ...tail.map(([t, v]) => [t * 1000, v])
-            ]
-          }
-        ]
+        series: [{ name: 'TPS', data }]
       };
     }
-    if (!minutes.length) return null;
+    // Block metrics: the per-minute buckets (at each minute's end), then
+    // the live part.
+    const hist = minutes.filter(m => keep(m.t + 60));
     if (shown === 'cu') {
-      const per = minutes.map(m => (m.blocks ? m.computeUnits / m.blocks : 0));
-      const cu = minutes.reduce((a, m) => a + m.computeUnits, 0);
-      const blocks = minutes.reduce((a, m) => a + m.blocks, 0);
-      const avg = blocks ? cu / blocks : 0;
+      const data: Array<[number, number]> = [
+        ...hist.map((m): [number, number] => [
+          m.t + 60,
+          m.blocks ? m.computeUnits / m.blocks : 0
+        ]),
+        ...rolling.map((w): [number, number] => [
+          w.end,
+          w.blocks ? w.cu / w.blocks : 0
+        ])
+      ];
+      if (!data.length) return null;
+      const vals = data.map(d => d[1]);
+      const avg = mean(vals);
       return {
         figures: [
-          ['Last minute', fmtCu(per[per.length - 1])],
+          [latestLabel, fmtCu(vals[vals.length - 1])],
           ['Average', fmtCu(avg)],
           ['Of the limit', `${((avg / BLOCK_CU_LIMIT) * 100).toFixed(0)}%`]
         ],
         fmt: (v: number) => `${fmtCu(v)} CUs per block`,
         axis: (v: number) => fmtCu(v),
-        limit: BLOCK_CU_LIMIT,
-        series: [
-          {
-            name: 'CUs per block',
-            data: minutes.map((m, i) => [m.t * 1000, per[i]])
-          }
-        ]
+        // Drawn only when the blocks come near it (else it flattens the
+        // line; the share is in the figures).
+        limit:
+          Math.max(...vals) > BLOCK_CU_LIMIT / 2 ? BLOCK_CU_LIMIT : undefined,
+        series: [{ name: 'CUs per block', data }]
       };
     }
-    const total = minutes.reduce((a, m) => a + fees(m) + m.mevTips, 0);
-    const last = minutes[minutes.length - 1];
+    // Income as a per-minute rate (a 10 s span scaled up).
+    const perMin = 60 / span;
+    const fees: Array<[number, number]> = [
+      ...hist.map((m): [number, number] => [
+        m.t + 60,
+        m.baseFees + m.priorityFees
+      ]),
+      ...rolling.map((w): [number, number] => [w.end, w.fees * perMin])
+    ];
+    const tips: Array<[number, number]> = [
+      ...hist.map((m): [number, number] => [m.t + 60, m.mevTips]),
+      ...rolling.map((w): [number, number] => [w.end, w.tips * perMin])
+    ];
+    if (!fees.length) return null;
+    const totals = fees.map((f, i) => f[1] + tips[i][1]);
+    // The window's total: its whole minutes, plus the blocks since.
+    const total =
+      hist.reduce((a, m) => a + m.baseFees + m.priorityFees + m.mevTips, 0) +
+      (recent ?? [])
+        .filter(b => liveFrom != null && b.t >= liveFrom)
+        .reduce((a, b) => a + b.baseFees + b.priorityFees + b.mevTips, 0);
     return {
       figures: [
-        ['Last minute', fmtSol(fees(last) + last.mevTips)],
-        ['Per minute', fmtSol(total / minutes.length)],
+        [latestLabel, fmtSol(totals[totals.length - 1])],
+        ['Per minute', fmtSol(mean(totals))],
         ['Window total', fmtSol(total)]
       ],
       fmt: (v: number) => fmtSol(v),
       axis: (v: number) => fmtSol(v),
       stacked: true,
       series: [
-        {
-          name: 'Fees',
-          data: minutes.map(m => [m.t * 1000, fees(m)])
-        },
-        {
-          name: 'MEV tips',
-          data: minutes.map(m => [m.t * 1000, m.mevTips])
-        }
+        { name: 'Fees', data: fees },
+        { name: 'MEV tips', data: tips }
       ]
     };
-  }, [shown, points, history, minutes, tail]);
+  }, [shown, points, minutes, rolling, span, win, recent, liveFrom]);
   // The newest point, pulsing: the stack's top for income.
   const lastPoint = (() => {
     const sers = view?.series ?? [];
     const first = sers[0]?.data;
     if (!first?.length) return null;
-    const t = first[first.length - 1][0];
+    const t = first[first.length - 1][0] * 1000;
     const v = sers.reduce(
       (a, sr) => a + (sr.data[sr.data.length - 1]?.[1] ?? 0),
       0
@@ -277,6 +320,7 @@ const ThroughputCard = () => {
     },
     xAxis: {
       type: 'time',
+      splitNumber: 4,
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -287,8 +331,9 @@ const ThroughputCard = () => {
     yAxis: {
       type: 'value',
       min: 0,
-      // The CU chart runs up to the block limit, so its line shows.
-      max: view?.limit,
+      // A round top a little over the data (or the block limit, when
+      // drawn), so the top label never crowds the one below it.
+      max: (v: { max: number }) => niceMax(Math.max(v.max, view?.limit ?? 0)),
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -299,6 +344,12 @@ const ThroughputCard = () => {
     series: [
       ...(view?.series ?? []).map((sr, i) => ({
         ...sr,
+        // Keyed by time, so an update morphs each point into its own new
+        // value (not its neighbor's, as by index when the window slides).
+        data: sr.data.map(([t, v]) => ({
+          name: String(t),
+          value: [t * 1000, v]
+        })),
         type: 'line',
         symbol: 'none',
         smooth: 0.2,
@@ -396,7 +447,7 @@ const ThroughputCard = () => {
       {view ? (
         <>
           <ReactEChartsCore
-            key={`${shown}-${win}`}
+            key={`${shown}-${win}-${historyLoaded ? 1 : 0}`}
             echarts={echarts}
             option={option}
             style={{ height: 180, width: '100%' }}

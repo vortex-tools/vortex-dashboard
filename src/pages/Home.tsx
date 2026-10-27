@@ -6,7 +6,6 @@ import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
 import ThroughputCard from 'components/home/ThroughputCard';
 import HomeAnnouncements from 'components/home/HomeAnnouncements';
-import WhatsNext from 'components/home/WhatsNext';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import { formatDuration } from 'helpers/utils';
 import { useEpochLive, useClusterHalt } from 'hooks/useIngestion';
@@ -370,98 +369,96 @@ const Home = () => {
             <ThroughputCard />
           </Col>
           <Col xs={12} lg={6} className="d-flex flex-column gap-3">
-            <WhatsNext />
             <HomeAnnouncements />
-          </Col>
-        </Row>
-
-        {/* Leaderboard quick-launch. On Alpenglow clusters the consensus
-            leaderboard leads (Tower voting is historical); without block
-            data the income board gives way to the validators list. */}
-        <Row className="g-3">
-          {alpenglowActive ? (
-            <>
-              <Col xs={12} md={6}>
-                <LeaderboardCard
-                  title="Consensus Leaderboard"
-                  description="Validators ranked by Alpenglow vote participation this epoch."
-                  linkTo="/leaderboards/consensus"
-                  icon="activity"
-                />
-              </Col>
-              <Col xs={12} md={6}>
-                {blockIncomeTracked ? (
-                  <LeaderboardCard
-                    title="Block Income Leaderboard"
-                    description="Validators ranked by median block income this epoch."
-                    linkTo="/leaderboards/block-income"
-                    icon="dollar-sign"
-                  />
-                ) : (
-                  <LeaderboardCard
-                    title="Validators"
-                    description="Operational status of every staked validator."
-                    linkTo="/validators"
-                    icon="server"
-                  />
-                )}
-              </Col>
-            </>
-          ) : (
-            <>
-              <Col xs={12} md={6}>
-                <div className="bg-body-emphasis rounded border border-translucent p-4 h-100 d-flex align-items-center gap-3">
-                  <div className="flex-grow-1 min-w-0">
-                    <div className="d-flex align-items-center mb-2">
-                      <FeatherIcon
-                        icon="bar-chart-2"
-                        size={20}
-                        className="text-primary me-2"
+            {/* Leaderboard quick-launch. On Alpenglow clusters the consensus
+                leaderboard leads (Tower voting is historical); without block
+                data the income board gives way to the validators list. */}
+            <Row className="g-3">
+              {alpenglowActive ? (
+                <>
+                  <Col xs={12}>
+                    <LeaderboardCard
+                      title="Consensus Leaderboard"
+                      description="Validators ranked by Alpenglow vote participation this epoch."
+                      linkTo="/leaderboards/consensus"
+                      icon="activity"
+                    />
+                  </Col>
+                  <Col xs={12}>
+                    {blockIncomeTracked ? (
+                      <LeaderboardCard
+                        title="Block Income Leaderboard"
+                        description="Validators ranked by median block income this epoch."
+                        linkTo="/leaderboards/block-income"
+                        icon="dollar-sign"
                       />
-                      <h5 className="mb-0">Voting Leaderboard</h5>
-                    </div>
-                    <p className="text-body-tertiary fs-9 mb-0">
-                      Validators ranked by vote accuracy and lag.
-                    </p>
-                  </div>
-                  <div className="d-flex flex-column gap-2 flex-shrink-0">
-                    {currentEpoch !== null && (
-                      <Link
-                        to={`/leaderboards/voting/epoch/${currentEpoch}`}
-                        className="btn btn-sm btn-soft-primary d-inline-flex align-items-center justify-content-between"
-                      >
-                        Current epoch
-                        <FeatherIcon
-                          icon="arrow-right"
-                          size={14}
-                          className="ms-2"
-                        />
-                      </Link>
+                    ) : (
+                      <LeaderboardCard
+                        title="Validators"
+                        description="Operational status of every staked validator."
+                        linkTo="/validators"
+                        icon="server"
+                      />
                     )}
-                    <Link
-                      to="/leaderboards/voting"
-                      className="btn btn-sm btn-soft-secondary d-inline-flex align-items-center justify-content-between"
-                    >
-                      Past epochs
-                      <FeatherIcon
-                        icon="arrow-right"
-                        size={14}
-                        className="ms-2"
-                      />
-                    </Link>
-                  </div>
-                </div>
-              </Col>
-              <Col xs={12} md={6}>
-                <LeaderboardCard
-                  title="Block Income Leaderboard"
-                  description="Validators ranked by median block income this epoch."
-                  linkTo="/leaderboards/block-income"
-                  icon="dollar-sign"
-                />
-              </Col>
-            </>
-          )}
+                  </Col>
+                </>
+              ) : (
+                <>
+                  <Col xs={12}>
+                    <div className="bg-body-emphasis rounded border border-translucent p-4 h-100 d-flex align-items-center gap-3">
+                      <div className="flex-grow-1 min-w-0">
+                        <div className="d-flex align-items-center mb-2">
+                          <FeatherIcon
+                            icon="bar-chart-2"
+                            size={20}
+                            className="text-primary me-2"
+                          />
+                          <h5 className="mb-0">Voting Leaderboard</h5>
+                        </div>
+                        <p className="text-body-tertiary fs-9 mb-0">
+                          Validators ranked by vote accuracy and lag.
+                        </p>
+                      </div>
+                      <div className="d-flex flex-column gap-2 flex-shrink-0">
+                        {currentEpoch !== null && (
+                          <Link
+                            to={`/leaderboards/voting/epoch/${currentEpoch}`}
+                            className="btn btn-sm btn-soft-primary d-inline-flex align-items-center justify-content-between"
+                          >
+                            Current epoch
+                            <FeatherIcon
+                              icon="arrow-right"
+                              size={14}
+                              className="ms-2"
+                            />
+                          </Link>
+                        )}
+                        <Link
+                          to="/leaderboards/voting"
+                          className="btn btn-sm btn-soft-secondary d-inline-flex align-items-center justify-content-between"
+                        >
+                          Past epochs
+                          <FeatherIcon
+                            icon="arrow-right"
+                            size={14}
+                            className="ms-2"
+                          />
+                        </Link>
+                      </div>
+                    </div>
+                  </Col>
+                  <Col xs={12}>
+                    <LeaderboardCard
+                      title="Block Income Leaderboard"
+                      description="Validators ranked by median block income this epoch."
+                      linkTo="/leaderboards/block-income"
+                      icon="dollar-sign"
+                    />
+                  </Col>
+                </>
+              )}
+            </Row>
+          </Col>
         </Row>
       </div>
     </div>
