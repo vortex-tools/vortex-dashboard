@@ -63,6 +63,9 @@ const STUCK_TEXT: Record<Stuck['kind'], (secs: number) => string> = {
 const FF_MS = 40;
 // Playhead this far behind the data while playing: jump, don't crawl.
 const JUMP_BEHIND = 256;
+// A hold that ends further behind than this jumps back to live instead
+// of fast-forwarding (three leader windows).
+const CATCH_UP_MAX = 12;
 const WINDOW = 4;
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-6)}`;
@@ -292,15 +295,24 @@ const LiveConsensus = () => {
       clearHoverTimer();
       if (!hoveringRef.current) return;
       hoverTimer.current = setTimeout(() => {
-        // A hold ending: fast-forward from where it stopped.
-        catchUp.current = true;
+        // A hold ending: fast-forward from where it stopped - or, after a
+        // long hold, jump back to live rather than race through dozens of
+        // slots.
+        const edge = edgeRef.current;
+        const c = cursorRef.current;
+        if (edge != null && c != null && edge - PLAY_LEAD - c > CATCH_UP_MAX) {
+          catchUp.current = false;
+          setCursor(edge - PLAY_LEAD);
+        } else catchUp.current = true;
         setHovering(false);
       }, RELEASE_MS);
     }
   };
   const catchUp = useRef(false);
+  const cursorRef = useRef<number | null>(null);
   const edgeRef = useRef(playEdge);
   edgeRef.current = playEdge;
+  cursorRef.current = cursor;
   // Halted: no slots are coming, so there's nothing to play through -
   // the playhead sits on the last slot loaded (no PLAY_GAP wait for votes
   // that won't land).
