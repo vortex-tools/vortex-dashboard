@@ -6,12 +6,8 @@ import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
 import WhatsNext from 'components/home/WhatsNext';
 import ValidatorSearch from 'components/common/ValidatorSearch';
-import { formatLamports } from 'helpers/utils';
-import useRefreshOnce from 'hooks/useRefreshOnce';
-import useLiveRefresh from 'hooks/useLiveRefresh';
 import { formatDuration } from 'helpers/utils';
 import { useEpochLive, useClusterHalt } from 'hooks/useIngestion';
-import useTrailingTotals from 'hooks/useTrailingTotals';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router';
@@ -94,64 +90,16 @@ const LeaderboardCard = ({
   </Link>
 );
 
-// /epochs/current is tiny: poll it every 2 s so a new totals reading is
-// picked up promptly. The counters count up to each new figure over the
-// time the block figure takes to change (measured; 15 s to start).
-// Without totals (older APIs) the leaderboard is re-fetched every minute.
+// /epochs/current is tiny: poll it every 2 s.
 const LIVE_POLL_MS = 2_000;
-const TOTALS_REFRESH_MS = 15_000;
-const KPI_REFRESH_MS = 60_000;
-
 const Home = () => {
   const context = useContext(VortexDataContext);
 
   const currentEpoch = context?.currentEpochState.epoch ?? null;
   const live = useEpochLive(true, LIVE_POLL_MS);
-  // Older APIs without /epochs/current.totals: the KPIs come from the
-  // income leaderboard (and the status summary) instead - fetched only
-  // once the first poll shows totals missing.
-  const fallback = live.loaded && !live.totals;
-
-  // Leaderboard fallback: fetch on entry (forced, since the current
-  // epoch's figures move server-side), then every minute below.
-  useRefreshOnce(
-    fallback && currentEpoch !== null ? String(currentEpoch) : undefined,
-    () => {
-      if (!context) return;
-      context.epochIncomeLeaderboardState.fetchData(undefined, {
-        force: true
-      });
-    }
-  );
-
   const { blockIncomeTracked, isTestnet } = useCluster();
   const totals =
     live.totals && live.totals.epoch === currentEpoch ? live.totals : null;
-  // Counters count up to each refreshed figure over the refresh interval:
-  // they trail the data, never run ahead of it.
-  // Count-up pace = how often the block figure actually changes: the time
-  // between readings (readAt) with a new blocksProduced. The server
-  // re-reads totals every few seconds, but block data moves only when the
-  // block ingestor uploads, so pacing by readAt alone would finish each
-  // step early and stall. Falls back to 15 s until two changes are seen.
-  const readAt = totals?.readAt ?? null;
-  const readBlocks = totals?.blocksProduced ?? null;
-  const [refreshGap, setRefreshGap] = useState(TOTALS_REFRESH_MS);
-  const lastChange = useRef<{ at: number; blocks: number } | null>(null);
-  useEffect(() => {
-    if (readAt == null || readBlocks == null) return;
-    const prev = lastChange.current;
-    if (prev && readBlocks === prev.blocks) return;
-    lastChange.current = { at: readAt, blocks: readBlocks };
-    if (!prev || readBlocks < prev.blocks || readAt <= prev.at) return;
-    const gap = Math.min(60_000, Math.max(1_000, (readAt - prev.at) * 1000));
-    // Smooth over the ingestor's uneven upload timing.
-    setRefreshGap(g => Math.round(g * 0.5 + gap * 0.5));
-  }, [readAt, readBlocks]);
-  const countMs = totals ? refreshGap : KPI_REFRESH_MS;
-  useLiveRefresh(blockIncomeTracked && fallback, KPI_REFRESH_MS, () =>
-    context?.epochIncomeLeaderboardState.fetchData(undefined, { force: true })
-  );
   const { alpenglowActive } = useConsensus();
 
   // Active = staked and not delinquent, from the same summary as the
@@ -187,15 +135,6 @@ const Home = () => {
     const delinquent = vs
       .filter(v => v.delinquent)
       .reduce((a, v) => a + v.activatedStake, 0);
-    // Nakamoto: the fewest validators together over a third of the stake.
-    const stakes = vs.map(v => v.activatedStake).sort((a, b) => b - a);
-    let sum = 0;
-    let nakamoto = 0;
-    for (const st of stakes) {
-      if (sum > total / 3) break;
-      sum += st;
-      nakamoto++;
-    }
     const byFamily = new Map<string, number>();
     for (const v of vs) {
       const f = v.software?.family ?? 'unknown';
@@ -206,7 +145,7 @@ const Home = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([f, st]) => ({ family: f, share: st / total }));
-    return { total, delinquentShare: delinquent / total, nakamoto, families };
+    return { total, delinquentShare: delinquent / total, families };
   }, [summary]);
 
   // Without block data (testnet), the validator KPIs come from the
@@ -235,51 +174,14 @@ const Home = () => {
     };
   }, [context, currentEpoch]);
 
-  const kpis = useMemo(() => {
-    if (!context || currentEpoch === null) return undefined;
-    const incomeLb = context.epochIncomeLeaderboardState.data.get(currentEpoch);
-    if (!incomeLb) return undefined;
-    const realRecords = incomeLb.records.filter(
-      r => r.nodeAddress !== IDEAL_RECORD_KEY
-    );
-    return {
-      blocksProduced: realRecords.reduce((a, r) => a + r.confirmedSlots, 0),
-      totalRevenue: realRecords.reduce(
-        (a, r) =>
-          a +
-          r.totalIncome.baseFees +
-          r.totalIncome.priorityFees +
-          r.totalIncome.mevTips,
-        0
-      )
-    };
-  }, [context, currentEpoch]);
-
-  const polledBlocks = totals?.blocksProduced ?? kpis?.blocksProduced ?? null;
-  const polledRevenue = totals?.blockRevenue
-    ? totals.blockRevenue.baseFees +
-      totals.blockRevenue.priorityFees +
-      totals.blockRevenue.mevTips
-    : (kpis?.totalRevenue ?? null);
-  const latest = useMemo(
-    () =>
-      polledBlocks != null
-        ? { blocks: polledBlocks, revenue: polledRevenue }
-        : null,
-    [polledBlocks, polledRevenue]
-  );
-  // Blocks per second: the epoch's production rate at the observed slot
-  // time - for the first load's lead-in.
   const slotSeconds = live.progress?.slotSeconds;
-  const blocksPerSec =
-    slotSeconds && totals?.processedSlots && totals.blocksProduced != null
-      ? totals.blocksProduced / totals.processedSlots / slotSeconds
-      : null;
-  const trailing = useTrailingTotals(latest, countMs, blocksPerSec);
   const skipRate =
     totals?.processedSlots && totals.skippedSlots != null
       ? totals.skippedSlots / totals.processedSlots
       : null;
+  // Rows of three; testnet's first row has a fourth (participation).
+  const cardCol = blockIncomeTracked ? { xs: 6, md: 4 } : { xs: 6, md: 3 };
+  const rowTwoCol = { xs: 6, md: 4 };
   const halt = useClusterHalt();
   // Halted: the halted chain's last slot (the epoch reading can show the
   // restart snapshot's slot once our node has restarted onto it).
@@ -301,7 +203,7 @@ const Home = () => {
         </div>
 
         <Row className="g-3 mb-3">
-          <Col xs={6} md={3}>
+          <Col {...cardCol}>
             <StatCard
               label="Status"
               mono={false}
@@ -318,7 +220,7 @@ const Home = () => {
               linkTo="/status"
             />
           </Col>
-          <Col xs={6} md={3}>
+          <Col {...cardCol}>
             <StatCard
               label="Current Epoch"
               value={
@@ -332,7 +234,7 @@ const Home = () => {
               }
             />
           </Col>
-          <Col xs={6} md={3}>
+          <Col {...cardCol}>
             <StatCard
               label="Current Slot"
               value={currentSlot != null ? currentSlot.toLocaleString() : '—'}
@@ -347,19 +249,8 @@ const Home = () => {
               linkTo="/status"
             />
           </Col>
-          <Col xs={6} md={3}>
-            {blockIncomeTracked ? (
-              <StatCard
-                label="Epoch Revenue"
-                value={
-                  trailing.revenue != null
-                    ? formatLamports(trailing.revenue, 2)
-                    : '—'
-                }
-                sublabel="block fees + MEV tips, so far"
-                linkTo="/leaderboards/block-income"
-              />
-            ) : (
+          {!blockIncomeTracked && (
+            <Col {...cardCol}>
               <StatCard
                 label="Consensus Participation"
                 value={
@@ -370,9 +261,9 @@ const Home = () => {
                 sublabel="of admitted stake"
                 linkTo="/leaderboards/consensus"
               />
-            )}
-          </Col>
-          <Col xs={6} md={3}>
+            </Col>
+          )}
+          <Col {...rowTwoCol}>
             <StatCard
               label="Active Stake"
               value={snapshot ? compactSol(snapshot.total) : '—'}
@@ -389,7 +280,7 @@ const Home = () => {
               linkTo="/validators"
             />
           </Col>
-          <Col xs={6} md={3}>
+          <Col {...rowTwoCol}>
             <StatCard
               label="Validators"
               value={
@@ -405,16 +296,7 @@ const Home = () => {
               linkTo="/validators"
             />
           </Col>
-          <Col xs={6} md={3}>
-            <StatCard
-              label="Nakamoto Coefficient"
-              value={snapshot ? snapshot.nakamoto.toLocaleString() : '—'}
-              sublabel="fewest validators to halt consensus"
-              wrapSublabel
-              linkTo="/decentralization"
-            />
-          </Col>
-          <Col xs={6} md={3}>
+          <Col {...rowTwoCol}>
             <StatCard
               label="Clients"
               mono={false}

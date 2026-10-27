@@ -25,7 +25,7 @@ const Item = ({ icon, children }: { icon: string; children: ReactNode }) => (
 
 /**
  * What's coming on the cluster: the next epoch boundary, the next feature
- * gate to activate, and any governance vote open now (mainnet).
+ * gate to activate, and any governance vote open now (mainnet; shown only while one is).
  */
 const WhatsNext = () => {
   const context = useContext(VortexDataContext);
@@ -88,26 +88,17 @@ const WhatsNext = () => {
             </span>
           )}
         </Item>
-        {!isTestnet && (
+        {open.length > 0 && (
           <Item icon="check-square">
-            {open.length ? (
-              open.map((p, i) => (
-                <span key={p.address}>
-                  {i > 0 && ', '}
-                  <Link to={`/governance/${p.address}`} className="fw-semibold">
-                    {proposalName(p)}
-                  </Link>
-                </span>
-              ))
-            ) : (
-              <span className="text-body-tertiary">
-                No governance vote open.{' '}
-                <Link to="/governance">Past proposals</Link>
+            {open.map((p, i) => (
+              <span key={p.address}>
+                {i > 0 && ', '}
+                <Link to={`/governance/${p.address}`} className="fw-semibold">
+                  {proposalName(p)}
+                </Link>
               </span>
-            )}
-            {open.length > 0 && (
-              <span className="text-body-tertiary"> - voting now</span>
-            )}
+            ))}
+            <span className="text-body-tertiary"> - voting now</span>
           </Item>
         )}
       </ul>
