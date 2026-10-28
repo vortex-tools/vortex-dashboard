@@ -1,3 +1,4 @@
+import Badge from 'components/base/Badge';
 import BackLink from 'components/common/BackLink';
 import { ColumnDef } from '@tanstack/react-table';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -206,18 +207,15 @@ const columns = (
     : [
         {
           id: 'sfdp',
-          header: 'SFDP delegated',
+          header: 'SFDP',
           // Above the 50 SOL minimum, as the pools are counted.
           accessorFn: (v: Validator) =>
             (v.sfdpStake ?? 0) > MIN_STAKE ? 1 : 0,
           cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
             (v.sfdpStake ?? 0) > MIN_STAKE ? (
-              <FeatherIcon
-                icon="check"
-                size={14}
-                className="text-success"
-                aria-label="SFDP delegates here"
-              />
+              <Badge bg="success" className="text-nowrap">
+                Delegated
+              </Badge>
             ) : (
               <span className="text-body-quaternary">—</span>
             ),
