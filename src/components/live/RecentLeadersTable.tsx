@@ -32,23 +32,38 @@ const RecentLeadersTable = ({
   const head = playhead - (playhead % WINDOW);
   const rows = Array.from({ length: windows }, (_, i) => head - i * WINDOW);
   return (
-    <Table responsive size="sm" className="data-table fs-9 mb-0">
+    // Fixed column widths: a new leader's name doesn't reflow the table
+    // each window (names and places are cut short, in full on hover).
+    <Table
+      responsive
+      size="sm"
+      className="data-table fs-9 mb-0"
+      style={{ tableLayout: 'fixed', minWidth: 520 }}
+    >
       <thead>
         <tr>
-          <th>First slot</th>
+          <th style={{ width: '7.5rem' }}>First slot</th>
           <th>Leader</th>
-          <th className="d-none d-md-table-cell">Location</th>
-          <th className="text-center" colSpan={WINDOW}>
+          <th className="d-none d-md-table-cell" style={{ width: '24%' }}>
+            Location
+          </th>
+          <th
+            className="text-center"
+            colSpan={WINDOW}
+            style={{ width: WINDOW * 24 }}
+          >
             Slots
           </th>
           <th
             className="text-end d-none d-sm-table-cell"
+            style={{ width: '7.5rem' }}
             title="Mean notarize stake over the leader's 4 slots played so far"
           >
             Avg Notarize
           </th>
           <th
             className="text-end d-none d-sm-table-cell"
+            style={{ width: '7.5rem' }}
             title="Mean time to finalization over the leader's 4 slots' blocks played so far"
           >
             Avg Finalized
@@ -80,14 +95,19 @@ const RecentLeadersTable = ({
               <td className="font-monospace">
                 <Link to={`/slot/${first}`}>{first.toLocaleString()}</Link>
               </td>
-              <td className="text-nowrap">
+              <td className="text-truncate">
                 {leader ? (
-                  <Link to={`/validator/${leader}`}>{nameOf(leader)}</Link>
+                  <Link to={`/validator/${leader}`} title={nameOf(leader)}>
+                    {nameOf(leader)}
+                  </Link>
                 ) : (
                   '—'
                 )}
               </td>
-              <td className="text-nowrap text-body-tertiary d-none d-md-table-cell">
+              <td
+                className="text-truncate text-body-tertiary d-none d-md-table-cell"
+                title={(leader && placeOf(geo?.get(leader))) || undefined}
+              >
                 {(leader && placeOf(geo?.get(leader))) ?? '—'}
               </td>
               {slots.map(s => {
