@@ -65,3 +65,9 @@ export const Delta = ({
 
 export const signedCount = (d: number) =>
   d === 0 ? null : `${d > 0 ? '+' : '−'}${Math.abs(d).toLocaleString()}`;
+
+/** "5%", "0.1%" from basis points. */
+export const bpsPct = (bps: number | null | undefined) =>
+  bps == null
+    ? '—'
+    : `${(bps / 100).toFixed(bps % 100 ? (bps % 10 ? 2 : 1) : 0)}%`;

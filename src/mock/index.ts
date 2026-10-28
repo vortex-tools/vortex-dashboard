@@ -82,6 +82,19 @@ const POOLS = [
   }
 ] as const;
 const EPOCH = 1069;
+
+/** A pool's fees (none for SFDP); bSOL has a change scheduled. */
+const feesOf = (name: string, kind: string) =>
+  kind === 'sfdp'
+    ? null
+    : {
+        epochFeeBps: name === 'JitoSOL' ? 400 : name === 'Marinade' ? 600 : 500,
+        nextEpochFeeBps: name === 'bSOL' ? 300 : null,
+        solDepositFeeBps: 0,
+        stakeDepositFeeBps: 0,
+        solWithdrawalFeeBps: 10,
+        stakeWithdrawalFeeBps: 30
+      };
 const HISTORY = 20;
 
 const poolOf = async (spec: (typeof POOLS)[number]) => {
@@ -144,6 +157,7 @@ const poolOf = async (spec: (typeof POOLS)[number]) => {
     stake: spec.stake,
     top10Share: validators.slice(0, 10).reduce((a, v) => a + v.shareOfPool, 0),
     minimumOnly: spec.kind === 'sfdp' ? 0 : 366,
+    fees: feesOf(spec.name, spec.kind),
     validators,
     history
   };
@@ -165,7 +179,8 @@ const ROUTES: Record<string, Route> = {
       validatorsPrev: Math.max(1, p.n - 3),
       // A long tail: the median sits well under the mean.
       medianStake: Math.round((p.stake / p.n) * 0.45),
-      minimumOnly: p.kind === 'sfdp' ? 0 : 366
+      minimumOnly: p.kind === 'sfdp' ? 0 : 366,
+      fees: feesOf(p.name, p.kind)
     }))
   }),
   '/pool': async q => {

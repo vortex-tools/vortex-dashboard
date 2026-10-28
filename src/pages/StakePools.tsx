@@ -12,6 +12,7 @@ import {
   KindBadge,
   compactSol,
   pct,
+  bpsPct,
   poolPath,
   signedCount,
   signedSol
@@ -50,7 +51,8 @@ const END = {
 
 const columns = (
   total: number,
-  showMedian: boolean
+  showMedian: boolean,
+  showFees: boolean
 ): ColumnDef<PoolSummary>[] => [
   {
     id: 'name',
@@ -121,6 +123,45 @@ const columns = (
     ),
     meta: END
   },
+  ...(showFees
+    ? [
+        {
+          id: 'fee',
+          header: 'Fee',
+          accessorFn: (p: PoolSummary) => p.fees?.epochFeeBps ?? -1,
+          cell: ({
+            row: { original: p }
+          }: {
+            row: { original: PoolSummary };
+          }) => {
+            const f = p.fees;
+            if (f?.epochFeeBps == null)
+              return <span className="text-body-quaternary">—</span>;
+            const next = f.nextEpochFeeBps;
+            const changes = next != null && next !== f.epochFeeBps;
+            return (
+              <span
+                title={
+                  changes
+                    ? `${bpsPct(next)} from the next epoch`
+                    : 'Its commission on staking rewards'
+                }
+              >
+                {bpsPct(f.epochFeeBps)}
+                {changes && (
+                  <span
+                    className={`fs-10 d-block lh-1 ${next! > f.epochFeeBps! ? 'text-danger' : 'text-success'}`}
+                  >
+                    → {bpsPct(next)}
+                  </span>
+                )}
+              </span>
+            );
+          },
+          meta: END
+        } as ColumnDef<PoolSummary>
+      ]
+    : []),
   ...(showMedian
     ? [
         {
@@ -165,13 +206,18 @@ const StakePools = () => {
   const hidden = allPools.length - pools.length;
   // Shown once the API gives each pool's median delegation.
   const showMedian = allPools.some(p => p.medianStake != null);
+  // And once it gives their fees.
+  const showFees = allPools.some(p => p.fees != null);
   // Totals and shares are over every pool, shown or not.
   const total = useMemo(
     () => allPools.reduce((a, p) => a + p.stake, 0),
     [allPools]
   );
   const table = useAdvanceTable({
-    columns: useMemo(() => columns(total, showMedian), [total, showMedian]),
+    columns: useMemo(
+      () => columns(total, showMedian, showFees),
+      [total, showMedian, showFees]
+    ),
     data: pools,
     sortable: true,
     pagination: true,
@@ -262,7 +308,7 @@ const StakePools = () => {
           <SectionCard
             title="All Stakers"
             icon="layers"
-            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 50 SOL: a pool's minimum stake on a validator (50 SOL or less) isn't a delegation. Median delegation: the middle of its holdings per validator, over those delegations. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
+            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 50 SOL: a pool's minimum stake on a validator (50 SOL or less) isn't a delegation. Median delegation: the middle of its holdings per validator, over those delegations. Fee: its commission on staking rewards, from its on-chain account (an arrow when it changes next epoch). From Jito's per-epoch stake-meta file, published hours after an epoch ends."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">

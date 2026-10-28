@@ -17,6 +17,7 @@ import UntrackedState from 'components/common/UntrackedState';
 import {
   Delta,
   KindBadge,
+  bpsPct,
   compactSol,
   pct,
   signedCount,
@@ -702,6 +703,44 @@ const StakePool = () => {
             <UntrackedState>No epochs recorded yet.</UntrackedState>
           )}
         </SectionCard>
+
+        {data.fees && (
+          <SectionCard
+            title="Fees"
+            icon="percent"
+            info="The pool's own fees, from its on-chain account (read hourly): its commission on staking rewards (and the next epoch's when a change is scheduled), and what it charges to deposit or withdraw SOL or stake accounts."
+          >
+            <dl className="row fs-9 mb-0 gy-1">
+              {(
+                [
+                  ['Commission on rewards', data.fees.epochFeeBps],
+                  [
+                    'Next epoch',
+                    data.fees.nextEpochFeeBps != null &&
+                    data.fees.nextEpochFeeBps !== data.fees.epochFeeBps
+                      ? data.fees.nextEpochFeeBps
+                      : undefined
+                  ],
+                  ['SOL deposit', data.fees.solDepositFeeBps],
+                  ['Stake deposit', data.fees.stakeDepositFeeBps],
+                  ['SOL withdrawal', data.fees.solWithdrawalFeeBps],
+                  ['Stake withdrawal', data.fees.stakeWithdrawalFeeBps]
+                ] as Array<[string, number | null | undefined]>
+              )
+                .filter(([, v]) => v !== undefined)
+                .map(([label, v]) => (
+                  <Fragment key={label}>
+                    <dt className="col-6 col-md-3 fw-normal text-body-tertiary">
+                      {label}
+                    </dt>
+                    <dd className="col-6 col-md-3 mb-0 font-monospace">
+                      {bpsPct(v)}
+                    </dd>
+                  </Fragment>
+                ))}
+            </dl>
+          </SectionCard>
+        )}
 
         {data.authorities.length > 0 && (
           <SectionCard title="Authorities" icon="key">

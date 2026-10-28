@@ -2792,6 +2792,24 @@ export const clusterBlocksSchema = z.preprocess(
 export type ClusterBlocks = z.infer<typeof clusterBlocksSchema>;
 
 // ---- Stake pools (/pools, /pool) ---------------------------------------
+// A pool's own fees, from its on-chain account (read hourly); Marinade's
+// reward fee as epochFeeBps; null for SFDP.
+const poolFeesSchema = z
+  .object({
+    // The commission on its rewards, and the next epoch's if a change is
+    // scheduled.
+    epochFeeBps: z.number().nullable().catch(null),
+    nextEpochFeeBps: z.number().nullable().optional().catch(null),
+    solDepositFeeBps: z.number().nullable().optional().catch(null),
+    stakeDepositFeeBps: z.number().nullable().optional().catch(null),
+    solWithdrawalFeeBps: z.number().nullable().optional().catch(null),
+    stakeWithdrawalFeeBps: z.number().nullable().optional().catch(null)
+  })
+  .nullable()
+  .optional()
+  .catch(null);
+export type PoolFees = z.infer<typeof poolFeesSchema>;
+
 // Who stake pools, Marinade and SFDP delegate to, per completed epoch,
 // from Jito's stake-meta file (pools by name, Marinade's two authorities
 // merged; SFDP by its stake authority). Effective stake, lamports.
@@ -2808,6 +2826,7 @@ export const poolSummarySchema = z.object({
   validatorsPrev: z.number().nullable().catch(null),
   // Median stake per validator over its delegations (> 50 SOL).
   medianStake: z.number().nullable().optional().catch(null),
+  fees: poolFeesSchema,
   // Validators held only at a pool's minimum stake (<= 50 SOL): not
   // delegations, not listed.
   minimumOnly: z.number().nullable().optional().catch(null)
@@ -2838,6 +2857,7 @@ export const poolDetailSchema = z.object({
   epoch: z.number().nullable().catch(null),
   stake: z.number().catch(0),
   top10Share: z.number().nullable().catch(null),
+  fees: poolFeesSchema,
   // Validators held only at the minimum stake (<= 50 SOL), not listed.
   minimumOnly: z.number().nullable().optional().catch(null),
   validators: z
