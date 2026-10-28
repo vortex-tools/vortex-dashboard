@@ -517,8 +517,14 @@ const StakePool = () => {
 
   // Its commission on rewards (not for SFDP, which has none).
   const fee = data.fees?.epochFeeBps != null ? data.fees : null;
-  // Two to four figures across, each an equal share of the row.
-  const cardLg = 12 / (2 + (showRewards ? 1 : 0) + (fee ? 1 : 0));
+  // The middle of its delegations (largest first, so the middle one).
+  const median = validators.length
+    ? validators.length % 2
+      ? validators[(validators.length - 1) / 2].stake
+      : (validators[validators.length / 2 - 1].stake +
+          validators[validators.length / 2].stake) /
+        2
+    : null;
   // What the pool earned this epoch, and the annual yield that rate makes.
   const totalReward = validators.reduce((a, v) => a + rewardOf(v), 0);
   const totalMev = validators.reduce((a, v) => a + (v.mevReward ?? 0), 0);
@@ -554,7 +560,7 @@ const StakePool = () => {
 
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
-          <Col xs={6} lg={cardLg}>
+          <Col xs={6} lg>
             <StatCard
               label="Stake"
               value={compactSol(data.stake)}
@@ -565,7 +571,7 @@ const StakePool = () => {
               }
             />
           </Col>
-          <Col xs={6} lg={cardLg}>
+          <Col xs={6} lg>
             <StatCard
               label="Validators"
               value={validators.length.toLocaleString()}
@@ -587,8 +593,19 @@ const StakePool = () => {
               }
             />
           </Col>
+          <Col xs={6} lg>
+            <StatCard
+              label="Median Stake"
+              value={median != null ? compactSol(median) : '—'}
+              sublabel={
+                validators[0]
+                  ? `per validator · largest ${compactSol(validators[0].stake)}`
+                  : 'per validator'
+              }
+            />
+          </Col>
           {showRewards && (
-            <Col xs={6} lg={cardLg}>
+            <Col xs={6} lg>
               <StatCard
                 label="Staking Yield"
                 value={apy != null ? `≈ ${(apy * 100).toFixed(2)}%` : '—'}
@@ -611,7 +628,7 @@ const StakePool = () => {
             </Col>
           )}
           {fee && (
-            <Col xs={6} lg={cardLg}>
+            <Col xs={6} lg>
               <StatCard
                 label="Commission"
                 value={bpsPct(fee.epochFeeBps)}
