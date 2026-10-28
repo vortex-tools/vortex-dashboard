@@ -388,7 +388,7 @@ const Home = () => {
               <Col xs={12} md={6}>
                 <LeaderboardCard
                   title="Consensus Leaderboard"
-                  description="Validators ranked by Alpenglow vote participation this epoch."
+                  description="Validators ranked by vote participation this epoch."
                   linkTo="/leaderboards/consensus"
                   icon="activity"
                 />
