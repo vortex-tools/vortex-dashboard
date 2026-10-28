@@ -18,8 +18,8 @@ interface Props {
   wrapSublabel?: boolean;
   /** Needs attention: the value in warning / danger. */
   tone?: 'warning' | 'danger';
-  /** A threshold it is judged against: met (a green check, the card
-   *  tinted) or not (a red cross). */
+  /** A threshold it is judged against: met (a green check and outline,
+   *  the usual background) or not (a red cross). */
   check?: boolean | null;
   /** Something is wrong right now (e.g. the cluster halted): the whole
    *  card in the danger tint, the value in its emphasis shade. */
@@ -89,7 +89,7 @@ const StatCard = ({
   const frame = alert
     ? 'bg-danger-subtle border-danger-subtle'
     : check === true
-      ? 'bg-success-subtle border-success-subtle'
+      ? 'bg-body-emphasis border-success'
       : check === false
         ? 'bg-body-emphasis border-danger-subtle'
         : 'bg-body-emphasis border-translucent';
