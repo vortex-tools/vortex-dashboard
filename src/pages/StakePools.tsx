@@ -263,7 +263,6 @@ const StakePools = () => {
           <h3>Stake Pools</h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             Where stake pools and delegation programs put their stake
-            {data?.epoch != null && ` · epoch ${data.epoch.toLocaleString()}`}
           </p>
         </div>
       </div>
