@@ -183,6 +183,30 @@ export const createParticipationLeaderboardColumns = (
     }
   },
   {
+    // The rank's measure (API rank since 003291b): votes landed, less
+    // skips on slots the cluster notarized. Votes Landed orders a rank.
+    id: 'performance',
+    accessorFn: r =>
+      r.admitted ? (performanceRate(r) ?? undefined) : undefined,
+    sortUndefined: 'last',
+    header: () => (
+      <span title="Its votes that match the cluster's outcome / the slots it could vote on: notarize or skip votes landed, less skips on slots the cluster notarized (paid, but a block it didn't replay in time). The rank; Votes Landed breaks ties.">
+        Performance
+      </span>
+    ),
+    cell: ({ row }) => {
+      const v = performanceRate(row.original);
+      return !row.original.admitted || v == null ? <Dash /> : formatShare(v);
+    },
+    meta: {
+      cellProps: {
+        className:
+          'text-end font-monospace text-success fw-semibold border-start'
+      },
+      headerProps: { className: 'text-end text-nowrap border-start' }
+    }
+  },
+  {
     id: 'participationGroup',
     header: () => (
       <span title="Whether its votes matched the cluster's outcome (Performance, the rank), landed in the slots' reward certificates (paid), or missed">
@@ -193,34 +217,6 @@ export const createParticipationLeaderboardColumns = (
       headerProps: { className: 'text-center border-start border-translucent' }
     },
     columns: [
-      {
-        // The rank's measure (API rank since 003291b): votes landed, less
-        // skips on slots the cluster notarized. Votes Landed orders a rank.
-        id: 'performance',
-        accessorFn: r =>
-          r.admitted ? (performanceRate(r) ?? undefined) : undefined,
-        sortUndefined: 'last',
-        header: () => (
-          <span title="Its votes that match the cluster's outcome / the slots it could vote on: notarize or skip votes landed, less skips on slots the cluster notarized (paid, but a block it didn't replay in time). The rank; Votes Landed breaks ties.">
-            Performance
-          </span>
-        ),
-        cell: ({ row }) => {
-          const v = performanceRate(row.original);
-          return !row.original.admitted || v == null ? (
-            <Dash />
-          ) : (
-            formatShare(v)
-          );
-        },
-        meta: {
-          cellProps: {
-            className:
-              'text-end font-monospace text-success fw-semibold border-start'
-          },
-          headerProps: { className: 'text-end text-nowrap border-start' }
-        }
-      },
       {
         // The API's participation = (notarize + skip votes) / eligible slots:
         // identical to the votes paid / payable (Overall's Voting score) - a
@@ -244,8 +240,10 @@ export const createParticipationLeaderboardColumns = (
           );
         },
         meta: {
-          cellProps: { className: 'text-end font-monospace text-body' },
-          headerProps: { className: 'text-end text-nowrap' }
+          cellProps: {
+            className: 'text-end font-monospace text-body border-start'
+          },
+          headerProps: { className: 'text-end text-nowrap border-start' }
         }
       },
       {
