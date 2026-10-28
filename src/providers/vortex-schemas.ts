@@ -2995,3 +2995,52 @@ export const clusterHaltSchema = z.object({
     .catch(null)
 });
 export type ClusterHaltRunUp = z.infer<typeof clusterHaltSchema>;
+
+// ---- Vote-account changes (/cluster/vote-account-changes,
+// /validators/vote-account-changes) --------------------------------------
+// Administrative changes to vote accounts since epoch 1064 (Alpenglow):
+// withdrawer, voter (and BLS key), identity, commissions, collectors,
+// withdrawals and creation. newValue: an address, a rate in bps, a
+// withdrawal's recipient, or (create) an object of every setting.
+export const voteAccountChangeSchema = z.object({
+  epoch: z.number(),
+  slot: z.number(),
+  blockTime: z.number().nullable().catch(null),
+  signature: z.string(),
+  instruction: z.string().nullable().catch(null),
+  // withdrawer | voter | identity | inflationCommission |
+  // blockRevenueCommission | inflationCollector | blockRevenueCollector |
+  // withdraw | create
+  kind: z.string(),
+  signers: z.array(z.string()).catch([]),
+  feePayer: z.string().nullable().catch(null),
+  newValue: z.unknown().optional(),
+  oldValue: z.unknown().optional(),
+  blsPubkey: z.string().nullable().catch(null),
+  oldBlsPubkey: z.string().nullable().catch(null),
+  lamports: z.number().nullable().catch(null),
+  effectiveEpoch: z.number().nullable().catch(null),
+  // The cluster feed's: whose vote account (its identity and name today).
+  voteKey: z.string().optional().catch(undefined),
+  identity: z.string().nullable().optional().catch(null),
+  name: validatorNameSchema.optional().catch(null)
+});
+export type VoteAccountChange = z.infer<typeof voteAccountChangeSchema>;
+
+export const clusterVoteAccountChangesSchema = z.object({
+  startEpoch: z.number().nullable().catch(null),
+  endEpoch: z.number().nullable().catch(null),
+  events: z.array(voteAccountChangeSchema).catch([])
+});
+export type ClusterVoteAccountChanges = z.infer<
+  typeof clusterVoteAccountChangesSchema
+>;
+
+export const validatorVoteAccountChangesSchema = z.object({
+  voteKey: z.string().nullable().catch(null),
+  identity: z.string().nullable().catch(null),
+  events: z.array(voteAccountChangeSchema).catch([])
+});
+export type ValidatorVoteAccountChanges = z.infer<
+  typeof validatorVoteAccountChangesSchema
+>;

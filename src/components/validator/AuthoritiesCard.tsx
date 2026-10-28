@@ -1,14 +1,16 @@
 import FeatherIcon from 'feather-icons-react';
 import AddressLine from 'components/common/AddressLine';
 import SectionCard from 'components/common/SectionCard';
+import { ChangeBadge, changeValue, whenText } from 'components/changes/changes';
+import { explorerAddress, explorerTx } from 'helpers/explorer';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ReactNode, useContext, useEffect } from 'react';
 import { Col } from 'react-bootstrap';
+import { Link } from 'react-router';
 
-/** An account on Solana Explorer, on the served cluster. */
-const explorerAddress = (address: string, isTestnet: boolean) =>
-  `https://explorer.solana.com/address/${address}${isTestnet ? '?cluster=testnet' : ''}`;
+/** Recent changes listed here; the rest on the changes page. */
+const RECENT_CHANGES = 5;
 
 const Row2 = ({ label, children }: { label: string; children: ReactNode }) => (
   <>
@@ -46,8 +48,19 @@ const AuthoritiesCard = ({
   useEffect(() => {
     if (nodeAddress) fetchStatus?.(nodeAddress);
   }, [nodeAddress, fetchStatus]);
+  // Its vote account's change history (withdrawer, voter, identity,
+  // commission, collectors, withdrawals), newest last from the API.
+  const fetchChanges = context?.validatorVoteAccountChangesState.fetchData;
+  useEffect(() => {
+    if (nodeAddress) fetchChanges?.(nodeAddress);
+  }, [nodeAddress, fetchChanges]);
+  const changes =
+    context?.validatorVoteAccountChangesState.data.get(nodeAddress)?.events;
   const vs = context?.validatorStatusState.data.get(nodeAddress)?.voteState;
   if (!vs) return null;
+  const recent = changes
+    ? [...changes].reverse().slice(0, RECENT_CHANGES)
+    : null;
 
   // A key's relation to the others, after its address.
   const sameAs = (key: string) =>
@@ -159,6 +172,54 @@ const AuthoritiesCard = ({
           )}
           <Row2 label="BLS key">{vs.blsPubkeySet ? 'Set' : 'Not set'}</Row2>
         </dl>
+        {/* Shown once the API has a history (absent: no section). */}
+        {recent && (
+          <div className="mt-3 pt-3 border-top border-translucent">
+            <div className="d-flex align-items-center mb-2">
+              <span className="fs-10 fw-bold text-uppercase text-body-tertiary">
+                Recent changes
+              </span>
+              <Link
+                to={`/vote-account-changes?validator=${voteAddress}&epochs=10`}
+                className="fs-10 ms-auto"
+              >
+                All changes →
+              </Link>
+            </div>
+            {recent.length ? (
+              <ul className="list-unstyled fs-9 mb-0 detail-lines">
+                {recent.map(e => (
+                  <li
+                    key={`${e.signature}-${e.kind}`}
+                    className="d-flex flex-wrap align-items-center column-gap-2"
+                  >
+                    <ChangeBadge kind={e.kind} />
+                    <span className="min-w-0">
+                      {changeValue(e, 'new', isTestnet)}
+                    </span>
+                    <span className="ms-auto text-body-tertiary fs-10 text-nowrap">
+                      epoch {e.epoch.toLocaleString()}
+                      {e.blockTime != null && ` · ${whenText(e.blockTime)}`}
+                      {' · '}
+                      <a
+                        href={explorerTx(e.signature, isTestnet)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Tx
+                      </a>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="fs-9 text-body-tertiary mb-0">
+                No changes since epoch 1064 (Alpenglow), where the record
+                starts.
+              </p>
+            )}
+          </div>
+        )}
         <ul className="list-unstyled fs-10 mt-3 mb-0 pt-3 border-top border-translucent d-flex flex-column gap-1">
           {facts.map(f => (
             <li key={f.text} className="d-flex gap-2">

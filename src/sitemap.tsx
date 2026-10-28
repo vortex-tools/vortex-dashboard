@@ -51,6 +51,8 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
   { name: 'Governance', icon: 'check-square', path: '/governance' },
   // Who stake pools and SFDP delegate to (mainnet only).
   { name: 'Stake Pools', icon: 'layers', path: '/pools' },
+  // Who changed a vote account's keys, commission or collectors.
+  { name: 'Account Changes', icon: 'key', path: '/vote-account-changes' },
   // How spread out the stake is (clients, providers, countries).
   { name: 'Decentralization', icon: 'globe', path: '/decentralization' }
 ];

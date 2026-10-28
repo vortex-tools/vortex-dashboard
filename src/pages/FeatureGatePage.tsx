@@ -1,5 +1,6 @@
 import BackLink from 'components/common/BackLink';
 import AddressLine from 'components/common/AddressLine';
+import { explorerAddress } from 'helpers/explorer';
 import useCluster from 'hooks/useCluster';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
@@ -215,7 +216,7 @@ const FeatureGatePage = () => {
                     label="Feature id"
                     value={f.id}
                     bare
-                    href={`https://explorer.solana.com/address/${f.id}${isTestnet ? '?cluster=testnet' : ''}`}
+                    href={explorerAddress(f.id, isTestnet)}
                   />
                 </Row2>
                 <Row2 label="SIMD">

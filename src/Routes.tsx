@@ -34,6 +34,7 @@ import FeatureGates from 'pages/FeatureGates';
 import SimdPage from 'pages/SimdPage';
 import StakePool from 'pages/StakePool';
 import StakePools from 'pages/StakePools';
+import VoteAccountChanges from 'pages/VoteAccountChanges';
 import Simds from 'pages/Simds';
 import Governance from 'pages/Governance';
 import GovernanceProposal from 'pages/GovernanceProposal';
@@ -172,6 +173,10 @@ const routes: RouteObject[] = [
               { path: '/feature/:id', element: <FeatureGatePage /> },
               { path: '/simds', element: <Simds /> },
               { path: '/pools', element: <StakePools /> },
+              {
+                path: '/vote-account-changes',
+                element: <VoteAccountChanges />
+              },
               { path: '/pool/:name', element: <StakePool /> },
               { path: '/simd/:simd', element: <SimdPage /> },
               { path: '/governance', element: <Governance /> },

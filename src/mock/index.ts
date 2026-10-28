@@ -199,7 +199,100 @@ const withFields =
     return { ...(await res.json()), ...add(q) };
   };
 
+// ---- vote-account changes (/cluster/vote-account-changes,
+// /validators/vote-account-changes) ---------------------------------------
+
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const key = (r: () => number, n = 44) =>
+  Array.from({ length: n }, () => B58[Math.floor(r() * B58.length)]).join('');
+const CHANGE_KINDS = [
+  'voter',
+  'voter',
+  'withdraw',
+  'withdraw',
+  'inflationCommission',
+  'blockRevenueCollector',
+  'identity',
+  'withdrawer',
+  'inflationCollector',
+  'blockRevenueCommission',
+  'create'
+];
+/** One vote account's change on a given epoch. */
+const changeEvent = (r: () => number, d: Dir, epoch: number) => {
+  const kind = CHANGE_KINDS[Math.floor(r() * CHANGE_KINDS.length)];
+  const slot =
+    462_000_000 + (epoch - 1069) * 432_000 + Math.floor(r() * 432_000);
+  const bps = kind.endsWith('Commission');
+  const newValue =
+    kind === 'create'
+      ? { inflationCommissionBps: 500, blockRevenueCommissionBps: 10000 }
+      : bps
+        ? Math.floor(r() * 10) * 100
+        : key(r);
+  return {
+    voteKey: d.voteAddress,
+    identity: d.nodeAddress,
+    name: d.name,
+    epoch,
+    slot,
+    blockTime:
+      Math.floor(Date.now() / 1000) -
+      (1070 - epoch) * 150_000 -
+      Math.floor(r() * 100_000),
+    signature: key(r, 88),
+    instructionIndex: 0,
+    innerInstructionIndex: null,
+    instruction: kind === 'withdraw' ? 'withdraw' : 'authorizeChecked',
+    kind,
+    signers: [key(r), ...(r() < 0.3 ? [key(r)] : [])],
+    feePayer: key(r),
+    newValue,
+    oldValue:
+      kind === 'create' || kind === 'withdraw'
+        ? null
+        : r() < 0.7
+          ? bps
+            ? 800
+            : key(r)
+          : null,
+    blsPubkey: kind === 'voter' && r() < 0.5 ? key(r, 66) : null,
+    oldBlsPubkey: null,
+    lamports: kind === 'withdraw' ? Math.floor(r() * 50e9) : null,
+    effectiveEpoch:
+      kind === 'voter' || kind === 'identity'
+        ? epoch + 2
+        : kind.endsWith('Commission')
+          ? epoch + 1
+          : epoch
+  };
+};
+
 const ROUTES: Record<string, Route> = {
+  '/cluster/vote-account-changes': async q => {
+    const epochs = Math.min(10, Math.max(1, Number(q.get('epochs') ?? 3)));
+    const dir = (await directory()).filter(d => d.voteAddress);
+    const events = [];
+    for (let e = 1070; e > 1070 - epochs; e--) {
+      const r = rng(`changes-${e}`);
+      for (let i = 0; i < 40; i++)
+        events.push(changeEvent(r, dir[Math.floor(r() * dir.length)], e));
+    }
+    events.sort((a, b) => b.slot - a.slot);
+    return { startEpoch: 1071 - epochs, endEpoch: 1070, events };
+  },
+  '/validators/vote-account-changes': async q => {
+    const id = q.get('identity') ?? q.get('voteKey') ?? '';
+    const d = (await directory()).find(
+      x => x.nodeAddress === id || x.voteAddress === id
+    ) ?? { nodeAddress: id, voteAddress: id, name: null };
+    const r = rng(`vchanges-${id}`);
+    const n = Math.floor(r() * 7);
+    const events = Array.from({ length: n }, () =>
+      changeEvent(r, d, 1064 + Math.floor(r() * 7))
+    ).sort((a, b) => a.slot - b.slot);
+    return { voteKey: d.voteAddress, identity: d.nodeAddress, events };
+  },
   // A validator's age (firstEpoch / epochsActive), coming to
   // /validators/status.
   '/validators/status': withFields('/validators/status', q => {
