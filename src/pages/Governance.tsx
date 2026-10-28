@@ -74,76 +74,125 @@ const Governance = () => {
       ) : !proposals.length ? (
         <UntrackedState>No proposals recorded yet.</UntrackedState>
       ) : (
-        <Table
-          responsive
-          className="data-table fs-9 mx-n3 mb-0"
-          style={{ width: 'calc(100% + 2rem)' }}
-        >
-          <thead>
-            <tr>
-              <th className="ps-3">Proposal</th>
-              <th>Status</th>
-              <th style={{ minWidth: '12rem' }}>For · Against · Abstain</th>
-              <th
-                className="text-end"
-                title="For as a share of all votes (For + Against + Abstain): what the constitution rule judges"
-              >
-                For
-              </th>
-              <th className="text-end">Turnout</th>
-              <th className="text-end">Validators voted</th>
-              <th className="text-end pe-3">Epochs</th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          {/* Phones: one block per proposal (the table's seven columns
+            don't fit); the table from md up. */}
+          <ul className="list-unstyled mb-0 d-md-none d-flex flex-column gap-3">
             {proposals.map(p => (
-              <tr key={p.address}>
-                <td className="ps-3">
-                  <Link to={`/governance/${p.address}`} className="fw-semibold">
-                    {proposalName(p)}
-                  </Link>
-                  {sgpTag(p) && (
-                    <div className="fs-10 text-body-tertiary font-monospace">
-                      {sgpTag(p)}
-                    </div>
-                  )}
-                </td>
-                <td>
-                  <div className="d-flex gap-1 flex-wrap">
-                    <PhaseBadge phase={p.phase} />
-                    <VerdictBadge verdict={p.verdict} projected={p.projected} />
-                  </div>
-                </td>
-                <td className="align-middle">
-                  {/* The mark is the pass line on the whole bar: what the
-                      constitution's rule (all votes) is judged on. */}
-                  <VoteBar
-                    tally={p.tally}
-                    threshold={p.rule === 'constitution' ? THRESHOLD : null}
-                    outcome={p.verdict ?? p.projected}
-                  />
-                </td>
-                <td
-                  className="text-end font-monospace"
-                  title={
-                    p.rule
-                      ? `Under the ${RULE[p.rule]?.label.toLowerCase() ?? p.rule} rule`
-                      : undefined
-                  }
+              <li
+                key={p.address}
+                className="border-bottom border-translucent pb-3"
+              >
+                <Link
+                  to={`/governance/${p.address}`}
+                  className="fw-semibold fs-9 d-block"
                 >
-                  {pct(ruleShare(p))}
-                </td>
-                <td className="text-end font-monospace">{pct(p.turnout)}</td>
-                <td className="text-end font-monospace">
-                  {p.validatorVotes?.toLocaleString() ?? '—'}
-                </td>
-                <td className="text-end text-body-tertiary text-nowrap pe-3">
-                  {epochSpan(p) ?? '—'}
-                </td>
-              </tr>
+                  {proposalName(p)}
+                </Link>
+                <div className="d-flex gap-1 flex-wrap my-2">
+                  <PhaseBadge phase={p.phase} />
+                  <VerdictBadge verdict={p.verdict} projected={p.projected} />
+                </div>
+                <VoteBar
+                  tally={p.tally}
+                  threshold={p.rule === 'constitution' ? THRESHOLD : null}
+                  outcome={p.verdict ?? p.projected}
+                />
+                <div className="fs-10 text-body-tertiary mt-2">
+                  {[
+                    `For ${pct(ruleShare(p))}`,
+                    `turnout ${pct(p.turnout)}`,
+                    p.validatorVotes != null &&
+                      `${p.validatorVotes.toLocaleString()} validators voted`,
+                    epochSpan(p) && `epochs ${epochSpan(p)}`
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+              </li>
             ))}
-          </tbody>
-        </Table>
+          </ul>
+          <div className="d-none d-md-block">
+            <Table
+              responsive
+              className="data-table fs-9 mx-n3 mb-0"
+              style={{ width: 'calc(100% + 2rem)' }}
+            >
+              <thead>
+                <tr>
+                  <th className="ps-3">Proposal</th>
+                  <th>Status</th>
+                  <th style={{ minWidth: '12rem' }}>For · Against · Abstain</th>
+                  <th
+                    className="text-end"
+                    title="For as a share of all votes (For + Against + Abstain): what the constitution rule judges"
+                  >
+                    For
+                  </th>
+                  <th className="text-end">Turnout</th>
+                  <th className="text-end">Validators voted</th>
+                  <th className="text-end pe-3">Epochs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {proposals.map(p => (
+                  <tr key={p.address}>
+                    <td className="ps-3">
+                      <Link
+                        to={`/governance/${p.address}`}
+                        className="fw-semibold"
+                      >
+                        {proposalName(p)}
+                      </Link>
+                      {sgpTag(p) && (
+                        <div className="fs-10 text-body-tertiary font-monospace">
+                          {sgpTag(p)}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div className="d-flex gap-1 flex-wrap">
+                        <PhaseBadge phase={p.phase} />
+                        <VerdictBadge
+                          verdict={p.verdict}
+                          projected={p.projected}
+                        />
+                      </div>
+                    </td>
+                    <td className="align-middle">
+                      {/* The mark is the pass line on the whole bar: what the
+                      constitution's rule (all votes) is judged on. */}
+                      <VoteBar
+                        tally={p.tally}
+                        threshold={p.rule === 'constitution' ? THRESHOLD : null}
+                        outcome={p.verdict ?? p.projected}
+                      />
+                    </td>
+                    <td
+                      className="text-end font-monospace"
+                      title={
+                        p.rule
+                          ? `Under the ${RULE[p.rule]?.label.toLowerCase() ?? p.rule} rule`
+                          : undefined
+                      }
+                    >
+                      {pct(ruleShare(p))}
+                    </td>
+                    <td className="text-end font-monospace">
+                      {pct(p.turnout)}
+                    </td>
+                    <td className="text-end font-monospace">
+                      {p.validatorVotes?.toLocaleString() ?? '—'}
+                    </td>
+                    <td className="text-end text-body-tertiary text-nowrap pe-3">
+                      {epochSpan(p) ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        </>
       )}
       <p className="fs-10 text-body-tertiary mt-3 mb-0">
         Votes are weighted by each validator&apos;s stake in the snapshot epoch,
