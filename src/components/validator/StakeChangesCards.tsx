@@ -22,7 +22,8 @@ const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 
 /** A staker as people know it: a pool by name ("Helius Staked SOL",
  *  its symbol after), linking its Stake Pools page, else its withdraw
- *  authority. */
+ *  authority. Where the name has little room - a phone, or a half-width
+ *  card below xxl - just the symbol ("SFDP"), the full name on hover. */
 export const StakerName = ({
   label,
   withdrawer
@@ -32,12 +33,27 @@ export const StakerName = ({
 }) =>
   label ? (
     <>
-      <Link to={poolPath(label.name)}>{label.fullName ?? label.name}</Link>
-      {(label.fullName || label.kind === 'stake-pool') && (
-        <span className="text-body-tertiary fs-10 ms-1">
-          {label.fullName ? label.name : 'pool'}
-        </span>
+      {label.fullName && (
+        <Link
+          to={poolPath(label.name)}
+          title={label.fullName}
+          className="d-md-none d-lg-inline d-xxl-none"
+        >
+          {label.name}
+        </Link>
       )}
+      <span
+        className={
+          label.fullName ? 'd-none d-md-inline d-lg-none d-xxl-inline' : ''
+        }
+      >
+        <Link to={poolPath(label.name)}>{label.fullName ?? label.name}</Link>
+        {(label.fullName || label.kind === 'stake-pool') && (
+          <span className="text-body-tertiary fs-10 ms-1">
+            {label.fullName ? label.name : 'pool'}
+          </span>
+        )}
+      </span>
     </>
   ) : (
     <span className="font-monospace">{short(withdrawer)}</span>
