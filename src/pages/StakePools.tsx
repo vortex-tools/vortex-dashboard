@@ -12,6 +12,7 @@ import {
   KindBadge,
   compactSol,
   pct,
+  poolPath,
   signedCount,
   signedSol
 } from 'components/pools/pools';
@@ -22,8 +23,6 @@ import { PoolSummary } from 'providers/vortex-schemas';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Form, ToggleButton } from 'react-bootstrap';
 import { Link } from 'react-router';
-
-export const poolPath = (name: string) => `/pool/${encodeURIComponent(name)}`;
 
 /** Pools delegating to fewer validators than this are hidden unless
  *  asked for. */

@@ -1,3 +1,4 @@
+import { poolPath } from 'components/pools/pools';
 import Button from 'components/base/Button';
 import StakeChangesChart, {
   stakeSetMoved
@@ -20,7 +21,8 @@ const signed = (lamports: number) =>
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 
 /** A staker as people know it: a pool by name ("Helius Staked SOL",
- *  its symbol after), else its withdraw authority. */
+ *  its symbol after), linking its Stake Pools page, else its withdraw
+ *  authority. */
 export const StakerName = ({
   label,
   withdrawer
@@ -30,7 +32,7 @@ export const StakerName = ({
 }) =>
   label ? (
     <>
-      {label.fullName ?? label.name}
+      <Link to={poolPath(label.name)}>{label.fullName ?? label.name}</Link>
       {(label.fullName || label.kind === 'stake-pool') && (
         <span className="text-body-tertiary fs-10 ms-1">
           {label.fullName ? label.name : 'pool'}

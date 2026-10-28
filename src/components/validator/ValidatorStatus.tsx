@@ -17,6 +17,8 @@ import SectionCard from 'components/common/SectionCard';
 import { isSfdpCheck, isSfdpState, sfdpMatch } from 'helpers/sfdp';
 import { formatLamports } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
+import { poolPath } from 'components/pools/pools';
+import { Link } from 'react-router';
 import useLiveRefresh from 'hooks/useLiveRefresh';
 import { validatorTabPath } from 'components/validator/ValidatorPageHeader';
 import {
@@ -604,11 +606,18 @@ export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
             <span className="sfdp-title-short">SFDP</span>
           </BoxTitle>
         </div>
+        <Link
+          to={poolPath('SFDP')}
+          className="fs-10 ms-auto text-nowrap"
+          title="Who SFDP delegates to"
+        >
+          Delegations
+        </Link>
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="fs-10 ms-auto d-inline-flex align-items-center gap-1"
+          className="fs-10 d-inline-flex align-items-center gap-1"
         >
           solana.org
           <FeatherIcon icon="arrow-up-right" size={12} />

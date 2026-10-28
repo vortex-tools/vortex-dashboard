@@ -1,5 +1,8 @@
 import Badge, { BadgeBg } from 'components/base/Badge';
 
+/** A pool's page (its name, as the labels give it). */
+export const poolPath = (name: string) => `/pool/${encodeURIComponent(name)}`;
+
 /** What a staker is: a stake pool (an LST), Marinade, or SFDP. */
 export const KIND: Record<string, { label: string; bg: BadgeBg }> = {
   'stake-pool': { label: 'Stake pool', bg: 'primary' },

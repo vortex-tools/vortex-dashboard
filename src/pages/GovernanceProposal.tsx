@@ -1,3 +1,4 @@
+import { poolPath } from 'components/pools/pools';
 import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
@@ -846,7 +847,18 @@ const GovernanceProposal = () => {
                               <span
                                 title={`${o.kind === 'stake-pool' ? 'Stake pool' : (o.kind ?? 'Pool')} manager ${o.delegator}${o.poolAccounts?.length ? ` · pool ${o.poolAccounts.join(', ')}` : ''}`}
                               >
-                                <span className="fw-semibold">{o.pool}</span>
+                                {/* A manager of several pools is named for
+                                    them all ("199 stake pools"): no page. */}
+                                {/^\d+ stake pools$/.test(o.pool) ? (
+                                  <span className="fw-semibold">{o.pool}</span>
+                                ) : (
+                                  <Link
+                                    to={poolPath(o.pool)}
+                                    className="fw-semibold"
+                                  >
+                                    {o.pool}
+                                  </Link>
+                                )}
                                 <span className="badge badge-soft badge-soft-info ms-2">
                                   pool
                                 </span>
