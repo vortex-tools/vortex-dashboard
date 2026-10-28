@@ -310,13 +310,19 @@ const Home = () => {
             </Col>
           )}
           <Col {...rowTwoCol}>
+            {/* Delinquent stake: the share of activated stake whose
+                validators aren't voting, its amount of the whole under it. */}
             <StatCard
-              label="Active Stake"
-              value={snapshot ? compactSol(snapshot.total) : '—'}
+              label="Delinquent Stake"
+              value={
+                snapshot
+                  ? `${(snapshot.delinquentShare * 100).toFixed(2)}%`
+                  : '—'
+              }
               sublabel={
                 snapshot
-                  ? `${(snapshot.delinquentShare * 100).toFixed(2)}% delinquent`
-                  : undefined
+                  ? `${compactSol(snapshot.delinquentShare * snapshot.total)} of ${compactSol(snapshot.total)} active`
+                  : 'of active stake'
               }
               tone={
                 snapshot && snapshot.delinquentShare > 0.05
