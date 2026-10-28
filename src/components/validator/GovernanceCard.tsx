@@ -8,7 +8,10 @@ import {
   sgpTag,
   tallySum
 } from 'components/governance/governance';
-import { VortexDataContext } from 'providers/VortexDataProvider';
+import {
+  GOVERNANCE_KEY,
+  VortexDataContext
+} from 'providers/VortexDataProvider';
 import { useContext, useEffect } from 'react';
 import { Col, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
@@ -23,6 +26,26 @@ const GovernanceCard = ({ identity }: { identity: string }) => {
   useEffect(() => {
     if (identity) fetchData?.(identity);
   }, [identity, fetchData]);
+  // When each proposal's vote closed: its end epoch, from the listing.
+  const fetchProposals = context?.governanceProposalsState.fetchData;
+  useEffect(() => {
+    fetchProposals?.(GOVERNANCE_KEY);
+  }, [fetchProposals]);
+  const endEpochOf = new Map(
+    (
+      context?.governanceProposalsState.data.get(GOVERNANCE_KEY)?.proposals ??
+      []
+    ).map(p => [p.address, p.endEpoch])
+  );
+  const epoch = context?.currentEpochState.epoch ?? null;
+  // "1,024", or "closes 1,075" while the vote is still open.
+  const closesAt = (address: string) => {
+    const e = endEpochOf.get(address);
+    if (e == null) return '—';
+    return epoch != null && e >= epoch
+      ? `closes ${e.toLocaleString()}`
+      : e.toLocaleString();
+  };
   if (!data?.proposals.length) return null;
   const rows = [...data.proposals].sort(bySgpDesc);
   return (
@@ -32,14 +55,14 @@ const GovernanceCard = ({ identity }: { identity: string }) => {
         icon="check-square"
         linkTo="/governance"
         linkLabel="All proposals"
-        info="Its vote on each Solana governance proposal, weighted by its stake in the proposal's snapshot epoch, and how much of that stake its stakers voted themselves."
+        info="Its vote on each Solana governance proposal (its snapshot stake on hover), the epoch the vote closed, and how much of that stake its stakers voted themselves."
       >
         <Table size="sm" className="data-table compact-rows fs-9 mb-0">
           <thead>
             <tr>
               <th>Proposal</th>
               <th>Its vote</th>
-              <th className="text-end">Stake</th>
+              <th className="text-end">Closed epoch</th>
               <th className="text-end">Result</th>
             </tr>
           </thead>
@@ -60,7 +83,7 @@ const GovernanceCard = ({ identity }: { identity: string }) => {
                     </div>
                   )}
                 </td>
-                <td>
+                <td title={`Snapshot stake ${compactSol(r.stake)}`}>
                   {r.vote ? (
                     <VoteChoice
                       choice={r.vote.choice}
@@ -72,8 +95,8 @@ const GovernanceCard = ({ identity }: { identity: string }) => {
                     </span>
                   )}
                 </td>
-                <td className="text-end font-monospace">
-                  {compactSol(r.stake)}
+                <td className="text-end font-monospace text-nowrap">
+                  {closesAt(r.address)}
                 </td>
                 <td className="text-end">
                   <VerdictBadge verdict={r.verdict} />
