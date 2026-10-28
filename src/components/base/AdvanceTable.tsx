@@ -21,7 +21,7 @@ const AdvanceTable = ({ tableProps }: { tableProps?: TableProps }) => {
   const table = useAdvanceTableContext();
   const rows = [...table.getTopRows(), ...table.getCenterRows()];
   return (
-    <div className="scrollbar ms-n1 ps-1">
+    <div className="scrollbar">
       <Table {...tableProps}>
         <thead>
           {table.getHeaderGroups().map(group => (
