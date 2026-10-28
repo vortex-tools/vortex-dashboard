@@ -1,3 +1,4 @@
+import BackLink from 'components/common/BackLink';
 import { poolPath } from 'components/pools/pools';
 import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
@@ -472,6 +473,7 @@ const GovernanceProposal = () => {
         </div>
         <div className="col-auto d-flex flex-wrap align-items-center gap-2">
           <PhaseBadge phase={p.phase} />
+          <BackLink to="/governance" label="All proposals" />
         </div>
       </div>
 

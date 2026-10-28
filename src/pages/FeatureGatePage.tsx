@@ -1,3 +1,4 @@
+import BackLink from 'components/common/BackLink';
 import AddressLine from 'components/common/AddressLine';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
@@ -154,6 +155,9 @@ const FeatureGatePage = () => {
           {f.name && f.title && f.name !== f.title && (
             <p className="text-body-tertiary lh-sm mb-0 mt-1">{f.name}</p>
           )}
+        </div>
+        <div className="col-auto">
+          <BackLink to="/features" label="All feature gates" />
         </div>
       </div>
 

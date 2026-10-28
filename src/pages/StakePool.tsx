@@ -1,3 +1,4 @@
+import BackLink from 'components/common/BackLink';
 import { ColumnDef } from '@tanstack/react-table';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { BarChart, LineChart } from 'echarts/charts';
@@ -419,13 +420,7 @@ const StakePool = () => {
           </p>
         </div>
         <div className="col-auto">
-          <Link
-            to="/pools"
-            className="btn btn-soft-secondary btn-sm d-inline-flex align-items-center gap-1"
-          >
-            <FeatherIcon icon="arrow-left" size={12} />
-            All stake pools
-          </Link>
+          <BackLink to="/pools" label="All stake pools" />
         </div>
       </div>
 

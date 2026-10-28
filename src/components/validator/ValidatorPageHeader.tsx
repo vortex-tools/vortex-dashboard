@@ -1,3 +1,4 @@
+import BackLink from 'components/common/BackLink';
 import PageBreadcrumb from 'components/common/PageBreadcrumb';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import useCluster from 'hooks/useCluster';
@@ -92,19 +93,25 @@ const ValidatorPageHeader = ({
         <div className="d-flex flex-wrap align-items-center gap-3 min-w-0">
           <h3 className="mb-0 text-truncate">{name}</h3>
         </div>
-        <div style={{ width: '22rem', maxWidth: '100%' }}>
-          <ValidatorSearch
-            placeholder="Jump to a validator…"
-            onSelect={v =>
-              navigate(
-                tab === 'overview'
-                  ? validatorTabPath(v.nodeAddress)
-                  : !alpenglowActive && tab === 'voting'
-                    ? `/validator/${v.nodeAddress}/votes`
-                    : validatorTabPath(v.nodeAddress, tab, epoch)
-              )
-            }
-          />
+        <div
+          className="d-flex align-items-center gap-2"
+          style={{ width: '30rem', maxWidth: '100%' }}
+        >
+          <BackLink to="/validators" label="All validators" />
+          <div className="flex-grow-1 min-w-0">
+            <ValidatorSearch
+              placeholder="Jump to a validator…"
+              onSelect={v =>
+                navigate(
+                  tab === 'overview'
+                    ? validatorTabPath(v.nodeAddress)
+                    : !alpenglowActive && tab === 'voting'
+                      ? `/validator/${v.nodeAddress}/votes`
+                      : validatorTabPath(v.nodeAddress, tab, epoch)
+                )
+              }
+            />
+          </div>
         </div>
       </div>
       <div

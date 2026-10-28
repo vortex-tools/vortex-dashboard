@@ -1,3 +1,4 @@
+import BackLink from 'components/common/BackLink';
 import FeatherIcon from 'feather-icons-react';
 import Badge from 'components/base/Badge';
 import DelayedSpinner from 'components/common/DelayedSpinner';
@@ -183,8 +184,9 @@ const SimdPage = () => {
               .join(' — ')}
           </p>
         </div>
-        {s.url && (
-          <div className="col-auto">
+        <div className="col-auto d-flex flex-wrap gap-2">
+          <BackLink to="/simds" label="All SIMDs" />
+          {s.url && (
             <a
               href={s.url}
               target="_blank"
@@ -194,8 +196,8 @@ const SimdPage = () => {
               {s.inRepo ? 'Proposal' : 'Pull Request'}
               <FeatherIcon icon="arrow-up-right" size={12} />
             </a>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="d-flex flex-column gap-3">
