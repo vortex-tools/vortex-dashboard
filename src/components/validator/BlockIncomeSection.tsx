@@ -90,7 +90,14 @@ const BlockIncomeSection = ({ nodeAddress }: { nodeAddress: string }) => {
 
   let { epochIncomeState } = context;
 
-  if (epochIncomeState.error) return <div>Error: {epochIncomeState.error}</div>;
+  // Not the raw error (a passing network failure reads "Failed to
+  // fetch"); the API banner covers outages and the read retries.
+  if (epochIncomeState.error)
+    return (
+      <p className="fs-9 text-body-tertiary mb-0">
+        Block income couldn&apos;t be loaded just now.
+      </p>
+    );
 
   if (!blockIncomeTracked)
     return (

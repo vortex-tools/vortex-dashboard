@@ -231,10 +231,9 @@ const ValidatorOverview = () => {
 
   if (!context) return <div>Loading...</div>;
 
-  if (context.currentEpochState.error)
-    return <div>Error: {context.currentEpochState.error}</div>;
-  if (context.epochVoteLeaderboardState.error)
-    return <div>Error: {context.epochVoteLeaderboardState.error}</div>;
+  // A failed read of the current epoch or the voting leaderboard (they
+  // retry, and the API banner says when it's down) doesn't take the page
+  // over: it renders with what it has, missing figures as "—".
 
   // We're still loading if we don't yet have *any* identity source — neither
   // the current-epoch leaderboard nor the directory has resolved yet. Once
