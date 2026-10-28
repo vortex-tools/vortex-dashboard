@@ -8,7 +8,9 @@ import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import {
   Delta,
+  KIND,
   KindBadge,
+  kindOf,
   compactSol,
   pct,
   bpsPct,
@@ -226,9 +228,11 @@ const StakePools = () => {
     [allPools, hideSmall]
   );
   const hidden = allPools.length - pools.length;
-  // Pools spread over many validators (not SFDP, a delegation program).
+  // Stake pools (as the Kind column labels them: mSOL is one, Marinade's
+  // direct delegations and SFDP aren't) spread over many validators.
+  const isPool = (p: PoolSummary) => kindOf(p.kind, p.name) === KIND.pool;
   const multi = allPools.filter(
-    p => p.kind !== 'sfdp' && p.validators >= MIN_VALIDATORS
+    p => isPool(p) && p.validators >= MIN_VALIDATORS
   );
   // Shown once the API gives each pool's median delegation.
   const showMedian = allPools.some(p => p.medianStake != null);
@@ -323,9 +327,9 @@ const StakePools = () => {
                 label="Multi-validator Pools"
                 value={multi.length.toLocaleString()}
                 wrapSublabel
-                sublabel={`delegate to ${MIN_VALIDATORS}+ validators · ${compactSol(
+                sublabel={`stake pools delegating to ${MIN_VALIDATORS}+ validators · ${compactSol(
                   multi.reduce((a, p) => a + p.stake, 0)
-                )} of ${allPools.filter(p => p.kind !== 'sfdp').length.toLocaleString()} pools`}
+                )}`}
               />
             </div>
           </div>
