@@ -509,6 +509,13 @@ const StakePool = () => {
     showRewards && data.stake && epochsPerYear
       ? (1 + totalReward / data.stake) ** epochsPerYear - 1
       : null;
+  // The same, after the pool's commission comes off each epoch's rewards.
+  const apyNet =
+    apy != null && fee?.epochFeeBps != null && epochsPerYear
+      ? (1 + (totalReward / data.stake) * (1 - fee.epochFeeBps / 10000)) **
+          epochsPerYear -
+        1
+      : null;
   const history = data.history;
   const prev = history.length > 1 ? history[history.length - 2] : null;
   const newest = [...history].reverse();
@@ -574,20 +581,21 @@ const StakePool = () => {
           {showRewards && (
             <Col xs={6} lg={cardLg}>
               <StatCard
-                label="Epoch Rewards"
-                value={compactSol(totalReward)}
+                label="Staking Yield"
+                value={apy != null ? `≈ ${(apy * 100).toFixed(2)}%` : '—'}
                 wrapSublabel
                 sublabel={
                   <>
-                    {apy != null
-                      ? `≈ ${(apy * 100).toFixed(2)}% a year at this rate`
-                      : 'inflation + MEV'}
-                    {totalMev > 0 && (
-                      <span className="d-block">
-                        {compactSol(totalReward - totalMev)} inflation ·{' '}
-                        {compactSol(totalMev)} MEV
-                      </span>
-                    )}
+                    {apy != null &&
+                      (apyNet != null && fee?.epochFeeBps != null
+                        ? `${(apyNet * 100).toFixed(2)}% after its ${bpsPct(fee.epochFeeBps)} commission`
+                        : 'a year, before the pool’s commission')}
+                    <span className="d-block">
+                      {compactSol(totalReward)} earned in epoch{' '}
+                      {data.epoch?.toLocaleString() ?? '—'}
+                      {totalMev > 0 &&
+                        ` (${compactSol(totalReward - totalMev)} inflation · ${compactSol(totalMev)} MEV)`}
+                    </span>
                   </>
                 }
               />
