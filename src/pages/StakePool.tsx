@@ -498,6 +498,10 @@ const StakePool = () => {
       </div>
     );
 
+  // Its commission on rewards (not for SFDP, which has none).
+  const fee = data.fees?.epochFeeBps != null ? data.fees : null;
+  // Two to four figures across, each an equal share of the row.
+  const cardLg = 12 / (2 + (showRewards ? 1 : 0) + (fee ? 1 : 0));
   // What the pool earned this epoch, and the annual yield that rate makes.
   const totalReward = validators.reduce((a, v) => a + rewardOf(v), 0);
   const totalMev = validators.reduce((a, v) => a + (v.mevReward ?? 0), 0);
@@ -534,7 +538,7 @@ const StakePool = () => {
 
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
-          <Col xs={6} lg={showRewards ? 4 : 6}>
+          <Col xs={6} lg={cardLg}>
             <StatCard
               label="Stake"
               value={compactSol(data.stake)}
@@ -545,7 +549,7 @@ const StakePool = () => {
               }
             />
           </Col>
-          <Col xs={6} lg={showRewards ? 4 : 6}>
+          <Col xs={6} lg={cardLg}>
             <StatCard
               label="Validators"
               value={validators.length.toLocaleString()}
@@ -568,7 +572,7 @@ const StakePool = () => {
             />
           </Col>
           {showRewards && (
-            <Col xs={12} lg={4}>
+            <Col xs={6} lg={cardLg}>
               <StatCard
                 label="Epoch Rewards"
                 value={compactSol(totalReward)}
@@ -585,6 +589,26 @@ const StakePool = () => {
                       </span>
                     )}
                   </>
+                }
+              />
+            </Col>
+          )}
+          {fee && (
+            <Col xs={6} lg={cardLg}>
+              <StatCard
+                label="Commission"
+                value={bpsPct(fee.epochFeeBps)}
+                sublabel={
+                  fee.nextEpochFeeBps != null &&
+                  fee.nextEpochFeeBps !== fee.epochFeeBps
+                    ? `${bpsPct(fee.nextEpochFeeBps)} from next epoch`
+                    : 'on staking rewards'
+                }
+                tone={
+                  fee.nextEpochFeeBps != null &&
+                  fee.nextEpochFeeBps > (fee.epochFeeBps ?? 0)
+                    ? 'warning'
+                    : undefined
                 }
               />
             </Col>
