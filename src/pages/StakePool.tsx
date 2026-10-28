@@ -486,7 +486,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Everyone it delegates to at the end of the epoch (holdings over 50 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), whether SFDP delegates to it too, and how many other pools do (each over 50 SOL). Validator names are today's."
+          info="Everyone it delegates to at the end of the epoch (holdings over 50 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), whether SFDP delegates to it too, and how many other pools do (each over 50 SOL; only pools delegating to 10 or more validators count, not single-validator or private ones). Validator names are today's."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">
