@@ -357,7 +357,11 @@ const nodeTiles = (
             className={vatClass}
             title={`Ticket: ${formatLamports(s.vat.vatLamportsPerEpoch, 2)} per epoch${s.cluster ? ` at ${s.cluster.slotMs} ms slots` : ''} (SIMD-0357; scales with slot time). Runway = whole tickets the balance funds beyond rent.`}
           >
-            {plural(s.vat.epochsFunded, 'epoch')} of VAT runway
+            {/* Past 100 epochs the exact count says nothing. */}
+            {s.vat.epochsFunded > 100
+              ? '>100 epochs'
+              : plural(s.vat.epochsFunded, 'epoch')}{' '}
+            of VAT runway
           </span>
         ) : (
           'vote account'

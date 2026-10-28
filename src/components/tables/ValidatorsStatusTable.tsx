@@ -315,7 +315,9 @@ const allColumns = (
           className="font-monospace"
           title="Epochs (ep) of admission tickets the vote account funds beyond rent"
         >
-          {v.toLocaleString()}
+          {/* Past 100 epochs the exact count says nothing (it still
+              sorts by it). */}
+          {v > 100 ? '>100' : v.toLocaleString()}
           <Epochs />
         </span>
       );
