@@ -2843,7 +2843,7 @@ export const poolSummarySchema = z.object({
   // Its largest holding on one validator, and that validator.
   maxStake: z.number().nullable().optional().catch(null),
   maxVoteKey: z.string().nullable().optional().catch(null),
-  maxName: z.string().nullable().optional().catch(null),
+  maxName: validatorNameSchema.optional().catch(null),
   fees: poolFeesSchema,
   // Validators held only at a pool's minimum stake (<= 50 SOL): not
   // delegations, not listed.
@@ -2860,7 +2860,7 @@ export type Pools = z.infer<typeof poolsSchema>;
 const poolValidatorRefSchema = z.object({
   voteKey: z.string(),
   identity: z.string().nullable().catch(null),
-  name: z.string().nullable().catch(null),
+  name: validatorNameSchema.catch(null),
   stake: z.number().nullable().optional().catch(null),
   stakePrev: z.number().nullable().optional().catch(null),
   net: z.number().nullable().optional().catch(null)
@@ -2884,7 +2884,7 @@ export const poolDetailSchema = z.object({
         voteKey: z.string(),
         // Today's directory pairing.
         identity: z.string().nullable().catch(null),
-        name: z.string().nullable().catch(null),
+        name: validatorNameSchema.catch(null),
         stake: z.number().catch(0),
         shareOfPool: z.number().nullable().catch(null),
         shareOfValidator: z.number().nullable().catch(null),
