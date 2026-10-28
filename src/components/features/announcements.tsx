@@ -86,71 +86,84 @@ const AnnouncementsTable = ({
   announcements: Announcement[];
   showCluster?: boolean;
 }) => (
-  <Table responsive size="sm" className="data-table compact-rows fs-9 mb-0">
-    <thead>
-      <tr>
-        <th>Posted</th>
-        {showCluster && <th>Cluster</th>}
-        <th>Kind</th>
-        <th>Says</th>
-        <th className="text-end">Post</th>
-      </tr>
-    </thead>
-    <tbody>
-      {announcements.map(a => (
-        <tr key={`${a.cluster}-${a.id}`}>
-          <td className="text-nowrap text-body-tertiary">
-            {postedWhen(a.postedAt)}
-          </td>
-          {showCluster && (
-            <td className="text-nowrap">{clusterLabel(a.cluster)}</td>
-          )}
-          <td className="text-nowrap">
-            {announcementTitle(a)}
-            {a.urgent && (
-              <Badge bg="danger" className="ms-2">
-                Urgent
-              </Badge>
-            )}
-          </td>
-          <td className="text-body-secondary">
-            {[
-              a.restart?.lastConfirmedSlot != null &&
-                `halted chain's last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
-              a.restart?.finished === true && 'finished',
-              (a.versions.length > 0 || a.minVersions.length > 0) &&
-                versionsText(a),
-              candidateText(a),
-              a.epochs.length > 0 &&
-                `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
-            ]
-              .filter(Boolean)
-              .join(' · ') || '—'}
-            {a.simds.length > 0 && (
-              <>
-                {' · '}
-                {a.simds.map((n, i) => (
-                  <span key={n}>
-                    {i > 0 && ', '}
-                    <Link to={`/simd/${n}`}>{simdLabel(n)}</Link>
-                  </span>
-                ))}
-              </>
-            )}
-          </td>
-          <td className="text-end text-nowrap">
-            {a.url ? (
-              <a href={a.url} target="_blank" rel="noreferrer">
-                Discord <FeatherIcon icon="arrow-up-right" size={11} />
-              </a>
-            ) : (
-              '—'
-            )}
-          </td>
+  <>
+    {/* Phones: the short list (four columns don't fit). */}
+    <div className="d-md-none">
+      <AnnouncementList
+        announcements={announcements}
+        showCluster={showCluster}
+      />
+    </div>
+    <Table
+      responsive
+      size="sm"
+      className="data-table compact-rows fs-9 mb-0 d-none d-md-table"
+    >
+      <thead>
+        <tr>
+          <th>Posted</th>
+          {showCluster && <th>Cluster</th>}
+          <th>Kind</th>
+          <th>Says</th>
+          <th className="text-end">Post</th>
         </tr>
-      ))}
-    </tbody>
-  </Table>
+      </thead>
+      <tbody>
+        {announcements.map(a => (
+          <tr key={`${a.cluster}-${a.id}`}>
+            <td className="text-nowrap text-body-tertiary">
+              {postedWhen(a.postedAt)}
+            </td>
+            {showCluster && (
+              <td className="text-nowrap">{clusterLabel(a.cluster)}</td>
+            )}
+            <td className="text-nowrap">
+              {announcementTitle(a)}
+              {a.urgent && (
+                <Badge bg="danger" className="ms-2">
+                  Urgent
+                </Badge>
+              )}
+            </td>
+            <td className="text-body-secondary">
+              {[
+                a.restart?.lastConfirmedSlot != null &&
+                  `halted chain's last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
+                a.restart?.finished === true && 'finished',
+                (a.versions.length > 0 || a.minVersions.length > 0) &&
+                  versionsText(a),
+                candidateText(a),
+                a.epochs.length > 0 &&
+                  `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
+              ]
+                .filter(Boolean)
+                .join(' · ') || '—'}
+              {a.simds.length > 0 && (
+                <>
+                  {' · '}
+                  {a.simds.map((n, i) => (
+                    <span key={n}>
+                      {i > 0 && ', '}
+                      <Link to={`/simd/${n}`}>{simdLabel(n)}</Link>
+                    </span>
+                  ))}
+                </>
+              )}
+            </td>
+            <td className="text-end text-nowrap">
+              {a.url ? (
+                <a href={a.url} target="_blank" rel="noreferrer">
+                  Discord <FeatherIcon icon="arrow-up-right" size={11} />
+                </a>
+              ) : (
+                '—'
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  </>
 );
 
 export default AnnouncementsTable;
@@ -172,9 +185,12 @@ const summary = (a: Announcement) =>
 /** The latest announcements as a short list: kind, when, what it says,
  *  linking the post. */
 export const AnnouncementList = ({
-  announcements
+  announcements,
+  showCluster = false
 }: {
   announcements: Announcement[];
+  /** Name each post's cluster (a list of both). */
+  showCluster?: boolean;
 }) => (
   <ul className="list-unstyled mb-0 d-flex flex-column gap-2 fs-9">
     {announcements.map(a => (
@@ -194,6 +210,7 @@ export const AnnouncementList = ({
           )}
           {a.urgent && <Badge bg="danger">Urgent</Badge>}
           <span className="text-body-tertiary fs-10 ms-auto text-nowrap">
+            {showCluster && `${clusterLabel(a.cluster)} · `}
             {postedWhen(a.postedAt)}
           </span>
         </div>
