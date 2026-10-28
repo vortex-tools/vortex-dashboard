@@ -8,6 +8,7 @@ import { clusterLabel, simdLabel } from './features';
 export const ANNOUNCEMENT_KIND: Record<string, string> = {
   restart: 'Restart',
   upgrade: 'Upgrade',
+  downgrade: 'Downgrade',
   feature: 'Feature activation',
   other: 'Announcement'
 };
@@ -63,11 +64,14 @@ const candidateText = (a: Announcement) =>
       ? 'release candidate: for some of the stake, not all'
       : null;
 
-/** "Agave upgrade" (or "Agave upgrade candidate"): an upgrade post's kind,
- *  with its client when it names only one. */
+/** "Agave upgrade" (or "Agave upgrade candidate", "Agave downgrade"): an
+ *  upgrade or downgrade post's kind, with its client when it names only
+ *  one. A downgrade's versions are the releases to move back to. */
 export const announcementTitle = (a: Announcement) => {
   const kind = ANNOUNCEMENT_KIND[a.kind] ?? a.kind;
   const clients = clientsOf(a);
+  if (a.kind === 'downgrade' && clients.length === 1)
+    return `${clients[0]} downgrade`;
   return a.kind === 'upgrade' && clients.length === 1
     ? `${clients[0]} upgrade${isCandidate(a) ? ' candidate' : ''}`
     : kind;

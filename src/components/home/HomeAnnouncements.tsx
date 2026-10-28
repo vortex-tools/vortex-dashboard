@@ -18,8 +18,8 @@ const SHOWN = 3;
  *   naming no gate): not one merely scheduled;
  * - a restart not yet finished, while the cluster is halted or posted
  *   this epoch;
- * - an upgrade (any client's, urgent or not) posted this epoch or the
- *   last.
+ * - an upgrade or downgrade (any client's, urgent or not) posted this
+ *   epoch or the last.
  *
  * Nothing while none does.
  */
@@ -60,7 +60,8 @@ const HomeAnnouncements = () => {
       // A restart the cluster has finished is history, halt or not.
       if (a.kind === 'restart')
         return a.restart?.finished !== true && (!!halt || postedThisEpoch(a));
-      if (a.kind === 'upgrade') return postedSinceLastEpoch(a);
+      if (a.kind === 'upgrade' || a.kind === 'downgrade')
+        return postedSinceLastEpoch(a);
       if (a.kind !== 'feature') return false;
       if (a.featureIds.length)
         return a.featureIds.some(id => {
