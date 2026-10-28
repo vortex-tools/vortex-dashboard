@@ -535,7 +535,7 @@ const StakePool = () => {
     data: validators,
     sortable: true,
     pagination: true,
-    pageSize: 25,
+    pageSize: 10,
     getRowId: v => v.voteKey,
     initialState: { sorting: [{ id: 'stake', desc: true }] }
   });
