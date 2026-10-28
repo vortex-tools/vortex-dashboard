@@ -126,10 +126,17 @@ const StakeSizes = ({ d }: { d: ValidatorDelegators }) => {
 };
 
 /** Its largest stakers, by withdraw authority (a pool is one). */
-const TopStakers = ({ d }: { d: ValidatorDelegators }) => {
+const TopStakers = ({
+  d,
+  top
+}: {
+  d: ValidatorDelegators;
+  /** The rows to list (all of d.top, or only the pools). */
+  top: ValidatorDelegators['top'];
+}) => {
   const [page, setPage] = useState(0);
-  const pages = Math.ceil(d.top.length / PAGE);
-  const shown = d.top.slice(page * PAGE, (page + 1) * PAGE);
+  const pages = Math.ceil(top.length / PAGE);
+  const shown = top.slice(page * PAGE, (page + 1) * PAGE);
   return (
     <>
       <Table responsive size="sm" className="data-table fs-9 mb-0">
@@ -176,7 +183,7 @@ const TopStakers = ({ d }: { d: ValidatorDelegators }) => {
         <Pager
           page={page}
           pages={pages}
-          total={d.top.length}
+          total={top.length}
           pageSize={PAGE}
           shown={shown.length}
           onPrev={() => setPage(p => p - 1)}
@@ -207,7 +214,10 @@ const DelegatorsCards = ({ identity }: { identity: string }) => {
   useEffect(() => {
     if (identity) fetchData?.(identity);
   }, [identity, fetchData]);
+  // Pools only: stake pools, Marinade and SFDP (the named stakers).
+  const [poolsOnly, setPoolsOnly] = useState(false);
   if (!d) return null;
+  const top = poolsOnly ? d.top.filter(t => t.label) : d.top;
   return (
     <Row className="g-3">
       <Col xs={12} lg={6}>
@@ -227,12 +237,38 @@ const DelegatorsCards = ({ identity }: { identity: string }) => {
         <SectionCard
           title={`Top Stakers · epoch ${d.epoch}`}
           icon="users"
-          info="Its largest stakers at the epoch's end, by withdraw authority. Stake pools, Marinade and SFDP are named; others show their withdraw authority."
+          info="Its largest stakers at the epoch's end (up to 100), by withdraw authority. Stake pools, Marinade and SFDP are named and link to their pages; others show their withdraw authority. Pools only: just the named ones."
         >
-          {d.top.length ? (
-            <TopStakers d={d} />
+          {/* As the Stake Sizes card's toggle. */}
+          <div className="d-flex align-items-center justify-content-between mb-1">
+            <span className="fs-10 text-body-tertiary">
+              {poolsOnly
+                ? 'Stake pools, Marinade and SFDP'
+                : 'Largest first, by withdraw authority'}
+            </span>
+            <ButtonGroup size="sm">
+              {([false, true] as const).map(v => (
+                <ToggleButton
+                  key={String(v)}
+                  id={`top-stakers-${v ? 'pools' : 'all'}`}
+                  type="radio"
+                  name="top-stakers"
+                  variant="soft-secondary"
+                  value={String(v)}
+                  checked={poolsOnly === v}
+                  onChange={() => setPoolsOnly(v)}
+                >
+                  {v ? 'Pools only' : 'All stakers'}
+                </ToggleButton>
+              ))}
+            </ButtonGroup>
+          </div>
+          {top.length ? (
+            <TopStakers key={String(poolsOnly)} d={d} top={top} />
           ) : (
-            <p className="fs-9 text-body-tertiary mb-0">No stakers.</p>
+            <p className="fs-9 text-body-tertiary mb-0">
+              {poolsOnly ? 'No pools stake here.' : 'No stakers.'}
+            </p>
           )}
         </SectionCard>
       </Col>

@@ -853,7 +853,9 @@ const validatorNamesToEntries = (
 // A validator's delegators at the last completed epoch (top + sizes).
 const delegatorsRequest = (identity: string) => ({
   path: '/validators/delegators',
-  params: { identity, limit: 25 },
+  // The API's most: the Top Stakers card's "Pools only" lists every
+  // pool among them.
+  params: { identity, limit: 100 },
   schema: validatorDelegatorsSchema,
   timeout: 20_000
 });
