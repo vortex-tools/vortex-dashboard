@@ -233,7 +233,12 @@ const Home = () => {
         {/* Search, then the cluster at a glance. */}
         <div className="text-center pt-5 mt-3 mb-4">
           <h2 className="mb-1">Vortex</h2>
-          <p className="text-body-tertiary mb-3">
+          {/* Padded and balanced, so a phone splits it into two even lines
+              rather than leaving "income." alone. */}
+          <p
+            className="text-body-tertiary mb-3 px-4"
+            style={{ textWrap: 'balance' }}
+          >
             Solana validator performance, vote quality, and block income.
           </p>
           <div className="mx-auto" style={{ maxWidth: '40rem' }}>
