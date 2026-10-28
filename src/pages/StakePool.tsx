@@ -651,13 +651,18 @@ const StakePool = () => {
                   <>
                     {apy != null &&
                       (apyNet != null && fee?.epochFeeBps != null
-                        ? `${(apyNet * 100).toFixed(2)}% after its ${bpsPct(fee.epochFeeBps)} commission`
-                        : 'a year, before the pool’s commission')}
-                    <span className="d-block">
-                      {compactSol(totalReward)} earned in epoch{' '}
-                      {data.epoch?.toLocaleString() ?? '—'}
-                      {totalMev > 0 &&
-                        ` (${compactSol(totalReward - totalMev)} inflation · ${compactSol(totalMev)} MEV)`}
+                        ? `${(apyNet * 100).toFixed(2)}% after commission`
+                        : 'before commission')}
+                    {/* The split on hover. */}
+                    <span
+                      className="d-block"
+                      title={
+                        totalMev > 0
+                          ? `Epoch ${data.epoch?.toLocaleString() ?? '—'}: ${compactSol(totalReward - totalMev)} inflation · ${compactSol(totalMev)} MEV`
+                          : undefined
+                      }
+                    >
+                      {compactSol(totalReward)} last epoch
                     </span>
                   </>
                 }
