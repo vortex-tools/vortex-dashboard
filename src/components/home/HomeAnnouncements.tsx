@@ -17,7 +17,8 @@ const SHOWN = 3;
  *   or activated this epoch here (by the epochs it names, for a post
  *   naming no gate): not one merely scheduled;
  * - a restart while the cluster is halted, or posted this epoch;
- * - an urgent upgrade posted this epoch or the last.
+ * - an upgrade (any client's, urgent or not) posted this epoch or the
+ *   last.
  *
  * Nothing while none does.
  */
@@ -56,7 +57,7 @@ const HomeAnnouncements = () => {
       a.postedAt >= epochStartedAt - epochSecs;
     return announcements.filter(a => {
       if (a.kind === 'restart') return !!halt || postedThisEpoch(a);
-      if (a.kind === 'upgrade') return a.urgent && postedSinceLastEpoch(a);
+      if (a.kind === 'upgrade') return postedSinceLastEpoch(a);
       if (a.kind !== 'feature') return false;
       if (a.featureIds.length)
         return a.featureIds.some(id => {
@@ -86,7 +87,7 @@ const HomeAnnouncements = () => {
         icon="volume-2"
         linkTo="/status"
         linkLabel="All"
-        info="Announcements that matter now: a feature activating, a restart, an urgent upgrade. All of them are on Cluster Status."
+        info="Announcements that matter now: a client upgrade, a feature activating, a restart. All of them are on Cluster Status."
       >
         <AnnouncementList announcements={actionable.slice(0, SHOWN)} />
       </SectionCard>

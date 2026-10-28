@@ -361,6 +361,7 @@ const Home = () => {
           </Col>
         </Row>
 
+        <HomeAnnouncements />
         <Row className="g-3 mb-3">
           <Col xs={12} lg={6}>
             <SlotStrip />
@@ -375,7 +376,6 @@ const Home = () => {
             <ThroughputCard metrics={['income']} />
           </div>
         )}
-        <HomeAnnouncements />
 
         {/* Leaderboard quick-launch. On Alpenglow clusters the consensus
             leaderboard leads (Tower voting is historical); without block

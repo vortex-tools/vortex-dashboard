@@ -21,11 +21,41 @@ export const postedWhen = (unixS: number) =>
     minute: '2-digit'
   });
 
-/** "Agave 4.4.0-beta.1 · 26.10.4": versions as the post lists them. */
+/** Which client a version is: Firedancer's are calendar versions
+ *  ("26.10.4"), Agave's semver ("4.4.0-rc.1"). */
+export const clientOfVersion = (v: string) =>
+  parseInt(v.replace(/^v/, ''), 10) >= 20 ? 'Firedancer' : 'Agave';
+
+/** "Agave 4.4.0-beta.1 · Firedancer 26.10.4": the post's versions, by
+ *  client. */
+const byClient = (versions: string[]) => {
+  const groups = new Map<string, string[]>();
+  for (const v of versions)
+    groups.set(clientOfVersion(v), [
+      ...(groups.get(clientOfVersion(v)) ?? []),
+      v
+    ]);
+  return [...groups].map(([c, vs]) => `${c} ${vs.join(', ')}`).join(' · ');
+};
 const versionsText = (a: Announcement) =>
   a.minVersions.length
-    ? `at least ${a.minVersions.join(', ')}`
-    : a.versions.join(', ');
+    ? `at least ${byClient(a.minVersions)}`
+    : byClient(a.versions);
+
+/** The clients a post's versions are for. */
+export const clientsOf = (a: Announcement) => [
+  ...new Set([...a.versions, ...a.minVersions].map(clientOfVersion))
+];
+
+/** "Agave upgrade": an upgrade post's kind, with its client when it names
+ *  only one. */
+export const announcementTitle = (a: Announcement) => {
+  const kind = ANNOUNCEMENT_KIND[a.kind] ?? a.kind;
+  const clients = clientsOf(a);
+  return a.kind === 'upgrade' && clients.length === 1
+    ? `${clients[0]} upgrade`
+    : kind;
+};
 
 /**
  * Announcements from Solana Tech's announcement channels, newest first:
@@ -60,7 +90,7 @@ const AnnouncementsTable = ({
             <td className="text-nowrap">{clusterLabel(a.cluster)}</td>
           )}
           <td className="text-nowrap">
-            {ANNOUNCEMENT_KIND[a.kind] ?? a.kind}
+            {announcementTitle(a)}
             {a.urgent && (
               <Badge bg="danger" className="ms-2">
                 Urgent
@@ -137,12 +167,10 @@ export const AnnouncementList = ({
               rel="noreferrer"
               className="fw-semibold"
             >
-              {ANNOUNCEMENT_KIND[a.kind] ?? a.kind}
+              {announcementTitle(a)}
             </a>
           ) : (
-            <span className="fw-semibold">
-              {ANNOUNCEMENT_KIND[a.kind] ?? a.kind}
-            </span>
+            <span className="fw-semibold">{announcementTitle(a)}</span>
           )}
           {a.urgent && <Badge bg="danger">Urgent</Badge>}
           <span className="text-body-tertiary fs-10 ms-auto text-nowrap">
