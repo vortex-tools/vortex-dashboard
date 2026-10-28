@@ -35,170 +35,120 @@ export interface RouteItems {
   pages: Route[];
 }
 
+// The cluster as a whole, in nav order (Status only once Alpenglow is on:
+// it's the Alpenglow live view).
+const clusterPages = (alpenglowActive: boolean): Route[] => [
+  ...(alpenglowActive
+    ? [{ name: 'Status', icon: 'radio', path: '/status' }]
+    : []),
+  // Client upgrade progress.
+  { name: 'Versions', icon: 'activity', path: '/client-versions' },
+  // Feature gates: what's active, what activates next.
+  { name: 'Feature Gates', icon: 'toggle-right', path: '/features' },
+  // SIMDs and how far their gates have activated.
+  { name: 'SIMDs', icon: 'file-text', path: '/simds' },
+  // Solana governance proposals (mainnet only).
+  { name: 'Governance', icon: 'check-square', path: '/governance' },
+  // Who stake pools and SFDP delegate to (mainnet only).
+  { name: 'Stake Pools', icon: 'layers', path: '/pools' },
+  // How spread out the stake is (clients, providers, countries).
+  { name: 'Decentralization', icon: 'globe', path: '/decentralization' }
+];
+
+const OVERVIEW: RouteItems = {
+  label: 'overview',
+  labelDisabled: true,
+  pages: [
+    { name: 'Home', icon: 'home', path: '/' },
+    // All-validators status table.
+    { name: 'Validators', icon: 'server', path: '/validators' }
+  ]
+};
+const DEVELOPERS: RouteItems = {
+  label: 'developers',
+  pages: [{ name: 'Usage', icon: faRobot, path: '/usage' }]
+};
+const BLOCK_INCOME: Route = {
+  name: 'Block Income',
+  icon: 'dollar-sign',
+  path: '/leaderboards/block-income'
+};
+const TOWER_VOTING: Route = {
+  name: 'Voting',
+  icon: 'bar-chart-2',
+  path: '/leaderboards/voting'
+};
+
+/** The nav before Alpenglow: Tower voting and block income as the
+ *  leaderboards. */
 export const routes: RouteItems[] = [
+  OVERVIEW,
+  { label: 'cluster', pages: clusterPages(false) },
+  { label: 'leaderboards', pages: [TOWER_VOTING, BLOCK_INCOME] },
+  DEVELOPERS
+];
+
+/** The nav once Alpenglow is on: the consensus leaderboard's three views
+ *  listed under Consensus (not a dropdown), block income in a section of
+ *  its own for now, and Tower voting under Historical. */
+const alpenglowRoutes: RouteItems[] = [
+  OVERVIEW,
+  { label: 'cluster', pages: clusterPages(true) },
   {
-    label: 'overview',
-    labelDisabled: true,
+    label: 'consensus',
     pages: [
       {
-        name: 'Home',
-        icon: 'home',
-        path: '/'
+        name: 'Overall',
+        icon: 'award',
+        path: '/leaderboards/consensus',
+        isActive: consensusView('overall')
       },
-      // All-validators status table.
-      {
-        name: 'Validators',
-        icon: 'server',
-        path: '/validators'
-      }
-    ]
-  },
-  // The cluster as a whole.
-  {
-    label: 'cluster',
-    pages: [
-      // How spread out the stake is (clients, providers, countries).
-      {
-        name: 'Decentralization',
-        icon: 'globe',
-        path: '/decentralization'
-      },
-      // Client upgrade progress.
-      {
-        name: 'Client Versions',
-        icon: 'activity',
-        path: '/client-versions'
-      },
-      // Feature gates: what's active, what activates next.
-      {
-        name: 'Feature Gates',
-        icon: 'toggle-right',
-        path: '/features'
-      },
-      // SIMDs and how far their gates have activated.
-      { name: 'SIMDs', icon: 'file-text', path: '/simds' },
-      // Who stake pools and SFDP delegate to (mainnet only).
-      { name: 'Stake Pools', icon: 'layers', path: '/pools' },
-      // Solana governance proposals (mainnet only).
-      { name: 'Governance', icon: 'check-square', path: '/governance' }
-    ]
-  },
-  {
-    label: 'leaderboards',
-    pages: [
       {
         name: 'Voting',
-        icon: 'bar-chart-2',
-        path: '/leaderboards/voting'
+        icon: 'check-circle',
+        path: '/leaderboards/consensus?view=voting',
+        isActive: consensusView('voting')
       },
       {
-        name: 'Block Income',
-        icon: 'dollar-sign',
-        path: '/leaderboards/block-income'
+        name: 'Production',
+        icon: 'box',
+        path: '/leaderboards/consensus?view=production',
+        isActive: consensusView('production')
       }
     ]
   },
-  {
-    label: 'developers',
-    pages: [
-      {
-        name: 'Usage',
-        icon: faRobot,
-        path: '/usage'
-      }
-    ]
-  }
+  { label: 'income', pages: [BLOCK_INCOME] },
+  { label: 'historical', pages: [{ ...TOWER_VOTING, name: 'Voting (Tower)' }] },
+  DEVELOPERS
 ];
 
 /**
- * The nav, following the cluster's consensus (see useConsensus): while
- * Tower is current, `routes` as-is. Once Alpenglow is active, the
- * Consensus (participation) leaderboard leads the leaderboards and Tower
- * voting moves to a "historical" group. Testnet (by the API's cluster)
- * has no block income, no client-upgrade data and only Alpenglow worth
- * showing: Block Income, Client Versions and Tower voting are left out of
- * the nav (their pages still answer direct links).
+ * The nav, following the cluster's consensus (see useConsensus): `routes`
+ * while Tower is current, `alpenglowRoutes` once Alpenglow is active.
+ * Testnet (by the API's cluster) has no block income, no client-upgrade
+ * data, governance or stake pools, and only Alpenglow worth showing:
+ * those are left out of the nav (their pages still answer direct links).
  */
 export const useNavRoutes = (): RouteItems[] => {
   const { alpenglowActive } = useConsensus();
   const { isTestnet } = useCluster();
-  const all = useNavRoutesFor(alpenglowActive);
-  return useMemo(
-    () =>
-      !isTestnet
-        ? all
-        : all
-            .filter(g => g.label !== 'historical')
-            .map(g => ({
-              ...g,
-              pages: g.pages.filter(
-                r =>
-                  r.path !== '/leaderboards/block-income' &&
-                  r.path !== '/client-versions' &&
-                  r.path !== '/governance' &&
-                  r.path !== '/pools' &&
-                  (!alpenglowActive || r.path !== '/leaderboards/voting')
-              )
-            }))
-            .filter(g => g.pages.length > 0),
-    [all, isTestnet, alpenglowActive]
-  );
+  return useMemo(() => {
+    const all = alpenglowActive ? alpenglowRoutes : routes;
+    return !isTestnet
+      ? all
+      : all
+          .filter(g => g.label !== 'historical')
+          .map(g => ({
+            ...g,
+            pages: g.pages.filter(
+              r =>
+                r.path !== '/leaderboards/block-income' &&
+                r.path !== '/client-versions' &&
+                r.path !== '/governance' &&
+                r.path !== '/pools' &&
+                (!alpenglowActive || r.path !== '/leaderboards/voting')
+            )
+          }))
+          .filter(g => g.pages.length > 0);
+  }, [isTestnet, alpenglowActive]);
 };
-
-const useNavRoutesFor = (alpenglowActive: boolean): RouteItems[] =>
-  useMemo(() => {
-    if (!alpenglowActive) return routes;
-    const voting = (r: Route) => r.path === '/leaderboards/voting';
-    return routes.flatMap(group => {
-      // The live view of the cluster leads the Cluster section once
-      // Alpenglow is on.
-      if (group.label === 'cluster')
-        return [
-          {
-            ...group,
-            pages: [
-              { name: 'Cluster Status', icon: 'radio', path: '/status' },
-              ...group.pages
-            ]
-          }
-        ];
-      if (group.label !== 'leaderboards') return [group];
-      return [
-        {
-          ...group,
-          pages: [
-            {
-              name: 'Consensus',
-              icon: 'award',
-              // Clicking the group itself goes to Overall.
-              path: '/leaderboards/consensus',
-              pages: [
-                {
-                  name: 'Overall',
-                  path: '/leaderboards/consensus',
-                  isActive: consensusView('overall')
-                },
-                {
-                  name: 'Voting',
-                  path: '/leaderboards/consensus?view=voting',
-                  isActive: consensusView('voting')
-                },
-                {
-                  name: 'Production',
-                  path: '/leaderboards/consensus?view=production',
-                  isActive: consensusView('production')
-                }
-              ]
-            },
-            ...group.pages.filter(r => !voting(r))
-          ]
-        },
-        {
-          label: 'historical',
-          pages: group.pages
-            .filter(voting)
-            .map(r => ({ ...r, name: 'Voting (Tower)' }))
-        }
-      ];
-    });
-  }, [alpenglowActive]);
