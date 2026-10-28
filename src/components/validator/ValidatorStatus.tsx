@@ -16,7 +16,9 @@ import SfdpMatchStatus, {
 import SectionCard from 'components/common/SectionCard';
 import { isSfdpCheck, isSfdpState, sfdpMatch } from 'helpers/sfdp';
 import { formatLamports } from 'helpers/utils';
+import useCluster from 'hooks/useCluster';
 import useLiveRefresh from 'hooks/useLiveRefresh';
+import { validatorTabPath } from 'components/validator/ValidatorPageHeader';
 import {
   Fragment,
   ReactNode,
@@ -218,6 +220,8 @@ interface Tile {
   sublabel?: ReactNode;
   mono?: boolean;
   wrapSublabel?: boolean;
+  /** The tile links here (e.g. Stake to the Staking tab). */
+  linkTo?: string;
 }
 
 // Share of total stake: enough digits that small validators aren't 0.00%.
@@ -467,9 +471,15 @@ const ValidatorStatus = ({
     )?.rates;
   const noTipAccount = mevRates?.mevCommissionBpsSource === 'noTipAccount';
   const mevBps = noTipAccount ? null : (mevRates?.mevCommissionBps ?? null);
-  const tiles = status
-    ? nodeTiles(status, stake, shareOfTotal, mevBps, noTipAccount)
-    : [];
+  const { isTestnet } = useCluster();
+  // Stake links to the Staking tab (not on testnet, which has none).
+  const tiles = (
+    status ? nodeTiles(status, stake, shareOfTotal, mevBps, noTipAccount) : []
+  ).map(t =>
+    t.label === 'Stake' && !isTestnet
+      ? { ...t, linkTo: validatorTabPath(nodeAddress, 'staking') }
+      : t
+  );
 
   // A grid of small tiles, 3 across from md up: beside Recent Voting (lg+)
   // nine tiles make three rows. 2 across on phones, where an odd last
@@ -489,6 +499,7 @@ const ValidatorStatus = ({
             sublabel={t.sublabel}
             mono={t.mono}
             wrapSublabel={t.wrapSublabel}
+            linkTo={t.linkTo}
           />
         </Col>
       ))}
