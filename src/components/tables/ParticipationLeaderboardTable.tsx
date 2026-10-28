@@ -25,10 +25,10 @@ export const skippedBlockRate = (r: ParticipationLeaderboardRecord) => {
   return blocks > 0 ? r.skippedNotarizedSlots / blocks : null;
 };
 
-/** Agreement with the cluster's outcome, the rank: its votes that match
+/** Performance, the rank: agreement with the cluster's outcome - its votes that match
  *  what the cluster decided / eligible slots. A skip on a slot the cluster
  *  notarized (block not replayed in time) is paid, but disagrees. */
-export const agreementRate = (r: ParticipationLeaderboardRecord) =>
+export const performanceRate = (r: ParticipationLeaderboardRecord) =>
   r.eligibleSlots > 0
     ? (r.notarizedSlots + r.skippedSlots - r.skippedNotarizedSlots) /
       r.eligibleSlots
@@ -185,7 +185,7 @@ export const createParticipationLeaderboardColumns = (
   {
     id: 'participationGroup',
     header: () => (
-      <span title="Whether its votes matched the cluster's outcome (the rank), landed in the slots' reward certificates (paid), or missed">
+      <span title="Whether its votes matched the cluster's outcome (Performance, the rank), landed in the slots' reward certificates (paid), or missed">
         Participation
       </span>
     ),
@@ -196,17 +196,17 @@ export const createParticipationLeaderboardColumns = (
       {
         // The rank's measure (API rank since 003291b): votes landed, less
         // skips on slots the cluster notarized. Votes Landed orders a rank.
-        id: 'agreement',
+        id: 'performance',
         accessorFn: r =>
-          r.admitted ? (agreementRate(r) ?? undefined) : undefined,
+          r.admitted ? (performanceRate(r) ?? undefined) : undefined,
         sortUndefined: 'last',
         header: () => (
           <span title="Its votes that match the cluster's outcome / the slots it could vote on: notarize or skip votes landed, less skips on slots the cluster notarized (paid, but a block it didn't replay in time). The rank; Votes Landed breaks ties.">
-            Agreement
+            Performance
           </span>
         ),
         cell: ({ row }) => {
-          const v = agreementRate(row.original);
+          const v = performanceRate(row.original);
           return !row.original.admitted || v == null ? (
             <Dash />
           ) : (
