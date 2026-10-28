@@ -104,7 +104,11 @@ const poolOf = async (spec: (typeof POOLS)[number]) => {
         spec.kind !== 'sfdp' && i % 3 === 0
           ? Math.round(1e14 + r() * 3e14)
           : null,
-      otherPools: spec.kind === 'sfdp' ? null : Math.floor(r() * r() * 9)
+      otherPools: spec.kind === 'sfdp' ? null : Math.floor(r() * r() * 4),
+      otherPoolNames: ['JitoSOL', 'bSOL', 'dzSOL'].slice(0, 2),
+      // ~6.8% a year of inflation at ~360 epochs, MEV a third on top.
+      inflationReward: Math.round(stake * 0.000185),
+      mevReward: Math.round(stake * 0.00006)
     };
   });
   const ref = (v: Dir, extra: object) => ({

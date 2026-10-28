@@ -65,9 +65,14 @@ const END = {
   cellProps: { className: 'text-nowrap text-end font-monospace' }
 };
 
+/** What the pool earned on a validator this epoch: inflation + MEV. */
+const rewardOf = (v: Validator) =>
+  (v.inflationReward ?? 0) + (v.mevReward ?? 0);
+
 const columns = (
   isSfdp: boolean,
-  showOther: boolean
+  showOther: boolean,
+  showRewards: boolean
 ): ColumnDef<Validator>[] => [
   {
     id: 'rank',
@@ -122,6 +127,28 @@ const columns = (
     cell: ({ row: { original: v } }) => pct(v.shareOfValidator),
     meta: END
   },
+  ...(showRewards
+    ? [
+        {
+          id: 'rewards',
+          header: 'Epoch rewards',
+          accessorFn: (v: Validator) => rewardOf(v),
+          cell: ({
+            row: { original: v }
+          }: {
+            row: { original: Validator };
+          }) => (
+            <span
+              title={`Inflation ${compactSol(v.inflationReward ?? 0)}${v.mevReward != null ? ` · MEV ~${compactSol(v.mevReward)} (estimated)` : ''}`}
+            >
+              {v.mevReward != null && '~'}
+              {compactSol(rewardOf(v))}
+            </span>
+          ),
+          meta: END
+        } as ColumnDef<Validator>
+      ]
+    : []),
   ...(isSfdp
     ? []
     : [
@@ -153,7 +180,18 @@ const columns = (
           accessorFn: (v: Validator) => v.otherPools ?? 0,
           cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
             v.otherPools ? (
-              v.otherPools.toLocaleString()
+              <span
+                title={
+                  v.otherPoolNames?.length
+                    ? v.otherPoolNames.join(', ')
+                    : undefined
+                }
+                style={
+                  v.otherPoolNames?.length ? { cursor: 'help' } : undefined
+                }
+              >
+                {v.otherPools.toLocaleString()}
+              </span>
             ) : (
               <span className="text-body-quaternary">—</span>
             ),
@@ -362,12 +400,23 @@ const StakePool = () => {
   const isSfdp = data?.kind === 'sfdp';
   // Shown once the API counts other pools per validator.
   const showOther = !!data?.validators.some(v => v.otherPools != null);
+  // Shown once the API gives the pool's rewards per validator.
+  const showRewards = !!data?.validators.some(v => v.inflationReward != null);
+  // Epochs a year at the epoch's observed length, for an annual yield.
+  const progress = context?.currentEpochState.progress;
+  const epochsPerYear =
+    progress?.slotsInEpoch && progress.slotSeconds
+      ? (365 * 86400) / (progress.slotsInEpoch * progress.slotSeconds)
+      : null;
   const validators = useMemo(
     () => [...(data?.validators ?? [])].sort((a, b) => b.stake - a.stake),
     [data]
   );
   const table = useAdvanceTable({
-    columns: useMemo(() => columns(isSfdp, showOther), [isSfdp, showOther]),
+    columns: useMemo(
+      () => columns(isSfdp, showOther, showRewards),
+      [isSfdp, showOther, showRewards]
+    ),
     data: validators,
     sortable: true,
     pagination: true,
@@ -390,6 +439,13 @@ const StakePool = () => {
       </div>
     );
 
+  // What the pool earned this epoch, and the annual yield that rate makes.
+  const totalReward = validators.reduce((a, v) => a + rewardOf(v), 0);
+  const totalMev = validators.reduce((a, v) => a + (v.mevReward ?? 0), 0);
+  const apy =
+    showRewards && data.stake && epochsPerYear
+      ? (1 + totalReward / data.stake) ** epochsPerYear - 1
+      : null;
   const history = data.history;
   const prev = history.length > 1 ? history[history.length - 2] : null;
   const newest = [...history].reverse();
@@ -419,7 +475,7 @@ const StakePool = () => {
 
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
-          <Col xs={6}>
+          <Col xs={6} lg={showRewards ? 4 : 6}>
             <StatCard
               label="Stake"
               value={compactSol(data.stake)}
@@ -430,7 +486,7 @@ const StakePool = () => {
               }
             />
           </Col>
-          <Col xs={6}>
+          <Col xs={6} lg={showRewards ? 4 : 6}>
             <StatCard
               label="Validators"
               value={validators.length.toLocaleString()}
@@ -452,6 +508,28 @@ const StakePool = () => {
               }
             />
           </Col>
+          {showRewards && (
+            <Col xs={12} lg={4}>
+              <StatCard
+                label="Epoch Rewards"
+                value={`${totalMev ? '~' : ''}${compactSol(totalReward)}`}
+                wrapSublabel
+                sublabel={
+                  <>
+                    {apy != null
+                      ? `≈ ${(apy * 100).toFixed(2)}% a year at this rate`
+                      : 'inflation + MEV'}
+                    {totalMev > 0 && (
+                      <span className="d-block">
+                        {compactSol(totalReward - totalMev)} inflation · ~
+                        {compactSol(totalMev)} MEV (estimated)
+                      </span>
+                    )}
+                  </>
+                }
+              />
+            </Col>
+          )}
         </Row>
 
         <Row className="g-3">
@@ -486,7 +564,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Everyone it delegates to at the end of the epoch (holdings over 50 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), whether SFDP delegates to it too, and how many other pools do (each over 50 SOL; only pools delegating to 10 or more validators count, not single-validator or private ones). Validator names are today's."
+          info="Everyone it delegates to at the end of the epoch (holdings over 50 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), what the pool earned there this epoch (inflation + MEV, the MEV part estimated), whether SFDP delegates to it too, and how many other pools do (each over 50 SOL; only pools delegating to 10 or more validators count, not single-validator or private ones). Validator names are today's."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">

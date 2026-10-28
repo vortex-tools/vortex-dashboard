@@ -2856,7 +2856,13 @@ export const poolDetailSchema = z.object({
         // Other known pools (not this one, not SFDP; only pools with 10+
         // validators) holding > 50 SOL
         // on the validator.
-        otherPools: z.number().nullable().optional().catch(null)
+        otherPools: z.number().nullable().optional().catch(null),
+        // The names behind otherPools.
+        otherPoolNames: z.array(z.string()).optional().catch([]),
+        // The pool's share of what the validator paid its stakers for the
+        // epoch, lamports: inflation rewards, and MEV (an estimate).
+        inflationReward: z.number().nullable().optional().catch(null),
+        mevReward: z.number().nullable().optional().catch(null)
       })
     )
     .catch([]),
