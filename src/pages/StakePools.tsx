@@ -358,10 +358,6 @@ const StakePools = () => {
               />
               <AdvanceTableFooter viewAll={false} />
             </AdvanceTableProvider>
-            <p className="fs-10 text-body-tertiary mt-2 mb-0">
-              Stake pools, Marinade and SFDP only: other stakers (individuals,
-              funds, custodians) aren&apos;t labeled.
-            </p>
           </SectionCard>
         </div>
       )}
