@@ -938,6 +938,26 @@ export const ValidatorAge = ({
   );
 };
 
+/** The vote account's withdraw authority, as a keys-box line (who can
+ *  take the vote account: the key that matters most if it leaks). */
+export const ValidatorWithdrawer = ({
+  nodeAddress,
+  labelWidth = '3rem'
+}: Props & { labelWidth?: string }) => {
+  const withdrawer =
+    useContext(VortexDataContext)?.validatorStatusState.data.get(nodeAddress)
+      ?.voteState?.authorizedWithdrawer;
+  if (!withdrawer) return null;
+  return (
+    <AddressLine
+      label="Withdrawer"
+      value={withdrawer}
+      labelWidth={labelWidth}
+      note={withdrawer === nodeAddress ? '(the identity)' : undefined}
+    />
+  );
+};
+
 export const ValidatorWebsite = ({
   nodeAddress,
   labelWidth = '3rem'
@@ -1319,8 +1339,10 @@ export const ValidatorNotices = ({
       as of {new Date(status.asOf * 1000).toLocaleTimeString()}
     </span>
   );
-  // No notices: the all-clear (with the passing checks), or why there's
-  // no status - this box replaces the old Operational Status box.
+  // Nothing to say (all checks pass) or still loading: no card. Without a
+  // status at all, the card says why.
+  if (!notices.length && !unavailable) return null;
+  // No notices and no status: why.
   if (!notices.length)
     return (
       <div style={boxStyle}>

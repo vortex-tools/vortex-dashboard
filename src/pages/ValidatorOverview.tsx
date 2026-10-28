@@ -21,12 +21,14 @@ import ValidatorStatus, {
   WIDE_KEY_LABEL,
   FACT_TILES,
   ValidatorFacts,
+  ValidatorWithdrawer,
   customCollectors,
   ValidatorAge,
   ValidatorWebsite
 } from 'components/validator/ValidatorStatus';
 import FeatherIcon from 'feather-icons-react';
 import { formatLamports, hasMissingBlockData } from 'helpers/utils';
+import { isSfdpState } from 'helpers/sfdp';
 import useLiveRefresh from 'hooks/useLiveRefresh';
 import useRefreshOnce from 'hooks/useRefreshOnce';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
@@ -295,6 +297,15 @@ const ValidatorOverview = () => {
   }
 
   const { nodeAddress, voteAddress, displayName } = identity;
+  // The column beside Details: SFDP (participants only) and Notices (only
+  // with something to say, or no status to say it from). Empty, Details
+  // takes the row.
+  const statusSlice = context.validatorStatusState;
+  const status = statusSlice.data.get(nodeAddress);
+  const sideColumn =
+    (!!status && isSfdpState(status.sfdp.participant?.state)) ||
+    notices.length > 0 ||
+    (!status && !statusSlice.isLoading && !!statusSlice.error);
   // The keys box's label column widens for custom commission-collector
   // lines (SIMD-0232), so all values stay aligned.
   const collectors = customCollectors(
@@ -554,7 +565,7 @@ const ValidatorOverview = () => {
             {/* Details (keys and node facts), and the SFDP and Notices
                 boxes stacked beside it; on phones all full width. */}
             <Row className="g-3 align-items-stretch">
-              <Col xs={12} lg={7}>
+              <Col xs={12} lg={sideColumn ? 7 : 12}>
                 <SectionCard title="Details" icon="file-text">
                   <div className="detail-lines min-w-0">
                     <AddressLine
@@ -565,6 +576,10 @@ const ValidatorOverview = () => {
                     <AddressLine
                       label="Vote"
                       value={voteAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <ValidatorWithdrawer
+                      nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
                     />
                     <ValidatorWebsite
@@ -586,12 +601,17 @@ const ValidatorOverview = () => {
                   </div>
                 </SectionCard>
               </Col>
-              <Col xs={12} lg={5} className="d-flex flex-column gap-3">
-                <ValidatorSfdpBox nodeAddress={nodeAddress} />
-                {/* Notices: what needs attention (fixed height, two at a
+              {sideColumn && (
+                <Col xs={12} lg={5} className="d-flex flex-column gap-3">
+                  <ValidatorSfdpBox nodeAddress={nodeAddress} />
+                  {/* Notices: what needs attention (fixed height, two at a
                     time, paged), else the all-clear. */}
-                <ValidatorNotices notices={notices} nodeAddress={nodeAddress} />
-              </Col>
+                  <ValidatorNotices
+                    notices={notices}
+                    nodeAddress={nodeAddress}
+                  />
+                </Col>
+              )}
             </Row>
           </Col>
         </Row>
