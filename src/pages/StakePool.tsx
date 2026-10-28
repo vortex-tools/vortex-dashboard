@@ -405,10 +405,21 @@ const StakePool = () => {
             <StatCard
               label="Validators"
               value={validators.length.toLocaleString()}
+              wrapSublabel
               sublabel={
-                prev
-                  ? `${signedCount(validators.length - prev.validators) ?? 'no change'} since epoch ${prev.epoch.toLocaleString()}`
-                  : 'staked to'
+                <>
+                  {prev
+                    ? `${signedCount(validators.length - prev.validators) ?? 'no change'} since epoch ${prev.epoch.toLocaleString()}`
+                    : 'delegated to'}
+                  {!!data.minimumOnly && (
+                    <span
+                      className="d-block"
+                      title="Validators it holds only its minimum stake on (10 SOL or less): not delegations, not listed"
+                    >
+                      +{data.minimumOnly.toLocaleString()} at the 10 SOL minimum
+                    </span>
+                  )}
+                </>
               }
             />
           </Col>
@@ -477,7 +488,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Everyone it stakes to at the end of the epoch, by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), and SFDP's stake on the same validator. Validator names are today's."
+          info="Everyone it delegates to at the end of the epoch (holdings over 10 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), and SFDP's stake on the same validator. Validator names are today's."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">

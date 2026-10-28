@@ -20,10 +20,14 @@ import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { FEATURES_KEY, VortexDataContext } from 'providers/VortexDataProvider';
 import { PoolSummary } from 'providers/vortex-schemas';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { ButtonGroup, ToggleButton } from 'react-bootstrap';
+import { ButtonGroup, Form, ToggleButton } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 export const poolPath = (name: string) => `/pool/${encodeURIComponent(name)}`;
+
+/** Pools delegating to fewer validators than this are hidden unless
+ *  asked for. */
+const MIN_VALIDATORS = 10;
 
 const FILTERS = [
   ['all', 'All'],
@@ -103,6 +107,14 @@ const columns = (total: number): ColumnDef<PoolSummary>[] => [
           prev={p.validatorsPrev}
           format={signedCount}
         />
+        {!!p.minimumOnly && (
+          <span
+            className="fs-10 text-body-tertiary ms-1"
+            title="Also held only at the pool's minimum stake (10 SOL or less): not a delegation"
+          >
+            +{p.minimumOnly.toLocaleString()} min
+          </span>
+        )}
       </>
     ),
     meta: END
@@ -124,8 +136,22 @@ const StakePools = () => {
     fetchData?.(FEATURES_KEY);
   }, [fetchData]);
   const [filter, setFilter] = useState<Filter>('all');
-  const pools = useMemo(() => data?.pools ?? [], [data]);
-  const total = useMemo(() => pools.reduce((a, p) => a + p.stake, 0), [pools]);
+  // Small pools (fewer than MIN_VALIDATORS delegations) hidden by default.
+  const [hideSmall, setHideSmall] = useState(true);
+  const allPools = useMemo(() => data?.pools ?? [], [data]);
+  const pools = useMemo(
+    () =>
+      hideSmall
+        ? allPools.filter(p => p.validators >= MIN_VALIDATORS)
+        : allPools,
+    [allPools, hideSmall]
+  );
+  const hidden = allPools.length - pools.length;
+  // Totals and shares are over every pool, shown or not.
+  const total = useMemo(
+    () => allPools.reduce((a, p) => a + p.stake, 0),
+    [allPools]
+  );
   const shown = useMemo(
     () => (filter === 'all' ? pools : pools.filter(p => p.kind === filter)),
     [pools, filter]
@@ -151,9 +177,9 @@ const StakePools = () => {
     initialState: { sorting: [{ id: 'stake', desc: true }] }
   });
   const stakeOf = (kind: string) =>
-    pools.filter(p => p.kind === kind).reduce((a, p) => a + p.stake, 0);
-  const prevTotal = pools.every(p => p.stakePrev != null)
-    ? pools.reduce((a, p) => a + (p.stakePrev ?? 0), 0)
+    allPools.filter(p => p.kind === kind).reduce((a, p) => a + p.stake, 0);
+  const prevTotal = allPools.every(p => p.stakePrev != null)
+    ? allPools.reduce((a, p) => a + (p.stakePrev ?? 0), 0)
     : null;
 
   return (
@@ -197,7 +223,9 @@ const StakePools = () => {
             <div className="col-6 col-lg-3">
               <StatCard
                 label="Stake Pools"
-                value={counts['stake-pool'].toLocaleString()}
+                value={allPools
+                  .filter(p => p.kind === 'stake-pool')
+                  .length.toLocaleString()}
                 sublabel={`${compactSol(stakeOf('stake-pool'))} delegated`}
               />
             </div>
@@ -205,10 +233,10 @@ const StakePools = () => {
               <StatCard
                 label="SFDP"
                 value={compactSol(stakeOf('sfdp'))}
-                sublabel={`${(pools.find(p => p.kind === 'sfdp')?.validators ?? 0).toLocaleString()} validators`}
+                sublabel={`${(allPools.find(p => p.kind === 'sfdp')?.validators ?? 0).toLocaleString()} validators`}
                 linkTo={
-                  pools.find(p => p.kind === 'sfdp')
-                    ? poolPath(pools.find(p => p.kind === 'sfdp')!.name)
+                  allPools.find(p => p.kind === 'sfdp')
+                    ? poolPath(allPools.find(p => p.kind === 'sfdp')!.name)
                     : undefined
                 }
               />
@@ -217,10 +245,10 @@ const StakePools = () => {
               <StatCard
                 label="Marinade"
                 value={compactSol(stakeOf('marinade'))}
-                sublabel={`${(pools.find(p => p.kind === 'marinade')?.validators ?? 0).toLocaleString()} validators`}
+                sublabel={`${(allPools.find(p => p.kind === 'marinade')?.validators ?? 0).toLocaleString()} validators`}
                 linkTo={
-                  pools.find(p => p.kind === 'marinade')
-                    ? poolPath(pools.find(p => p.kind === 'marinade')!.name)
+                  allPools.find(p => p.kind === 'marinade')
+                    ? poolPath(allPools.find(p => p.kind === 'marinade')!.name)
                     : undefined
                 }
               />
@@ -230,7 +258,7 @@ const StakePools = () => {
           <SectionCard
             title="All Stakers"
             icon="layers"
-            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
+            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 10 SOL: a pool's minimum stake on a validator (10 SOL or less) isn't a delegation, and shows as +N min. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -240,25 +268,35 @@ const StakePools = () => {
                     table.setGlobalFilter(e.target.value || undefined)
                   }
                 />
-                <ButtonGroup size="sm">
-                  {FILTERS.map(([k, label]) => (
-                    <ToggleButton
-                      key={k}
-                      id={`pools-filter-${k}`}
-                      type="radio"
-                      name="pools-filter"
-                      variant="soft-secondary"
-                      value={k}
-                      checked={filter === k}
-                      onChange={() => setFilter(k)}
-                    >
-                      {label}{' '}
-                      <span className="text-body-tertiary fw-normal">
-                        {counts[k].toLocaleString()}
-                      </span>
-                    </ToggleButton>
-                  ))}
-                </ButtonGroup>
+                <div className="d-flex flex-wrap align-items-center gap-3">
+                  <Form.Check
+                    type="switch"
+                    id="pools-hide-small"
+                    className="fs-9 mb-0"
+                    checked={hideSmall}
+                    onChange={e => setHideSmall(e.target.checked)}
+                    label={`Hide pools with fewer than ${MIN_VALIDATORS} validators${hideSmall && hidden ? ` (${hidden})` : ''}`}
+                  />
+                  <ButtonGroup size="sm">
+                    {FILTERS.map(([k, label]) => (
+                      <ToggleButton
+                        key={k}
+                        id={`pools-filter-${k}`}
+                        type="radio"
+                        name="pools-filter"
+                        variant="soft-secondary"
+                        value={k}
+                        checked={filter === k}
+                        onChange={() => setFilter(k)}
+                      >
+                        {label}{' '}
+                        <span className="text-body-tertiary fw-normal">
+                          {counts[k].toLocaleString()}
+                        </span>
+                      </ToggleButton>
+                    ))}
+                  </ButtonGroup>
+                </div>
               </div>
               <AdvanceTable
                 tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
@@ -266,6 +304,7 @@ const StakePools = () => {
               <AdvanceTableFooter viewAll={false} />
             </AdvanceTableProvider>
             <p className="fs-10 text-body-tertiary mt-2 mb-0">
+              Shares are of all pooled stake, hidden pools included.{' '}
               {Object.values(KIND)
                 .map(k => k.label)
                 .join(', ')}{' '}

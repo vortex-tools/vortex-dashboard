@@ -2802,9 +2802,13 @@ export const poolSummarySchema = z.object({
   fullName: z.string().nullable().catch(null),
   authorities: z.array(z.string()).catch([]),
   stake: z.number().catch(0),
+  // Validators it holds more than the 10 SOL minimum on.
   validators: z.number().catch(0),
   stakePrev: z.number().nullable().catch(null),
-  validatorsPrev: z.number().nullable().catch(null)
+  validatorsPrev: z.number().nullable().catch(null),
+  // Validators held only at a pool's minimum stake (<= 10 SOL): not
+  // delegations, not listed.
+  minimumOnly: z.number().nullable().optional().catch(null)
 });
 export type PoolSummary = z.infer<typeof poolSummarySchema>;
 
@@ -2832,6 +2836,8 @@ export const poolDetailSchema = z.object({
   epoch: z.number().nullable().catch(null),
   stake: z.number().catch(0),
   top10Share: z.number().nullable().catch(null),
+  // Validators held only at the minimum stake (<= 10 SOL), not listed.
+  minimumOnly: z.number().nullable().optional().catch(null),
   validators: z
     .array(
       z.object({
@@ -2858,6 +2864,7 @@ export const poolDetailSchema = z.object({
         validators: z.number().catch(0),
         // Whether the epoch had a previous one to compare with.
         compared: z.boolean().catch(true),
+        minimumOnly: z.number().nullable().optional().catch(null),
         added: z.array(poolValidatorRefSchema).catch([]),
         moreAdded: z.number().catch(0),
         dropped: z.array(poolValidatorRefSchema).catch([]),
