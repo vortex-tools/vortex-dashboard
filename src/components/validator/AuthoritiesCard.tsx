@@ -134,7 +134,7 @@ const AuthoritiesCard = ({
   return (
     <Col xs={12} lg={6}>
       <SectionCard
-        title="Authorities"
+        title="Keys"
         icon="key"
         info="The vote account's keys, from its on-chain vote state. A leaked withdrawer loses the vote account (every delegator has to redelegate); a leaked identity or voter can be rotated in place. Each links its account on Solana Explorer."
       >
