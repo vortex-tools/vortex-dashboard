@@ -64,10 +64,10 @@ const stateText = (s: FeatureClusterState | undefined) => {
 };
 
 const Row2 = ({ label, children }: { label: string; children: ReactNode }) => (
-  <>
+  <div className="row g-0">
     <dt className="col-4 fw-normal text-body-tertiary">{label}</dt>
     <dd className="col-8 mb-0">{children}</dd>
-  </>
+  </div>
 );
 
 const ext = (href: string, text: ReactNode) => (
@@ -208,7 +208,7 @@ const FeatureGatePage = () => {
         <Row className="g-3">
           <Col xs={12} lg={6}>
             <SectionCard title="Details" icon="file-text">
-              <dl className="row fs-9 mb-0 gy-2">
+              <dl className="detail-lines fs-9 mb-0">
                 <Row2 label="Feature id">
                   {/* Its feature account on the served cluster. */}
                   <AddressLine
@@ -257,12 +257,9 @@ const FeatureGatePage = () => {
                     </span>
                   </Row2>
                 )}
-                <dt className="col-4 fw-normal text-body-tertiary">
-                  Minimum versions
-                </dt>
-                <dd className="col-8 mb-0">
+                <Row2 label="Minimum versions">
                   <MinVersions versions={f.minVersions} />
-                </dd>
+                </Row2>
                 {f.links?.introducedIn?.url && (
                   <Row2 label="Introduced in">
                     {ext(
@@ -320,8 +317,7 @@ const FeatureGatePage = () => {
                     })}
                   </Row2>
                 )}
-                <dt className="col-4 fw-normal text-body-tertiary">Tracked</dt>
-                <dd className="col-8 mb-0">
+                <Row2 label="Tracked">
                   {data.wikiUrl ? (
                     <a href={data.wikiUrl} target="_blank" rel="noreferrer">
                       Feature Gate Tracker
@@ -329,7 +325,7 @@ const FeatureGatePage = () => {
                   ) : (
                     '—'
                   )}
-                </dd>
+                </Row2>
               </dl>
             </SectionCard>
           </Col>

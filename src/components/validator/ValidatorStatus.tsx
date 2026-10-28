@@ -586,11 +586,6 @@ const ValidatorStatus = ({
   );
 };
 
-/** Header-box title: primary, set apart from the tertiary row labels. */
-const BoxTitle = ({ children }: { children: ReactNode }) => (
-  <span className="fs-9 fw-bold text-primary">{children}</span>
-);
-
 const SFDP_STATE_LABELS: Record<string, string> = {
   TestnetOnboarded: 'Testnet onboarded'
 };
@@ -656,52 +651,58 @@ export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
     ]);
   const url = `https://solana.org/sfdp-validators/${participant?.mainnetIdentity ?? status.identity}`;
   return (
-    <div
-      className="bg-body-emphasis rounded border border-translucent px-3 py-2 d-flex flex-column gap-1"
-      // Stacked over Notices beside the Details box: its own height.
-      style={{ flex: '0 0 auto', minWidth: 0 }}
-    >
-      <div className="d-flex align-items-center gap-2">
-        {/* Spelled out when the title row has room (container query in
-            user.scss), "SFDP" otherwise. fs-9 on the block itself: its line
-            box would otherwise be body-size (24px) and stretch every box
-            in the row. */}
-        <div className="sfdp-title fs-9 min-w-0 flex-grow-1">
-          <BoxTitle>
-            <span className="sfdp-title-full">
+    // Stacked over Notices beside the Details card: its own height.
+    <div style={{ flex: '0 0 auto', minWidth: 0 }}>
+      <SectionCard
+        title={
+          // Spelled out where the column is wide (phones' full width, xl+),
+          // "SFDP" where it's narrow.
+          <>
+            <span className="d-none d-sm-inline d-lg-none d-xl-inline">
               Solana Foundation Delegation Program
             </span>
-            <span className="sfdp-title-short">SFDP</span>
-          </BoxTitle>
-        </div>
-        <Link
-          to={poolPath('SFDP')}
-          className="fs-10 ms-auto text-nowrap"
-          title="Who SFDP delegates to"
-        >
-          Delegations
-        </Link>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fs-10 d-inline-flex align-items-center gap-1"
-        >
-          solana.org
-          <FeatherIcon icon="arrow-up-right" size={12} />
-        </a>
-      </div>
-      {rows.map(([label, value]) => (
-        <div key={label} className="d-flex align-items-baseline gap-2 min-w-0">
-          <span
-            className="text-body-tertiary fs-9 flex-shrink-0"
-            style={{ minWidth: '3.5rem' }}
-          >
-            {label}
+            <span className="d-sm-none d-lg-inline d-xl-none">SFDP</span>
+          </>
+        }
+        icon="award"
+        aside={
+          <span className="d-flex align-items-center gap-2 fs-10">
+            <Link
+              to={poolPath('SFDP')}
+              className="text-nowrap"
+              title="Who SFDP delegates to"
+            >
+              Delegations
+            </Link>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="d-inline-flex align-items-center gap-1"
+            >
+              solana.org
+              <FeatherIcon icon="arrow-up-right" size={12} />
+            </a>
           </span>
-          <span className="fs-9 min-w-0">{value}</span>
+        }
+      >
+        <div className="detail-lines">
+          {rows.map(([label, value]) => (
+            <div
+              key={label}
+              className="d-flex align-items-baseline gap-2 min-w-0"
+            >
+              <span
+                className="text-body-tertiary fs-9 flex-shrink-0"
+                style={{ minWidth: '3.5rem' }}
+              >
+                {label}
+              </span>
+              <span className="fs-9 min-w-0">{value}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      </SectionCard>
     </div>
   );
 };
@@ -1311,44 +1312,40 @@ export const ValidatorNotices = ({
   const pages = Math.ceil(notices.length / NOTICES_PER_PAGE);
   // The list changes with refreshes; stay on a page that exists.
   const current = Math.min(page, Math.max(0, pages - 1));
-  // Under the SFDP box beside Details: fills the rest of the column.
+  // Under the SFDP card beside Details: fills the rest of the column.
   const boxStyle = { flex: '1 1 auto', minWidth: 0 };
+  const asOf = status && (
+    <span className="text-body-tertiary fs-10 ms-auto">
+      as of {new Date(status.asOf * 1000).toLocaleTimeString()}
+    </span>
+  );
   // No notices: the all-clear (with the passing checks), or why there's
   // no status - this box replaces the old Operational Status box.
   if (!notices.length)
     return (
-      <div
-        className="bg-body-emphasis rounded border border-translucent px-3 py-2"
-        style={boxStyle}
-      >
-        <div className="d-flex align-items-center gap-2 mb-1">
-          <BoxTitle>Notices</BoxTitle>
-          {status && (
-            <span className="text-body-tertiary fs-10 ms-auto">
-              as of {new Date(status.asOf * 1000).toLocaleTimeString()}
-            </span>
-          )}
-        </div>
-        {status ? (
-          <>
-            <p className="fs-9 fw-semibold mb-1 text-success">
-              All checks pass
+      <div style={boxStyle}>
+        <SectionCard title="Notices" icon="bell" aside={asOf}>
+          {status ? (
+            <>
+              <p className="fs-9 fw-semibold mb-1 text-success">
+                All checks pass
+              </p>
+              <PassingLine
+                checks={status.checks.filter(
+                  c => !isSfdpCheck(c.id) && !RETIRED_CHECKS.has(c.id)
+                )}
+              />
+            </>
+          ) : unavailable ? (
+            <p className="text-body-tertiary fs-9 mb-0">
+              Operational status isn't available for this validator right now.
             </p>
-            <PassingLine
-              checks={status.checks.filter(
-                c => !isSfdpCheck(c.id) && !RETIRED_CHECKS.has(c.id)
-              )}
-            />
-          </>
-        ) : unavailable ? (
-          <p className="text-body-tertiary fs-9 mb-0">
-            Operational status isn't available for this validator right now.
-          </p>
-        ) : (
-          <div role="status" aria-live="polite" className="py-1">
-            <Spinner animation="border" variant="primary" size="sm" />
-          </div>
-        )}
+          ) : (
+            <div role="status" aria-live="polite" className="py-1">
+              <Spinner animation="border" variant="primary" size="sm" />
+            </div>
+          )}
+        </SectionCard>
       </div>
     );
   const counts = { fail: 0, warn: 0, info: 0 };
@@ -1358,57 +1355,60 @@ export const ValidatorNotices = ({
     (current + 1) * NOTICES_PER_PAGE
   );
   return (
-    <div
-      className="bg-body-emphasis rounded border border-translucent px-3 py-2"
-      style={boxStyle}
-    >
-      <div className="d-flex align-items-center gap-2">
-        <BoxTitle>Notices</BoxTitle>
-        <span className="fs-10 text-body-tertiary">
-          {[
-            counts.fail && `${counts.fail} fail`,
-            counts.warn && `${counts.warn} warn`,
-            counts.info && `${counts.info} info`
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </span>
-        {pages > 1 && (
-          <div className="ms-auto d-flex align-items-center gap-1 fs-10">
-            <Button
-              variant="soft-secondary"
-              className="btn-sm px-2 py-0"
-              disabled={current === 0}
-              onClick={() => setPage(current - 1)}
-              aria-label="Previous notices"
-            >
-              <FeatherIcon icon="chevron-left" size={12} />
-            </Button>
-            <span className="text-body-tertiary">
-              {current + 1} / {pages}
-            </span>
-            <Button
-              variant="soft-secondary"
-              className="btn-sm px-2 py-0"
-              disabled={current >= pages - 1}
-              onClick={() => setPage(current + 1)}
-              aria-label="Next notices"
-            >
-              <FeatherIcon icon="chevron-right" size={12} />
-            </Button>
-          </div>
-        )}
-      </div>
-      {/* While paging, always room for two rows (27px each) so the box
-          doesn't jump on a last page of one; otherwise just the rows. */}
-      <ul
-        className="list-unstyled mb-0"
-        style={{ minHeight: pages > 1 ? '3.4rem' : undefined }}
+    <div style={boxStyle}>
+      <SectionCard
+        title="Notices"
+        icon="bell"
+        badge={
+          <span className="fs-10 text-body-tertiary ms-2">
+            {[
+              counts.fail && `${counts.fail} fail`,
+              counts.warn && `${counts.warn} warn`,
+              counts.info && `${counts.info} info`
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        }
+        aside={
+          pages > 1 ? (
+            <div className="d-flex align-items-center gap-1 fs-10">
+              <Button
+                variant="soft-secondary"
+                className="btn-sm px-2 py-0"
+                disabled={current === 0}
+                onClick={() => setPage(current - 1)}
+                aria-label="Previous notices"
+              >
+                <FeatherIcon icon="chevron-left" size={12} />
+              </Button>
+              <span className="text-body-tertiary">
+                {current + 1} / {pages}
+              </span>
+              <Button
+                variant="soft-secondary"
+                className="btn-sm px-2 py-0"
+                disabled={current >= pages - 1}
+                onClick={() => setPage(current + 1)}
+                aria-label="Next notices"
+              >
+                <FeatherIcon icon="chevron-right" size={12} />
+              </Button>
+            </div>
+          ) : undefined
+        }
       >
-        {shown.map(n => (
-          <NoticeRow key={n.id} n={n} />
-        ))}
-      </ul>
+        {/* While paging, always room for two rows (27px each) so the box
+          doesn't jump on a last page of one; otherwise just the rows. */}
+        <ul
+          className="list-unstyled mb-0"
+          style={{ minHeight: pages > 1 ? '3.4rem' : undefined }}
+        >
+          {shown.map(n => (
+            <NoticeRow key={n.id} n={n} />
+          ))}
+        </ul>
+      </SectionCard>
     </div>
   );
 };

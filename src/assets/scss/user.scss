@@ -195,25 +195,6 @@ th.leaderboard-sticky-col {
   cursor: pointer;
 }
 
-// Validator page SFDP box title: the full program name when its row has
-// room, "SFDP" otherwise. The container is the title wrapper only, so the
-// box's own width still comes from its rows.
-.sfdp-title {
-  container-type: inline-size;
-  white-space: nowrap;
-  .sfdp-title-full {
-    display: none;
-  }
-}
-@container (min-width: 18rem) {
-  .sfdp-title .sfdp-title-full {
-    display: inline;
-  }
-  .sfdp-title .sfdp-title-short {
-    display: none;
-  }
-}
-
 // A SectionCard that takes its row's height from the NEIGHBOURING column
 // (from lg up) instead of its own content: the card is pulled out of flow
 // to fill its column, and its body (the last child) scrolls, with the
@@ -531,4 +512,21 @@ th.leaderboard-sticky-col {
 // A no-stripes table striping its own rows (skipping detail rows).
 .table.data-table > tbody > tr.stripe > * {
   --vx-table-bg-type: var(--vx-table-striped-bg);
+}
+
+// A card's label / value lines, zebra-striped like the slot page's details
+// (InfoTable) and the data tables: every other line on the stripe tint,
+// the padding pulled out so the text stays on the card's edge.
+.detail-lines {
+  display: flex;
+  flex-direction: column;
+  margin-inline: -0.5rem;
+  > * {
+    padding: 0.3rem 0.5rem;
+    border-radius: var(--vx-border-radius-sm);
+    margin: 0;
+  }
+  > :nth-child(odd) {
+    background-color: rgba(var(--vx-quaternary-bg-rgb), 0.1);
+  }
 }

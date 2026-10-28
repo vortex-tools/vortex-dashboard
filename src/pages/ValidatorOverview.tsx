@@ -555,34 +555,36 @@ const ValidatorOverview = () => {
                 boxes stacked beside it; on phones all full width. */}
             <Row className="g-3 align-items-stretch">
               <Col xs={12} lg={7}>
-                <div className="bg-body-emphasis rounded border border-translucent px-3 py-2 d-flex flex-column gap-1 h-100 min-w-0">
-                  <AddressLine
-                    label="Node"
-                    value={nodeAddress}
-                    labelWidth={keyLabelWidth}
-                  />
-                  <AddressLine
-                    label="Vote"
-                    value={voteAddress}
-                    labelWidth={keyLabelWidth}
-                  />
-                  <ValidatorWebsite
-                    nodeAddress={nodeAddress}
-                    labelWidth={keyLabelWidth}
-                  />
-                  <ValidatorAge
-                    nodeAddress={nodeAddress}
-                    labelWidth={keyLabelWidth}
-                  />
-                  <ValidatorFacts
-                    nodeAddress={nodeAddress}
-                    labelWidth={keyLabelWidth}
-                  />
-                  <ValidatorCollectors
-                    nodeAddress={nodeAddress}
-                    voteAddress={voteAddress}
-                  />
-                </div>
+                <SectionCard title="Details" icon="file-text">
+                  <div className="detail-lines min-w-0">
+                    <AddressLine
+                      label="Node"
+                      value={nodeAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <AddressLine
+                      label="Vote"
+                      value={voteAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <ValidatorWebsite
+                      nodeAddress={nodeAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <ValidatorAge
+                      nodeAddress={nodeAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <ValidatorFacts
+                      nodeAddress={nodeAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <ValidatorCollectors
+                      nodeAddress={nodeAddress}
+                      voteAddress={voteAddress}
+                    />
+                  </div>
+                </SectionCard>
               </Col>
               <Col xs={12} lg={5} className="d-flex flex-column gap-3">
                 <ValidatorSfdpBox nodeAddress={nodeAddress} />
