@@ -220,7 +220,10 @@ const columns = (
  *  bar, and the running total as a line (how few hold most of it). */
 const ConcentrationChart = ({ validators }: { validators: Validator[] }) => {
   const { getThemeColor } = useAppContext();
-  const top = validators.slice(0, 100);
+  // Every validator, so the running total reaches the whole pool.
+  const top = validators;
+  // A label every 10, 25, 50 or 100 ranks: about ten across.
+  const step = [10, 25, 50, 100, 250].find(n => top.length / n <= 10) ?? 500;
   let run = 0;
   const cumulative = top.map(v => (run += v.shareOfPool ?? 0));
   const option = {
@@ -245,7 +248,7 @@ const ConcentrationChart = ({ validators }: { validators: Validator[] }) => {
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
-        interval: (i: number) => (i + 1) % 10 === 0 || i === 0
+        interval: (i: number) => (i + 1) % step === 0 || i === 0
       },
       axisTick: { show: false }
     },
@@ -278,7 +281,7 @@ const ConcentrationChart = ({ validators }: { validators: Validator[] }) => {
         data: top.map(v => v.shareOfPool ?? 0),
         color: getThemeColor('primary'),
         itemStyle: { opacity: 0.55 },
-        barCategoryGap: '20%'
+        barCategoryGap: top.length > 150 ? '0%' : '20%'
       },
       {
         name: 'Cumulative',
@@ -311,8 +314,10 @@ const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
   const stakeLabel = (v: number) => {
     const sol = v / 1e9;
     if (stakeRange >= 1e6 || sol < 1e4) return compactSol(v);
-    const k = sol / 1e3;
-    return `◎${k.toLocaleString('en-US', { maximumFractionDigits: stakeRange < 1e3 ? 1 : 0 })}K`;
+    // The axis's round ticks, with the decimals each needs: "◎23.7M",
+    // "◎23.75M", not "◎23,700K".
+    const [n, unit] = sol >= 1e6 ? [sol / 1e6, 'M'] : [sol / 1e3, 'K'];
+    return `◎${n.toLocaleString('en-US', { maximumFractionDigits: 3 })}${unit}`;
   };
   // Whole validators, with room around a count that hardly moves (56 to
   // 57 drew 56.2, 56.4, ...).
@@ -654,7 +659,7 @@ const StakePool = () => {
             <SectionCard
               title="Concentration"
               icon="bar-chart-2"
-              info="The validators it stakes to, largest first (up to 100): each one's share of the pool as a bar, and the running total as a line - how few validators hold most of the pool."
+              info="The validators it stakes to, largest first: each one's share of the pool as a bar, and the running total as a line - how few validators hold most of the pool."
             >
               {validators.length ? (
                 <ConcentrationChart validators={validators} />
