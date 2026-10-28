@@ -366,6 +366,106 @@ const nodeTiles = (
   return tiles;
 };
 
+/**
+ * The status tiles' data for one validator, read from the slices
+ * ValidatorStatus fetches and refreshes (it must be mounted for them to
+ * load): node facts (client, location, commission, vote balance) and its
+ * stake. No fetching here, so a second reader (the keys box's facts)
+ * doesn't double the polling.
+ */
+const useStatusTiles = (nodeAddress: string) => {
+  const context = useContext(VortexDataContext);
+  const slice = context?.validatorStatusState;
+  const status = slice?.data.get(nodeAddress);
+  const stake = context?.validatorStakeState.data.get(nodeAddress);
+  // Share of stake and the SFDP rule come with the status on current APIs.
+  // Older ones only have them in the (much larger) all-validators summary,
+  // fetched only when the status lacks what the page shows.
+  const needsSummary =
+    !!status &&
+    (status.stake.shareOfTotal == null ||
+      (isSfdpState(status.sfdp.participant?.state) &&
+        status.sfdp.program == null));
+  const summary = context?.validatorStatusSummaryState.data.get(
+    VALIDATOR_STATUS_SUMMARY_KEY
+  );
+  const summaryTotal = useMemo(
+    () => summary?.validators.reduce((acc, r) => acc + r.activatedStake, 0),
+    [summary]
+  );
+  const shareOfTotal =
+    status?.stake.shareOfTotal ??
+    (status && summaryTotal
+      ? status.stake.activatedStake / summaryTotal
+      : undefined);
+  // No status and an error: the endpoint isn't available on this API, or
+  // the validator isn't staked (404). The slice's error is slice-wide, but
+  // this page only ever requests one identity.
+  const unavailable = !status && !slice?.isLoading && !!slice?.error;
+  // The latest epoch that says something about MEV: a rate, or that it
+  // has no Jito tip account (plain Agave: no MEV commission at all).
+  const earnings = context?.epochEarningsState.data.get(nodeAddress);
+  const mevRates = [...(earnings ?? [])]
+    .reverse()
+    .find(
+      r =>
+        r.rates?.mevCommissionBps != null ||
+        r.rates?.mevCommissionBpsSource === 'noTipAccount'
+    )?.rates;
+  const noTipAccount = mevRates?.mevCommissionBpsSource === 'noTipAccount';
+  const mevBps = noTipAccount ? null : (mevRates?.mevCommissionBps ?? null);
+  const { isTestnet } = useCluster();
+  // Stake links to the Staking tab (not on testnet, which has none).
+  const tiles = (
+    status ? nodeTiles(status, stake, shareOfTotal, mevBps, noTipAccount) : []
+  ).map(t =>
+    t.label === 'Stake' && !isTestnet
+      ? { ...t, linkTo: validatorTabPath(nodeAddress, 'staking') }
+      : t
+  );
+  return { tiles, needsSummary, unavailable };
+};
+
+/** The node facts the keys box shows as lines, not tiles. */
+export const FACT_TILES = ['Client', 'Location', 'Commission', 'Vote Balance'];
+
+/**
+ * Node facts (client, location, commission, vote balance) as lines in the
+ * keys box, laid out like its Node / Vote lines: the value, then the
+ * tile's sublabel in gray. Nothing until the status has loaded.
+ */
+export const ValidatorFacts = ({
+  nodeAddress,
+  labelWidth = '3rem'
+}: Props & { labelWidth?: string }) => {
+  const { tiles } = useStatusTiles(nodeAddress);
+  return (
+    <>
+      {tiles
+        .filter(t => FACT_TILES.includes(t.label))
+        .map(t => (
+          <div
+            key={t.label}
+            className="d-flex align-items-baseline gap-2 min-w-0"
+          >
+            <span
+              className="text-body-tertiary fs-9 flex-shrink-0"
+              style={{ minWidth: labelWidth }}
+            >
+              {t.label === 'Vote Balance' ? 'Vote balance' : t.label}
+            </span>
+            <span className="fs-9 text-truncate">
+              <span className="fw-semibold">{t.value}</span>
+              {t.sublabel && (
+                <span className="text-body-tertiary"> · {t.sublabel}</span>
+              )}
+            </span>
+          </div>
+        ))}
+    </>
+  );
+};
+
 const statusClass = (s: ValidatorStatusCheck['status'] | undefined) =>
   s === 'fail'
     ? 'text-danger'
@@ -389,8 +489,11 @@ interface Props {
 const ValidatorStatus = ({
   nodeAddress,
   extraTiles = [],
-  wide = false
+  wide = false,
+  exclude = []
 }: Props & {
+  /** Tiles (by label) shown elsewhere, left out of the grid. */
+  exclude?: string[];
   /** More tiles (the page's rank / block KPIs) appended to the grid. */
   extraTiles?: ReactNode[];
   /** The grid has the row to itself: from xl up, one row of up to six
@@ -399,7 +502,6 @@ const ValidatorStatus = ({
 }) => {
   const context = useContext(VortexDataContext);
   const slice = context?.validatorStatusState;
-  const status = slice?.data.get(nodeAddress);
   // Stable (useCallback) - unlike `slice`, which changes identity on every
   // load-state change - so the effect below runs once per validator.
   const fetchData = slice?.fetchData;
@@ -410,7 +512,6 @@ const ValidatorStatus = ({
 
   // Live stake (activating / deactivating) is a chain read per request:
   // fetch on entry and refresh slowly (a failed read retries then too).
-  const stake = context?.validatorStakeState.data.get(nodeAddress);
   const fetchStake = context?.validatorStakeState.fetchData;
   useEffect(() => {
     fetchStake?.(nodeAddress);
@@ -419,78 +520,40 @@ const ValidatorStatus = ({
     fetchStake?.(nodeAddress, { force: true });
   });
 
-  // Share of stake and the SFDP rule come with the status on current APIs.
-  // Older ones only have them in the (much larger) all-validators summary:
-  // fetch that only when the status lacks what the page shows.
-  const needsSummary =
-    !!status &&
-    (status.stake.shareOfTotal == null ||
-      (isSfdpState(status.sfdp.participant?.state) &&
-        status.sfdp.program == null));
-  const summary = context?.validatorStatusSummaryState.data.get(
-    VALIDATOR_STATUS_SUMMARY_KEY
-  );
+  const {
+    tiles: allTiles,
+    needsSummary,
+    unavailable
+  } = useStatusTiles(nodeAddress);
+  const tiles = allTiles.filter(t => !exclude.includes(t.label));
   const fetchSummary = context?.validatorStatusSummaryState.fetchData;
   useEffect(() => {
     if (needsSummary) fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
   }, [fetchSummary, needsSummary]);
-  const summaryTotal = useMemo(
-    () => summary?.validators.reduce((acc, r) => acc + r.activatedStake, 0),
-    [summary]
-  );
-  const shareOfTotal =
-    status?.stake.shareOfTotal ??
-    (status && summaryTotal
-      ? status.stake.activatedStake / summaryTotal
-      : undefined);
-
-  // No status and an error: the endpoint isn't available on this API, or
-  // the validator isn't staked (404). The slice's error is slice-wide, but
-  // this page only ever requests one identity.
-  const unavailable = !status && !slice?.isLoading && !!slice?.error;
-
   useLiveRefresh(!unavailable, REFRESH_MS, () => {
     fetchData?.(nodeAddress, { force: true });
   });
-
-  // Loading / unavailable is shown by the header's Notices box; the
-  // extra tiles show regardless.
-  // The MEV rate: the latest epoch's in its earnings (Jito's tip
-  // distribution setting).
-  const earnings = context?.epochEarningsState.data.get(nodeAddress);
+  // The MEV rate comes from its earnings (Jito's tip distribution setting).
   const fetchEarnings = context?.epochEarningsState.fetchData;
   useEffect(() => {
     fetchEarnings?.(nodeAddress);
   }, [fetchEarnings, nodeAddress]);
-  // The latest epoch that says something about MEV: a rate, or that it
-  // has no Jito tip account (plain Agave: no MEV commission at all).
-  const mevRates = [...(earnings ?? [])]
-    .reverse()
-    .find(
-      r =>
-        r.rates?.mevCommissionBps != null ||
-        r.rates?.mevCommissionBpsSource === 'noTipAccount'
-    )?.rates;
-  const noTipAccount = mevRates?.mevCommissionBpsSource === 'noTipAccount';
-  const mevBps = noTipAccount ? null : (mevRates?.mevCommissionBps ?? null);
-  const { isTestnet } = useCluster();
-  // Stake links to the Staking tab (not on testnet, which has none).
-  const tiles = (
-    status ? nodeTiles(status, stake, shareOfTotal, mevBps, noTipAccount) : []
-  ).map(t =>
-    t.label === 'Stake' && !isTestnet
-      ? { ...t, linkTo: validatorTabPath(nodeAddress, 'staking') }
-      : t
-  );
 
   // A grid of small tiles, 3 across from md up: beside Recent Voting (lg+)
   // nine tiles make three rows. 2 across on phones, where an odd last
   // tile takes the whole row rather than leaving a hole.
   const count = tiles.length + extraTiles.length;
   const xs = (i: number) => (count % 2 === 1 && i === count - 1 ? 12 : 6);
-  // Three to a row from md up; a lone last tile spans the row.
-  const md = (i: number) => (count % 3 === 1 && i === count - 1 ? 12 : 4);
-  const xl = wide ? (count <= 6 ? 2 : 3) : undefined;
+  // Three to a row from md up when they divide by three, else two (a
+  // lone last tile spans the row).
+  const md = (i: number) =>
+    count % 3 === 0 ? 4 : count % 2 === 1 && i === count - 1 ? 12 : 6;
+  // Wide: one row of up to six (2, 3 or 4 a row), else rows of four.
+  const xl = wide
+    ? count > 6
+      ? 3
+      : Math.max(2, Math.floor(12 / Math.max(count, 1)))
+    : undefined;
   return (
     <Row className="g-3">
       {tiles.map((t, i) => (
@@ -591,7 +654,8 @@ export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
   return (
     <div
       className="bg-body-emphasis rounded border border-translucent px-3 py-2 d-flex flex-column gap-1"
-      style={{ flex: '1 1 auto', minWidth: 0 }}
+      // Stacked over Notices beside the Details box: its own height.
+      style={{ flex: '0 0 auto', minWidth: 0 }}
     >
       <div className="d-flex align-items-center gap-2">
         {/* Spelled out when the title row has room (container query in
@@ -1243,7 +1307,8 @@ export const ValidatorNotices = ({
   const pages = Math.ceil(notices.length / NOTICES_PER_PAGE);
   // The list changes with refreshes; stay on a page that exists.
   const current = Math.min(page, Math.max(0, pages - 1));
-  const boxStyle = { flex: '1 1 22rem', minWidth: 0 };
+  // Under the SFDP box beside Details: fills the rest of the column.
+  const boxStyle = { flex: '1 1 auto', minWidth: 0 };
   // No notices: the all-clear (with the passing checks), or why there's
   // no status - this box replaces the old Operational Status box.
   if (!notices.length)

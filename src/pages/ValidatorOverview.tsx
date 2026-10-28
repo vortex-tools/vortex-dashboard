@@ -19,6 +19,8 @@ import ValidatorStatus, {
   useValidatorNotices,
   ValidatorSfdpBox,
   WIDE_KEY_LABEL,
+  FACT_TILES,
+  ValidatorFacts,
   customCollectors,
   ValidatorAge,
   ValidatorWebsite
@@ -300,8 +302,9 @@ const ValidatorOverview = () => {
     nodeAddress,
     voteAddress
   );
+  // Room for "Commission" / "Vote balance" (and custom collectors).
   const keyLabelWidth =
-    collectors.inflation || collectors.blocks ? WIDE_KEY_LABEL : '3rem';
+    collectors.inflation || collectors.blocks ? WIDE_KEY_LABEL : '6rem';
   const blocksProduced = incomeRecord?.confirmedSlots;
   const totalSlots = incomeRecord?.totalSlots;
   const medianBlockIncome = incomeRecord
@@ -513,6 +516,8 @@ const ValidatorOverview = () => {
     <ValidatorStatus
       nodeAddress={nodeAddress}
       wide={tilesWide}
+      // Client, location, commission and vote balance are in the keys box.
+      exclude={FACT_TILES}
       extraTiles={kpiTiles
         // Testnet tracks no block income: its tiles would only say so.
         .filter(
@@ -546,46 +551,46 @@ const ValidatorOverview = () => {
       <div className="mb-9">
         <Row className="align-items-start justify-content-between mb-3 g-3">
           <Col xs={12}>
-            {/* Keys, and the SFDP and Notices boxes beside them. Every box
-                grows to fill its line, so when they wrap onto separate
-                lines (phones) they're all full width. */}
-            <div className="d-flex flex-wrap align-items-stretch gap-3">
-              <div
-                className="bg-body-emphasis rounded border border-translucent px-3 py-2 d-inline-flex flex-column gap-1"
-                style={{
-                  flex: '1 1 auto',
-                  maxWidth: '100%',
-                  minWidth: 0
-                }}
-              >
-                <AddressLine
-                  label="Node"
-                  value={nodeAddress}
-                  labelWidth={keyLabelWidth}
-                />
-                <AddressLine
-                  label="Vote"
-                  value={voteAddress}
-                  labelWidth={keyLabelWidth}
-                />
-                <ValidatorWebsite
-                  nodeAddress={nodeAddress}
-                  labelWidth={keyLabelWidth}
-                />
-                <ValidatorAge
-                  nodeAddress={nodeAddress}
-                  labelWidth={keyLabelWidth}
-                />
-                <ValidatorCollectors
-                  nodeAddress={nodeAddress}
-                  voteAddress={voteAddress}
-                />
-              </div>
-              <ValidatorSfdpBox nodeAddress={nodeAddress} />
-              {/* Notices: what needs attention (fixed height, two at a time,
-                  paged), else the all-clear. */}
-              <ValidatorNotices notices={notices} nodeAddress={nodeAddress} />
-            </div>
+            {/* Details (keys and node facts), and the SFDP and Notices
+                boxes stacked beside it; on phones all full width. */}
+            <Row className="g-3 align-items-stretch">
+              <Col xs={12} lg={7}>
+                <div className="bg-body-emphasis rounded border border-translucent px-3 py-2 d-flex flex-column gap-1 h-100 min-w-0">
+                  <AddressLine
+                    label="Node"
+                    value={nodeAddress}
+                    labelWidth={keyLabelWidth}
+                  />
+                  <AddressLine
+                    label="Vote"
+                    value={voteAddress}
+                    labelWidth={keyLabelWidth}
+                  />
+                  <ValidatorWebsite
+                    nodeAddress={nodeAddress}
+                    labelWidth={keyLabelWidth}
+                  />
+                  <ValidatorAge
+                    nodeAddress={nodeAddress}
+                    labelWidth={keyLabelWidth}
+                  />
+                  <ValidatorFacts
+                    nodeAddress={nodeAddress}
+                    labelWidth={keyLabelWidth}
+                  />
+                  <ValidatorCollectors
+                    nodeAddress={nodeAddress}
+                    voteAddress={voteAddress}
+                  />
+                </div>
+              </Col>
+              <Col xs={12} lg={5} className="d-flex flex-column gap-3">
+                <ValidatorSfdpBox nodeAddress={nodeAddress} />
+                {/* Notices: what needs attention (fixed height, two at a
+                    time, paged), else the all-clear. */}
+                <ValidatorNotices notices={notices} nodeAddress={nodeAddress} />
+              </Col>
+            </Row>
           </Col>
         </Row>
 
