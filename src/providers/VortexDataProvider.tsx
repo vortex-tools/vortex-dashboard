@@ -100,6 +100,8 @@ import {
   ClusterVoteAccountChanges,
   validatorVoteAccountChangesSchema,
   ValidatorVoteAccountChanges,
+  clusterActivitySchema,
+  ClusterActivity,
   PoolDetail,
   GovernanceProposals,
   governanceProposalDetailSchema,
@@ -831,6 +833,14 @@ const clusterVoteAccountChangesRequest = (epochs: number) => ({
   schema: clusterVoteAccountChangesSchema,
   timeout: 20_000
 });
+// Every validator's activity (vote-account and host changes) over the last
+// N epochs: /cluster/activity, requested from vortex-data.
+const clusterActivityRequest = (epochs: number) => ({
+  path: '/cluster/activity',
+  params: { epochs },
+  schema: clusterActivitySchema,
+  timeout: 20_000
+});
 // One validator's changes (by identity), as far back as the API looks.
 const validatorVoteAccountChangesRequest = (identity: string) => ({
   path: '/validators/vote-account-changes',
@@ -1427,6 +1437,7 @@ interface VortexDataState {
     string,
     ValidatorVoteAccountChanges
   >;
+  clusterActivityState: KeyedSlice<number, ClusterActivity>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
   validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
   clusterVersionsState: KeyedSlice<number, ClusterVersions>;
@@ -1558,6 +1569,10 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: clusterVoteAccountChangesRequest,
     toEntries: keyed<number, ClusterVoteAccountChanges>()
   });
+  const clusterActivityState = useKeyedSlice({
+    request: clusterActivityRequest,
+    toEntries: keyed<number, ClusterActivity>()
+  });
   const validatorVoteAccountChangesState = useKeyedSlice({
     request: validatorVoteAccountChangesRequest,
     toEntries: keyed<string, ValidatorVoteAccountChanges>()
@@ -1681,6 +1696,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       poolState,
       clusterVoteAccountChangesState,
       validatorVoteAccountChangesState,
+      clusterActivityState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,
@@ -1731,6 +1747,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       poolState,
       clusterVoteAccountChangesState,
       validatorVoteAccountChangesState,
+      clusterActivityState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,

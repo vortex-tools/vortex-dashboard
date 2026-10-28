@@ -4,6 +4,7 @@ import {
   Navigate,
   RouteObject,
   createBrowserRouter,
+  useLocation,
   useParams
 } from 'react-router';
 import Error404 from 'pages/error/Error404';
@@ -34,7 +35,7 @@ import FeatureGates from 'pages/FeatureGates';
 import SimdPage from 'pages/SimdPage';
 import StakePool from 'pages/StakePool';
 import StakePools from 'pages/StakePools';
-import VoteAccountChanges from 'pages/VoteAccountChanges';
+import Activity from 'pages/Activity';
 import Simds from 'pages/Simds';
 import Governance from 'pages/Governance';
 import GovernanceProposal from 'pages/GovernanceProposal';
@@ -90,6 +91,11 @@ const RedirectOldIncome = () => {
 const RedirectOldClusterVoteStatsEpoch = () => {
   const { epoch } = useParams();
   return <Navigate to={`/leaderboards/voting/epoch/${epoch}`} replace />;
+};
+// A renamed page: the same query string (its filters) at the new path.
+const RedirectKeepSearch = ({ to }: { to: string }) => {
+  const { search } = useLocation();
+  return <Navigate to={`${to}${search}`} replace />;
 };
 
 const routes: RouteObject[] = [
@@ -173,9 +179,11 @@ const routes: RouteObject[] = [
               { path: '/feature/:id', element: <FeatureGatePage /> },
               { path: '/simds', element: <Simds /> },
               { path: '/pools', element: <StakePools /> },
+              { path: '/activity', element: <Activity /> },
+              // Its first name: keeps the filters.
               {
                 path: '/vote-account-changes',
-                element: <VoteAccountChanges />
+                element: <RedirectKeepSearch to="/activity" />
               },
               { path: '/pool/:name', element: <StakePool /> },
               { path: '/simd/:simd', element: <SimdPage /> },

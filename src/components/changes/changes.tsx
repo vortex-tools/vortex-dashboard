@@ -1,7 +1,7 @@
 import Badge from 'components/base/Badge';
 import { explorerAddress } from 'helpers/explorer';
 import { formatLamports } from 'helpers/utils';
-import { VoteAccountChange } from 'providers/vortex-schemas';
+import { ActivityEvent, HostState } from 'providers/vortex-schemas';
 import { ReactNode } from 'react';
 
 /** Each kind of vote-account change: its label, and whether it touches
@@ -18,8 +18,15 @@ export const CHANGE_KIND: Record<
   blockRevenueCommission: { label: 'Block-reward commission', bg: 'primary' },
   inflationCollector: { label: 'Inflation collector', bg: 'secondary' },
   blockRevenueCollector: { label: 'Block-reward collector', bg: 'secondary' },
-  create: { label: 'Created', bg: 'secondary' }
+  create: { label: 'Created', bg: 'secondary' },
+  // Host changes (where and what it runs).
+  failover: { label: 'Failover', bg: 'info' },
+  migration: { label: 'Migration', bg: 'primary' },
+  software: { label: 'Software', bg: 'secondary' }
 };
+
+/** The host-change kinds (no transaction, no signer). */
+export const HOST_KINDS = new Set(['failover', 'migration', 'software']);
 
 export const ChangeBadge = ({ kind }: { kind: string }) => {
   const k = CHANGE_KIND[kind];
@@ -54,14 +61,34 @@ export const ShortAddress = ({
 const bpsPct = (v: unknown) =>
   typeof v === 'number' ? `${(v / 100).toLocaleString()}%` : null;
 
+/** Where a host is ("Frankfurt, DE · OVH SAS") and, for a software
+ *  change, what it runs ("AgaveBam 4.3.2"). */
+const hostText = (h: HostState | null | undefined, software: boolean) => {
+  if (!h) return null;
+  const run = [h.clientId, h.version].filter(Boolean).join(' ');
+  if (software) return run || null;
+  const place = [
+    [h.geo?.city, h.geo?.countryCode].filter(Boolean).join(', '),
+    h.geo?.asnOrganization
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return place || (h.host != null ? `host ${h.host}` : null);
+};
+
 /** A change's value (new or old) as the UI shows it: an address linked,
  *  a commission as a percent, a withdrawal's amount and recipient, a
- *  creation's commissions. null: nothing to show. */
+ *  creation's commissions, a host's place (or what it runs). null: nothing to show. */
 export const changeValue = (
-  e: VoteAccountChange,
+  e: ActivityEvent,
   which: 'new' | 'old',
   isTestnet: boolean
 ): ReactNode => {
+  if (HOST_KINDS.has(e.kind))
+    return hostText(
+      which === 'new' ? e.after : e.before,
+      e.kind === 'software'
+    );
   const v = which === 'new' ? e.newValue : e.oldValue;
   if (e.kind === 'inflationCommission' || e.kind === 'blockRevenueCommission')
     return bpsPct(v);
@@ -108,6 +135,11 @@ export const changeValue = (
     </>
   );
 };
+
+/** When an event happened (unix s): its block's time, or when a host
+ *  change was first seen. */
+export const eventTime = (e: ActivityEvent) =>
+  e.blockTime ?? e.observedAt ?? e.time ?? null;
 
 /** "12 min ago" / "3 h ago" / "Oct 27": when a change landed. */
 export const whenText = (unixS: number | null) => {

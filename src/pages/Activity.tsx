@@ -4,8 +4,10 @@ import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import {
   CHANGE_KIND,
   ChangeBadge,
+  HOST_KINDS,
   ShortAddress,
   changeValue,
+  eventTime,
   whenText
 } from 'components/changes/changes';
 import DelayedSpinner from 'components/common/DelayedSpinner';
@@ -18,7 +20,7 @@ import useAdvanceTable from 'hooks/useAdvanceTable';
 import useCluster from 'hooks/useCluster';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { VoteAccountChange } from 'providers/vortex-schemas';
+import { ActivityEvent } from 'providers/vortex-schemas';
 import { useContext, useEffect, useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 import { Link, useSearchParams } from 'react-router';
@@ -32,27 +34,25 @@ const NOWRAP = {
   cellProps: { className: 'text-nowrap' }
 };
 
-const columns = (isTestnet: boolean): ColumnDef<VoteAccountChange>[] => [
+const columns = (isTestnet: boolean): ColumnDef<ActivityEvent>[] => [
   {
     id: 'when',
     header: 'When',
-    accessorFn: e => e.slot,
-    cell: ({ row: { original: e } }) => (
-      <span
-        title={
-          e.blockTime != null
-            ? new Date(e.blockTime * 1000).toLocaleString()
-            : undefined
-        }
-      >
-        <span className="font-monospace">{e.epoch.toLocaleString()}</span>
-        {e.blockTime != null && (
-          <span className="text-body-tertiary fs-10 ms-2">
-            {whenText(e.blockTime)}
-          </span>
-        )}
-      </span>
-    ),
+    // By time (host changes have no slot), then slot.
+    accessorFn: e => eventTime(e) ?? e.slot ?? e.epoch,
+    cell: ({ row: { original: e } }) => {
+      const t = eventTime(e);
+      return (
+        <span
+          title={t != null ? new Date(t * 1000).toLocaleString() : undefined}
+        >
+          <span className="font-monospace">{e.epoch.toLocaleString()}</span>
+          {t != null && (
+            <span className="text-body-tertiary fs-10 ms-2">{whenText(t)}</span>
+          )}
+        </span>
+      );
+    },
     meta: NOWRAP
   },
   {
@@ -101,7 +101,9 @@ const columns = (isTestnet: boolean): ColumnDef<VoteAccountChange>[] => [
         <span
           className="text-body-quaternary"
           title={
-            e.kind === 'withdraw' || e.kind === 'create'
+            e.kind === 'withdraw' ||
+            e.kind === 'create' ||
+            HOST_KINDS.has(e.kind)
               ? undefined
               : 'No earlier change on record'
           }
@@ -155,19 +157,20 @@ const columns = (isTestnet: boolean): ColumnDef<VoteAccountChange>[] => [
     id: 'tx',
     header: '',
     enableSorting: false,
-    cell: ({ row: { original: e } }) => (
-      <a
-        href={explorerTx(e.signature, isTestnet)}
-        target="_blank"
-        rel="noreferrer"
-        className="fs-10"
-        title={
-          e.instruction ? `${e.instruction} · ${e.signature}` : e.signature
-        }
-      >
-        Tx <FeatherIcon icon="arrow-up-right" size={11} />
-      </a>
-    ),
+    cell: ({ row: { original: e } }) =>
+      e.signature ? (
+        <a
+          href={explorerTx(e.signature, isTestnet)}
+          target="_blank"
+          rel="noreferrer"
+          className="fs-10"
+          title={
+            e.instruction ? `${e.instruction} · ${e.signature}` : e.signature
+          }
+        >
+          Tx <FeatherIcon icon="arrow-up-right" size={11} />
+        </a>
+      ) : null,
     meta: {
       headerProps: { className: 'text-end' },
       cellProps: { className: 'text-end text-nowrap' }
@@ -176,13 +179,15 @@ const columns = (isTestnet: boolean): ColumnDef<VoteAccountChange>[] => [
 ];
 
 /**
- * Every vote account's administrative changes, newest first: withdrawer,
- * voter (and BLS key), identity, commissions, collectors, withdrawals and
- * new vote accounts, since Alpenglow (epoch 1064). Filtered by kind of
- * change, by validator (name or either key) and by how many epochs back,
- * all in the URL (?kind=&validator=&epochs=) so a view can be shared.
+ * Validator activity, newest first: vote-account changes (withdrawer,
+ * voter and BLS key, identity, commissions, collectors, withdrawals, new
+ * vote accounts; since Alpenglow, epoch 1064) and host changes
+ * (failovers, migrations, software). From /cluster/activity; until the
+ * API serves it, /cluster/vote-account-changes (vote-account changes
+ * only). Filtered by kind, by validator (name or either key) and by how
+ * many epochs back, all in the URL (?kind=&validator=&epochs=).
  */
-const VoteAccountChanges = () => {
+const Activity = () => {
   const context = useContext(VortexDataContext);
   const { isTestnet } = useCluster();
   const [params, setParams] = useSearchParams();
@@ -202,12 +207,21 @@ const VoteAccountChanges = () => {
       { replace: true }
     );
 
-  const slice = context?.clusterVoteAccountChangesState;
-  const fetchData = slice?.fetchData;
+  // The combined feed; while it 404s, the vote-account changes alone.
+  const activity = context?.clusterActivityState;
+  const fetchActivity = activity?.fetchData;
   useEffect(() => {
-    fetchData?.(epochs);
-  }, [fetchData, epochs]);
-  const data = slice?.data.get(epochs);
+    fetchActivity?.(epochs);
+  }, [fetchActivity, epochs]);
+  const fallback = !!activity?.error && !activity.data.get(epochs);
+  const slice = fallback ? context?.clusterVoteAccountChangesState : activity;
+  const fetchChanges = context?.clusterVoteAccountChangesState.fetchData;
+  useEffect(() => {
+    if (fallback) fetchChanges?.(epochs);
+  }, [fallback, fetchChanges, epochs]);
+  const data = fallback
+    ? context?.clusterVoteAccountChangesState.data.get(epochs)
+    : activity?.data.get(epochs);
 
   const events = useMemo(
     () => (data?.events ?? []).filter(e => !kind || e.kind === kind),
@@ -225,7 +239,8 @@ const VoteAccountChanges = () => {
     sortable: true,
     pagination: true,
     pageSize: 50,
-    getRowId: e => `${e.signature}-${e.kind}-${e.voteKey ?? ''}`,
+    getRowId: (e, i) =>
+      `${e.signature ?? eventTime(e) ?? i}-${e.kind}-${e.voteKey ?? e.identity ?? ''}`,
     resetPageKey: `${epochs}${kind}`,
     initialState: { sorting: [{ id: 'when', desc: true }] }
   });
@@ -239,18 +254,18 @@ const VoteAccountChanges = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col-auto">
-          <h3>Vote Account Changes</h3>
+          <h3>Validator Activity</h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
-            Who changed a vote account&apos;s keys, commission or collectors, or
-            withdrew from it
+            Key, commission and collector changes, withdrawals, failovers and
+            migrations
           </p>
         </div>
       </div>
 
       <SectionCard
-        title="Changes"
-        icon="key"
-        info="From the vote program's instructions in successful transactions (a multisig's included), since Alpenglow (epoch 1064). A withdrawer or a withdrawal is what matters most to delegators: a leaked withdrawer can take the vote account. Voter and identity changes can be rotated in place. From is the previous change on record."
+        title="Activity"
+        icon="activity"
+        info="Vote-account changes come from the vote program's instructions in successful transactions (a multisig's included), since Alpenglow (epoch 1064): a withdrawer change or a withdrawal is what matters most to delegators. Failovers, migrations and software changes come from each validator's gossip address and version, as our chain-state writer sees them. From is the previous value on record."
       >
         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
           <SearchBox
@@ -302,7 +317,7 @@ const VoteAccountChanges = () => {
         {!data ? (
           slice?.error ? (
             <UntrackedState>
-              Vote account changes aren&apos;t available from this API yet.
+              Validator activity isn&apos;t available from this API yet.
             </UntrackedState>
           ) : (
             <DelayedSpinner loading label="Loading changes…" />
@@ -325,4 +340,4 @@ const VoteAccountChanges = () => {
   );
 };
 
-export default VoteAccountChanges;
+export default Activity;

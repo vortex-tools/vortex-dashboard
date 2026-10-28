@@ -268,7 +268,80 @@ const changeEvent = (r: () => number, d: Dir, epoch: number) => {
   };
 };
 
+const PLACES = [
+  {
+    city: 'Frankfurt am Main',
+    countryCode: 'DE',
+    asnOrganization: 'Latitude.sh'
+  },
+  {
+    city: 'Amsterdam',
+    countryCode: 'NL',
+    asnOrganization: 'TeraSwitch Networks Inc.'
+  },
+  { city: 'Tokyo', countryCode: 'JP', asnOrganization: 'Latitude.sh' },
+  {
+    city: 'New York',
+    countryCode: 'US',
+    asnOrganization: 'Limestone Networks, Inc.'
+  },
+  { city: 'Chicago', countryCode: 'US', asnOrganization: 'Cherry Servers' }
+];
+/** A failover, migration or software change on a given epoch. */
+const hostEvent = (r: () => number, d: Dir, epoch: number) => {
+  const kind = ['failover', 'failover', 'migration', 'software'][
+    Math.floor(r() * 4)
+  ];
+  const a = PLACES[Math.floor(r() * PLACES.length)];
+  const b = PLACES[Math.floor(r() * PLACES.length)];
+  const state = (
+    geo: (typeof PLACES)[number],
+    host: number,
+    version: string
+  ) => ({
+    host,
+    dataCenterKey: null,
+    geo: { ...geo, country: null },
+    version,
+    clientId: 'AgaveBam'
+  });
+  const software = kind === 'software';
+  return {
+    voteKey: d.voteAddress,
+    identity: d.nodeAddress,
+    name: d.name,
+    epoch,
+    slot: null,
+    observedAt:
+      Math.floor(Date.now() / 1000) -
+      (1070 - epoch) * 150_000 -
+      Math.floor(r() * 100_000),
+    kind,
+    ipChanged: !software,
+    versionChanged: software,
+    clientChanged: false,
+    before: state(a, 1, '4.3.1'),
+    after: software ? state(a, 1, '4.3.2') : state(b, 2, '4.3.2')
+  };
+};
+
 const ROUTES: Record<string, Route> = {
+  '/cluster/activity': async q => {
+    const epochs = Math.min(10, Math.max(1, Number(q.get('epochs') ?? 3)));
+    const dir = (await directory()).filter(d => d.voteAddress);
+    const events: Array<Record<string, unknown>> = [];
+    for (let e = 1070; e > 1070 - epochs; e--) {
+      const r = rng(`activity-${e}`);
+      for (let i = 0; i < 40; i++)
+        events.push(changeEvent(r, dir[Math.floor(r() * dir.length)], e));
+      for (let i = 0; i < 25; i++)
+        events.push(hostEvent(r, dir[Math.floor(r() * dir.length)], e));
+    }
+    const t = (x: Record<string, unknown>) =>
+      Number(x.blockTime ?? x.observedAt ?? 0);
+    events.sort((a, b) => t(b) - t(a));
+    return { startEpoch: 1071 - epochs, endEpoch: 1070, events };
+  },
   '/cluster/vote-account-changes': async q => {
     const epochs = Math.min(10, Math.max(1, Number(q.get('epochs') ?? 3)));
     const dir = (await directory()).filter(d => d.voteAddress);

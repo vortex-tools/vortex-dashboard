@@ -3004,9 +3004,10 @@ export type ClusterHaltRunUp = z.infer<typeof clusterHaltSchema>;
 // withdrawal's recipient, or (create) an object of every setting.
 export const voteAccountChangeSchema = z.object({
   epoch: z.number(),
-  slot: z.number(),
+  slot: z.number().nullable().catch(null),
   blockTime: z.number().nullable().catch(null),
-  signature: z.string(),
+  // A transaction's (vote-account changes; host changes have none).
+  signature: z.string().nullable().catch(null),
   instruction: z.string().nullable().catch(null),
   // withdrawer | voter | identity | inflationCommission |
   // blockRevenueCommission | inflationCollector | blockRevenueCollector |
@@ -3044,3 +3045,24 @@ export const validatorVoteAccountChangesSchema = z.object({
 export type ValidatorVoteAccountChanges = z.infer<
   typeof validatorVoteAccountChangesSchema
 >;
+
+// ---- Validator activity (/cluster/activity, requested) -----------------
+// Vote-account changes and host changes (failover, migration, software)
+// in one feed: each event the vote-account fields above or a host
+// change's before / after.
+export const activityEventSchema = voteAccountChangeSchema.extend({
+  observedAt: z.number().nullable().optional().catch(null),
+  time: z.number().nullable().optional().catch(null),
+  ipChanged: z.boolean().nullable().optional().catch(null),
+  versionChanged: z.boolean().nullable().optional().catch(null),
+  clientChanged: z.boolean().nullable().optional().catch(null),
+  before: hostStateSchema.nullable().optional().catch(null),
+  after: hostStateSchema.nullable().optional().catch(null)
+});
+export type ActivityEvent = z.infer<typeof activityEventSchema>;
+export const clusterActivitySchema = z.object({
+  startEpoch: z.number().nullable().catch(null),
+  endEpoch: z.number().nullable().catch(null),
+  events: z.array(activityEventSchema).catch([])
+});
+export type ClusterActivity = z.infer<typeof clusterActivitySchema>;

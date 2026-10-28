@@ -180,10 +180,10 @@ const AuthoritiesCard = ({
                 Recent changes
               </span>
               <Link
-                to={`/vote-account-changes?validator=${voteAddress}&epochs=10`}
+                to={`/activity?validator=${voteAddress}&epochs=10`}
                 className="fs-10 ms-auto"
               >
-                All changes →
+                All activity →
               </Link>
             </div>
             {recent.length ? (
@@ -200,14 +200,18 @@ const AuthoritiesCard = ({
                     <span className="ms-auto text-body-tertiary fs-10 text-nowrap">
                       epoch {e.epoch.toLocaleString()}
                       {e.blockTime != null && ` · ${whenText(e.blockTime)}`}
-                      {' · '}
-                      <a
-                        href={explorerTx(e.signature, isTestnet)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Tx
-                      </a>
+                      {e.signature && (
+                        <>
+                          {' · '}
+                          <a
+                            href={explorerTx(e.signature, isTestnet)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Tx
+                          </a>
+                        </>
+                      )}
                     </span>
                   </li>
                 ))}
