@@ -142,7 +142,10 @@ const poolOf = async (spec: (typeof POOLS)[number]) => {
       otherPoolNames: ['JitoSOL', 'bSOL', 'dzSOL'].slice(0, 2),
       // ~6.8% a year of inflation at ~360 epochs, MEV a third on top.
       inflationReward: Math.round(stake * 0.000185),
-      mevReward: Math.round(stake * 0.00006)
+      mevReward: Math.round(stake * 0.00006),
+      priorityFeeReward: i % 50 === 0 ? Math.round(stake * 0.00001) : null,
+      tipRouterFee: Math.round(stake * 0.00006 * 0.0319),
+      validatorMevFeeBps: [0, 500, 800, 1000][i % 4]
     };
   });
   const ref = (v: Dir, extra: object) => ({

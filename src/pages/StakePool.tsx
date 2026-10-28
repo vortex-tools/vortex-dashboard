@@ -67,9 +67,34 @@ const END = {
   cellProps: { className: 'text-nowrap text-end font-monospace' }
 };
 
-/** What the pool earned on a validator this epoch: inflation + MEV. */
+/** What the pool earned on a validator this epoch: inflation, MEV and
+ *  priority-fee rewards. */
 const rewardOf = (v: Validator) =>
-  (v.inflationReward ?? 0) + (v.mevReward ?? 0);
+  (v.inflationReward ?? 0) + (v.mevReward ?? 0) + (v.priorityFeeReward ?? 0);
+
+/** "Inflation ◎12 · MEV ◎3 (after the validator's 8% commission and the
+ *  tip router's ◎0.1) · priority fees ◎1". */
+const rewardDetail = (v: Validator) =>
+  [
+    `Inflation ${compactSol(v.inflationReward ?? 0)}`,
+    v.mevReward != null &&
+      `MEV ${compactSol(v.mevReward)}${
+        v.validatorMevFeeBps != null || v.tipRouterFee
+          ? ` (after ${[
+              v.validatorMevFeeBps != null &&
+                `the validator's ${(v.validatorMevFeeBps / 100).toFixed(0)}% commission`,
+              v.tipRouterFee && `the tip router's ${compactSol(v.tipRouterFee)}`
+            ]
+              .filter(Boolean)
+              .join(' and ')})`
+          : ''
+      }`,
+    v.priorityFeeReward
+      ? `priority fees ${compactSol(v.priorityFeeReward)}`
+      : null
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
 const columns = (
   isSfdp: boolean,
@@ -139,14 +164,7 @@ const columns = (
             row: { original: v }
           }: {
             row: { original: Validator };
-          }) => (
-            <span
-              title={`Inflation ${compactSol(v.inflationReward ?? 0)}${v.mevReward != null ? ` · MEV ~${compactSol(v.mevReward)} (estimated)` : ''}`}
-            >
-              {v.mevReward != null && '~'}
-              {compactSol(rewardOf(v))}
-            </span>
-          ),
+          }) => <span title={rewardDetail(v)}>{compactSol(rewardOf(v))}</span>,
           meta: END
         } as ColumnDef<Validator>
       ]
@@ -553,7 +571,7 @@ const StakePool = () => {
             <Col xs={12} lg={4}>
               <StatCard
                 label="Epoch Rewards"
-                value={`${totalMev ? '~' : ''}${compactSol(totalReward)}`}
+                value={compactSol(totalReward)}
                 wrapSublabel
                 sublabel={
                   <>
@@ -562,8 +580,8 @@ const StakePool = () => {
                       : 'inflation + MEV'}
                     {totalMev > 0 && (
                       <span className="d-block">
-                        {compactSol(totalReward - totalMev)} inflation · ~
-                        {compactSol(totalMev)} MEV (estimated)
+                        {compactSol(totalReward - totalMev)} inflation ·{' '}
+                        {compactSol(totalMev)} MEV
                       </span>
                     )}
                   </>
@@ -605,7 +623,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool and of the validator, what it earned there, and whether SFDP and other pools delegate too."
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool and of the validator, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">

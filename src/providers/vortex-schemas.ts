@@ -2884,9 +2884,15 @@ export const poolDetailSchema = z.object({
         // The names behind otherPools.
         otherPoolNames: z.array(z.string()).optional().catch([]),
         // The pool's share of what the validator paid its stakers for the
-        // epoch, lamports: inflation rewards, and MEV (an estimate).
+        // epoch, lamports: inflation rewards, MEV (Jito's own split) and
+        // priority fees (Jito's priority-fee distribution; rare).
         inflationReward: z.number().nullable().optional().catch(null),
-        mevReward: z.number().nullable().optional().catch(null)
+        mevReward: z.number().nullable().optional().catch(null),
+        priorityFeeReward: z.number().nullable().optional().catch(null),
+        // What the tip router took from the validator's tips (lamports),
+        // and the validator's MEV commission.
+        tipRouterFee: z.number().nullable().optional().catch(null),
+        validatorMevFeeBps: z.number().nullable().optional().catch(null)
       })
     )
     .catch([]),
