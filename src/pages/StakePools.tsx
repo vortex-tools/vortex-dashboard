@@ -92,12 +92,7 @@ const columns = (
     cell: ({ row: { original: p } }) => (
       <>
         {compactSol(p.stake)}
-        <Delta
-          now={p.stake}
-          prev={p.stakePrev}
-          format={signedSol}
-          width="4.5rem"
-        />
+        <Delta now={p.stake} prev={p.stakePrev} format={signedSol} below />
       </>
     ),
     meta: END
@@ -120,7 +115,7 @@ const columns = (
           now={p.validators}
           prev={p.validatorsPrev}
           format={signedCount}
-          width="2.25rem"
+          below
         />
       </>
     ),
@@ -137,7 +132,7 @@ const columns = (
           }: {
             row: { original: PoolSummary };
           }) => (p.medianStake != null ? compactSol(p.medianStake) : '—'),
-          meta: END
+          meta: END_WIDE_ONLY
         } as ColumnDef<PoolSummary>
       ]
     : [])

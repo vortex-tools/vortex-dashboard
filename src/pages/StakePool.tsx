@@ -103,12 +103,7 @@ const columns = (
     cell: ({ row: { original: v } }) => (
       <>
         {compactSol(v.stake)}
-        <Delta
-          now={v.stake}
-          prev={v.stakePrev}
-          format={signedSol}
-          width="4.5rem"
-        />
+        <Delta now={v.stake} prev={v.stakePrev} format={signedSol} below />
       </>
     ),
     meta: END
@@ -546,7 +541,7 @@ const StakePool = () => {
                             now={h.stake}
                             prev={before?.stake}
                             format={signedSol}
-                            width="4.5rem"
+                            below
                           />
                         </td>
                         <td className="text-end font-monospace">
