@@ -241,6 +241,7 @@ const Home = () => {
           </div>
         </div>
 
+        {/* Phones: Epoch and Slot lead (two across), the rest after. */}
         <Row className="g-3 mb-3">
           <Col {...cardCol}>
             <StatCard
@@ -259,7 +260,7 @@ const Home = () => {
               linkTo="/status"
             />
           </Col>
-          <Col {...cardCol}>
+          <Col {...cardCol} className="order-first order-md-0">
             <StatCard
               label="Current Epoch"
               value={
@@ -273,7 +274,7 @@ const Home = () => {
               }
             />
           </Col>
-          <Col {...cardCol}>
+          <Col {...cardCol} className="order-first order-md-0">
             <StatCard
               label="Current Slot"
               value={currentSlot != null ? currentSlot.toLocaleString() : '—'}
