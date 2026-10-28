@@ -32,15 +32,15 @@ const NOWRAP = {
   headerProps: { className: 'text-nowrap' },
   cellProps: { className: 'text-nowrap' }
 };
-// Columns that give way on phones, where the table would scroll sideways.
-const WIDE_ONLY = {
-  headerProps: { className: 'text-nowrap d-none d-md-table-cell' },
-  cellProps: { className: 'text-nowrap d-none d-md-table-cell' }
-};
-const END_WIDE_ONLY = {
-  headerProps: { className: 'text-nowrap text-end d-none d-md-table-cell' },
+// The staker column stays put while the table scrolls sideways on a phone.
+const STICKY = {
+  headerProps: {
+    className: 'text-nowrap position-sticky start-0 bg-body-emphasis',
+    style: { zIndex: 1 }
+  },
   cellProps: {
-    className: 'text-nowrap text-end font-monospace d-none d-md-table-cell'
+    className: 'text-nowrap position-sticky start-0 bg-body-emphasis',
+    style: { zIndex: 1 }
   }
 };
 const END = {
@@ -77,7 +77,7 @@ const columns = (
         )}
       </span>
     ),
-    meta: NOWRAP
+    meta: STICKY
   },
   {
     id: 'kind',
@@ -86,7 +86,7 @@ const columns = (
     cell: ({ row: { original: p } }) => (
       <KindBadge kind={p.kind} name={p.name} />
     ),
-    meta: WIDE_ONLY
+    meta: NOWRAP
   },
   {
     id: 'stake',
@@ -167,7 +167,7 @@ const columns = (
           }: {
             row: { original: PoolSummary };
           }) => (p.medianStake != null ? compactSol(p.medianStake) : '—'),
-          meta: END_WIDE_ONLY
+          meta: END
         } as ColumnDef<PoolSummary>
       ]
     : []),
@@ -195,7 +195,7 @@ const columns = (
             ) : (
               '—'
             ),
-          meta: END_WIDE_ONLY
+          meta: END
         } as ColumnDef<PoolSummary>
       ]
     : [])
@@ -226,6 +226,10 @@ const StakePools = () => {
     [allPools, hideSmall]
   );
   const hidden = allPools.length - pools.length;
+  // Pools spread over many validators (not SFDP, a delegation program).
+  const multi = allPools.filter(
+    p => p.kind !== 'sfdp' && p.validators >= MIN_VALIDATORS
+  );
   // Shown once the API gives each pool's median delegation.
   const showMedian = allPools.some(p => p.medianStake != null);
   // And once it gives their fees.
@@ -316,36 +320,12 @@ const StakePools = () => {
             </div>
             <div className="col-6 col-lg-3">
               <StatCard
-                label="Marinade"
-                value={compactSol(stakeOf('marinade'))}
+                label="Multi-validator Pools"
+                value={multi.length.toLocaleString()}
                 wrapSublabel
-                sublabel={
-                  // Marinade runs several programs (mSOL, Native, Select):
-                  // one figure for all, each linked.
-                  allPools.filter(p => p.kind === 'marinade').length > 1 ? (
-                    <>
-                      {allPools
-                        .filter(p => p.kind === 'marinade')
-                        .map((p, i) => (
-                          <span key={p.name}>
-                            {i > 0 && ' · '}
-                            <Link to={poolPath(p.name)}>
-                              {p.name
-                                .replace(/^Marinade\s*/, '')
-                                .replace(/[()]/g, '') || p.name}
-                            </Link>
-                          </span>
-                        ))}
-                    </>
-                  ) : (
-                    `${(allPools.find(p => p.kind === 'marinade')?.validators ?? 0).toLocaleString()} validators`
-                  )
-                }
-                linkTo={
-                  allPools.filter(p => p.kind === 'marinade').length === 1
-                    ? poolPath(allPools.find(p => p.kind === 'marinade')!.name)
-                    : undefined
-                }
+                sublabel={`delegate to ${MIN_VALIDATORS}+ validators · ${compactSol(
+                  multi.reduce((a, p) => a + p.stake, 0)
+                )} of ${allPools.filter(p => p.kind !== 'sfdp').length.toLocaleString()} pools`}
               />
             </div>
           </div>
