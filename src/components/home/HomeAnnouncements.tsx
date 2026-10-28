@@ -80,15 +80,17 @@ const HomeAnnouncements = () => {
 
   if (!actionable.length) return null;
   return (
-    <SectionCard
-      title="Announcements"
-      icon="volume-2"
-      linkTo="/status"
-      linkLabel="All"
-      info="Announcements from Solana Tech's channel that matter now: a feature activating at the next epoch boundary or activated this epoch, a restart while the cluster is halted or just after, an urgent upgrade. Only the facts read from each post (linked) are kept; all of them are on Cluster Status."
-    >
-      <AnnouncementList announcements={actionable.slice(0, SHOWN)} />
-    </SectionCard>
+    <div className="mb-3">
+      <SectionCard
+        title="Announcements"
+        icon="volume-2"
+        linkTo="/status"
+        linkLabel="All"
+        info="Announcements from Solana Tech's channel that matter now: a feature activating at the next epoch boundary or activated this epoch, a restart while the cluster is halted or just after, an urgent upgrade. Only the facts read from each post (linked) are kept; all of them are on Cluster Status."
+      >
+        <AnnouncementList announcements={actionable.slice(0, SHOWN)} />
+      </SectionCard>
+    </div>
   );
 };
 
