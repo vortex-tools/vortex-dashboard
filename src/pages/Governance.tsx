@@ -120,6 +120,7 @@ const Governance = () => {
                   <VoteBar
                     tally={p.tally}
                     threshold={p.rule === 'constitution' ? THRESHOLD : null}
+                    outcome={p.verdict ?? p.projected}
                   />
                 </td>
                 <td

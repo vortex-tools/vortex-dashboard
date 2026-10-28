@@ -136,19 +136,29 @@ export const ChoiceTag = ({
   );
 };
 
+/** The pass mark's color by outcome: green accepted, red rejected, the
+ *  body's emphasis while undecided or inconclusive (no quorum). */
+const MARK: Record<string, string> = {
+  accepted: 'var(--vx-success)',
+  rejected: 'var(--vx-danger)'
+};
+
 /**
  * A For / Against / Abstain bar (with `notVoted`, the stake that didn't
- * vote as an empty tail). `threshold`: a mark at that share of the bar.
+ * vote as an empty tail). `threshold`: a mark at that share of the bar,
+ * colored by `outcome` (the verdict, or the projected one).
  */
 export const VoteBar = ({
   tally,
   notVoted = 0,
   threshold,
+  outcome,
   height = 10
 }: {
   tally: GovernanceTally | null | undefined;
   notVoted?: number | null;
   threshold?: number | null;
+  outcome?: string | null;
   height?: number;
 }) => {
   const parts = CHOICE.map(c => ({
@@ -172,7 +182,9 @@ export const VoteBar = ({
             key={p.key}
             style={{
               width: `${(p.v / total) * 100}%`,
-              background: cssColor(p.token)
+              // A lighter shade of the choice's color, so the pass mark
+              // (full strength) reads on top of it.
+              background: `color-mix(in srgb, ${cssColor(p.token)} 70%, var(--vx-body-bg))`
             }}
           />
         ) : null
@@ -182,10 +194,14 @@ export const VoteBar = ({
           className="position-absolute top-0 bottom-0"
           style={{
             left: `${threshold * 100}%`,
-            width: 2,
-            background: 'var(--vx-emphasis-color)'
+            width: 3,
+            marginLeft: -1,
+            // Set off from the segment under it.
+            boxShadow: '0 0 0 1px var(--vx-body-bg)',
+            background:
+              MARK[outcome?.toLowerCase() ?? ''] ?? 'var(--vx-emphasis-color)'
           }}
-          title={`Passes at ${pct(threshold)}`}
+          title={`Passes at ${pct(threshold)}${outcome ? ` · ${outcome}` : ''}`}
         />
       )}
     </div>
