@@ -102,7 +102,12 @@ const columns = (
     cell: ({ row: { original: v } }) => (
       <>
         {compactSol(v.stake)}
-        <Delta now={v.stake} prev={v.stakePrev} format={signedSol} />
+        <Delta
+          now={v.stake}
+          prev={v.stakePrev}
+          format={signedSol}
+          width="4.5rem"
+        />
       </>
     ),
     meta: END
@@ -575,13 +580,12 @@ const StakePool = () => {
                         </td>
                         <td className="text-end font-monospace text-nowrap">
                           {compactSol(h.stake)}
-                          {before && (
-                            <Delta
-                              now={h.stake}
-                              prev={before.stake}
-                              format={signedSol}
-                            />
-                          )}
+                          <Delta
+                            now={h.stake}
+                            prev={before?.stake}
+                            format={signedSol}
+                            width="4.5rem"
+                          />
                         </td>
                         <td className="text-end font-monospace">
                           {h.validators.toLocaleString()}

@@ -46,7 +46,10 @@ const END = {
   cellProps: { className: 'text-nowrap text-end font-monospace' }
 };
 
-const columns = (total: number): ColumnDef<PoolSummary>[] => [
+const columns = (
+  total: number,
+  showMedian: boolean
+): ColumnDef<PoolSummary>[] => [
   {
     id: 'name',
     header: 'Staker',
@@ -83,7 +86,12 @@ const columns = (total: number): ColumnDef<PoolSummary>[] => [
     cell: ({ row: { original: p } }) => (
       <>
         {compactSol(p.stake)}
-        <Delta now={p.stake} prev={p.stakePrev} format={signedSol} />
+        <Delta
+          now={p.stake}
+          prev={p.stakePrev}
+          format={signedSol}
+          width="4.5rem"
+        />
       </>
     ),
     meta: END
@@ -106,11 +114,27 @@ const columns = (total: number): ColumnDef<PoolSummary>[] => [
           now={p.validators}
           prev={p.validatorsPrev}
           format={signedCount}
+          width="2.25rem"
         />
       </>
     ),
     meta: END
-  }
+  },
+  ...(showMedian
+    ? [
+        {
+          id: 'median',
+          header: 'Median delegation',
+          accessorFn: (p: PoolSummary) => p.medianStake ?? 0,
+          cell: ({
+            row: { original: p }
+          }: {
+            row: { original: PoolSummary };
+          }) => (p.medianStake != null ? compactSol(p.medianStake) : '—'),
+          meta: END
+        } as ColumnDef<PoolSummary>
+      ]
+    : [])
 ];
 
 /**
@@ -139,6 +163,8 @@ const StakePools = () => {
     [allPools, hideSmall]
   );
   const hidden = allPools.length - pools.length;
+  // Shown once the API gives each pool's median delegation.
+  const showMedian = allPools.some(p => p.medianStake != null);
   // Totals and shares are over every pool, shown or not.
   const total = useMemo(
     () => allPools.reduce((a, p) => a + p.stake, 0),
@@ -159,7 +185,7 @@ const StakePools = () => {
     return c;
   }, [pools]);
   const table = useAdvanceTable({
-    columns: useMemo(() => columns(total), [total]),
+    columns: useMemo(() => columns(total, showMedian), [total, showMedian]),
     data: shown,
     sortable: true,
     pagination: true,
@@ -250,7 +276,7 @@ const StakePools = () => {
           <SectionCard
             title="All Stakers"
             icon="layers"
-            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 10 SOL: a pool's minimum stake on a validator (10 SOL or less) isn't a delegation. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
+            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 10 SOL: a pool's minimum stake on a validator (10 SOL or less) isn't a delegation. Median delegation: the middle of its holdings per validator, over those delegations. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">

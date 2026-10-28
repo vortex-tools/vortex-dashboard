@@ -2806,6 +2806,8 @@ export const poolSummarySchema = z.object({
   validators: z.number().catch(0),
   stakePrev: z.number().nullable().catch(null),
   validatorsPrev: z.number().nullable().catch(null),
+  // Median stake per validator over its delegations (> 10 SOL).
+  medianStake: z.number().nullable().optional().catch(null),
   // Validators held only at a pool's minimum stake (<= 10 SOL): not
   // delegations, not listed.
   minimumOnly: z.number().nullable().optional().catch(null)

@@ -34,22 +34,32 @@ export const signedSol = (lamports: number) =>
 export const pct = (x: number | null | undefined, digits = 1) =>
   x == null ? '—' : `${(x * 100).toFixed(digits)}%`;
 
-/** A value's change since the previous epoch, colored, or nothing. */
+/** A value's change since the previous epoch, colored. With `width`, a
+ *  fixed-width slot that's always there (empty when there's no change),
+ *  so right-aligned values in a column line up whatever follows them. */
 export const Delta = ({
   now,
   prev,
-  format
+  format,
+  width
 }: {
   now: number;
   prev: number | null | undefined;
   format: (d: number) => string | null;
+  width?: string;
 }) => {
-  if (prev == null) return null;
-  const d = now - prev;
-  const text = format(d);
-  if (!text || d === 0) return null;
+  const d = prev == null ? 0 : now - prev;
+  const text = prev == null || d === 0 ? null : format(d);
+  if (!text && !width) return null;
   return (
-    <span className={`fs-10 ms-1 ${d > 0 ? 'text-success' : 'text-danger'}`}>
+    <span
+      className={`fs-10 ms-1 ${d > 0 ? 'text-success' : 'text-danger'}`}
+      style={
+        width
+          ? { display: 'inline-block', minWidth: width, textAlign: 'left' }
+          : undefined
+      }
+    >
       {text}
     </span>
   );
