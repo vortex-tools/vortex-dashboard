@@ -431,7 +431,7 @@ const StakePool = () => {
 
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
-          <Col xs={6} lg={3}>
+          <Col xs={6} lg={4}>
             <StatCard
               label="Stake"
               value={compactSol(data.stake)}
@@ -442,7 +442,7 @@ const StakePool = () => {
               }
             />
           </Col>
-          <Col xs={6} lg={3}>
+          <Col xs={6} lg={4}>
             <StatCard
               label="Validators"
               value={validators.length.toLocaleString()}
@@ -464,14 +464,7 @@ const StakePool = () => {
               }
             />
           </Col>
-          <Col xs={6} lg={3}>
-            <StatCard
-              label="Top 10"
-              value={pct(data.top10Share)}
-              sublabel="of the pool on its 10 largest"
-            />
-          </Col>
-          <Col xs={6} lg={3}>
+          <Col xs={12} lg={4}>
             {isSfdp ? (
               <StatCard
                 label="Largest"
