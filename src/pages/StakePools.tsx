@@ -21,20 +21,12 @@ import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { FEATURES_KEY, VortexDataContext } from 'providers/VortexDataProvider';
 import { PoolSummary } from 'providers/vortex-schemas';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { ButtonGroup, Form, ToggleButton } from 'react-bootstrap';
+import { Form } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 /** Pools delegating to fewer validators than this are hidden unless
  *  asked for. */
 const MIN_VALIDATORS = 10;
-
-const FILTERS = [
-  ['all', 'All'],
-  ['stake-pool', 'Stake pools'],
-  ['marinade', 'Marinade'],
-  ['sfdp', 'SFDP']
-] as const;
-type Filter = (typeof FILTERS)[number][0];
 
 const NOWRAP = {
   headerProps: { className: 'text-nowrap' },
@@ -150,7 +142,6 @@ const StakePools = () => {
   useEffect(() => {
     fetchData?.(FEATURES_KEY);
   }, [fetchData]);
-  const [filter, setFilter] = useState<Filter>('all');
   // Small pools (fewer than MIN_VALIDATORS delegations) hidden by default.
   const [hideSmall, setHideSmall] = useState(true);
   const allPools = useMemo(() => data?.pools ?? [], [data]);
@@ -169,28 +160,14 @@ const StakePools = () => {
     () => allPools.reduce((a, p) => a + p.stake, 0),
     [allPools]
   );
-  const shown = useMemo(
-    () => (filter === 'all' ? pools : pools.filter(p => p.kind === filter)),
-    [pools, filter]
-  );
-  const counts = useMemo(() => {
-    const c: Record<Filter, number> = {
-      all: pools.length,
-      'stake-pool': 0,
-      marinade: 0,
-      sfdp: 0
-    };
-    for (const p of pools) if (p.kind && p.kind in c) c[p.kind as Filter]++;
-    return c;
-  }, [pools]);
   const table = useAdvanceTable({
     columns: useMemo(() => columns(total, showMedian), [total, showMedian]),
-    data: shown,
+    data: pools,
     sortable: true,
     pagination: true,
     pageSize: 25,
     getRowId: p => p.name,
-    resetPageKey: filter,
+    resetPageKey: String(hideSmall),
     initialState: { sorting: [{ id: 'stake', desc: true }] }
   });
   const stakeOf = (kind: string) =>
@@ -294,25 +271,6 @@ const StakePools = () => {
                     onChange={e => setHideSmall(e.target.checked)}
                     label={`Hide pools with fewer than ${MIN_VALIDATORS} validators${hideSmall && hidden ? ` (${hidden})` : ''}`}
                   />
-                  <ButtonGroup size="sm">
-                    {FILTERS.map(([k, label]) => (
-                      <ToggleButton
-                        key={k}
-                        id={`pools-filter-${k}`}
-                        type="radio"
-                        name="pools-filter"
-                        variant="soft-secondary"
-                        value={k}
-                        checked={filter === k}
-                        onChange={() => setFilter(k)}
-                      >
-                        {label}{' '}
-                        <span className="text-body-tertiary fw-normal">
-                          {counts[k].toLocaleString()}
-                        </span>
-                      </ToggleButton>
-                    ))}
-                  </ButtonGroup>
                 </div>
               </div>
               <AdvanceTable
