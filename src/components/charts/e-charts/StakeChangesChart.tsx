@@ -42,6 +42,11 @@ const sol = (lamports: number) => lamports / 1e9;
 const fmtSol = (v: number, digits = 0) =>
   `◎${v.toLocaleString('en-US', { maximumFractionDigits: digits })}`;
 
+/** A pool is drawn on its own in Pool Holdings once it held this share of
+ *  the validator's stake in some epoch shown; smaller ones are summed. */
+const MIN_POOL_SHARE = 0.01;
+const OTHER_POOLS = 'Other pools';
+
 /** Labels by total flow, largest first; beyond TOP_LABELS (and "other")
  *  fold into Other. */
 const labelOrder = (items: StakeChangeEpoch[], key: 'flows' | 'pools') => {
@@ -52,10 +57,20 @@ const labelOrder = (items: StakeChangeEpoch[], key: 'flows' | 'pools') => {
         total.set(l.label, (total.get(l.label) ?? 0) + l.inflow + l.outflow);
     else
       for (const p of it.pools)
-        total.set(p.label, Math.max(total.get(p.label) ?? 0, p.lamports));
+        // Holdings: a pool's largest share of the validator's stake in
+        // any epoch shown (lamports when the share is unknown).
+        total.set(
+          p.label,
+          Math.max(total.get(p.label) ?? 0, p.share ?? p.lamports / 1e18)
+        );
   const named = [...total.entries()]
-    // Pools that never held a whole SOL here are noise.
-    .filter(([l, v]) => l.toLowerCase() !== 'other' && v >= 1e9)
+    // Flows under a whole SOL, and pools that never held MIN_POOL_SHARE
+    // of the stake here, are noise (holdings fold them into Other pools).
+    .filter(
+      ([l, v]) =>
+        l.toLowerCase() !== 'other' &&
+        (key === 'flows' ? v >= 1e9 : v >= MIN_POOL_SHARE)
+    )
     .sort((a, b) => b[1] - a[1])
     .map(([l]) => l);
   return named.slice(0, TOP_LABELS);
@@ -207,6 +222,11 @@ const StakeChangesChart = ({
         const f = fullNameOf.get(label);
         return f ? `${f} (${label})` : label;
       };
+      const rest = (it: StakeChangeEpoch) =>
+        it.pools
+          .filter(p => !labels.includes(p.label))
+          .reduce((a, p) => a + p.lamports, 0);
+      const hasRest = items.some(it => rest(it) > 0);
       const series = labels.map((label, i) => ({
         name: label,
         type: 'line' as const,
@@ -219,6 +239,19 @@ const StakeChangesChart = ({
           sol(it.pools.find(p => p.label === label)?.lamports ?? 0)
         )
       }));
+      // The small pools as one series on top, so the stack is still every
+      // pool's stake.
+      if (hasRest)
+        series.push({
+          name: OTHER_POOLS,
+          type: 'line' as const,
+          stack: 'pools',
+          areaStyle: { opacity: 0.55 },
+          symbol: 'none',
+          lineStyle: { width: 1 },
+          color: '#8a94ad',
+          data: items.map(it => sol(rest(it)))
+        });
       return {
         animation: false,
         grid: { left: 8, right: 8, top: 16, bottom: 32, containLabel: true },
@@ -239,13 +272,20 @@ const StakeChangesChart = ({
             return (
               `<div class="fw-bold mb-1">Epoch ${it.epoch} · stake ${fmtSol(sol(it.stakeAfter))}</div>` +
               it.pools
+                .filter(p => labels.includes(p.label))
                 .map(p =>
                   line(
                     named(p.label),
                     `${fmtSol(sol(p.lamports))}${p.share != null ? ` · ${(p.share * 100).toFixed(1)}%` : ''}`
                   )
                 )
-                .join('')
+                .join('') +
+              (rest(it) > 0
+                ? line(
+                    `${OTHER_POOLS} (${it.pools.filter(p => !labels.includes(p.label)).length})`,
+                    `${fmtSol(sol(rest(it)))}${it.stakeAfter ? ` · ${((rest(it) / it.stakeAfter) * 100).toFixed(1)}%` : ''}`
+                  )
+                : '')
             );
           }
         },
