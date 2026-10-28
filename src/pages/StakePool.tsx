@@ -457,7 +457,7 @@ const StakePool = () => {
         <div className="col">
           <h3 className="d-flex align-items-center gap-2">
             {data.name}
-            <KindBadge kind={data.kind} />
+            <KindBadge kind={data.kind} name={data.name} />
           </h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             {[
