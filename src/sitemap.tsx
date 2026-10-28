@@ -77,6 +77,8 @@ export const routes: RouteItems[] = [
       },
       // SIMDs and how far their gates have activated.
       { name: 'SIMDs', icon: 'file-text', path: '/simds' },
+      // Who stake pools and SFDP delegate to (mainnet only).
+      { name: 'Stake Pools', icon: 'layers', path: '/pools' },
       // Solana governance proposals (mainnet only).
       { name: 'Governance', icon: 'check-square', path: '/governance' }
     ]
@@ -134,6 +136,7 @@ export const useNavRoutes = (): RouteItems[] => {
                   r.path !== '/leaderboards/block-income' &&
                   r.path !== '/client-versions' &&
                   r.path !== '/governance' &&
+                  r.path !== '/pools' &&
                   (!alpenglowActive || r.path !== '/leaderboards/voting')
               )
             }))

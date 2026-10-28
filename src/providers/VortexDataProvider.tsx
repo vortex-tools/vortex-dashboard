@@ -93,6 +93,10 @@ import {
   Throughput,
   clusterBlocksSchema,
   ClusterBlocks,
+  poolsSchema,
+  Pools,
+  poolDetailSchema,
+  PoolDetail,
   GovernanceProposals,
   governanceProposalDetailSchema,
   GovernanceProposalDetail,
@@ -802,6 +806,19 @@ const clusterBlocksRequest = (window: string) => ({
   schema: clusterBlocksSchema,
   timeout: 20_000
 });
+// Stake pools: the listing (FEATURES_KEY = latest epoch), one by name.
+const poolsRequest = () => ({
+  path: '/pools',
+  params: {},
+  schema: poolsSchema,
+  timeout: 20_000
+});
+const poolRequest = (name: string) => ({
+  path: '/pool',
+  params: { name, limit: 20 },
+  schema: poolDetailSchema,
+  timeout: 20_000
+});
 // Announcements by cluster ('' = both).
 const announcementsRequest = (cluster: string) => ({
   path: '/announcements',
@@ -1382,6 +1399,8 @@ interface VortexDataState {
   announcementsState: KeyedSlice<string, Announcements>;
   throughputState: KeyedSlice<string, Throughput>;
   clusterBlocksState: KeyedSlice<string, ClusterBlocks>;
+  poolsState: KeyedSlice<string, Pools>;
+  poolState: KeyedSlice<string, PoolDetail>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
   validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
   clusterVersionsState: KeyedSlice<number, ClusterVersions>;
@@ -1501,6 +1520,14 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: clusterBlocksRequest,
     toEntries: keyed<string, ClusterBlocks>()
   });
+  const poolsState = useKeyedSlice({
+    request: poolsRequest,
+    toEntries: keyed<string, Pools>()
+  });
+  const poolState = useKeyedSlice({
+    request: poolRequest,
+    toEntries: keyed<string, PoolDetail>()
+  });
   const announcementsState = useKeyedSlice({
     request: announcementsRequest,
     toEntries: keyed<string, Announcements>()
@@ -1616,6 +1643,8 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       announcementsState,
       throughputState,
       clusterBlocksState,
+      poolsState,
+      poolState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,
@@ -1662,6 +1691,8 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       announcementsState,
       throughputState,
       clusterBlocksState,
+      poolsState,
+      poolState,
       governanceProposalState,
       validatorGovernanceState,
       clusterVersionsState,

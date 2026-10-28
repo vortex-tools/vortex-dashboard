@@ -2791,6 +2791,85 @@ export const clusterBlocksSchema = z.preprocess(
 );
 export type ClusterBlocks = z.infer<typeof clusterBlocksSchema>;
 
+// ---- Stake pools (/pools, /pool) ---------------------------------------
+// Who stake pools, Marinade and SFDP delegate to, per completed epoch,
+// from Jito's stake-meta file (pools by name, Marinade's two authorities
+// merged; SFDP by its stake authority). Effective stake, lamports.
+export const poolSummarySchema = z.object({
+  name: z.string(),
+  // 'stake-pool' | 'marinade' | 'sfdp'
+  kind: z.string().nullable().catch(null),
+  fullName: z.string().nullable().catch(null),
+  authorities: z.array(z.string()).catch([]),
+  stake: z.number().catch(0),
+  validators: z.number().catch(0),
+  stakePrev: z.number().nullable().catch(null),
+  validatorsPrev: z.number().nullable().catch(null)
+});
+export type PoolSummary = z.infer<typeof poolSummarySchema>;
+
+export const poolsSchema = z.object({
+  epoch: z.number().nullable().catch(null),
+  pools: z.array(poolSummarySchema).catch([])
+});
+export type Pools = z.infer<typeof poolsSchema>;
+
+const poolValidatorRefSchema = z.object({
+  voteKey: z.string(),
+  identity: z.string().nullable().catch(null),
+  name: z.string().nullable().catch(null),
+  stake: z.number().nullable().optional().catch(null),
+  stakePrev: z.number().nullable().optional().catch(null),
+  net: z.number().nullable().optional().catch(null)
+});
+export type PoolValidatorRef = z.infer<typeof poolValidatorRefSchema>;
+
+export const poolDetailSchema = z.object({
+  name: z.string(),
+  kind: z.string().nullable().catch(null),
+  fullName: z.string().nullable().catch(null),
+  authorities: z.array(z.string()).catch([]),
+  epoch: z.number().nullable().catch(null),
+  stake: z.number().catch(0),
+  top10Share: z.number().nullable().catch(null),
+  validators: z
+    .array(
+      z.object({
+        voteKey: z.string(),
+        // Today's directory pairing.
+        identity: z.string().nullable().catch(null),
+        name: z.string().nullable().catch(null),
+        stake: z.number().catch(0),
+        shareOfPool: z.number().nullable().catch(null),
+        shareOfValidator: z.number().nullable().catch(null),
+        stakePrev: z.number().nullable().catch(null),
+        // SFDP's stake on the same validator (overlap).
+        sfdpStake: z.number().nullable().catch(null)
+      })
+    )
+    .catch([]),
+  // Oldest first. moved nets out reward compounding by the pool's
+  // median growth, so small moves on big holdings can be noise.
+  history: z
+    .array(
+      z.object({
+        epoch: z.number(),
+        stake: z.number().catch(0),
+        validators: z.number().catch(0),
+        // Whether the epoch had a previous one to compare with.
+        compared: z.boolean().catch(true),
+        added: z.array(poolValidatorRefSchema).catch([]),
+        moreAdded: z.number().catch(0),
+        dropped: z.array(poolValidatorRefSchema).catch([]),
+        moreDropped: z.number().catch(0),
+        moved: z.array(poolValidatorRefSchema).catch([]),
+        moreMoved: z.number().catch(0)
+      })
+    )
+    .catch([])
+});
+export type PoolDetail = z.infer<typeof poolDetailSchema>;
+
 // ---- Halt run-up (/cluster/halt) ----------------------------------------
 // The last slots before a halt (Alpenglow footers): blocks, skips,
 // finalization, votes per slot, and who was voting at the end.
