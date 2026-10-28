@@ -236,7 +236,7 @@ const Home = () => {
           {/* Padded and balanced, so a phone splits it into two even lines
               rather than leaving "income." alone. */}
           <p
-            className="text-body-tertiary mb-3 px-4"
+            className="text-body-tertiary mb-3 px-2"
             style={{ textWrap: 'balance' }}
           >
             Solana validator performance, vote quality, and block income.
