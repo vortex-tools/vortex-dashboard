@@ -135,7 +135,14 @@ const columns = (
     accessorFn: v => v.stake,
     cell: ({ row: { original: v } }) => (
       <>
-        {compactSol(v.stake)}
+        {/* Its stakers, on the validator's Staking tab. */}
+        <Link
+          to={`/validator/${v.voteKey}/staking`}
+          className="text-reset"
+          title="Its stakers"
+        >
+          {compactSol(v.stake)}
+        </Link>
         <Delta now={v.stake} prev={v.stakePrev} format={signedSol} below />
       </>
     ),
@@ -158,7 +165,16 @@ const columns = (
             row: { original: v }
           }: {
             row: { original: Validator };
-          }) => <span title={rewardDetail(v)}>{compactSol(rewardOf(v))}</span>,
+          }) => (
+            // Its rewards over epochs, on the validator's Earnings tab.
+            <Link
+              to={`/validator/${v.voteKey}/earnings`}
+              className="text-reset"
+              title={rewardDetail(v)}
+            >
+              {compactSol(rewardOf(v))}
+            </Link>
+          ),
           meta: END
         } as ColumnDef<Validator>
       ]
@@ -710,7 +726,11 @@ const StakePool = () => {
           info="Each epoch, newest first: its stake, validator count, and the validators it added, dropped or moved stake on. Small moves can be reward noise."
         >
           {newest.length ? (
-            <Table responsive size="sm" className="data-table fs-9 mb-0">
+            <Table
+              responsive
+              size="sm"
+              className="data-table no-stripes fs-9 mb-0"
+            >
               <thead>
                 <tr>
                   <th>Epoch</th>
