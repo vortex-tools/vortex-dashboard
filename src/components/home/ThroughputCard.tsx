@@ -47,6 +47,7 @@ const INFO: Record<Metric, string> = {
 /** The history window, and the bucket size the provider asks for at it
  *  (30 s: the API's 720-point maximum over 6 h). */
 const WIN = '6h';
+const WINDOW_SECS = 6 * 3600;
 
 /** The live part: a point every LIVE_STEP_SLOTS (~2 s) behind the
  *  playhead, which trails the newest block by LIVE_LEAD slots. */
@@ -385,6 +386,18 @@ const ThroughputCard = ({
     return [t, view?.stacked ? v : first[first.length - 1][1]];
   })();
 
+  // The window's start, and - for the block metrics, which come only from
+  // the block store - when its history begins, if later.
+  const windowFrom = Date.now() / 1000 - WINDOW_SECS;
+  const historyFrom =
+    shown !== 'tps' || tpsFromBlocks
+      ? (blocksData?.buckets[0]?.t ?? null)
+      : null;
+  const filling =
+    historyFrom != null && historyFrom > windowFrom + 15 * 60
+      ? historyFrom
+      : null;
+
   const primary = getThemeColor('primary');
   const option = {
     // Every change draws at once; the pulse on the newest point is the
@@ -403,6 +416,10 @@ const ThroughputCard = ({
     xAxis: {
       type: 'time',
       splitNumber: 4,
+      // Always the full window, so history still filling (the block
+      // store refills over 6 h after a reset) reads as a gap, not a
+      // shorter chart.
+      min: windowFrom * 1000,
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
@@ -516,7 +533,13 @@ const ThroughputCard = ({
             ['Peak', '—']
           ]
         ).map(([label, value]) => (
-          <Figure key={label} label={label} value={value} />
+          <Figure
+            key={label}
+            // While the block history is still filling, the 6-hour total
+            // only covers what's been collected.
+            label={filling != null && label === 'Past 6 h' ? 'So far' : label}
+            value={value}
+          />
         ))}
       </div>
       {view ? (
@@ -527,6 +550,16 @@ const ThroughputCard = ({
             option={option}
             style={{ height: chartHeight, width: '100%' }}
           />
+          {filling != null && shown !== 'tps' && (
+            <p className="fs-10 text-body-tertiary mb-0 mt-1">
+              Collecting since{' '}
+              {new Date(filling * 1000).toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+              : the block history fills the 6 hours as it goes.
+            </p>
+          )}
           {view.stacked && (
             <div className="d-flex gap-3 fs-10 text-body-tertiary mt-1">
               {view.series.map((sr, i) => (
