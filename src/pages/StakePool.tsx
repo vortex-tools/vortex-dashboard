@@ -97,18 +97,10 @@ const rewardDetail = (v: Validator) =>
     .filter(Boolean)
     .join(' · ');
 
-/** A validator's yearly yield for its delegators, from what the pool
- *  earned there last epoch (before the pool's commission). */
-const yieldOf = (v: Validator, epochsPerYear: number | null) =>
-  epochsPerYear && v.stake && v.inflationReward != null
-    ? (1 + rewardOf(v) / v.stake) ** epochsPerYear - 1
-    : null;
-
 const columns = (
   isSfdp: boolean,
   showOther: boolean,
-  showRewards: boolean,
-  epochsPerYear: number | null
+  showRewards: boolean
 ): ColumnDef<Validator>[] => [
   {
     id: 'rank',
@@ -156,37 +148,6 @@ const columns = (
     cell: ({ row: { original: v } }) => pct(v.shareOfPool, 2),
     meta: END
   },
-  {
-    id: 'shareOfValidator',
-    header: "Of the validator's stake",
-    accessorFn: v => v.shareOfValidator ?? 0,
-    cell: ({ row: { original: v } }) => pct(v.shareOfValidator),
-    meta: END
-  },
-  ...(showRewards && epochsPerYear
-    ? [
-        {
-          id: 'yield',
-          header: 'Delegator yield',
-          accessorFn: (v: Validator) => yieldOf(v, epochsPerYear) ?? -1,
-          cell: ({
-            row: { original: v }
-          }: {
-            row: { original: Validator };
-          }) => {
-            const y = yieldOf(v, epochsPerYear);
-            return y == null ? (
-              <span className="text-body-quaternary">—</span>
-            ) : (
-              <span title="A year at last epoch's rate, before the pool's commission">
-                {(y * 100).toFixed(2)}%
-              </span>
-            );
-          },
-          meta: END
-        } as ColumnDef<Validator>
-      ]
-    : []),
   ...(showRewards
     ? [
         {
@@ -213,8 +174,12 @@ const columns = (
             (v.sfdpStake ?? 0) > MIN_STAKE ? 1 : 0,
           cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
             (v.sfdpStake ?? 0) > MIN_STAKE ? (
-              <Badge bg="success" className="text-nowrap">
-                Delegated
+              <Badge
+                bg="success"
+                title="SFDP delegates here"
+                aria-label="SFDP delegates here"
+              >
+                <FeatherIcon icon="check" size={11} />
               </Badge>
             ) : (
               <span className="text-body-quaternary">—</span>
@@ -339,6 +304,22 @@ const ConcentrationChart = ({ validators }: { validators: Validator[] }) => {
 /** The pool's stake (area) and validator count (line) per epoch. */
 const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
   const { getThemeColor } = useAppContext();
+  // Stake labels with as many digits as its range needs: a pool whose
+  // stake barely moves read "◎2.23M" on every line.
+  const stakes = history.map(h => h.stake);
+  const stakeRange = (Math.max(...stakes) - Math.min(...stakes)) / 1e9;
+  const stakeLabel = (v: number) => {
+    const sol = v / 1e9;
+    if (stakeRange >= 1e6 || sol < 1e4) return compactSol(v);
+    const k = sol / 1e3;
+    return `◎${k.toLocaleString('en-US', { maximumFractionDigits: stakeRange < 1e3 ? 1 : 0 })}K`;
+  };
+  // Whole validators, with room around a count that hardly moves (56 to
+  // 57 drew 56.2, 56.4, ...).
+  const counts = history.map(h => h.validators);
+  const lo = Math.min(...counts);
+  const hi = Math.max(...counts);
+  const pad = Math.max(2, Math.ceil((hi - lo) * 0.25));
   const option = {
     animation: false,
     grid: { left: 4, right: 8, top: 16, bottom: 4, containLabel: true },
@@ -360,13 +341,15 @@ const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
         axisLabel: {
           color: getThemeColor('tertiary-color'),
           fontSize: 10,
-          formatter: (v: number) => compactSol(v)
+          formatter: stakeLabel
         },
         splitLine: { lineStyle: { color: getThemeColor('border-color') } }
       },
       {
         type: 'value',
-        scale: true,
+        min: Math.max(0, lo - pad),
+        max: hi + pad,
+        minInterval: 1,
         axisLabel: { color: getThemeColor('tertiary-color'), fontSize: 10 },
         splitLine: { show: false }
       }
@@ -509,8 +492,8 @@ const StakePool = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(isSfdp, showOther, showRewards, epochsPerYear),
-      [isSfdp, showOther, showRewards, epochsPerYear]
+      () => columns(isSfdp, showOther, showRewards),
+      [isSfdp, showOther, showRewards]
     ),
     data: validators,
     sortable: true,
@@ -562,15 +545,7 @@ const StakePool = () => {
             {data.name}
             <KindBadge kind={data.kind} name={data.name} />
           </h3>
-          <p className="text-body-tertiary lh-sm mb-0 mt-1">
-            {[
-              data.fullName,
-              data.epoch != null &&
-                `end of epoch ${data.epoch.toLocaleString()}`
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
+          <p className="text-body-tertiary lh-sm mb-0 mt-1">{data.fullName}</p>
         </div>
         <div className="col-auto">
           <BackLink to="/pools" label="All stake pools" />
@@ -689,7 +664,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool and of the validator, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too."
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">

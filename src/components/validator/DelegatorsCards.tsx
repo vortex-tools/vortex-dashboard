@@ -222,19 +222,6 @@ const DelegatorsCards = ({ identity }: { identity: string }) => {
     <Row className="g-3">
       <Col xs={12} lg={6}>
         <SectionCard
-          title={`Stake Sizes · epoch ${d.epoch}`}
-          icon="bar-chart"
-          info="Its stakers grouped by how much they stake here (a stake pool counts as one)."
-        >
-          {d.sizes.length ? (
-            <StakeSizes d={d} />
-          ) : (
-            <p className="fs-9 text-body-tertiary mb-0">No stake.</p>
-          )}
-        </SectionCard>
-      </Col>
-      <Col xs={12} lg={6}>
-        <SectionCard
           title={`Top Stakers · epoch ${d.epoch}`}
           icon="users"
           info="Its largest stakers at the epoch's end. Pools are named and link to their pages."
@@ -269,6 +256,19 @@ const DelegatorsCards = ({ identity }: { identity: string }) => {
             <p className="fs-9 text-body-tertiary mb-0">
               {poolsOnly ? 'No pools stake here.' : 'No stakers.'}
             </p>
+          )}
+        </SectionCard>
+      </Col>
+      <Col xs={12} lg={6}>
+        <SectionCard
+          title={`Stake Sizes · epoch ${d.epoch}`}
+          icon="bar-chart"
+          info="Its stakers grouped by how much they stake here (a stake pool counts as one)."
+        >
+          {d.sizes.length ? (
+            <StakeSizes d={d} />
+          ) : (
+            <p className="fs-9 text-body-tertiary mb-0">No stake.</p>
           )}
         </SectionCard>
       </Col>
