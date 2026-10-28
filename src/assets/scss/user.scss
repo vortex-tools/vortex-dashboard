@@ -532,3 +532,12 @@ th.leaderboard-sticky-col {
     background-color: rgba(var(--vx-quaternary-bg-rgb), 0.1);
   }
 }
+
+// Cluster Status's playback bar on phones: the finality line under the
+// slot and epoch, not squeezed in after them.
+@include media-breakpoint-down(md) {
+  .playback-finality {
+    flex-basis: 100%;
+    margin-left: 0 !important;
+  }
+}

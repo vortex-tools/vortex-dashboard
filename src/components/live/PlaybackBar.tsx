@@ -89,7 +89,9 @@ const PlaybackBar = ({
   );
   return (
     <div className="playback-strip mx-n3 px-3 border-top border-translucent py-2">
-      <div className="d-flex flex-wrap justify-content-between align-items-center fs-9 text-body-tertiary mb-2 column-gap-3 row-gap-2">
+      {/* The status text wraps beside the buttons, which keep the right
+          edge (on a phone they'd otherwise drop to a line of their own). */}
+      <div className="d-flex justify-content-between align-items-center fs-9 text-body-tertiary mb-2 column-gap-3">
         <div className="d-flex flex-wrap align-items-center column-gap-2 row-gap-1 min-w-0">
           <span
             className={`badge badge-soft fs-10 ${badge.cls}`}
@@ -112,11 +114,12 @@ const PlaybackBar = ({
           </span>
           {epoch != null && (
             <span>
-              · Epoch {epoch}
+              {/* Phones wrap the epoch onto its own line: no leading dot. */}
+              <span className="d-none d-md-inline">· </span>Epoch {epoch}
               {epochPct != null && ` · ${epochPct.toFixed(1)}%`}
             </span>
           )}
-          <span className="d-inline-flex align-items-center min-w-0 ms-1">
+          <span className="playback-finality d-inline-flex align-items-center min-w-0 ms-1">
             {finality}
           </span>
         </div>
