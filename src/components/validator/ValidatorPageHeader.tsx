@@ -94,10 +94,10 @@ const ValidatorPageHeader = ({
           <h3 className="mb-0 text-truncate">{name}</h3>
         </div>
         <div
-          className="d-flex align-items-center gap-2"
+          className="d-flex align-items-stretch gap-2"
           style={{ width: '30rem', maxWidth: '100%' }}
         >
-          <BackLink to="/validators" label="All validators" />
+          <BackLink to="/validators" label="All validators" stretch />
           <div className="flex-grow-1 min-w-0">
             <ValidatorSearch
               placeholder="Jump to a validator…"
