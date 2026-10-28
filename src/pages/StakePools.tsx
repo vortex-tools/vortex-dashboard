@@ -84,9 +84,7 @@ const columns = (
     id: 'kind',
     header: 'Kind',
     accessorFn: p => p.kind ?? '',
-    cell: ({ row: { original: p } }) => (
-      <KindBadge kind={p.kind} name={p.name} />
-    ),
+    cell: ({ row: { original: p } }) => <KindBadge kind={p.kind} />,
     meta: WIDE_ONLY
   },
   {
