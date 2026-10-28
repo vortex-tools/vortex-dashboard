@@ -249,6 +249,7 @@ const Home = () => {
               mono={false}
               value={live.loaded ? (halt ? 'Halted' : 'Healthy') : '—'}
               check={live.loaded && !halt ? true : null}
+              plainCheck
               alert={!!halt}
               sublabel={
                 halt

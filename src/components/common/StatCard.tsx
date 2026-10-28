@@ -21,6 +21,8 @@ interface Props {
   /** A threshold it is judged against: met (a green check and outline,
    *  the usual background) or not (a red cross). */
   check?: boolean | null;
+  /** A met check keeps the usual border (the check icon alone). */
+  plainCheck?: boolean;
   /** Something is wrong right now (e.g. the cluster halted): the whole
    *  card in the danger tint, the value in its emphasis shade. */
   alert?: boolean;
@@ -45,6 +47,7 @@ const StatCard = ({
   wrapSublabel = false,
   tone,
   check,
+  plainCheck = false,
   alert = false
 }: Props) => {
   const body = (
@@ -88,7 +91,7 @@ const StatCard = ({
   );
   const frame = alert
     ? 'bg-danger-subtle border-danger-subtle'
-    : check === true
+    : check === true && !plainCheck
       ? 'bg-body-emphasis border-success'
       : check === false
         ? 'bg-body-emphasis border-danger-subtle'
