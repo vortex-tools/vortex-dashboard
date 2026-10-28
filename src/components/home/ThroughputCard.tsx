@@ -547,7 +547,9 @@ const ThroughputCard = ({
         ) : undefined
       }
     >
-      <div className={`d-flex gap-4 mb-2${compact ? ' d-none' : ''}`}>
+      <div
+        className={`d-flex gap-4 mb-2${compact || shown === 'income' ? ' d-none' : ''}`}
+      >
         {(
           view?.figures ?? [
             ['Last minute', '—'],
