@@ -17,7 +17,6 @@ import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import {
   Delta,
-  KindBadge,
   poolPath,
   bpsPct,
   compactSol,
@@ -584,13 +583,7 @@ const StakePool = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col">
-          <h3 className="d-flex align-items-center gap-2">
-            {data.name}
-            {/* SFDP's name already says what it is. */}
-            {data.kind !== 'sfdp' && (
-              <KindBadge kind={data.kind} name={data.name} />
-            )}
-          </h3>
+          <h3>{data.name}</h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">{data.fullName}</p>
         </div>
         <div className="col-auto">
