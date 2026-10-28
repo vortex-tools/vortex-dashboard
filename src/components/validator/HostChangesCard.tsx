@@ -92,7 +92,7 @@ const HostChangesCard = ({
     <SectionCard
       title="Infrastructure"
       icon="server"
-      info="Where this validator runs, from its gossip address (shown as provider + city, never the address). This epoch: failovers, moves and software upgrades as they happen. Before that: its migrations - moves to a new host; failovers between a primary and its spare aren't listed. Whether a change was a failover or a move is judged with hindsight, so a recent one can be relabeled."
+      info="Where this validator runs (provider and city, from gossip): this epoch's failovers, moves and upgrades, and its past moves to new hosts."
     >
       {latest && (
         <p className="fs-9 mb-3">

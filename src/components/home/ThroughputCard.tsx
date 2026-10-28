@@ -38,10 +38,10 @@ const TITLE: Record<Metric, string> = {
   income: 'Live Block Income'
 };
 const INFO: Record<Metric, string> = {
-  tps: "Transactions per second over the past 6 hours, from the block store in 30-second buckets (before it has them, the cluster's per-minute performance samples), then the newest blocks played back slot by slot a few seconds behind the chain. Under Alpenglow votes aren't transactions, so every one counted is a user transaction.",
-  cu: 'Compute units used per block over the past 6 hours, in 30-second buckets of block time, then the newest blocks played back slot by slot. The block limit is 100M; the share of it is in the figures. From the block ingestor.',
+  tps: 'Transactions per second over the past 6 hours, then live, a few seconds behind the chain.',
+  cu: 'Compute units per block over the past 6 hours, then live. The block limit is 100M.',
   income:
-    "What leaders earned from their blocks over the past 6 hours, per minute of block time: fees (the leader's share of base fees after the burn, plus priority fees) and MEV tips, then the newest blocks over a rolling minute, played back slot by slot. From the block ingestor."
+    'What leaders earned per minute over the past 6 hours (fees and MEV tips), then live.'
 };
 
 /** The history window, and the bucket size the provider asks for at it

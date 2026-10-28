@@ -86,7 +86,7 @@ const HomeAnnouncements = () => {
         icon="volume-2"
         linkTo="/status"
         linkLabel="All"
-        info="Announcements from Solana Tech's channel that matter now: a feature activating at the next epoch boundary or activated this epoch, a restart while the cluster is halted or just after, an urgent upgrade. Only the facts read from each post (linked) are kept; all of them are on Cluster Status."
+        info="Announcements that matter now: a feature activating, a restart, an urgent upgrade. All of them are on Cluster Status."
       >
         <AnnouncementList announcements={actionable.slice(0, SHOWN)} />
       </SectionCard>

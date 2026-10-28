@@ -56,7 +56,7 @@ const RestartCard = ({
     <SectionCard
       title="Cluster Restart"
       icon="refresh-cw"
-      info="Validators restart a halted cluster on a new shred version, at an agreed slot. This is all activated stake by the shred version its node advertises in gossip, refreshed every minute; one version needs the supermajority of stake for the cluster to resume. Not in gossip: the node isn't advertising at all (down, or restarting)."
+      info="Stake by the shred version its node advertises. The cluster resumes once one new version holds the supermajority."
     >
       <p className="fs-9 mb-3">
         {progress ? (

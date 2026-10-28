@@ -82,7 +82,7 @@ const HaltRunUpCard = ({
       <SectionCard
         title="Last Slots"
         icon="list"
-        info="The last finalized block, then the final slots before the halt, newest first: the leader, its client (from the block footer), the stake that notarized the block, and how many slots its finalization took. Votes for a slot arrive in slot + 8's block, so the last few slots before a halt often have none."
+        info="The last slots before the halt, newest first: leader, client, notarizing stake, and finalization. The last few often have no votes."
       >
         <p className="fs-9 mb-3">
           {halt.finalizedSlot != null ? (
@@ -173,7 +173,7 @@ const HaltRunUpCard = ({
         <SectionCard
           title="Before the Halt"
           icon="users"
-          info="In the last block whose votes landed (its slot + 8 carried the reward certificates): the stake that voted, and the stake in neither certificate, by client and version. Clients and versions are what gossip reports now, not at the halt: a validator that has restarted on new software shows it."
+          info="Who voted in the last block whose votes landed, by client and version (as gossip reports them now)."
         >
           <p className="fs-9 mb-3">
             Slot{' '}

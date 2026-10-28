@@ -329,7 +329,7 @@ const FeatureGatePage = () => {
                 r ? `Stake Ready on ${clusterLabel(r.cluster)}` : 'Stake Ready'
               }
               icon="check-circle"
-              info="Activated stake whose node runs at least the gate's minimum version for its client (Jito is held to Agave's). Unknown: the node isn't in gossip, its version doesn't parse, or no minimum is listed for its client."
+              info="Stake whose node runs at least the gate's minimum version for its client. Unknown: not in gossip, or no minimum listed."
             >
               {r ? (
                 <>
@@ -393,7 +393,7 @@ const FeatureGatePage = () => {
           <SectionCard
             title="SIMD Sources"
             icon="git-merge"
-            info="No source is authoritative: each is kept by hand. Every SIMD any source ties to this gate, and who says so - the Feature Gate Tracker, agave's feature name, the SIMD's own feature line, the tracking issue, the SIMD's text, or our review where we reconciled them."
+            info="Every SIMD linked to this gate and which sources say so (tracker, agave, the SIMD, the tracking issue). No source is authoritative."
           >
             {f.simdConflict && (
               <p className="fs-9 text-warning-emphasis mb-2">
@@ -452,7 +452,7 @@ const FeatureGatePage = () => {
         <SectionCard
           title="History"
           icon="clock"
-          info="As our writer saw it, newest first: entering or leaving the tracker's queue, the feature account appearing (queued) or removed before activating (revoked), and activation. Its first run recorded every activation already on chain."
+          info="Newest first: entering or leaving the tracker's queue, queued, revoked, activated - as we saw them."
         >
           {events.length ? (
             <Table

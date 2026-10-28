@@ -603,7 +603,7 @@ const GovernanceProposal = () => {
             <SectionCard
               title="Result"
               icon="check-square"
-              info="Stake-weighted: each validator votes its stake in the snapshot epoch, less what its stakers voted themselves (their own choice). The program records only these tallies; the verdict applies the proposal's rule."
+              info="Stake-weighted: each validator votes its stake, less what its stakers voted themselves."
             >
               <Table size="sm" className="data-table fs-9 mb-0">
                 <thead>
@@ -807,7 +807,7 @@ const GovernanceProposal = () => {
         <SectionCard
           title="Staker Overrides"
           icon="corner-down-right"
-          info="Stakers can vote their own stake instead of leaving it to their validator. Only overrides that changed something count here: stake changed to a different choice than the validator's, or voted where the validator didn't vote. Stake pools appear by name (svmgov lets a pool's manager vote its stake); everyone else by address."
+          info="Stakers who voted their own stake differently from their validator. Stake pools are named; others show by address."
         >
           {effects.length || data.largeOverrides.length ? (
             <>

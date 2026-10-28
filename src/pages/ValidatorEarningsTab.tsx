@@ -77,7 +77,7 @@ const ValidatorEarningsTab = () => {
             <SectionCard
               title="Inflation Rewards"
               icon="award"
-              info="Gross, before commission. Alpenglow epochs split it: Voting (its notarize and skip votes in the reward certificates) and Production (the producer bonus, half of every vote its own blocks carried); Missed is what its missed votes didn't earn. Commission is the validator's cut; the current epoch's is estimated (≈) until it's paid at the epoch's end. The current epoch is so far."
+              info="Rewards before commission, per epoch: Voting and Production (Alpenglow), and what missed votes didn't earn. The current epoch is so far, its commission estimated (≈)."
             >
               {rewardsLoading ? (
                 <DelayedSpinner loading label="Loading rewards…" />

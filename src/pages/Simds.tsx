@@ -249,7 +249,7 @@ const Simds = () => {
           <SectionCard
             title="All SIMDs"
             icon="file-text"
-            info="Every proposal in the SIMD repository, read hourly, and SIMDs only an open pull request proposes. In review: a proposal or amendment open as a pull request. A cluster's column covers the gates that implement the SIMD: active once all are, partly active while some are."
+            info="Every SIMD proposal, and how far its feature gates have activated on each cluster. In review: open as a pull request."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">

@@ -288,7 +288,7 @@ const FeatureGates = () => {
           <SectionCard
             title={`Up Next on ${clusterLabel(served)}`}
             icon="clock"
-            info="Queued gates activate at the next epoch boundary; the rest wait in the tracker's order (it plans no epochs). 'After' names required gates not active yet: it can't take effect before them. Ready: activated stake whose node runs at least the gate's minimum version for its client (Jito is held to Agave's); unknown when the node isn't in gossip, its version doesn't parse, or no minimum is listed."
+            info="Queued gates activate at the next epoch; the rest wait in the tracker's order. Ready: stake running a version that supports the gate."
           >
             {upcoming?.features.length ? (
               <Table responsive size="sm" className="data-table fs-9 mb-0">

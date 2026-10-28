@@ -820,7 +820,7 @@ const Decentralization = () => {
                 title="Clients"
                 icon="cpu"
                 noun="client"
-                info="Stake by validator client, from gossip. Agave's flavors (Jito, BAM, Harmonic, Rakurai, ...) count as Agave: a bug in its code is shared by all of them. Frankendancer is Firedancer's networking on Agave's runtime."
+                info="Stake by validator client, from gossip. Jito, BAM, Harmonic and the like count as Agave: they share its code and its bugs."
                 groups={view.families}
                 total={view.total}
                 race={races?.clients}
@@ -833,7 +833,7 @@ const Decentralization = () => {
                 title="Flavors"
                 icon="layers"
                 noun="flavor"
-                info="Stake by block-building flavor, across clients: Harmonic, BAM and Jito run on Agave and on Firedancer alike, so an outage in one flavor's block engine hits validators of either client. Plain client: neither."
+                info="Stake by block builder (Jito, BAM, Harmonic), across clients: an outage in one builder hits validators of either client."
                 groups={view.flavors}
                 total={view.total}
                 race={races?.flavors}

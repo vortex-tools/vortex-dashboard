@@ -552,7 +552,7 @@ const ClientVersionsCard = () => {
     <SectionCard
       title="Client Upgrades"
       icon="git-branch"
-      info="How far each client's validators have upgraded: the share of Agave's and Firedancer's own stake on each version per epoch (* = the epoch in progress, so far), against a target version you can change. Flavors - Jito, BAM, Harmonic, Rakurai - count as the version they're built on. Past epochs come from ValidatorHistory's per-epoch record, the epoch in progress from gossip; the still-before list is gossip now. Click an epoch for its upgrades and downgrades. Frankendancer reached end of life with Alpenglow and isn't shown."
+      info="Each client's stake by version per epoch, against a target you can change (* = so far). Click an epoch for its upgrades."
     >
       <Row className="g-4">
         {FAMILIES.map(f => (

@@ -44,7 +44,7 @@ const RestartAnnouncementCard = ({ post }: { post: Announcement }) => {
     <SectionCard
       title="Restart Announced"
       icon="volume-2"
-      info="From Solana Tech's announcement channel: only the facts read from the post and the Agave wiki pages it links (re-read every few minutes for three days, since pages get corrected). The restart slot is the restart snapshot's slot - the halted chain's last confirmed slot, or a block built on it for the restart - not where the chain halted."
+      info="The restart Solana Tech announced, read from the post and the Agave wiki page it links. The restart slot isn't where the chain halted."
     >
       <p className="fs-9 mb-3">
         Solana Tech announced a restart{' '}

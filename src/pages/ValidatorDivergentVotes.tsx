@@ -238,7 +238,7 @@ const ValidatorDivergentVotes = () => {
                     <SectionCard
                       title="Missed Votes by Reward Leader"
                       icon="users"
-                      info="The votes on a slot are rewarded by the block 8 slots later - its reward block - so each miss belongs to that block's leader. One cause per miss: offline, else a Poor reward block, else it didn't get in."
+                      info="A slot's votes are rewarded by the block 8 slots later, so each miss belongs to that block's leader. One cause per miss."
                     >
                       <ProducerMissesTable
                         misses={misses}

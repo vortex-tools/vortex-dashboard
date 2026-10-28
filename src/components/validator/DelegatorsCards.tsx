@@ -224,7 +224,7 @@ const DelegatorsCards = ({ identity }: { identity: string }) => {
         <SectionCard
           title={`Stake Sizes · epoch ${d.epoch}`}
           icon="bar-chart"
-          info="Its stakers grouped by how much they stake here (by withdraw authority: a stake pool is one staker however many accounts it uses). Share of stake shows where the stake sits; Stakers, how many hold each size."
+          info="Its stakers grouped by how much they stake here (a stake pool counts as one)."
         >
           {d.sizes.length ? (
             <StakeSizes d={d} />
@@ -237,7 +237,7 @@ const DelegatorsCards = ({ identity }: { identity: string }) => {
         <SectionCard
           title={`Top Stakers · epoch ${d.epoch}`}
           icon="users"
-          info="Its largest stakers at the epoch's end (up to 100), by withdraw authority. Stake pools, Marinade and SFDP are named and link to their pages; others show their withdraw authority. Pools only: just the named ones."
+          info="Its largest stakers at the epoch's end. Pools are named and link to their pages."
         >
           {/* As the Stake Sizes card's toggle. */}
           <div className="d-flex align-items-center justify-content-between mb-1">

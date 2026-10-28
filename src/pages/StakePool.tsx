@@ -605,7 +605,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Everyone it delegates to at the end of the epoch (holdings over 50 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), what the pool earned there this epoch (inflation + MEV, the MEV part estimated), whether SFDP delegates to it too, and how many other pools do (each over 50 SOL; only pools delegating to 10 or more validators count, not single-validator or private ones). Validator names are today's."
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool and of the validator, what it earned there, and whether SFDP and other pools delegate too."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">
@@ -626,7 +626,7 @@ const StakePool = () => {
         <SectionCard
           title="Epoch by Epoch"
           icon="clock"
-          info="Newest first: its stake and validator count at each epoch's end, the validators it started staking to (added), stopped staking to (dropped), and moved stake on. Moves leave out reward compounding (the pool's median growth that epoch), so small moves on big holdings can be noise."
+          info="Each epoch, newest first: its stake, validator count, and the validators it added, dropped or moved stake on. Small moves can be reward noise."
         >
           {newest.length ? (
             <Table responsive size="sm" className="data-table fs-9 mb-0">
@@ -748,7 +748,7 @@ const StakePool = () => {
           <SectionCard
             title="Fees"
             icon="percent"
-            info="The pool's own fees, from its on-chain account (read hourly): its commission on staking rewards (and the next epoch's when a change is scheduled), and what it charges to deposit or withdraw SOL or stake accounts."
+            info="Its commission on staking rewards (and next epoch's, if changing), and its deposit and withdrawal fees. From its on-chain account."
           >
             <dl className="row fs-9 mb-0 gy-1">
               {(

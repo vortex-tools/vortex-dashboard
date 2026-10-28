@@ -216,7 +216,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
       <SectionCard
         title="Stake Changes"
         icon="trending-up"
-        info="Stake counts when it starts or stops earning: a delegation made in epoch E shows in E + 1. Flows leave out reward compounding. Named pools cover a minority of stake; the rest is Other, and large holders show by withdraw authority."
+        info="Stake moves when it starts or stops earning (a delegation in epoch E shows in E + 1), without reward compounding."
       >
         {status ?? (
           <>

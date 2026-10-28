@@ -730,7 +730,7 @@ const LiveConsensus = () => {
           <SectionCard
             title="Announcements"
             icon="volume-2"
-            info="Restarts, upgrades and feature activations as Solana Tech's announcement channel posts them, newest first. Only the facts read from each post are kept (and from the Agave wiki pages it links); check the post before acting on them."
+            info="Restarts, upgrades and feature activations from Solana Tech's announcement channel, newest first. Check the post before acting."
           >
             <AnnouncementsTable
               announcements={announcements.slice(0, 10)}
