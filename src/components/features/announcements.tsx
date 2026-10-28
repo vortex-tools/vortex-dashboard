@@ -117,6 +117,7 @@ const AnnouncementsTable = ({
             {[
               a.restart?.lastConfirmedSlot != null &&
                 `halted chain's last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
+              a.restart?.finished === true && 'finished',
               (a.versions.length > 0 || a.minVersions.length > 0) &&
                 versionsText(a),
               candidateText(a),
@@ -159,6 +160,7 @@ const summary = (a: Announcement) =>
   [
     a.restart?.lastConfirmedSlot != null &&
       `last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
+    a.restart?.finished === true && 'finished',
     (a.versions.length > 0 || a.minVersions.length > 0) && versionsText(a),
     candidateText(a),
     a.epochs.length > 0 &&

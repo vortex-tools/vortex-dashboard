@@ -16,7 +16,8 @@ const SHOWN = 3;
  * - a feature activation whose gate is queued for the next epoch boundary
  *   or activated this epoch here (by the epochs it names, for a post
  *   naming no gate): not one merely scheduled;
- * - a restart while the cluster is halted, or posted this epoch;
+ * - a restart not yet finished, while the cluster is halted or posted
+ *   this epoch;
  * - an upgrade (any client's, urgent or not) posted this epoch or the
  *   last.
  *
@@ -56,7 +57,9 @@ const HomeAnnouncements = () => {
       epochSecs != null &&
       a.postedAt >= epochStartedAt - epochSecs;
     return announcements.filter(a => {
-      if (a.kind === 'restart') return !!halt || postedThisEpoch(a);
+      // A restart the cluster has finished is history, halt or not.
+      if (a.kind === 'restart')
+        return a.restart?.finished !== true && (!!halt || postedThisEpoch(a));
       if (a.kind === 'upgrade') return postedSinceLastEpoch(a);
       if (a.kind !== 'feature') return false;
       if (a.featureIds.length)

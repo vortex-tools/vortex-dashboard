@@ -2397,7 +2397,10 @@ const restartFactsSchema = z.object({
   waitForSupermajority: z.number().nullable().catch(null),
   hardFork: z.number().nullable().catch(null),
   expectedBankHash: z.string().nullable().catch(null),
-  expectedShredVersion: z.number().nullable().catch(null)
+  expectedShredVersion: z.number().nullable().catch(null),
+  // The cluster has finalized past the restart slot (true), is still
+  // restarting (false), or unknown (null / absent: older APIs).
+  finished: z.boolean().nullable().optional().catch(null)
 });
 export type RestartFacts = z.infer<typeof restartFactsSchema>;
 

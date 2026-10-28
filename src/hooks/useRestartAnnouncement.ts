@@ -38,7 +38,13 @@ const useRestartAnnouncement = (
   if (!halt || !cluster) return null;
   const posts = (
     context?.announcementsState.data.get(cluster)?.announcements ?? []
-  ).filter(a => a.kind === 'restart' && a.cluster === cluster);
+  ).filter(
+    // Not one the cluster has already finished (an earlier restart).
+    a =>
+      a.kind === 'restart' &&
+      a.cluster === cluster &&
+      a.restart?.finished !== true
+  );
   const bySlot = posts.find(a => {
     const s = a.restart?.lastConfirmedSlot;
     return s != null && Math.abs(s - halt.slot) <= SLOT_SLACK;
