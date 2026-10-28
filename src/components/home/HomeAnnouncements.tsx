@@ -85,8 +85,6 @@ const HomeAnnouncements = () => {
       <SectionCard
         title="Announcements"
         icon="volume-2"
-        linkTo="/status"
-        linkLabel="All"
         info="Announcements that matter now: a client upgrade, a feature activating, a restart. All of them are on Cluster Status."
       >
         <AnnouncementList announcements={actionable.slice(0, SHOWN)} />

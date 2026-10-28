@@ -611,6 +611,19 @@ const LiveConsensus = () => {
           </div>
         )}
 
+        {announcements && announcements.length > 0 && (
+          <SectionCard
+            title="Announcements"
+            icon="volume-2"
+            info="Restarts, upgrades and feature activations from Solana Tech's announcement channel, newest first. Check the post before acting."
+          >
+            <AnnouncementsTable
+              announcements={announcements.slice(0, 10)}
+              showCluster={false}
+            />
+          </SectionCard>
+        )}
+
         {/* Live views: nothing to show while halted (the halt cards above
             take their place). */}
         {!halt && (
@@ -724,19 +737,6 @@ const LiveConsensus = () => {
               </SectionCard>
             </div>
           </>
-        )}
-
-        {announcements && announcements.length > 0 && (
-          <SectionCard
-            title="Announcements"
-            icon="volume-2"
-            info="Restarts, upgrades and feature activations from Solana Tech's announcement channel, newest first. Check the post before acting."
-          >
-            <AnnouncementsTable
-              announcements={announcements.slice(0, 10)}
-              showCluster={false}
-            />
-          </SectionCard>
         )}
       </div>
     </div>

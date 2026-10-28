@@ -47,13 +47,20 @@ export const clientsOf = (a: Announcement) => [
   ...new Set([...a.versions, ...a.minVersions].map(clientOfVersion))
 ];
 
-/** "Agave upgrade": an upgrade post's kind, with its client when it names
- *  only one. */
+/** A release candidate ("4.4.0-rc.1"): an upgrade for some of the stake
+ *  to try first, not for everyone. */
+export const isCandidate = (a: Announcement) =>
+  a.kind === 'upgrade' &&
+  a.versions.length > 0 &&
+  a.versions.every(v => /-rc\b/i.test(v));
+
+/** "Agave upgrade" (or "Agave upgrade candidate"): an upgrade post's kind,
+ *  with its client when it names only one. */
 export const announcementTitle = (a: Announcement) => {
   const kind = ANNOUNCEMENT_KIND[a.kind] ?? a.kind;
   const clients = clientsOf(a);
   return a.kind === 'upgrade' && clients.length === 1
-    ? `${clients[0]} upgrade`
+    ? `${clients[0]} upgrade${isCandidate(a) ? ' candidate' : ''}`
     : kind;
 };
 
@@ -103,6 +110,8 @@ const AnnouncementsTable = ({
                 `halted chain's last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
               (a.versions.length > 0 || a.minVersions.length > 0) &&
                 versionsText(a),
+              isCandidate(a) &&
+                'release candidate: for some of the stake, not all',
               a.epochs.length > 0 &&
                 `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
             ]
@@ -143,6 +152,7 @@ const summary = (a: Announcement) =>
     a.restart?.lastConfirmedSlot != null &&
       `last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
     (a.versions.length > 0 || a.minVersions.length > 0) && versionsText(a),
+    isCandidate(a) && 'release candidate: for some of the stake, not all',
     a.epochs.length > 0 &&
       `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
   ]
