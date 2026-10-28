@@ -19,6 +19,7 @@ import ValidatorStatus, {
   ValidatorSfdpBox,
   WIDE_KEY_LABEL,
   customCollectors,
+  ValidatorAge,
   ValidatorWebsite
 } from 'components/validator/ValidatorStatus';
 import FeatherIcon from 'feather-icons-react';
@@ -567,6 +568,10 @@ const ValidatorOverview = () => {
                   labelWidth={keyLabelWidth}
                 />
                 <ValidatorWebsite
+                  nodeAddress={nodeAddress}
+                  labelWidth={keyLabelWidth}
+                />
+                <ValidatorAge
                   nodeAddress={nodeAddress}
                   labelWidth={keyLabelWidth}
                 />

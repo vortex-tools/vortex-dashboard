@@ -251,6 +251,12 @@ const checkStatusSchema = z
 export const validatorStatusSchema = z.object({
   identity: z.string(),
   voteAccount: z.string(),
+  // How long the vote account has been running: its first epoch with
+  // activated stake, how many epochs it's had stake since (gaps don't
+  // count), and whether that first epoch is only where records begin.
+  firstEpoch: z.number().nullable().optional().catch(null),
+  epochsActive: z.number().nullable().optional().catch(null),
+  firstEpochIsRecordStart: z.boolean().nullable().optional().catch(null),
   epoch: z.number(),
   slot: z.number(),
   asOf: z.number(), // unix seconds of the snapshot

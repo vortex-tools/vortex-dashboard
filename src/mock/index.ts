@@ -189,7 +189,28 @@ const poolOf = async (spec: (typeof POOLS)[number]) => {
 
 // ---- the routes ---------------------------------------------------------
 
+/** The real answer, with mocked fields merged in (for a field an
+ *  existing endpoint is getting). */
+const withFields =
+  (path: string, add: (q: Query) => Record<string, unknown>): Route =>
+  async q => {
+    const res = await realFetch(`${API_ENDPOINT}${path}?${q}`);
+    if (!res.ok) return null;
+    return { ...(await res.json()), ...add(q) };
+  };
+
 const ROUTES: Record<string, Route> = {
+  // A validator's age (firstEpoch / epochsActive), coming to
+  // /validators/status.
+  '/validators/status': withFields('/validators/status', q => {
+    const r = rng(q.get('identity') ?? '');
+    const first = 400 + Math.floor(r() * 600);
+    return {
+      firstEpoch: first,
+      epochsActive: 1070 - first - Math.floor(r() * 20),
+      firstEpochIsRecordStart: first < 450
+    };
+  }),
   '/pools': () => ({
     epoch: EPOCH,
     pools: POOLS.map(p => ({

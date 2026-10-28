@@ -827,6 +827,48 @@ export const ValidatorCollectors = ({
  * line in the header's Node / Vote keys box. Reads the slice ValidatorStatus fetches; renders
  * nothing until it has loaded or when there's no website.
  */
+/** How long the validator has run: "since epoch 632 · 438 epochs" (since
+ *  at least, when that's only where records begin). The keys box's line
+ *  after Site; nothing until the API says. */
+export const ValidatorAge = ({
+  nodeAddress,
+  labelWidth = '3rem'
+}: Props & { labelWidth?: string }) => {
+  const context = useContext(VortexDataContext);
+  const s = context?.validatorStatusState.data.get(nodeAddress);
+  if (s?.firstEpoch == null) return null;
+  const atLeast = !!s.firstEpochIsRecordStart;
+  return (
+    <div className="d-flex align-items-center gap-2 min-w-0">
+      <span
+        className="text-body-tertiary fs-9 flex-shrink-0"
+        style={{ minWidth: labelWidth }}
+      >
+        Running
+      </span>
+      <span
+        className="fs-9 text-truncate"
+        title={
+          atLeast
+            ? 'Our records start at that epoch: it has run at least this long.'
+            : 'Since its vote account first had activated stake.'
+        }
+      >
+        {s.epochsActive != null && (
+          <span className="fw-semibold">
+            {atLeast && '≥ '}
+            {s.epochsActive.toLocaleString()} epochs
+          </span>
+        )}
+        <span className="text-body-tertiary">
+          {s.epochsActive != null && ' · '}since epoch {atLeast && 'at least '}
+          {s.firstEpoch.toLocaleString()}
+        </span>
+      </span>
+    </div>
+  );
+};
+
 export const ValidatorWebsite = ({
   nodeAddress,
   labelWidth = '3rem'
