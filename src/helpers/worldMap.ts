@@ -9,7 +9,12 @@ export const loadWorld = () =>
     import('world-atlas/countries-110m.json'),
     import('topojson-client')
   ])
-    .then(([topo, { feature }]) => {
+    .then(async ([topo, topojson]) => {
+      // A chunk gone after a deploy: main.tsx's vite:preloadError handler
+      // is reloading the page and the imports resolve to nothing - wait
+      // for the reload rather than fail on them.
+      if (!topo || !topojson) return new Promise<never>(() => {});
+      const { feature } = topojson;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const t = (topo as any).default ?? topo;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
