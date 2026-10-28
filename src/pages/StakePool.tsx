@@ -51,12 +51,23 @@ const NOWRAP = {
   headerProps: { className: 'text-nowrap' },
   cellProps: { className: 'text-nowrap' }
 };
+/** A pool's minimum stake (lamports): holdings at or below it aren't
+ *  delegations. */
+const MIN_STAKE = 10e9;
+
+const CENTER = {
+  headerProps: { className: 'text-nowrap text-center' },
+  cellProps: { className: 'text-nowrap text-center' }
+};
 const END = {
   headerProps: { className: 'text-nowrap text-end' },
   cellProps: { className: 'text-nowrap text-end font-monospace' }
 };
 
-const columns = (isSfdp: boolean): ColumnDef<Validator>[] => [
+const columns = (
+  isSfdp: boolean,
+  showOther: boolean
+): ColumnDef<Validator>[] => [
   {
     id: 'rank',
     header: '#',
@@ -115,17 +126,40 @@ const columns = (isSfdp: boolean): ColumnDef<Validator>[] => [
     : [
         {
           id: 'sfdp',
-          header: 'SFDP there',
-          accessorFn: (v: Validator) => v.sfdpStake ?? 0,
+          header: 'SFDP delegated',
+          // Above the 10 SOL minimum, as the pools are counted.
+          accessorFn: (v: Validator) =>
+            (v.sfdpStake ?? 0) > MIN_STAKE ? 1 : 0,
           cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
-            v.sfdpStake ? (
-              compactSol(v.sfdpStake)
+            (v.sfdpStake ?? 0) > MIN_STAKE ? (
+              <FeatherIcon
+                icon="check"
+                size={14}
+                className="text-success"
+                aria-label="SFDP delegates here"
+              />
+            ) : (
+              <span className="text-body-quaternary">—</span>
+            ),
+          meta: CENTER
+        } as ColumnDef<Validator>
+      ]),
+  ...(showOther
+    ? [
+        {
+          id: 'otherPools',
+          header: 'Other pools',
+          accessorFn: (v: Validator) => v.otherPools ?? 0,
+          cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
+            v.otherPools ? (
+              v.otherPools.toLocaleString()
             ) : (
               <span className="text-body-quaternary">—</span>
             ),
           meta: END
         } as ColumnDef<Validator>
-      ])
+      ]
+    : [])
 ];
 
 /** Who a pool stakes to, ranked: each validator's share of the pool as a
@@ -325,12 +359,14 @@ const StakePool = () => {
     if (name) fetchData?.(name);
   }, [name, fetchData]);
   const isSfdp = data?.kind === 'sfdp';
+  // Shown once the API counts other pools per validator.
+  const showOther = !!data?.validators.some(v => v.otherPools != null);
   const validators = useMemo(
     () => [...(data?.validators ?? [])].sort((a, b) => b.stake - a.stake),
     [data]
   );
   const table = useAdvanceTable({
-    columns: useMemo(() => columns(isSfdp), [isSfdp]),
+    columns: useMemo(() => columns(isSfdp, showOther), [isSfdp, showOther]),
     data: validators,
     sortable: true,
     pagination: true,
@@ -356,7 +392,7 @@ const StakePool = () => {
   const history = data.history;
   const prev = history.length > 1 ? history[history.length - 2] : null;
   const newest = [...history].reverse();
-  const overlap = validators.filter(v => (v.sfdpStake ?? 0) > 0);
+  const overlap = validators.filter(v => (v.sfdpStake ?? 0) > MIN_STAKE);
   const overlapStake = overlap.reduce((a, v) => a + v.stake, 0);
 
   return (
@@ -488,7 +524,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Everyone it delegates to at the end of the epoch (holdings over 10 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), and SFDP's stake on the same validator. Validator names are today's."
+          info="Everyone it delegates to at the end of the epoch (holdings over 10 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), whether SFDP delegates to it too, and how many other pools do (each over 10 SOL). Validator names are today's."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">

@@ -103,7 +103,8 @@ const poolOf = async (spec: (typeof POOLS)[number]) => {
       sfdpStake:
         spec.kind !== 'sfdp' && i % 3 === 0
           ? Math.round(1e14 + r() * 3e14)
-          : null
+          : null,
+      otherPools: spec.kind === 'sfdp' ? null : Math.floor(r() * r() * 9)
     };
   });
   const ref = (v: Dir, extra: object) => ({

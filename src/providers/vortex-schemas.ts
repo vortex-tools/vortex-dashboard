@@ -2850,7 +2850,10 @@ export const poolDetailSchema = z.object({
         shareOfValidator: z.number().nullable().catch(null),
         stakePrev: z.number().nullable().catch(null),
         // SFDP's stake on the same validator (overlap).
-        sfdpStake: z.number().nullable().catch(null)
+        sfdpStake: z.number().nullable().catch(null),
+        // Other known pools (not this one, not SFDP) holding > 10 SOL
+        // on the validator.
+        otherPools: z.number().nullable().optional().catch(null)
       })
     )
     .catch([]),
