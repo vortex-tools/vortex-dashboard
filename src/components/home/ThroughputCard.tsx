@@ -35,13 +35,13 @@ const LABEL: Record<Metric, string> = {
 const TITLE: Record<Metric, string> = {
   tps: 'Live TPS',
   cu: 'Live CUs per Block',
-  income: 'Live Block Income'
+  income: 'Fees per Minute'
 };
 const INFO: Record<Metric, string> = {
   tps: 'Transactions per second over the past 6 hours, then live, a few seconds behind the chain.',
   cu: 'Compute units per block over the past 6 hours, then live. The block limit is 100M.',
   income:
-    'What leaders earned per minute over the past 6 hours (fees and MEV tips), then live.'
+    'What leaders earned per minute over the past 6 hours (their share of fees, and MEV tips), then live. Half of every base fee is burned: shown as a line, not part of the earnings.'
 };
 
 /** The history window, and the bucket size the provider asks for at it
@@ -91,6 +91,8 @@ const Figure = ({ label, value }: { label: string; value: string }) => (
 );
 
 type Pt = [number, number];
+/** A series drawn as a line over the stack, not in it (the burn). */
+const unstacked = (sr: object) => 'unstacked' in sr;
 
 /**
  * The cluster's activity over the past 6 hours, then live: history from
@@ -188,7 +190,7 @@ const ThroughputCard = ({
     if (!recent?.length) return null;
     const first = recent[0].slot;
     const n = recent[recent.length - 1].slot - first + 1;
-    const cols = ['tx', 'cu', 'blocks', 'fees', 'tips'] as const;
+    const cols = ['tx', 'cu', 'blocks', 'fees', 'tips', 'burn'] as const;
     const p = Object.fromEntries(
       cols.map(c => [c, new Float64Array(n + 1)])
     ) as Record<(typeof cols)[number], Float64Array>;
@@ -200,6 +202,8 @@ const ThroughputCard = ({
       p.blocks[i + 1] = p.blocks[i] + (b ? 1 : 0);
       p.fees[i + 1] = p.fees[i] + (b ? b.baseFees + b.priorityFees : 0);
       p.tips[i + 1] = p.tips[i] + (b?.mevTips ?? 0);
+      // Half of a base fee is burned; baseFees is the leader's half.
+      p.burn[i + 1] = p.burn[i] + (b?.baseFees ?? 0);
     }
     let off = 0;
     for (const b of recent) off += b.t + 0.5 - b.slot * slotSecs;
@@ -233,7 +237,8 @@ const ThroughputCard = ({
       cu: sum(p.cu, e),
       blocks: sum(p.blocks, e),
       fees: sum(p.fees, e),
-      tips: sum(p.tips, e)
+      tips: sum(p.tips, e),
+      burn: sum(p.burn, e)
     }));
   }, [prefix, playhead, spanSlots]);
   const spanSecs = spanSlots * slotSecs;
@@ -320,6 +325,10 @@ const ThroughputCard = ({
       ...hist.map((m): Pt => [m.t + 60, m.mevTips]),
       ...rolling.map((w): Pt => [w.end, w.tips * perMin])
     ];
+    const burned: Pt[] = [
+      ...hist.map((m): Pt => [m.t + 60, m.baseFees]),
+      ...rolling.map((w): Pt => [w.end, w.burn * perMin])
+    ];
     if (!fees.length) return null;
     const totals = fees.map((f, i) => f[1] + tips[i][1]);
     // The 6 hours' total: their whole minutes, plus the blocks since.
@@ -335,11 +344,14 @@ const ThroughputCard = ({
         ['Past 6 h', fmtSol(total)]
       ],
       fmt: (v: number) => fmtSol(v),
-      axis: (v: number) => fmtSol(v),
+      // Round ticks: "◎1.5", "◎3", not "◎3.00".
+      axis: (v: number) =>
+        `◎${(v / 1e9).toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
       stacked: true,
       series: [
         { name: 'Fees', data: fees },
-        { name: 'MEV tips', data: tips }
+        { name: 'MEV tips', data: tips },
+        { name: 'Burned', data: burned, unstacked: true }
       ]
     };
   }, [
@@ -375,7 +387,8 @@ const ThroughputCard = ({
   })();
   // The newest point, pulsing: the stack's top for income.
   const lastPoint = (() => {
-    const sers = view?.series ?? [];
+    // The stack's top: the burn line isn't part of it.
+    const sers = (view?.series ?? []).filter(sr => !unstacked(sr));
     const first = sers[0]?.data;
     if (!first?.length) return null;
     const t = first[first.length - 1][0] * 1000;
@@ -399,6 +412,7 @@ const ThroughputCard = ({
       : null;
 
   const primary = getThemeColor('primary');
+  const burnColor = getThemeColor('tertiary-color');
   const option = {
     // Every change draws at once; the pulse on the newest point is the
     // motion (a morph made the dot trail the line).
@@ -450,13 +464,21 @@ const ThroughputCard = ({
         type: 'line',
         symbol: 'none',
         smooth: 0.2,
-        stack: view?.stacked ? 'income' : undefined,
-        color: i === 0 ? primary : getThemeColor('info'),
-        lineStyle: { width: 1.5 },
+        stack: view?.stacked && !unstacked(sr) ? 'income' : undefined,
+        color: unstacked(sr)
+          ? burnColor
+          : i === 0
+            ? primary
+            : getThemeColor('info'),
+        lineStyle: unstacked(sr)
+          ? { width: 1.25, type: 'dashed' }
+          : { width: 1.5 },
         // A zoomed line's area fills down to the axis bottom.
-        areaStyle: view?.stacked
-          ? { opacity: 0.35 }
-          : { opacity: 0.15, origin: 'start' },
+        areaStyle: unstacked(sr)
+          ? undefined
+          : view?.stacked
+            ? { opacity: 0.35 }
+            : { opacity: 0.15, origin: 'start' },
         markLine:
           i === 0 && view?.limit
             ? {
@@ -567,10 +589,20 @@ const ThroughputCard = ({
                   key={sr.name}
                   className="d-inline-flex align-items-center gap-1"
                 >
-                  <span
-                    className={`d-inline-block rounded-1 ${i === 0 ? 'bg-primary' : 'bg-info'}`}
-                    style={{ width: 10, height: 10 }}
-                  />
+                  {unstacked(sr) ? (
+                    <span
+                      className="d-inline-block"
+                      style={{
+                        width: 12,
+                        borderTop: `2px dashed ${burnColor}`
+                      }}
+                    />
+                  ) : (
+                    <span
+                      className={`d-inline-block rounded-1 ${i === 0 ? 'bg-primary' : 'bg-info'}`}
+                      style={{ width: 10, height: 10 }}
+                    />
+                  )}
                   {sr.name}
                 </span>
               ))}
