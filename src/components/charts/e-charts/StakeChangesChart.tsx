@@ -147,6 +147,8 @@ const StakeChangesChart = ({
     });
     const tooltipBase = {
       trigger: 'axis' as const,
+      // Kept inside the chart (on a phone it ran off the screen's edge).
+      confine: true,
       axisPointer: { type: 'shadow' as const },
       padding: 10,
       backgroundColor: getThemeColor('body-highlight-bg'),
@@ -218,9 +220,15 @@ const StakeChangesChart = ({
         for (const p of it.pools)
           if (p.fullName && p.fullName !== p.label)
             fullNameOf.set(p.label, p.fullName);
+      // The tooltip's name: the full one, with the symbol after unless
+      // the full name already says it ("Marinade Native (Max Yield)").
       const named = (label: string) => {
         const f = fullNameOf.get(label);
-        return f ? `${f} (${label})` : label;
+        return !f
+          ? label
+          : f.toLowerCase().includes(label.toLowerCase())
+            ? f
+            : `${f} (${label})`;
       };
       const rest = (it: StakeChangeEpoch) =>
         it.pools
@@ -260,7 +268,7 @@ const StakeChangesChart = ({
           type: 'scroll',
           itemWidth: 10,
           itemHeight: 10,
-          formatter: named,
+          // The legend keeps to the short names, so it fits a row.
           textStyle: { color: getThemeColor('body-color'), fontSize: 11 }
         },
         tooltip: {
