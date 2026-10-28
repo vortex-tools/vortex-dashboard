@@ -2803,7 +2803,15 @@ const poolFeesSchema = z
     solDepositFeeBps: z.number().nullable().optional().catch(null),
     stakeDepositFeeBps: z.number().nullable().optional().catch(null),
     solWithdrawalFeeBps: z.number().nullable().optional().catch(null),
-    stakeWithdrawalFeeBps: z.number().nullable().optional().catch(null)
+    stakeWithdrawalFeeBps: z.number().nullable().optional().catch(null),
+    // Scheduled withdrawal-fee changes, referral cuts of deposit fees,
+    // and Marinade's liquid-unstake fee range.
+    nextSolWithdrawalFeeBps: z.number().nullable().optional().catch(null),
+    nextStakeWithdrawalFeeBps: z.number().nullable().optional().catch(null),
+    solReferralFeePct: z.number().nullable().optional().catch(null),
+    stakeReferralFeePct: z.number().nullable().optional().catch(null),
+    liquidUnstakeMinFeeBps: z.number().nullable().optional().catch(null),
+    liquidUnstakeMaxFeeBps: z.number().nullable().optional().catch(null)
   })
   .nullable()
   .optional()

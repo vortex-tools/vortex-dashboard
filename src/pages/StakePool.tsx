@@ -806,7 +806,45 @@ const StakePool = () => {
                   ['SOL deposit', data.fees.solDepositFeeBps],
                   ['Stake deposit', data.fees.stakeDepositFeeBps],
                   ['SOL withdrawal', data.fees.solWithdrawalFeeBps],
-                  ['Stake withdrawal', data.fees.stakeWithdrawalFeeBps]
+                  ['Stake withdrawal', data.fees.stakeWithdrawalFeeBps],
+                  // Only what applies: a scheduled change, a referral cut,
+                  // Marinade's liquid unstake.
+                  [
+                    'SOL withdrawal, next epoch',
+                    data.fees.nextSolWithdrawalFeeBps != null &&
+                    data.fees.nextSolWithdrawalFeeBps !==
+                      data.fees.solWithdrawalFeeBps
+                      ? data.fees.nextSolWithdrawalFeeBps
+                      : undefined
+                  ],
+                  [
+                    'Stake withdrawal, next epoch',
+                    data.fees.nextStakeWithdrawalFeeBps != null &&
+                    data.fees.nextStakeWithdrawalFeeBps !==
+                      data.fees.stakeWithdrawalFeeBps
+                      ? data.fees.nextStakeWithdrawalFeeBps
+                      : undefined
+                  ],
+                  [
+                    'Referral share of SOL deposit fees',
+                    data.fees.solReferralFeePct
+                      ? data.fees.solReferralFeePct * 100
+                      : undefined
+                  ],
+                  [
+                    'Referral share of stake deposit fees',
+                    data.fees.stakeReferralFeePct
+                      ? data.fees.stakeReferralFeePct * 100
+                      : undefined
+                  ],
+                  [
+                    'Liquid unstake, from',
+                    data.fees.liquidUnstakeMinFeeBps ?? undefined
+                  ],
+                  [
+                    'Liquid unstake, up to',
+                    data.fees.liquidUnstakeMaxFeeBps ?? undefined
+                  ]
                 ] as Array<[string, number | null | undefined]>
               )
                 .filter(([, v]) => v !== undefined)
