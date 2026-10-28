@@ -217,26 +217,9 @@ const StakeChangesChart = ({
 
     if (view === 'holdings') {
       const labels = labelOrder(items, 'pools');
-      // "Helius Staked SOL (hSOL)" where the API names the pool.
-      const fullNameOf = new Map<string, string>();
-      for (const it of items)
-        for (const p of it.pools)
-          if (p.fullName && p.fullName !== p.label)
-            fullNameOf.set(p.label, p.fullName);
-      // The tooltip's name: the full one, with the symbol after unless
-      // the full name already says it ("Marinade Native (Max Yield)").
-      const named = (label: string) => {
-        const f = fullNameOf.get(label);
-        // Already said if every word of the symbol is in the full name
-        // ("Marinade (mSOL)" in "Marinade liquid staking (mSOL)").
-        const words = label.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-        const lower = f?.toLowerCase() ?? '';
-        return !f
-          ? label
-          : words.every(w => lower.includes(w))
-            ? f
-            : `${f} (${label})`;
-      };
+      // The legend's swatch, before each tooltip row.
+      const dot = (color: string) =>
+        `<span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:${color}"></span>`;
       const rest = (it: StakeChangeEpoch) =>
         it.pools
           .filter(p => !labels.includes(p.label))
@@ -297,14 +280,15 @@ const StakeChangesChart = ({
                 .filter(p => labels.includes(p.label))
                 .map(p =>
                   line(
-                    named(p.label),
+                    dot(PALETTE[labels.indexOf(p.label) % PALETTE.length]) +
+                      p.label,
                     `${fmtSol(sol(p.lamports))}${p.share != null ? ` · ${(p.share * 100).toFixed(1)}%` : ''}`
                   )
                 )
                 .join('') +
               (rest(it) > 0
                 ? line(
-                    `${OTHER_POOLS} (${it.pools.filter(p => !labels.includes(p.label)).length})`,
+                    `${dot('#8a94ad')}${OTHER_POOLS} (${it.pools.filter(p => !labels.includes(p.label)).length})`,
                     `${fmtSol(sol(rest(it)))}${it.stakeAfter ? ` · ${((rest(it) / it.stakeAfter) * 100).toFixed(1)}%` : ''}`
                   )
                 : '')
