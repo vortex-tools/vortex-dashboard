@@ -51,7 +51,8 @@ const END = {
 
 const columns = (
   showMedian: boolean,
-  showFees: boolean
+  showFees: boolean,
+  showMax: boolean
 ): ColumnDef<PoolSummary>[] => [
   {
     id: 'name',
@@ -168,6 +169,34 @@ const columns = (
           meta: END_WIDE_ONLY
         } as ColumnDef<PoolSummary>
       ]
+    : []),
+  ...(showMax
+    ? [
+        {
+          id: 'max',
+          header: 'Max delegation',
+          accessorFn: (p: PoolSummary) => p.maxStake ?? 0,
+          cell: ({
+            row: { original: p }
+          }: {
+            row: { original: PoolSummary };
+          }) =>
+            p.maxStake != null ? (
+              <span
+                title={
+                  p.maxName || p.maxVoteKey
+                    ? `On ${p.maxName ?? p.maxVoteKey}`
+                    : undefined
+                }
+              >
+                {compactSol(p.maxStake)}
+              </span>
+            ) : (
+              '—'
+            ),
+          meta: END_WIDE_ONLY
+        } as ColumnDef<PoolSummary>
+      ]
     : [])
 ];
 
@@ -200,6 +229,8 @@ const StakePools = () => {
   const showMedian = allPools.some(p => p.medianStake != null);
   // And once it gives their fees.
   const showFees = allPools.some(p => p.fees != null);
+  // And its largest single delegation.
+  const showMax = allPools.some(p => p.maxStake != null);
   // Totals and shares are over every pool, shown or not.
   const total = useMemo(
     () => allPools.reduce((a, p) => a + p.stake, 0),
@@ -207,8 +238,8 @@ const StakePools = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(showMedian, showFees),
-      [showMedian, showFees]
+      () => columns(showMedian, showFees, showMax),
+      [showMedian, showFees, showMax]
     ),
     data: pools,
     sortable: true,
@@ -300,7 +331,7 @@ const StakePools = () => {
           <SectionCard
             title="All Stakers"
             icon="layers"
-            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 50 SOL: a pool's minimum stake on a validator (50 SOL or less) isn't a delegation. Median delegation: the middle of its holdings per validator, over those delegations. Fee: its commission on staking rewards, from its on-chain account (an arrow when it changes next epoch). From Jito's per-epoch stake-meta file, published hours after an epoch ends."
+            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 50 SOL: a pool's minimum stake on a validator (50 SOL or less) isn't a delegation. Median delegation: the middle of its holdings per validator, over those delegations. Max delegation: its largest holding on one validator (named on hover). Fee: its commission on staking rewards, from its on-chain account (an arrow when it changes next epoch). From Jito's per-epoch stake-meta file, published hours after an epoch ends."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">

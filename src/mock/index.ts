@@ -179,6 +179,8 @@ const ROUTES: Record<string, Route> = {
       validatorsPrev: Math.max(1, p.n - 3),
       // A long tail: the median sits well under the mean.
       medianStake: Math.round((p.stake / p.n) * 0.45),
+      maxStake: Math.round(p.stake * (p.n > 100 ? 0.12 : 0.4)),
+      maxName: 'Mock Validator',
       minimumOnly: p.kind === 'sfdp' ? 0 : 366,
       fees: feesOf(p.name, p.kind)
     }))
