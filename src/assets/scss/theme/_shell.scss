@@ -257,8 +257,12 @@
   padding: 0.5rem 2.5rem;
   font-size: map-get($font-sizes, 9);
   border-top: 1px solid var(--#{$prefix}border-color-translucent);
+  // Phones: each part its own centered line.
   @include media-breakpoint-down(sm) {
     justify-content: center;
     text-align: center;
+    > * {
+      flex-basis: 100%;
+    }
   }
 }

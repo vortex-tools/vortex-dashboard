@@ -29,12 +29,13 @@ const Footer = () => (
       </a>
       {/* DB-IP Lite's CC BY 4.0 license asks for this credit wherever
           its geolocation (country, continent, city) is shown. */}
-      {' · '}
+      {/* Phones: the credit on its own line. */}
+      <span className="d-none d-md-inline"> · </span>
       <a
         href="https://db-ip.com"
         target="_blank"
         rel="noopener noreferrer"
-        className="text-body-tertiary"
+        className="text-body-tertiary d-block d-md-inline"
       >
         IP Geolocation by DB-IP
       </a>
