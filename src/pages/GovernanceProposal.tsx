@@ -1,3 +1,4 @@
+import FeatherIcon from 'feather-icons-react';
 import BackLink from 'components/common/BackLink';
 import { poolPath } from 'components/pools/pools';
 import { ColumnDef } from '@tanstack/react-table';
@@ -588,12 +589,37 @@ const GovernanceProposal = () => {
             />
           </Col>
           <Col xs={6} md={4} xl={2}>
+            {/* Two links (the proposal's text, the SIMDs it endorses), so
+                the card itself isn't one. */}
             <StatCard
               label="Proposal"
               mono={false}
               value={p.sgp ?? 'Text'}
-              href={p.description ?? undefined}
-              sublabel={p.description ? 'read the proposal' : 'no text linked'}
+              wrapSublabel
+              sublabel={
+                p.description || p.simds.some(x => x.url)
+                  ? [
+                      ...(p.description
+                        ? [{ href: p.description, text: 'Proposal' }]
+                        : []),
+                      ...p.simds
+                        .filter(x => x.url)
+                        .map(x => ({ href: x.url!, text: x.simd }))
+                    ].map((l, i) => (
+                      <Fragment key={l.href}>
+                        {i > 0 && ' · '}
+                        <a href={l.href} target="_blank" rel="noreferrer">
+                          {l.text}
+                          <FeatherIcon
+                            icon="arrow-up-right"
+                            size={10}
+                            className="ms-1"
+                          />
+                        </a>
+                      </Fragment>
+                    ))
+                  : 'no text linked'
+              }
             />
           </Col>
         </Row>
