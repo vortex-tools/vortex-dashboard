@@ -246,7 +246,7 @@ const Home = () => {
             <StatCard
               label="Status"
               mono={false}
-              value={live.loaded ? (halt ? 'Halted' : 'Running') : '—'}
+              value={live.loaded ? (halt ? 'Halted' : 'Healthy') : '—'}
               check={live.loaded && !halt ? true : null}
               alert={!!halt}
               sublabel={
