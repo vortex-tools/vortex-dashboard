@@ -159,7 +159,7 @@ const StakeChangesChart = ({
       textStyle: { color: getThemeColor('light-text-emphasis') }
     };
     const line = (l: string, v: string) =>
-      `<div class="d-flex justify-content-between gap-3 fs-9"><span>${l}</span><span class="font-monospace">${v}</span></div>`;
+      `<div class="d-flex justify-content-between gap-3 fs-9"><span>${l}</span><span class="font-monospace text-nowrap">${v}</span></div>`;
     const signed = (v: number) =>
       `${v > 0 ? '+' : v < 0 ? '−' : ''}${fmtSol(Math.abs(v))}`;
     const highlight = selected != null ? String(selected) : null;
@@ -250,8 +250,12 @@ const StakeChangesChart = ({
         symbol: 'none',
         lineStyle: { width: 1 },
         color: PALETTE[i % PALETTE.length],
+        // An epoch with no pool stake at all has no record (the validator
+        // was out of the stake set): a gap, not a drop to 0.
         data: items.map(it =>
-          sol(it.pools.find(p => p.label === label)?.lamports ?? 0)
+          it.pools.length
+            ? sol(it.pools.find(p => p.label === label)?.lamports ?? 0)
+            : null
         )
       }));
       // The small pools as one series on top, so the stack is still every
@@ -265,7 +269,7 @@ const StakeChangesChart = ({
           symbol: 'none',
           lineStyle: { width: 1 },
           color: '#8a94ad',
-          data: items.map(it => sol(rest(it)))
+          data: items.map(it => (it.pools.length ? sol(rest(it)) : null))
         });
       return {
         animation: false,
@@ -286,6 +290,9 @@ const StakeChangesChart = ({
             if (!it) return '';
             return (
               `<div class="fw-bold mb-1">Epoch ${it.epoch} · stake ${fmtSol(sol(it.stakeAfter))}</div>` +
+              (it.pools.length
+                ? ''
+                : '<div class="fs-9 text-body-tertiary">No pool stake this epoch</div>') +
               it.pools
                 .filter(p => labels.includes(p.label))
                 .map(p =>
