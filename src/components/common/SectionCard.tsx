@@ -22,6 +22,9 @@ interface Props {
   /** Header, right-hand side (e.g. a view toggle), before any link. */
   aside?: ReactNode;
   children: ReactNode;
+  /** One header line: a long title truncates (with an ellipsis) rather
+   *  than pushing the link onto a second line. */
+  truncateTitle?: boolean;
 }
 
 /**
@@ -37,6 +40,7 @@ const SectionCard = ({
   badge,
   highlight = false,
   aside,
+  truncateTitle = false,
   children
 }: Props) => (
   <div
@@ -54,16 +58,26 @@ const SectionCard = ({
   >
     {/* Wraps on a narrow screen: a toggle beside a long title drops
         below it rather than widening the page. */}
-    <div className="d-flex flex-wrap align-items-center justify-content-between column-gap-2 row-gap-2 mt-n1 mx-n3 px-3 pb-2 mb-3 border-bottom border-translucent">
-      <div className="d-flex align-items-center">
-        <FeatherIcon icon={icon} size={16} className="text-primary me-2" />
-        <h6 className="mb-0">{title}</h6>
+    <div
+      className={`d-flex ${truncateTitle ? 'flex-nowrap' : 'flex-wrap'} align-items-center justify-content-between column-gap-2 row-gap-2 mt-n1 mx-n3 px-3 pb-2 mb-3 border-bottom border-translucent`}
+    >
+      <div
+        className={`d-flex align-items-center${truncateTitle ? ' min-w-0' : ''}`}
+      >
+        <FeatherIcon
+          icon={icon}
+          size={16}
+          className="text-primary me-2 flex-shrink-0"
+        />
+        <h6 className={`mb-0${truncateTitle ? ' text-truncate' : ''}`}>
+          {title}
+        </h6>
         {badge}
         {info && <InfoTip>{info}</InfoTip>}
       </div>
       {aside}
       {linkTo && linkLabel && (
-        <Link to={linkTo} className="fs-9">
+        <Link to={linkTo} className="fs-9 text-nowrap">
           {linkLabel} →
         </Link>
       )}

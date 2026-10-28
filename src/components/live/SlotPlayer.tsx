@@ -72,6 +72,8 @@ const SlotPlayer = ({
         )
       }
       icon="user"
+      // A long leader name truncates; the link stays on the line.
+      truncateTitle
       highlight={held}
       badge={held ? <PausedBadge /> : undefined}
       linkTo={leader ? recordPath(leader, null, 'blocks') : undefined}
