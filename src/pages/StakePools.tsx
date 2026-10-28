@@ -35,15 +35,10 @@ const NOWRAP = {
   cellProps: { className: 'text-nowrap' }
 };
 // The staker column stays put while the table scrolls sideways on a phone.
+// Opaque, and striped with its row (see .leaderboard-sticky-col).
 const STICKY = {
-  headerProps: {
-    className: 'text-nowrap position-sticky start-0 bg-body-emphasis',
-    style: { zIndex: 1 }
-  },
-  cellProps: {
-    className: 'text-nowrap position-sticky start-0 bg-body-emphasis',
-    style: { zIndex: 1 }
-  }
+  headerProps: { className: 'text-nowrap leaderboard-sticky-col start-0' },
+  cellProps: { className: 'text-nowrap leaderboard-sticky-col start-0' }
 };
 const END = {
   headerProps: { className: 'text-nowrap text-end' },

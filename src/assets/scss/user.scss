@@ -521,3 +521,10 @@ th.leaderboard-sticky-col {
 .echarts-for-react {
   overflow-x: clip;
 }
+
+// Every data table is zebra-striped (as `.table-striped` does), unless it
+// opts out with `.no-stripes` (tables whose rows open detail rows, which
+// would shift the stripes).
+.table.data-table:not(.no-stripes) > tbody > tr:nth-of-type(odd) > * {
+  --vx-table-bg-type: var(--vx-table-striped-bg);
+}
