@@ -146,6 +146,10 @@ const LiveConsensus = () => {
   const halt = clusterHaltOf(live, now);
   const restartPost = useRestartAnnouncement(halt);
   const announcements = useAnnouncements();
+  // A restart the cluster has finished is history: not listed here.
+  const current = (announcements ?? []).filter(
+    a => a.restart?.finished !== true
+  );
   const chainTip =
     p?.absoluteSlot != null
       ? p.readAt != null && p.slotSeconds
@@ -611,14 +615,14 @@ const LiveConsensus = () => {
           </div>
         )}
 
-        {announcements && announcements.length > 0 && (
+        {current.length > 0 && (
           <SectionCard
             title="Announcements"
             icon="volume-2"
-            info="Restarts, upgrades and feature activations from Solana Tech's announcement channel, newest first. Check the post before acting."
+            info="Restarts, upgrades and feature activations from Solana Tech's announcement channel, newest first (a restart the cluster has finished is left out). Check the post before acting."
           >
             <AnnouncementsTable
-              announcements={announcements.slice(0, 10)}
+              announcements={current.slice(0, 10)}
               showCluster={false}
             />
           </SectionCard>
