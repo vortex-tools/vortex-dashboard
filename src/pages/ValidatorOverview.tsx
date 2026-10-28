@@ -1,6 +1,7 @@
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
 import useCluster from 'hooks/useCluster';
 import AddressLine from 'components/common/AddressLine';
+import AuthoritiesCard from 'components/validator/AuthoritiesCard';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
@@ -606,6 +607,12 @@ const ValidatorOverview = () => {
                 nodeAddress={nodeAddress}
               />
             </Col>
+            {nodeAddress && voteAddress && (
+              <AuthoritiesCard
+                nodeAddress={nodeAddress}
+                voteAddress={voteAddress}
+              />
+            )}
             {nodeAddress && (
               <Col xs={12} lg={6}>
                 <HostChangesCard
