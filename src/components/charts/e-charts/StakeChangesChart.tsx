@@ -147,8 +147,11 @@ const StakeChangesChart = ({
     });
     const tooltipBase = {
       trigger: 'axis' as const,
-      // Kept inside the chart (on a phone it ran off the screen's edge).
+      // Kept inside the chart, and no wider than the screen (a long one
+      // widened the page on a phone): long lines wrap.
       confine: true,
+      extraCssText:
+        'max-width: min(26rem, calc(100vw - 2rem)); white-space: normal;',
       axisPointer: { type: 'shadow' as const },
       padding: 10,
       backgroundColor: getThemeColor('body-highlight-bg'),
@@ -224,9 +227,13 @@ const StakeChangesChart = ({
       // the full name already says it ("Marinade Native (Max Yield)").
       const named = (label: string) => {
         const f = fullNameOf.get(label);
+        // Already said if every word of the symbol is in the full name
+        // ("Marinade (mSOL)" in "Marinade liquid staking (mSOL)").
+        const words = label.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+        const lower = f?.toLowerCase() ?? '';
         return !f
           ? label
-          : f.toLowerCase().includes(label.toLowerCase())
+          : words.every(w => lower.includes(w))
             ? f
             : `${f} (${label})`;
       };

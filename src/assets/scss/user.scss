@@ -514,3 +514,10 @@ th.leaderboard-sticky-col {
     color: var(--#{$prefix}primary) !important;
   }
 }
+
+// ECharts lays a full-width layer under a chart's tooltip that can reach
+// past the chart (and so the page, on a phone) even when the tooltip
+// itself is confined to it: clip charts sideways.
+.echarts-for-react {
+  overflow-x: clip;
+}

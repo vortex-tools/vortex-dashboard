@@ -52,7 +52,9 @@ const SectionCard = ({
         : { transition: 'box-shadow 150ms, border-color 150ms' }
     }
   >
-    <div className="d-flex align-items-center justify-content-between mt-n1 mx-n3 px-3 pb-2 mb-3 border-bottom border-translucent">
+    {/* Wraps on a narrow screen: a toggle beside a long title drops
+        below it rather than widening the page. */}
+    <div className="d-flex flex-wrap align-items-center justify-content-between column-gap-2 row-gap-2 mt-n1 mx-n3 px-3 pb-2 mb-3 border-bottom border-translucent">
       <div className="d-flex align-items-center">
         <FeatherIcon icon={icon} size={16} className="text-primary me-2" />
         <h6 className="mb-0">{title}</h6>
