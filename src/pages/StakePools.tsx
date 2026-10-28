@@ -107,14 +107,6 @@ const columns = (total: number): ColumnDef<PoolSummary>[] => [
           prev={p.validatorsPrev}
           format={signedCount}
         />
-        {!!p.minimumOnly && (
-          <span
-            className="fs-10 text-body-tertiary ms-1"
-            title="Also held only at the pool's minimum stake (10 SOL or less): not a delegation"
-          >
-            +{p.minimumOnly.toLocaleString()} min
-          </span>
-        )}
       </>
     ),
     meta: END
@@ -258,7 +250,7 @@ const StakePools = () => {
           <SectionCard
             title="All Stakers"
             icon="layers"
-            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 10 SOL: a pool's minimum stake on a validator (10 SOL or less) isn't a delegation, and shows as +N min. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
+            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 10 SOL: a pool's minimum stake on a validator (10 SOL or less) isn't a delegation. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
