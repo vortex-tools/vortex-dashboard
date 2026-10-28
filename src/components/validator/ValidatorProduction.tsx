@@ -72,12 +72,27 @@ const ValidatorProduction = ({
     rank: number | null;
     rankedOf: number | null;
   }> = served
-    ? served.map(r => ({
-        epoch: r.epoch,
-        record: r,
-        rank: r.rank,
-        rankedOf: r.rankedOf
-      }))
+    ? // Every epoch from its oldest record to now: the API only returns
+      // epochs it led in, so a stretch without leader slots (offline,
+      // out of the schedule) would vanish rather than show.
+      (() => {
+        const byEpoch = new Map(served.map(r => [r.epoch, r]));
+        const newest = Math.max(
+          currentEpoch ?? -Infinity,
+          ...served.map(r => r.epoch)
+        );
+        const oldest = Math.min(...served.map(r => r.epoch));
+        if (!served.length || !Number.isFinite(newest)) return [];
+        return Array.from({ length: newest - oldest + 1 }, (_, i) => {
+          const r = byEpoch.get(newest - i);
+          return {
+            epoch: newest - i,
+            record: r,
+            rank: r?.rank ?? null,
+            rankedOf: r?.rankedOf ?? null
+          };
+        });
+      })()
     : epochs
         .filter(e => slice?.data.has(e))
         .map(e => {

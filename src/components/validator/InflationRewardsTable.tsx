@@ -75,7 +75,22 @@ const InflationRewardsTable = ({
         ?.inflationRewardsCommissionBps ?? null;
     for (const r of rows) {
       const w = r.rewards;
-      if (!w) continue;
+      // No rewards recorded (not voting, not admitted): still its row, so
+      // an idle stretch shows rather than vanishes.
+      if (!w) {
+        byEpoch.set(r.epoch, {
+          epoch: r.epoch,
+          alpenglow: true,
+          voting: null,
+          production: null,
+          total: null,
+          totalDerived: false,
+          commission: commissionOf.get(r.epoch) ?? null,
+          commissionDerived: false,
+          missed: null
+        });
+        continue;
+      }
       byEpoch.set(r.epoch, {
         epoch: r.epoch,
         alpenglow: true,
