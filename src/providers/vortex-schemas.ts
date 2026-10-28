@@ -2409,7 +2409,11 @@ const announcementFactsSchema = {
   minVersions: z.array(z.string()).catch([]),
   featureIds: z.array(z.string()).catch([]),
   epochs: z.array(z.number()).catch([]),
-  simds: z.array(z.number()).catch([])
+  simds: z.array(z.number()).catch([]),
+  // An upgrade post's adoption target (0..1: "10% of Mainnet-Beta stake"),
+  // and whether it calls the release an upgrade candidate. Coming.
+  stakeTarget: z.number().nullable().optional().catch(null),
+  candidate: z.boolean().nullable().optional().catch(null)
 };
 
 export const announcementSchema = z.object({

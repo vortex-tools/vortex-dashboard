@@ -51,8 +51,17 @@ export const clientsOf = (a: Announcement) => [
  *  to try first, not for everyone. */
 export const isCandidate = (a: Announcement) =>
   a.kind === 'upgrade' &&
-  a.versions.length > 0 &&
-  a.versions.every(v => /-rc\b/i.test(v));
+  (a.candidate ??
+    (a.versions.length > 0 && a.versions.every(v => /-rc\b/i.test(v))));
+
+/** "for 10% of stake" once the API reads the post's target, else that a
+ *  release candidate is for some of the stake. */
+const candidateText = (a: Announcement) =>
+  a.stakeTarget != null
+    ? `for ${Math.round(a.stakeTarget * 100)}% of stake`
+    : isCandidate(a)
+      ? 'release candidate: for some of the stake, not all'
+      : null;
 
 /** "Agave upgrade" (or "Agave upgrade candidate"): an upgrade post's kind,
  *  with its client when it names only one. */
@@ -110,8 +119,7 @@ const AnnouncementsTable = ({
                 `halted chain's last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
               (a.versions.length > 0 || a.minVersions.length > 0) &&
                 versionsText(a),
-              isCandidate(a) &&
-                'release candidate: for some of the stake, not all',
+              candidateText(a),
               a.epochs.length > 0 &&
                 `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
             ]
@@ -152,7 +160,7 @@ const summary = (a: Announcement) =>
     a.restart?.lastConfirmedSlot != null &&
       `last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
     (a.versions.length > 0 || a.minVersions.length > 0) && versionsText(a),
-    isCandidate(a) && 'release candidate: for some of the stake, not all',
+    candidateText(a),
     a.epochs.length > 0 &&
       `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
   ]
