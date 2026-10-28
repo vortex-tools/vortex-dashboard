@@ -218,7 +218,7 @@ const columns = (
 
 /** Who a pool stakes to, ranked: each validator's share of the pool as a
  *  bar, and the running total as a line (how few hold most of it). */
-const ConcentrationChart = ({ validators }: { validators: Validator[] }) => {
+const DistributionChart = ({ validators }: { validators: Validator[] }) => {
   const { getThemeColor } = useAppContext();
   // Every validator, so the running total reaches the whole pool.
   const top = validators;
@@ -657,12 +657,12 @@ const StakePool = () => {
         <Row className="g-3">
           <Col xs={12} lg={6}>
             <SectionCard
-              title="Concentration"
+              title="Distribution"
               icon="bar-chart-2"
               info="The validators it stakes to, largest first: each one's share of the pool as a bar, and the running total as a line - how few validators hold most of the pool."
             >
               {validators.length ? (
-                <ConcentrationChart validators={validators} />
+                <DistributionChart validators={validators} />
               ) : (
                 <UntrackedState>No validators this epoch.</UntrackedState>
               )}
