@@ -1,5 +1,6 @@
 import BackLink from 'components/common/BackLink';
 import AddressLine from 'components/common/AddressLine';
+import useCluster from 'hooks/useCluster';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -120,6 +121,7 @@ const EVENT: Record<string, string> = {
  * this API serves), and its history as our writer saw it.
  */
 const FeatureGatePage = () => {
+  const { isTestnet } = useCluster();
   const { id = '' } = useParams();
   const context = useContext(VortexDataContext);
   const slice = context?.featureState;
@@ -206,8 +208,16 @@ const FeatureGatePage = () => {
         <Row className="g-3">
           <Col xs={12} lg={6}>
             <SectionCard title="Details" icon="file-text">
-              <AddressLine label="Feature id" value={f.id} />
-              <dl className="row fs-9 mb-0 gy-2 mt-1">
+              <dl className="row fs-9 mb-0 gy-2">
+                <Row2 label="Feature id">
+                  {/* Its feature account on the served cluster. */}
+                  <AddressLine
+                    label="Feature id"
+                    value={f.id}
+                    bare
+                    href={`https://explorer.solana.com/address/${f.id}${isTestnet ? '?cluster=testnet' : ''}`}
+                  />
+                </Row2>
                 <Row2 label="SIMD">
                   {f.simds.length ? (
                     <SimdLinks simds={f.simds} />

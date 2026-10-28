@@ -36,6 +36,11 @@ interface AddressLineProps {
   note?: string;
   /** Hover text for the label. */
   labelTitle?: string;
+  /** Just the address and its copy button: the label is shown elsewhere
+   *  (a details list's term column). */
+  bare?: boolean;
+  /** Links the address (e.g. to an explorer; opens in a new tab). */
+  href?: string;
 }
 
 const AddressLine = ({
@@ -43,7 +48,9 @@ const AddressLine = ({
   value,
   labelWidth = '3rem',
   note,
-  labelTitle
+  labelTitle,
+  bare = false,
+  href
 }: AddressLineProps) => {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,19 +77,40 @@ const AddressLine = ({
     value.length <= 20 ? value : `${value.slice(0, 8)}…${value.slice(-8)}`;
   return (
     <div className="d-flex align-items-center gap-2 min-w-0">
-      <span
-        className="text-body-tertiary fs-9 flex-shrink-0"
-        style={{ minWidth: labelWidth }}
-        title={labelTitle}
-      >
-        {label}
-      </span>
-      <span className="font-monospace fs-9 d-none d-xxl-inline" title={value}>
-        {value}
-      </span>
-      <span className="font-monospace fs-9 d-xxl-none" title={value}>
-        {short}
-      </span>
+      {!bare && (
+        <span
+          className="text-body-tertiary fs-9 flex-shrink-0"
+          style={{ minWidth: labelWidth }}
+          title={labelTitle}
+        >
+          {label}
+        </span>
+      )}
+      {[
+        { text: value, cls: 'd-none d-xxl-inline' },
+        { text: short, cls: 'd-xxl-none' }
+      ].map(({ text, cls }) =>
+        href ? (
+          <a
+            key={cls}
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className={`font-monospace fs-9 ${cls}`}
+            title={value}
+          >
+            {text}
+          </a>
+        ) : (
+          <span
+            key={cls}
+            className={`font-monospace fs-9 ${cls}`}
+            title={value}
+          >
+            {text}
+          </span>
+        )
+      )}
       {note && (
         <span className="text-body-tertiary fs-10 flex-shrink-0">{note}</span>
       )}
