@@ -96,10 +96,18 @@ const rewardDetail = (v: Validator) =>
     .filter(Boolean)
     .join(' · ');
 
+/** A validator's yearly yield for its delegators, from what the pool
+ *  earned there last epoch (before the pool's commission). */
+const yieldOf = (v: Validator, epochsPerYear: number | null) =>
+  epochsPerYear && v.stake && v.inflationReward != null
+    ? (1 + rewardOf(v) / v.stake) ** epochsPerYear - 1
+    : null;
+
 const columns = (
   isSfdp: boolean,
   showOther: boolean,
-  showRewards: boolean
+  showRewards: boolean,
+  epochsPerYear: number | null
 ): ColumnDef<Validator>[] => [
   {
     id: 'rank',
@@ -154,6 +162,30 @@ const columns = (
     cell: ({ row: { original: v } }) => pct(v.shareOfValidator),
     meta: END
   },
+  ...(showRewards && epochsPerYear
+    ? [
+        {
+          id: 'yield',
+          header: 'Delegator yield',
+          accessorFn: (v: Validator) => yieldOf(v, epochsPerYear) ?? -1,
+          cell: ({
+            row: { original: v }
+          }: {
+            row: { original: Validator };
+          }) => {
+            const y = yieldOf(v, epochsPerYear);
+            return y == null ? (
+              <span className="text-body-quaternary">—</span>
+            ) : (
+              <span title="A year at last epoch's rate, before the pool's commission">
+                {(y * 100).toFixed(2)}%
+              </span>
+            );
+          },
+          meta: END
+        } as ColumnDef<Validator>
+      ]
+    : []),
   ...(showRewards
     ? [
         {
@@ -467,7 +499,11 @@ const StakePool = () => {
   const progress = context?.currentEpochState.progress;
   const epochsPerYear =
     progress?.slotsInEpoch && progress.slotSeconds
-      ? (365 * 86400) / (progress.slotsInEpoch * progress.slotSeconds)
+      ? // Rounded: the slot time is re-measured each poll, and a figure
+        // that moves would rebuild the table's columns every time.
+        Math.round(
+          (365 * 86400) / (progress.slotsInEpoch * progress.slotSeconds)
+        )
       : null;
   const validators = useMemo(
     () => [...(data?.validators ?? [])].sort((a, b) => b.stake - a.stake),
@@ -475,8 +511,8 @@ const StakePool = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(isSfdp, showOther, showRewards),
-      [isSfdp, showOther, showRewards]
+      () => columns(isSfdp, showOther, showRewards, epochsPerYear),
+      [isSfdp, showOther, showRewards, epochsPerYear]
     ),
     data: validators,
     sortable: true,
