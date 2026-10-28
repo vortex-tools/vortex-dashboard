@@ -50,7 +50,6 @@ const END = {
 };
 
 const columns = (
-  total: number,
   showMedian: boolean,
   showFees: boolean
 ): ColumnDef<PoolSummary>[] => [
@@ -98,13 +97,6 @@ const columns = (
       </>
     ),
     meta: END
-  },
-  {
-    id: 'share',
-    header: 'Of pooled stake',
-    accessorFn: p => (total ? p.stake / total : 0),
-    cell: ({ row: { original: p } }) => pct(total ? p.stake / total : null),
-    meta: END_WIDE_ONLY
   },
   {
     id: 'validators',
@@ -215,8 +207,8 @@ const StakePools = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(total, showMedian, showFees),
-      [total, showMedian, showFees]
+      () => columns(showMedian, showFees),
+      [showMedian, showFees]
     ),
     data: pools,
     sortable: true,
@@ -335,7 +327,6 @@ const StakePools = () => {
               <AdvanceTableFooter viewAll={false} />
             </AdvanceTableProvider>
             <p className="fs-10 text-body-tertiary mt-2 mb-0">
-              Shares are of all pooled stake, hidden pools included.{' '}
               {Object.values(KIND)
                 .map(k => k.label)
                 .join(', ')}{' '}
