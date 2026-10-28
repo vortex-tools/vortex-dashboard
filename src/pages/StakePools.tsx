@@ -262,7 +262,7 @@ const StakePools = () => {
         <div className="col-auto">
           <h3>Stake Pools</h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
-            Who stake pools, Marinade and the Solana Foundation delegate to
+            Where stake pools and delegation programs put their stake
             {data?.epoch != null && ` · epoch ${data.epoch.toLocaleString()}`}
           </p>
         </div>
