@@ -494,17 +494,8 @@ const Decentralization = () => {
       const fl = flavors.get(key);
       return {
         key,
-        label: (
-          <>
-            {name}
-            {fl?.length ? (
-              <span className="text-body-tertiary">
-                {' '}
-                · incl. {fl.join(', ')}
-              </span>
-            ) : null}
-          </>
-        ),
+        // The flavors it includes (Jito, BAM, ...) on hover only.
+        label: name,
         title: fl?.length ? `${name}, including ${fl.join(', ')}` : name,
         validators: c.validators,
         stake: c.stake
