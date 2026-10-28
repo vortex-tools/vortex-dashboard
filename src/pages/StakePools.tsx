@@ -8,7 +8,6 @@ import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import {
   Delta,
-  KIND,
   KindBadge,
   compactSol,
   pct,
@@ -84,7 +83,9 @@ const columns = (
     id: 'kind',
     header: 'Kind',
     accessorFn: p => p.kind ?? '',
-    cell: ({ row: { original: p } }) => <KindBadge kind={p.kind} />,
+    cell: ({ row: { original: p } }) => (
+      <KindBadge kind={p.kind} name={p.name} />
+    ),
     meta: WIDE_ONLY
   },
   {
@@ -380,11 +381,8 @@ const StakePools = () => {
               <AdvanceTableFooter viewAll={false} />
             </AdvanceTableProvider>
             <p className="fs-10 text-body-tertiary mt-2 mb-0">
-              {Object.values(KIND)
-                .map(k => k.label)
-                .join(', ')}{' '}
-              only: other stakers (individuals, funds, custodians) aren&apos;t
-              labeled.
+              Stake pools, Marinade and SFDP only: other stakers (individuals,
+              funds, custodians) aren&apos;t labeled.
             </p>
           </SectionCard>
         </div>

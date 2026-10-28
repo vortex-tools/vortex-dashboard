@@ -3,29 +3,41 @@ import Badge, { BadgeBg } from 'components/base/Badge';
 /** A pool's page (its name, as the labels give it). */
 export const poolPath = (name: string) => `/pool/${encodeURIComponent(name)}`;
 
-/** What a staker is: a stake pool (an LST), Marinade, or SFDP. */
-export const KIND: Record<string, { label: string; bg: BadgeBg }> = {
-  'stake-pool': { label: 'Stake pool', bg: 'primary' },
-  marinade: { label: 'Marinade', bg: 'info' },
-  sfdp: { label: 'SFDP', bg: 'success' }
+/** How a staker delegates: a stake pool (a liquid staking token -
+ *  Marinade's mSOL too), direct delegation (Marinade Native / Select,
+ *  staking from users' own accounts), or a delegation program (SFDP). */
+const KIND_STYLE: Record<string, { label: string; bg: BadgeBg }> = {
+  pool: { label: 'Stake pool', bg: 'primary' },
+  direct: { label: 'Direct delegation', bg: 'info' },
+  program: { label: 'Delegation program', bg: 'success' }
 };
+export const kindOf = (kind: string | null, name?: string) =>
+  kind === 'sfdp'
+    ? KIND_STYLE.program
+    : kind === 'marinade'
+      ? /msol/i.test(name ?? '')
+        ? KIND_STYLE.pool
+        : KIND_STYLE.direct
+      : kind === 'stake-pool'
+        ? KIND_STYLE.pool
+        : null;
+/** The labels, for text that lists them. */
+export const KIND = KIND_STYLE;
 
-/** A staker's kind as a badge - not where the name already says it
- *  (SFDP, "Marinade (mSOL)" / "Marinade Native" / ...). */
 export const KindBadge = ({
   kind,
   name
 }: {
   kind: string | null;
   name?: string;
-}) =>
-  kind &&
-  KIND[kind] &&
-  !name?.toLowerCase().startsWith(KIND[kind].label.toLowerCase()) ? (
-    <Badge bg={KIND[kind].bg} className="text-nowrap">
-      {KIND[kind].label}
+}) => {
+  const k = kindOf(kind, name);
+  return k ? (
+    <Badge bg={k.bg} className="text-nowrap">
+      {k.label}
     </Badge>
   ) : null;
+};
 
 /** "◎1.23M", "◎45.6K", "◎789". */
 export const compactSol = (lamports: number) => {

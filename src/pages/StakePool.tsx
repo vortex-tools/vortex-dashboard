@@ -17,6 +17,7 @@ import UntrackedState from 'components/common/UntrackedState';
 import {
   Delta,
   KindBadge,
+  poolPath,
   bpsPct,
   compactSol,
   pct,
@@ -26,11 +27,11 @@ import {
 import useAdvanceTable from 'hooks/useAdvanceTable';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { useAppContext } from 'providers/AppProvider';
-import { VortexDataContext } from 'providers/VortexDataProvider';
+import { FEATURES_KEY, VortexDataContext } from 'providers/VortexDataProvider';
 import { PoolDetail, PoolValidatorRef } from 'providers/vortex-schemas';
 import { Fragment, useContext, useEffect, useMemo, useState } from 'react';
 import { Col, Row, Table } from 'react-bootstrap';
-import { Link, useParams } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 
 echarts.use([
   BarChart,
@@ -381,6 +382,47 @@ const RefList = ({
   );
 
 /**
+ * No pool by that name - often one renamed or split since a link was
+ * made (Marinade became "Marinade (mSOL)", "Marinade Native" and
+ * "Marinade Select"). Looks the name up in a fresh listing: one pool
+ * whose name starts with or contains it is opened instead; several are
+ * offered.
+ */
+const PoolNotFound = ({ name }: { name: string }) => {
+  const context = useContext(VortexDataContext);
+  const fetchPools = context?.poolsState.fetchData;
+  useEffect(() => {
+    fetchPools?.(FEATURES_KEY, { force: true });
+  }, [fetchPools]);
+  const listing = context?.poolsState.data.get(FEATURES_KEY);
+  const q = name.toLowerCase();
+  const matches = (listing?.pools ?? []).filter(p => {
+    const n = p.name.toLowerCase();
+    return n.startsWith(q) || n.includes(q);
+  });
+  if (matches.length === 1)
+    return <Navigate to={poolPath(matches[0].name)} replace />;
+  return (
+    <UntrackedState>
+      No stake pool named {name}.{' '}
+      {matches.length > 1 && (
+        <>
+          Did you mean{' '}
+          {matches.map((p, i) => (
+            <Fragment key={p.name}>
+              {i > 0 && (i === matches.length - 1 ? ' or ' : ', ')}
+              <Link to={poolPath(p.name)}>{p.name}</Link>
+            </Fragment>
+          ))}
+          ?{' '}
+        </>
+      )}
+      <Link to="/pools">All stake pools</Link>
+    </UntrackedState>
+  );
+};
+
+/**
  * One stake pool (or Marinade, or SFDP): who it stakes to at the end of
  * the latest completed epoch - each validator's stake, its share of the
  * pool and of the validator's stake, the change since the epoch before,
@@ -431,9 +473,7 @@ const StakePool = () => {
     return (
       <div className="mb-9 pt-4">
         {slice?.error ? (
-          <UntrackedState>
-            No stake pool by that name. <Link to="/pools">All stake pools</Link>
-          </UntrackedState>
+          <PoolNotFound name={name} />
         ) : (
           <DelayedSpinner loading label="Loading the stake pool…" />
         )}
