@@ -355,7 +355,6 @@ const BreakdownCard = ({
             })}
           </div>
           <div className="d-flex flex-wrap align-items-center gap-3 fs-10 text-body-tertiary mt-3">
-            <span>largest {pct(c.top1Share)}</span>
             {nakamoto && (
               <span className="d-inline-flex align-items-center gap-1">
                 <span
