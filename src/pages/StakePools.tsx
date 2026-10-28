@@ -320,9 +320,31 @@ const StakePools = () => {
               <StatCard
                 label="Marinade"
                 value={compactSol(stakeOf('marinade'))}
-                sublabel={`${(allPools.find(p => p.kind === 'marinade')?.validators ?? 0).toLocaleString()} validators`}
+                wrapSublabel
+                sublabel={
+                  // Marinade runs several programs (mSOL, Native, Select):
+                  // one figure for all, each linked.
+                  allPools.filter(p => p.kind === 'marinade').length > 1 ? (
+                    <>
+                      {allPools
+                        .filter(p => p.kind === 'marinade')
+                        .map((p, i) => (
+                          <span key={p.name}>
+                            {i > 0 && ' · '}
+                            <Link to={poolPath(p.name)}>
+                              {p.name
+                                .replace(/^Marinade\s*/, '')
+                                .replace(/[()]/g, '') || p.name}
+                            </Link>
+                          </span>
+                        ))}
+                    </>
+                  ) : (
+                    `${(allPools.find(p => p.kind === 'marinade')?.validators ?? 0).toLocaleString()} validators`
+                  )
+                }
                 linkTo={
-                  allPools.find(p => p.kind === 'marinade')
+                  allPools.filter(p => p.kind === 'marinade').length === 1
                     ? poolPath(allPools.find(p => p.kind === 'marinade')!.name)
                     : undefined
                 }

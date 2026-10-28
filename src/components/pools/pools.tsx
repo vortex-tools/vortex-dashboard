@@ -10,8 +10,8 @@ export const KIND: Record<string, { label: string; bg: BadgeBg }> = {
   sfdp: { label: 'SFDP', bg: 'success' }
 };
 
-/** A staker's kind as a badge - not where it would only repeat the name
- *  (SFDP, Marinade). */
+/** A staker's kind as a badge - not where the name already says it
+ *  (SFDP, "Marinade (mSOL)" / "Marinade Native" / ...). */
 export const KindBadge = ({
   kind,
   name
@@ -21,7 +21,7 @@ export const KindBadge = ({
 }) =>
   kind &&
   KIND[kind] &&
-  KIND[kind].label.toLowerCase() !== name?.toLowerCase() ? (
+  !name?.toLowerCase().startsWith(KIND[kind].label.toLowerCase()) ? (
     <Badge bg={KIND[kind].bg} className="text-nowrap">
       {KIND[kind].label}
     </Badge>

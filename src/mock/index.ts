@@ -51,7 +51,27 @@ const POOLS = [
     n: 400,
     stake: 4.2e16
   },
-  { name: 'Marinade', kind: 'marinade', fullName: null, n: 350, stake: 3.1e16 },
+  {
+    name: 'Marinade (mSOL)',
+    kind: 'marinade',
+    fullName: null,
+    n: 350,
+    stake: 2.3e15
+  },
+  {
+    name: 'Marinade Native',
+    kind: 'marinade',
+    fullName: null,
+    n: 81,
+    stake: 3.55e15
+  },
+  {
+    name: 'Marinade Select',
+    kind: 'marinade',
+    fullName: null,
+    n: 64,
+    stake: 1.31e15
+  },
   {
     name: 'JitoSOL',
     kind: 'stake-pool',
@@ -88,7 +108,8 @@ const feesOf = (name: string, kind: string) =>
   kind === 'sfdp'
     ? null
     : {
-        epochFeeBps: name === 'JitoSOL' ? 400 : name === 'Marinade' ? 600 : 500,
+        epochFeeBps:
+          name === 'JitoSOL' ? 400 : name.startsWith('Marinade') ? 600 : 500,
         nextEpochFeeBps: name === 'bSOL' ? 300 : null,
         solDepositFeeBps: 0,
         stakeDepositFeeBps: 0,
