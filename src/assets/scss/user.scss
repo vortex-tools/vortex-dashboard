@@ -524,7 +524,11 @@ th.leaderboard-sticky-col {
 
 // Every data table is zebra-striped (as `.table-striped` does), unless it
 // opts out with `.no-stripes` (tables whose rows open detail rows, which
-// would shift the stripes).
+// would shift the stripes; those stripe their own rows with `tr.stripe`).
 .table.data-table:not(.no-stripes) > tbody > tr:nth-of-type(odd) > * {
+  --vx-table-bg-type: var(--vx-table-striped-bg);
+}
+// A no-stripes table striping its own rows (skipping detail rows).
+.table.data-table > tbody > tr.stripe > * {
   --vx-table-bg-type: var(--vx-table-striped-bg);
 }

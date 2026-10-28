@@ -330,10 +330,16 @@ const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
   const stakeLabel = (v: number) => {
     const sol = v / 1e9;
     if (stakeRange >= 1e6 || sol < 1e4) return compactSol(v);
-    // The axis's round ticks, with the decimals each needs: "◎23.7M",
-    // "◎23.75M", not "◎23,700K".
-    const [n, unit] = sol >= 1e6 ? [sol / 1e6, 'M'] : [sol / 1e3, 'K'];
-    return `◎${n.toLocaleString('en-US', { maximumFractionDigits: 3 })}${unit}`;
+    // In M (or K), with the decimals the tick spacing (about a fifth of
+    // the range) needs, the same on every label: "◎23.70M" / "◎23.75M",
+    // and for mSOL's ◎2.6K range "◎2.2350M" / "◎2.2355M", never a repeat.
+    const need = (size: number) =>
+      Math.max(0, Math.ceil(Math.log10((size * 5) / Math.max(stakeRange, 1))));
+    // Past 4 decimals of M (a range under ~◎500), K reads better.
+    const inM = sol >= 1e6 && need(1e6) <= 4;
+    const [n, unit] = inM ? [sol / 1e6, 'M'] : [sol / 1e3, 'K'];
+    const digits = Math.min(4, need(inM ? 1e6 : 1e3));
+    return `◎${n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit}`;
   };
   // Whole validators, with room around a count that hardly moves (56 to
   // 57 drew 56.2, 56.4, ...).
@@ -406,16 +412,25 @@ const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
   );
 };
 
+/** The validators an epoch added, dropped or moved: the first `max` (by
+ *  `order`, else as given), the rest as "and N more". */
 const RefList = ({
-  refs,
-  more,
-  value
+  refs: all,
+  more: moreGiven,
+  value,
+  max,
+  order
 }: {
   refs: PoolValidatorRef[];
   more: number;
   value: (r: PoolValidatorRef) => string | null;
-}) =>
-  refs.length ? (
+  max: number;
+  order?: (r: PoolValidatorRef) => number;
+}) => {
+  const sorted = order ? [...all].sort((a, b) => order(b) - order(a)) : all;
+  const refs = sorted.slice(0, max);
+  const more = moreGiven + sorted.length - refs.length;
+  return refs.length ? (
     <ul className="list-unstyled mb-0 fs-10">
       {refs.map(r => (
         <li key={r.voteKey} className="d-flex justify-content-between gap-2">
@@ -432,6 +447,7 @@ const RefList = ({
   ) : (
     <span className="fs-10 text-body-quaternary">none</span>
   );
+};
 
 /**
  * No pool by that name - often one renamed or split since a link was
@@ -721,7 +737,7 @@ const StakePool = () => {
         </SectionCard>
 
         <SectionCard
-          title="Epoch by Epoch"
+          title="Epoch Changes"
           icon="clock"
           info="Each epoch, newest first: its stake, validator count, and the validators it added, dropped or moved stake on. Small moves can be reward noise."
         >
@@ -751,7 +767,8 @@ const StakePool = () => {
                   const nMoved = h.moved.length + h.moreMoved;
                   return (
                     <Fragment key={h.epoch}>
-                      <tr>
+                      {/* Striped by epoch: a Details row doesn't shift it. */}
+                      <tr className={i % 2 === 0 ? 'stripe' : undefined}>
                         <td className="font-monospace">
                           {h.epoch.toLocaleString()}
                         </td>
@@ -800,6 +817,8 @@ const StakePool = () => {
                                 <RefList
                                   refs={h.added}
                                   more={h.moreAdded}
+                                  max={10}
+                                  order={r => r.stake ?? 0}
                                   value={r =>
                                     r.stake != null ? compactSol(r.stake) : null
                                   }
@@ -812,6 +831,8 @@ const StakePool = () => {
                                 <RefList
                                   refs={h.dropped}
                                   more={h.moreDropped}
+                                  max={10}
+                                  order={r => r.stakePrev ?? 0}
                                   value={r =>
                                     r.stakePrev != null
                                       ? compactSol(r.stakePrev)
@@ -826,6 +847,10 @@ const StakePool = () => {
                                 <RefList
                                   refs={h.moved}
                                   more={h.moreMoved}
+                                  // The biggest moves: most epochs move nearly
+                                  // every validator a little (rewards).
+                                  max={5}
+                                  order={r => Math.abs(r.net ?? 0)}
                                   value={r =>
                                     r.net != null ? signedSol(r.net) : null
                                   }
