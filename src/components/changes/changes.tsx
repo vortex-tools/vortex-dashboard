@@ -63,17 +63,26 @@ const bpsPct = (v: unknown) =>
 
 /** Where a host is ("Frankfurt, DE · OVH SAS") and, for a software
  *  change, what it runs ("AgaveBam 4.3.2"). */
-const hostText = (h: HostState | null | undefined, software: boolean) => {
-  if (!h) return null;
-  const run = [h.clientId, h.version].filter(Boolean).join(' ');
-  if (software) return run || null;
-  const place = [
-    [h.geo?.city, h.geo?.countryCode].filter(Boolean).join(', '),
-    h.geo?.asnOrganization
+const placeOf = (h: HostState | null | undefined) =>
+  [
+    [h?.geo?.city, h?.geo?.countryCode].filter(Boolean).join(', '),
+    h?.geo?.asnOrganization
   ]
     .filter(Boolean)
     .join(' · ');
-  return place || (h.host != null ? `host ${h.host}` : null);
+const hostText = (
+  h: HostState | null | undefined,
+  other: HostState | null | undefined,
+  software: boolean
+) => {
+  if (!h) return null;
+  const run = [h.clientId, h.version].filter(Boolean).join(' ');
+  if (software) return run || null;
+  const place = placeOf(h);
+  const host = h.host != null ? `host ${h.host}` : null;
+  // Two hosts in the same place (a failover within a data center): which.
+  if (place && host && place === placeOf(other)) return `${place} (${host})`;
+  return place || host;
 };
 
 /** A change's value (new or old) as the UI shows it: an address linked,
@@ -87,6 +96,7 @@ export const changeValue = (
   if (HOST_KINDS.has(e.kind))
     return hostText(
       which === 'new' ? e.after : e.before,
+      which === 'new' ? e.before : e.after,
       e.kind === 'software'
     );
   const v = which === 'new' ? e.newValue : e.oldValue;
