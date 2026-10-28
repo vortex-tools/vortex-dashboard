@@ -398,8 +398,6 @@ const StakePool = () => {
   const history = data.history;
   const prev = history.length > 1 ? history[history.length - 2] : null;
   const newest = [...history].reverse();
-  const overlap = validators.filter(v => (v.sfdpStake ?? 0) > MIN_STAKE);
-  const overlapStake = overlap.reduce((a, v) => a + v.stake, 0);
 
   return (
     <div className="mb-9">
@@ -426,7 +424,7 @@ const StakePool = () => {
 
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
-          <Col xs={6} lg={4}>
+          <Col xs={6}>
             <StatCard
               label="Stake"
               value={compactSol(data.stake)}
@@ -437,7 +435,7 @@ const StakePool = () => {
               }
             />
           </Col>
-          <Col xs={6} lg={4}>
+          <Col xs={6}>
             <StatCard
               label="Validators"
               value={validators.length.toLocaleString()}
@@ -458,30 +456,6 @@ const StakePool = () => {
                 </>
               }
             />
-          </Col>
-          <Col xs={12} lg={4}>
-            {isSfdp ? (
-              <StatCard
-                label="Largest"
-                mono={false}
-                value={
-                  validators[0]?.name ??
-                  (validators[0] ? short(validators[0].voteKey) : '—')
-                }
-                sublabel={
-                  validators[0]
-                    ? `${pct(validators[0].shareOfPool, 2)} of SFDP`
-                    : undefined
-                }
-              />
-            ) : (
-              <StatCard
-                label="Overlap with SFDP"
-                value={`${overlap.length.toLocaleString()} validators`}
-                mono={false}
-                sublabel={`${pct(data.stake ? overlapStake / data.stake : null)} of the pool's stake`}
-              />
-            )}
           </Col>
         </Row>
 

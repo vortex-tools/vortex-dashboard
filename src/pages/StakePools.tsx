@@ -32,6 +32,17 @@ const NOWRAP = {
   headerProps: { className: 'text-nowrap' },
   cellProps: { className: 'text-nowrap' }
 };
+// Columns that give way on phones, where the table would scroll sideways.
+const WIDE_ONLY = {
+  headerProps: { className: 'text-nowrap d-none d-md-table-cell' },
+  cellProps: { className: 'text-nowrap d-none d-md-table-cell' }
+};
+const END_WIDE_ONLY = {
+  headerProps: { className: 'text-nowrap text-end d-none d-md-table-cell' },
+  cellProps: {
+    className: 'text-nowrap text-end font-monospace d-none d-md-table-cell'
+  }
+};
 const END = {
   headerProps: { className: 'text-nowrap text-end' },
   cellProps: { className: 'text-nowrap text-end font-monospace' }
@@ -47,12 +58,16 @@ const columns = (
     accessorFn: p => `${p.name} ${p.fullName ?? ''} ${p.authorities.join(' ')}`,
     cell: ({ row: { original: p } }) => (
       <span className="d-flex align-items-center gap-2">
-        <Link to={poolPath(p.name)} className="fw-semibold">
+        <Link
+          to={poolPath(p.name)}
+          className="fw-semibold"
+          title={p.fullName ?? undefined}
+        >
           {p.name}
         </Link>
         {p.fullName && (
           <span
-            className="text-body-tertiary text-truncate"
+            className="text-body-tertiary text-truncate d-none d-md-inline"
             style={{ maxWidth: '16rem' }}
             title={p.fullName}
           >
@@ -68,7 +83,7 @@ const columns = (
     header: 'Kind',
     accessorFn: p => p.kind ?? '',
     cell: ({ row: { original: p } }) => <KindBadge kind={p.kind} />,
-    meta: NOWRAP
+    meta: WIDE_ONLY
   },
   {
     id: 'stake',
@@ -92,7 +107,7 @@ const columns = (
     header: 'Of pooled stake',
     accessorFn: p => (total ? p.stake / total : 0),
     cell: ({ row: { original: p } }) => pct(total ? p.stake / total : null),
-    meta: END
+    meta: END_WIDE_ONLY
   },
   {
     id: 'validators',
