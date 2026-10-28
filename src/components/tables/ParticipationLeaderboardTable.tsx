@@ -25,6 +25,15 @@ export const skippedBlockRate = (r: ParticipationLeaderboardRecord) => {
   return blocks > 0 ? r.skippedNotarizedSlots / blocks : null;
 };
 
+/** Agreement with the cluster's outcome, the rank: its votes that match
+ *  what the cluster decided / eligible slots. A skip on a slot the cluster
+ *  notarized (block not replayed in time) is paid, but disagrees. */
+export const agreementRate = (r: ParticipationLeaderboardRecord) =>
+  r.eligibleSlots > 0
+    ? (r.notarizedSlots + r.skippedSlots - r.skippedNotarizedSlots) /
+      r.eligibleSlots
+    : null;
+
 export const participationRate = (r: ParticipationLeaderboardRecord) =>
   r.eligibleSlots > 0
     ? (r.notarizedSlots + r.skippedSlots) / r.eligibleSlots
@@ -176,7 +185,7 @@ export const createParticipationLeaderboardColumns = (
   {
     id: 'participationGroup',
     header: () => (
-      <span title="Whether its votes landed: in the slots' reward certificates (paid) or missed">
+      <span title="Whether its votes matched the cluster's outcome (the rank), landed in the slots' reward certificates (paid), or missed">
         Participation
       </span>
     ),
@@ -185,21 +194,19 @@ export const createParticipationLeaderboardColumns = (
     },
     columns: [
       {
-        // The API's participation = (notarize + skip votes) / eligible slots:
-        // identical to the votes paid / payable (Overall's Voting score) - a
-        // skip is a real vote, slots with no reward certificate aren't
-        // eligible. The rank follows it.
-        id: 'participation',
+        // The rank's measure (API rank since 003291b): votes landed, less
+        // skips on slots the cluster notarized. Votes Landed orders a rank.
+        id: 'agreement',
         accessorFn: r =>
-          r.admitted ? (participationRate(r) ?? undefined) : undefined,
+          r.admitted ? (agreementRate(r) ?? undefined) : undefined,
         sortUndefined: 'last',
         header: () => (
-          <span title="Its votes in the slots' reward certificates (notarize or skip, paid alike) / the slots it could vote on (slots with no reward certificate don't count). The rank.">
-            Votes Landed
+          <span title="Its votes that match the cluster's outcome / the slots it could vote on: notarize or skip votes landed, less skips on slots the cluster notarized (paid, but a block it didn't replay in time). The rank; Votes Landed breaks ties.">
+            Agreement
           </span>
         ),
         cell: ({ row }) => {
-          const v = participationRate(row.original);
+          const v = agreementRate(row.original);
           return !row.original.admitted || v == null ? (
             <Dash />
           ) : (
@@ -212,6 +219,33 @@ export const createParticipationLeaderboardColumns = (
               'text-end font-monospace text-success fw-semibold border-start'
           },
           headerProps: { className: 'text-end text-nowrap border-start' }
+        }
+      },
+      {
+        // The API's participation = (notarize + skip votes) / eligible slots:
+        // identical to the votes paid / payable (Overall's Voting score) - a
+        // skip is a real vote, slots with no reward certificate aren't
+        // eligible. It orders validators within a rank.
+        id: 'participation',
+        accessorFn: r =>
+          r.admitted ? (participationRate(r) ?? undefined) : undefined,
+        sortUndefined: 'last',
+        header: () => (
+          <span title="Its votes in the slots' reward certificates (notarize or skip, paid alike) / the slots it could vote on (slots with no reward certificate don't count). What it's paid on.">
+            Votes Landed
+          </span>
+        ),
+        cell: ({ row }) => {
+          const v = participationRate(row.original);
+          return !row.original.admitted || v == null ? (
+            <Dash />
+          ) : (
+            formatShare(v)
+          );
+        },
+        meta: {
+          cellProps: { className: 'text-end font-monospace text-body' },
+          headerProps: { className: 'text-end text-nowrap' }
         }
       },
       {
