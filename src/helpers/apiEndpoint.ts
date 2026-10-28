@@ -21,11 +21,17 @@ const BUILD_DEFAULT: string =
 
 const TESTNET_API = 'https://api.testnet.vx.tools';
 
+const STAGING_API = 'https://api.staging.vx.tools';
+/** The "mock" choice: the staging API, with the routes in src/mock
+ *  answered locally (staging builds only). */
+export const MOCK_API = 'mock';
+
 export const API_OPTIONS = [
-  { label: 'staging', url: 'https://api.staging.vx.tools' },
+  { label: 'staging', url: STAGING_API },
   { label: 'prod', url: 'https://api.vx.tools' },
   { label: 'testnet', url: TESTNET_API },
-  { label: 'local', url: 'http://localhost:4000' }
+  { label: 'local', url: 'http://localhost:4000' },
+  { label: 'mock', url: MOCK_API }
 ];
 
 const STORAGE_KEY = 'vx-api-endpoint';
@@ -47,7 +53,12 @@ const readOverride = (): string | null => {
   }
 };
 
-export const API_ENDPOINT: string = readOverride() ?? BUILD_DEFAULT;
+const OVERRIDE = readOverride();
+/** "mock" selected: requests go to staging, mocked routes answer locally. */
+export const IS_MOCK_API = OVERRIDE === MOCK_API;
+export const API_ENDPOINT: string = IS_MOCK_API
+  ? STAGING_API
+  : (OVERRIDE ?? BUILD_DEFAULT);
 
 // Staging only: tag <html> when the testnet API is selected, so the
 // staging build's pink testnet palette applies (vite.config.ts) - from the
