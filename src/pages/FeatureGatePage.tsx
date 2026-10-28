@@ -352,6 +352,12 @@ const FeatureGatePage = () => {
                       <tr>
                         <th>Client</th>
                         <th>Needs</th>
+                        <th
+                          className="text-end"
+                          title="The client's share of all activated stake"
+                        >
+                          Stake
+                        </th>
                         <th className="text-end">Ready</th>
                         <th className="text-end">Not ready</th>
                         <th className="text-end">Unknown</th>
@@ -360,33 +366,43 @@ const FeatureGatePage = () => {
                     <tbody>
                       {r.byClient
                         .filter(c => c.client !== 'frankendancer')
-                        .map(c => (
-                          <tr key={c.client}>
-                            <td>{clientLabel(c.client)}</td>
-                            <td className="font-monospace fs-10">
-                              {c.minVersions
-                                .map(v => v.replace(/^v/, ''))
-                                .join(' / ') || '—'}
-                            </td>
-                            <td className="text-end font-monospace">
-                              {pctOf(c.readyStake, r.totalStake)}
-                            </td>
-                            <td className="text-end font-monospace">
-                              {c.notReadyStake
-                                ? pctOf(c.notReadyStake, r.totalStake)
-                                : '—'}
-                            </td>
-                            <td className="text-end font-monospace">
-                              {c.unknownStake
-                                ? pctOf(c.unknownStake, r.totalStake)
-                                : '—'}
-                            </td>
-                          </tr>
-                        ))}
+                        .map(c => {
+                          // Ready / not ready / unknown: of the client's
+                          // own stake.
+                          const own =
+                            c.readyStake + c.notReadyStake + c.unknownStake;
+                          return (
+                            <tr key={c.client}>
+                              <td>{clientLabel(c.client)}</td>
+                              <td className="font-monospace fs-10">
+                                {c.minVersions
+                                  .map(v => v.replace(/^v/, ''))
+                                  .join(' / ') || '—'}
+                              </td>
+                              <td className="text-end font-monospace text-body-tertiary">
+                                {pctOf(own, r.totalStake)}
+                              </td>
+                              <td className="text-end font-monospace">
+                                {pctOf(c.readyStake, own)}
+                              </td>
+                              <td className="text-end font-monospace">
+                                {c.notReadyStake
+                                  ? pctOf(c.notReadyStake, own)
+                                  : '—'}
+                              </td>
+                              <td className="text-end font-monospace">
+                                {c.unknownStake
+                                  ? pctOf(c.unknownStake, own)
+                                  : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </Table>
                   <p className="fs-10 text-body-tertiary mt-2 mb-0">
-                    Shares of all activated stake.
+                    Stake: the client&apos;s share of all activated stake.
+                    Ready, not ready and unknown: of that client&apos;s stake.
                   </p>
                 </>
               ) : (
