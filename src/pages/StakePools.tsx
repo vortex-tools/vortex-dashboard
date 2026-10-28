@@ -262,7 +262,7 @@ const StakePools = () => {
           <SectionCard
             title="All Stakers"
             icon="layers"
-            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 10 SOL: a pool's minimum stake on a validator (10 SOL or less) isn't a delegation. Median delegation: the middle of its holdings per validator, over those delegations. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
+            info="Every known stake pool (Sanctum's LST list), Marinade (its two authorities as one) and SFDP (by its stake authority), with the effective stake each holds at the end of the epoch, on how many validators, and the change since the epoch before. Validators count holdings over 50 SOL: a pool's minimum stake on a validator (50 SOL or less) isn't a delegation. Median delegation: the middle of its holdings per validator, over those delegations. From Jito's per-epoch stake-meta file, published hours after an epoch ends."
           >
             <AdvanceTableProvider {...table}>
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">

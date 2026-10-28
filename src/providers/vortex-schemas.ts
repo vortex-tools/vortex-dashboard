@@ -2802,13 +2802,13 @@ export const poolSummarySchema = z.object({
   fullName: z.string().nullable().catch(null),
   authorities: z.array(z.string()).catch([]),
   stake: z.number().catch(0),
-  // Validators it holds more than the 10 SOL minimum on.
+  // Validators it holds more than the 50 SOL minimum on.
   validators: z.number().catch(0),
   stakePrev: z.number().nullable().catch(null),
   validatorsPrev: z.number().nullable().catch(null),
-  // Median stake per validator over its delegations (> 10 SOL).
+  // Median stake per validator over its delegations (> 50 SOL).
   medianStake: z.number().nullable().optional().catch(null),
-  // Validators held only at a pool's minimum stake (<= 10 SOL): not
+  // Validators held only at a pool's minimum stake (<= 50 SOL): not
   // delegations, not listed.
   minimumOnly: z.number().nullable().optional().catch(null)
 });
@@ -2838,7 +2838,7 @@ export const poolDetailSchema = z.object({
   epoch: z.number().nullable().catch(null),
   stake: z.number().catch(0),
   top10Share: z.number().nullable().catch(null),
-  // Validators held only at the minimum stake (<= 10 SOL), not listed.
+  // Validators held only at the minimum stake (<= 50 SOL), not listed.
   minimumOnly: z.number().nullable().optional().catch(null),
   validators: z
     .array(
@@ -2853,7 +2853,7 @@ export const poolDetailSchema = z.object({
         stakePrev: z.number().nullable().catch(null),
         // SFDP's stake on the same validator (overlap).
         sfdpStake: z.number().nullable().catch(null),
-        // Other known pools (not this one, not SFDP) holding > 10 SOL
+        // Other known pools (not this one, not SFDP) holding > 50 SOL
         // on the validator.
         otherPools: z.number().nullable().optional().catch(null)
       })

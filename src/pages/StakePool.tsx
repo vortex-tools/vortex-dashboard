@@ -54,7 +54,7 @@ const NOWRAP = {
 };
 /** A pool's minimum stake (lamports): holdings at or below it aren't
  *  delegations. */
-const MIN_STAKE = 10e9;
+const MIN_STAKE = 50e9;
 
 const CENTER = {
   headerProps: { className: 'text-nowrap text-center' },
@@ -128,7 +128,7 @@ const columns = (
         {
           id: 'sfdp',
           header: 'SFDP delegated',
-          // Above the 10 SOL minimum, as the pools are counted.
+          // Above the 50 SOL minimum, as the pools are counted.
           accessorFn: (v: Validator) =>
             (v.sfdpStake ?? 0) > MIN_STAKE ? 1 : 0,
           cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
@@ -443,9 +443,9 @@ const StakePool = () => {
                   {!!data.minimumOnly && (
                     <span
                       className="d-block"
-                      title="Validators it holds only its minimum stake on (10 SOL or less): not delegations, not listed"
+                      title="Validators it holds only its minimum stake on (50 SOL or less): not delegations, not listed"
                     >
-                      +{data.minimumOnly.toLocaleString()} at the 10 SOL minimum
+                      +{data.minimumOnly.toLocaleString()} at the 50 SOL minimum
                     </span>
                   )}
                 </>
@@ -486,7 +486,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Everyone it delegates to at the end of the epoch (holdings over 10 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), whether SFDP delegates to it too, and how many other pools do (each over 10 SOL). Validator names are today's."
+          info="Everyone it delegates to at the end of the epoch (holdings over 50 SOL; a pool's minimum stake isn't a delegation and isn't listed), by effective stake: its share of the pool, its share of the validator's whole stake, the change since the epoch before (new: not staked there then), whether SFDP delegates to it too, and how many other pools do (each over 50 SOL). Validator names are today's."
         >
           <AdvanceTableProvider {...table}>
             <div className="mb-3">
