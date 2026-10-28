@@ -11,23 +11,26 @@ export type SlotKind =
   | 'noData'
   | 'upcoming';
 
-/** How a slot is drawn (dot color) and named. */
+/** How a slot is drawn (dot color) and named - the live slot strips'
+ *  palette (Home, the Voting tab): green blocks, fainter when not
+ *  fast-finalized, a skip as a white dot with a gray ring. */
+const SLOW = { cls: 'bg-success opacity-50', label: 'slow-finalized' };
 export const SLOT_KIND: Record<SlotKind, { cls: string; label: string }> = {
-  fast: { cls: 'bg-primary', label: 'fast-finalized' },
-  // A ring, not a fill: the slow (two-round) path should stand out.
-  slow: {
-    cls: 'border border-2 border-primary bg-body-emphasis',
-    label: 'slow-finalized'
-  },
-  block: { cls: 'bg-primary opacity-50', label: 'finalized via a later block' },
-  // Produced, finalization not known yet (it fills in a few slots later):
-  // not 'via a later block', which it would read as until then.
+  fast: { cls: 'bg-success', label: 'fast-finalized' },
+  // Not fast: its own certificate on the two-round path, or none of its
+  // own (final because a later block on it was) - one color for both.
+  slow: SLOW,
+  block: SLOW,
+  // Produced, finalization not known yet (it fills in a few slots later).
   finalizing: {
-    cls: 'border border-primary border-opacity-50 bg-body-emphasis',
+    cls: 'bg-body-emphasis border border-2 border-success border-opacity-50',
     label: 'finalizing'
   },
-  skipped: { cls: 'bg-warning', label: 'skipped' },
-  noData: { cls: 'bg-body-secondary', label: 'no data' },
+  skipped: {
+    cls: 'bg-body-emphasis border border-2 border-pending',
+    label: 'skipped'
+  },
+  noData: { cls: 'bg-body-secondary opacity-50', label: 'no data' },
   upcoming: { cls: 'border border-translucent opacity-75', label: 'upcoming' }
 };
 
@@ -52,23 +55,16 @@ export const slotKind = (
 /** What the slot dots mean. */
 export const SlotDotLegend = () => (
   <div className="d-flex flex-wrap gap-3 fs-10 text-body-tertiary">
-    {(
-      [
-        'fast',
-        'slow',
-        'block',
-        'finalizing',
-        'skipped',
-        'upcoming'
-      ] as SlotKind[]
-    ).map(k => (
-      <span key={k} className="d-inline-flex align-items-center gap-1">
-        <span
-          className={`d-inline-block rounded-circle ${SLOT_KIND[k].cls}`}
-          style={{ width: 10, height: 10 }}
-        />
-        {SLOT_KIND[k].label}
-      </span>
-    ))}
+    {(['fast', 'slow', 'finalizing', 'skipped', 'upcoming'] as SlotKind[]).map(
+      k => (
+        <span key={k} className="d-inline-flex align-items-center gap-1">
+          <span
+            className={`d-inline-block rounded-circle ${SLOT_KIND[k].cls}`}
+            style={{ width: 10, height: 10 }}
+          />
+          {SLOT_KIND[k].label}
+        </span>
+      )
+    )}
   </div>
 );

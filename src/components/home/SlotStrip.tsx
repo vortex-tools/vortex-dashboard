@@ -3,7 +3,7 @@ import LiveSlotStrip, {
   StripCell,
   StripLook
 } from 'components/live/LiveSlotStrip';
-import { SlotKind, slotKind } from 'components/live/slotDots';
+import { SLOT_KIND, SlotKind, slotKind } from 'components/live/slotDots';
 import { fetchSlots, noteIngestTip } from 'helpers/slotContext';
 import { useClusterHalt, useEpochLive } from 'hooks/useIngestion';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -33,36 +33,13 @@ const POLL_MS = 2_000;
  *  plus its fetch brings (~2.5 s of slots), so it never waits on data. */
 const LEAD = 16;
 
-// In the Voting tab's live strip's palette: green blocks (fainter when
-// not fast-finalized), a skipped slot as a white dot with a gray ring.
-const SLOW: StripCell = {
-  cls: 'bg-success opacity-50',
-  label: 'block, slow-finalized'
-};
-const CELL: Record<Exclude<SlotKind, 'upcoming'>, StripCell> = {
-  fast: { cls: 'bg-success', label: 'block, fast-finalized' },
-  // Not fast: its own certificate on the two-round path, or none of its
-  // own (final because a later block on it was) - one color for both.
-  slow: SLOW,
-  block: SLOW,
-  finalizing: {
-    cls: 'bg-body-emphasis border border-2 border-success border-opacity-50',
-    label: 'block, finalizing'
-  },
-  skipped: {
-    cls: 'bg-body-emphasis border border-2 border-pending',
-    label: 'skipped'
-  },
-  noData: { cls: 'bg-body-secondary opacity-50', label: 'no data' }
-};
-// No "finalizing": the playhead trails the newest loaded slot by LEAD,
-// and a block's finalization is known within a couple of slots, so it's
-// all but never drawn (a ring if it is).
-const LEGEND: Array<[string, string]> = [
-  [CELL.fast.cls, 'fast-finalized'],
-  [SLOW.cls, 'slow-finalized'],
-  [CELL.skipped.cls, 'skipped']
-];
+// The live strips' palette (shared with Cluster Status). No
+// "finalizing" in the legend: the playhead trails the newest loaded slot
+// by LEAD and a block's finalization is known within a couple of slots,
+// so it's all but never drawn (a ring if it is).
+const LEGEND: Array<[string, string]> = (
+  ['fast', 'slow', 'skipped'] as SlotKind[]
+).map(k => [SLOT_KIND[k].cls, SLOT_KIND[k].label]);
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 
@@ -151,7 +128,7 @@ const SlotStrip = () => {
       const info = infos.get(s);
       if (!info?.outcome) return null;
       const k = slotKind(s, info, s);
-      return k === 'upcoming' ? null : CELL[k];
+      return k === 'upcoming' ? null : SLOT_KIND[k];
     },
     [infos]
   );
