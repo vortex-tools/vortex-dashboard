@@ -315,12 +315,6 @@ const ValidatorOverview = () => {
   const blocksProduced = incomeRecord?.confirmedSlots;
   const totalSlots = incomeRecord?.totalSlots;
   const skippedSlots = incomeRecord?.skippedSlots;
-  // Leader slots still ahead this epoch: scheduled, neither produced nor
-  // skipped yet.
-  const slotsToCome =
-    totalSlots != null && blocksProduced != null && skippedSlots != null
-      ? Math.max(0, totalSlots - blocksProduced - skippedSlots)
-      : null;
   const medianBlockIncome = incomeRecord
     ? incomeRecord.medianIncome.baseFees +
       incomeRecord.medianIncome.priorityFees +
@@ -354,30 +348,39 @@ const ValidatorOverview = () => {
     <StatCard
       key="blocks"
       label="Blocks Produced"
-      // Produced / leader slots, and under it how many are still to come
-      // (and any skipped, in red) - so the gap isn't read as skips.
+      // "68 of 122 scheduled" (its leader slots this epoch), and under it
+      // the share of the slots led so far that it skipped.
       value={
-        blocksProduced !== undefined
-          ? `${blocksProduced.toLocaleString()}${
-              totalSlots ? ` / ${totalSlots.toLocaleString()}` : ''
-            }`
-          : '—'
+        blocksProduced === undefined ? (
+          '—'
+        ) : totalSlots ? (
+          <>
+            {blocksProduced.toLocaleString()} of {totalSlots.toLocaleString()}
+            <span
+              className="fs-10 fw-normal text-body-tertiary ms-1"
+              style={{ fontFamily: 'var(--vx-body-font-family)' }}
+            >
+              scheduled
+            </span>
+          </>
+        ) : (
+          blocksProduced.toLocaleString()
+        )
       }
       sublabel={
         !blockIncomeTracked ? (
           'Not tracked on testnet'
-        ) : slotsToCome != null ? (
-          <>
-            {slotsToCome
-              ? `${slotsToCome.toLocaleString()} to come`
-              : 'none to come'}
-            {!!skippedSlots && (
-              <span className="text-danger">
-                {' · '}
-                {skippedSlots.toLocaleString()} skipped
-              </span>
-            )}
-          </>
+        ) : blocksProduced != null && skippedSlots != null ? (
+          blocksProduced + skippedSlots > 0 ? (
+            <span className={skippedSlots > 0 ? 'text-danger' : undefined}>
+              {((skippedSlots / (blocksProduced + skippedSlots)) * 100).toFixed(
+                1
+              )}
+              % skipped
+            </span>
+          ) : (
+            'no leader slots yet'
+          )
         ) : (
           'Current epoch'
         )
