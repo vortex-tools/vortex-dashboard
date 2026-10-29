@@ -84,14 +84,20 @@ const columns = (served: string): ColumnDef<SimdSummary>[] => [
             {title ?? <span className="text-body-tertiary">Untitled</span>}
           </span>
           {s.openPrs.length > 0 && (
+            // Merged with an open PR changing it: a pending amendment (in
+            // the warning tint); not merged yet: a proposal under review.
             <Badge
-              bg="secondary"
+              bg={s.inRepo ? 'warning' : 'secondary'}
               className="text-nowrap"
-              title={s.openPrs
+              title={`${
+                s.inRepo
+                  ? 'Merged, with an open PR that would change it'
+                  : 'Not merged yet: under review'
+              }\n${s.openPrs
                 .map(p => `#${p.pr}${p.title ? `: ${p.title}` : ''}`)
-                .join('\n')}
+                .join('\n')}`}
             >
-              {s.inRepo ? 'Amendment PR' : 'Open PR'}
+              {s.inRepo ? 'Pending amendment' : 'Open PR'}
             </Badge>
           )}
         </span>
