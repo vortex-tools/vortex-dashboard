@@ -189,7 +189,8 @@ const activeFromColumn: ColumnDef<ValidatorsTableRow> = {
             : undefined
         }
       >
-        Epoch {firstEpoch.toLocaleString()}
+        <span className="text-body-tertiary">epoch</span>{' '}
+        <span className="font-monospace">{firstEpoch}</span>
       </span>
     );
   },
