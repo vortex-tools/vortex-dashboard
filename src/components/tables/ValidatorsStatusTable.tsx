@@ -183,20 +183,19 @@ const activeFromColumn: ColumnDef<ValidatorsTableRow> = {
       <span className="opacity-50">—</span>
     ) : (
       <span
-        className="font-monospace"
         title={
           epochsActive != null
             ? `Active (voted or staked) in ${epochsActive.toLocaleString()} epochs since`
             : undefined
         }
       >
-        {firstEpoch.toLocaleString()}
+        Epoch {firstEpoch.toLocaleString()}
       </span>
     );
   },
   meta: {
-    cellProps: { className: 'text-body text-end text-nowrap' },
-    headerProps: { className: 'text-end text-nowrap' }
+    cellProps: { className: 'text-body text-nowrap' },
+    headerProps: { className: 'text-nowrap' }
   }
 };
 
