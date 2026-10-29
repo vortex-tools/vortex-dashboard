@@ -612,6 +612,7 @@ const SFDP_STATE_LABELS: Record<string, string> = {
  */
 export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
   const context = useContext(VortexDataContext);
+  const { isTestnet: isTestnetSite } = useCluster();
   // Its own fetch: on the Staking tab nothing else loads the status (the
   // slice skips a key it has).
   const fetchStatus = context?.validatorStatusState.fetchData;
@@ -686,13 +687,16 @@ export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
         icon="award"
         aside={
           <span className="d-flex align-items-center gap-2 fs-10">
-            <Link
-              to={poolPath('SFDP')}
-              className="text-nowrap"
-              title="Who SFDP delegates to"
-            >
-              Delegations
-            </Link>
+            {/* Who it delegates to: a Stake Pools page (mainnet only). */}
+            {!isTestnetSite && (
+              <Link
+                to={poolPath('SFDP')}
+                className="text-nowrap"
+                title="Who SFDP delegates to"
+              >
+                Delegations
+              </Link>
+            )}
             <a
               href={url}
               target="_blank"
