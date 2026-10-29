@@ -96,10 +96,28 @@ const rewardDetail = (v: Validator) =>
     .filter(Boolean)
     .join(' · ');
 
+/** "User ◎20K · gauge ◎10K · protocol ◎0 · matching ◎5K · steward-
+ *  selected ◎45K": a validator's pool stake by who chose it. */
+const directedDetail = (v: Validator) => {
+  const b = v.directedBreakdown;
+  const part = (label: string, x: number | null | undefined) =>
+    x != null ? `${label} ${compactSol(x)}` : null;
+  return [
+    part('Holders (user)', b?.user),
+    part('Holders (gauge)', b?.gauge),
+    part('Protocol / operator', b?.protocol),
+    part('Matching', b?.matching),
+    part('Steward-selected', v.stewardSelected)
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
 const columns = (
   isSfdp: boolean,
   showOther: boolean,
-  showRewards: boolean
+  showRewards: boolean,
+  showDirected: boolean
 ): ColumnDef<Validator>[] => [
   {
     id: 'rank',
@@ -154,6 +172,37 @@ const columns = (
     cell: ({ row: { original: v } }) => pct(v.shareOfPool, 2),
     meta: END
   },
+  // The part of its stake here the pool's holders directed (the rest by
+  // who chose it on hover).
+  ...(showDirected
+    ? [
+        {
+          id: 'directed',
+          header: 'Directed',
+          accessorFn: (v: Validator) => v.directedStake ?? 0,
+          cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
+            v.directedStake ? (
+              <span title={directedDetail(v)}>
+                {compactSol(v.directedStake)}
+                <Delta
+                  now={v.directedStake}
+                  prev={v.directedStakePrev}
+                  format={signedSol}
+                  below
+                />
+              </span>
+            ) : (
+              <span
+                className="text-body-quaternary"
+                title={directedDetail(v) || undefined}
+              >
+                —
+              </span>
+            ),
+          meta: END
+        } as ColumnDef<Validator>
+      ]
+    : []),
   ...(showRewards
     ? [
         {
@@ -512,6 +561,8 @@ const StakePool = () => {
   const showOther = !!data?.validators.some(v => v.otherPools != null);
   // Shown once the API gives the pool's rewards per validator.
   const showRewards = !!data?.validators.some(v => v.inflationReward != null);
+  // And its holder-directed stake (JitoSOL, bSOL, JSOL, vSOL).
+  const showDirected = !!data?.validators.some(v => v.directedStake != null);
   // Epochs a year at the epoch's observed length, for an annual yield.
   const progress = context?.currentEpochState.progress;
   const epochsPerYear =
@@ -528,7 +579,9 @@ const StakePool = () => {
   );
   // The Validators card's view: all of them, or the latest epoch's adds
   // (a filter of the table) or drops (no longer in it: their own list).
-  const [view, setView] = useState<'all' | 'added' | 'dropped'>('all');
+  const [view, setView] = useState<'all' | 'added' | 'dropped' | 'directed'>(
+    'all'
+  );
   const latest = data?.history.length
     ? data.history[data.history.length - 1]
     : null;
@@ -537,17 +590,39 @@ const StakePool = () => {
     () => new Set((churn?.added ?? []).map(r => r.voteKey)),
     [churn]
   );
+  // The Validators card's filter: all, the directed ones, the latest
+  // epoch's adds and drops.
+  const viewOptions: Array<[typeof view, string]> = [
+    ['all', 'All'],
+    ...(showDirected
+      ? [['directed', 'Directed'] as [typeof view, string]]
+      : []),
+    ...(churn
+      ? ([
+          [
+            'added',
+            `Added ${(churn.added.length + churn.moreAdded).toLocaleString()}`
+          ],
+          [
+            'dropped',
+            `Dropped ${(churn.dropped.length + churn.moreDropped).toLocaleString()}`
+          ]
+        ] as Array<[typeof view, string]>)
+      : [])
+  ];
   const shown = useMemo(
     () =>
       view === 'added'
         ? validators.filter(v => addedKeys.has(v.voteKey))
-        : validators,
+        : view === 'directed'
+          ? validators.filter(v => (v.directedStake ?? 0) > 0)
+          : validators,
     [view, validators, addedKeys]
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(isSfdp, showOther, showRewards),
-      [isSfdp, showOther, showRewards]
+      () => columns(isSfdp, showOther, showRewards, showDirected),
+      [isSfdp, showOther, showRewards, showDirected]
     ),
     data: shown,
     sortable: true,
@@ -710,6 +785,21 @@ const StakePool = () => {
               />
             </Col>
           )}
+          {data.directed && data.stake > 0 && (
+            <Col xs={6} lg>
+              {/* Stake its holders chose (user + gauge), of all its stake. */}
+              <StatCard
+                label="Directed"
+                value={pct(data.directed.stake / data.stake)}
+                wrapSublabel
+                sublabel={`${compactSol(data.directed.stake)}${
+                  data.directed.validators != null
+                    ? ` to ${data.directed.validators.toLocaleString()} validators`
+                    : ''
+                }${data.directed.basis === 'target' ? ' · target' : ''}`}
+              />
+            </Col>
+          )}
           {fee && (
             <Col xs={6} lg>
               <StatCard
@@ -766,21 +856,9 @@ const StakePool = () => {
           icon="server"
           info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Added / Dropped: the latest epoch's changes."
           aside={
-            churn ? (
+            churn || showDirected ? (
               <ButtonGroup size="sm">
-                {(
-                  [
-                    ['all', 'All'],
-                    [
-                      'added',
-                      `Added ${(churn.added.length + churn.moreAdded).toLocaleString()}`
-                    ],
-                    [
-                      'dropped',
-                      `Dropped ${(churn.dropped.length + churn.moreDropped).toLocaleString()}`
-                    ]
-                  ] as const
-                ).map(([k, label]) => (
+                {viewOptions.map(([k, label]) => (
                   <ToggleButton
                     key={k}
                     id={`pool-validators-${k}`}

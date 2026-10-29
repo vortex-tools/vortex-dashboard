@@ -2000,7 +2000,9 @@ export const validatorDelegatorsSchema = z.object({
       label: delegatorLabelSchema,
       stake: z.number(),
       share: z.number().nullable().catch(null),
-      stakeAccounts: z.number().nullable().catch(null)
+      stakeAccounts: z.number().nullable().catch(null),
+      // A pool row: the part its holders directed here.
+      directedStake: z.number().nullable().optional().catch(null)
     })
   ),
   moreDelegators: z.number().nullable().catch(null),
@@ -2890,6 +2892,22 @@ export const poolSummarySchema = z.object({
   droppedCount: z.number().nullable().optional().catch(null),
   // Curated: who runs it and how it picks validators, and its site.
   // null for pools not curated; absent on older APIs.
+  // Its holder-directed stake (user + gauge), and the protocol / matching
+  // parts; basis 'target' where only targets are published (vSOL). null:
+  // a pool without directed staking.
+  directed: z
+    .object({
+      stake: z.number().catch(0),
+      validators: z.number().nullable().catch(null),
+      protocol: z.number().nullable().catch(null),
+      matching: z.number().nullable().catch(null),
+      source: z.string().nullable().catch(null),
+      basis: z.string().nullable().catch(null),
+      asOfEpoch: z.number().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   info: z
     .object({
       description: z.string().nullable().catch(null),
@@ -2929,6 +2947,22 @@ export const poolDetailSchema = z.object({
   fullName: z.string().nullable().catch(null),
   // Curated: who runs it and how it picks validators, and its site.
   // null for pools not curated; absent on older APIs.
+  // Its holder-directed stake (user + gauge), and the protocol / matching
+  // parts; basis 'target' where only targets are published (vSOL). null:
+  // a pool without directed staking.
+  directed: z
+    .object({
+      stake: z.number().catch(0),
+      validators: z.number().nullable().catch(null),
+      protocol: z.number().nullable().catch(null),
+      matching: z.number().nullable().catch(null),
+      source: z.string().nullable().catch(null),
+      basis: z.string().nullable().catch(null),
+      asOfEpoch: z.number().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   info: z
     .object({
       description: z.string().nullable().catch(null),
@@ -2957,6 +2991,21 @@ export const poolDetailSchema = z.object({
         shareOfPool: z.number().nullable().catch(null),
         shareOfValidator: z.number().nullable().catch(null),
         stakePrev: z.number().nullable().catch(null),
+        // Directed by the pool's holders (user + gauge), the epoch before,
+        // its parts, and what the pool's own selection put here.
+        directedStake: z.number().nullable().optional().catch(null),
+        directedStakePrev: z.number().nullable().optional().catch(null),
+        directedBreakdown: z
+          .object({
+            user: z.number().nullable().catch(null),
+            gauge: z.number().nullable().catch(null),
+            protocol: z.number().nullable().catch(null),
+            matching: z.number().nullable().catch(null)
+          })
+          .nullable()
+          .optional()
+          .catch(null),
+        stewardSelected: z.number().nullable().optional().catch(null),
         // SFDP's stake on the same validator (overlap).
         sfdpStake: z.number().nullable().catch(null),
         // Other known pools (not this one, not SFDP; only pools with 10+

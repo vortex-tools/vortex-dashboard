@@ -167,6 +167,15 @@ const TopStakers = ({
                 title={`Withdraw authority ${t.withdrawer}${t.staker && t.staker !== t.withdrawer ? ` · stake authority ${t.staker}` : ''}`}
               >
                 <StakerName label={t.label} withdrawer={t.withdrawer} />
+                {/* A pool row: the part its holders directed here. */}
+                {!!t.directedStake && (
+                  <span
+                    className="text-body-tertiary fs-10 ms-2"
+                    title="Directed here by the pool's holders (the rest the pool chose)"
+                  >
+                    {sol(t.directedStake)} directed
+                  </span>
+                )}
               </td>
               <td className="text-end font-monospace">{sol(t.stake)}</td>
               <td className="text-end font-monospace">

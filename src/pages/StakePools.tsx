@@ -63,7 +63,8 @@ const refList = <R extends { name: string | null; voteKey: string }>(
 const columns = (
   showMedian: boolean,
   showFees: boolean,
-  showMax: boolean
+  showMax: boolean,
+  showDirected: boolean
 ): ColumnDef<PoolSummary>[] => [
   {
     id: 'name',
@@ -153,6 +154,34 @@ const columns = (
     ),
     meta: END
   },
+  // Its holder-directed share (JitoSOL, bSOL, JSOL, vSOL).
+  ...(showDirected
+    ? [
+        {
+          id: 'directed',
+          header: 'Directed',
+          accessorFn: (p: PoolSummary) =>
+            p.directed && p.stake ? p.directed.stake / p.stake : -1,
+          cell: ({
+            row: { original: p }
+          }: {
+            row: { original: PoolSummary };
+          }) =>
+            p.directed && p.stake ? (
+              <span
+                title={`${compactSol(p.directed.stake)} directed by its holders${
+                  p.directed.basis === 'target' ? ' (targets)' : ''
+                }${p.directed.validators != null ? ` to ${p.directed.validators.toLocaleString()} validators` : ''}`}
+              >
+                {pct(p.directed.stake / p.stake)}
+              </span>
+            ) : (
+              <span className="text-body-quaternary">—</span>
+            ),
+          meta: END
+        } as ColumnDef<PoolSummary>
+      ]
+    : []),
   ...(showFees
     ? [
         {
@@ -274,6 +303,8 @@ const StakePools = () => {
   const showFees = allPools.some(p => p.fees != null);
   // And its largest single delegation.
   const showMax = allPools.some(p => p.maxStake != null);
+  // And holder-directed stake, where a pool has it.
+  const showDirected = allPools.some(p => p.directed != null);
   // Totals and shares are over every pool, shown or not.
   const total = useMemo(
     () => allPools.reduce((a, p) => a + p.stake, 0),
@@ -281,8 +312,8 @@ const StakePools = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(showMedian, showFees, showMax),
-      [showMedian, showFees, showMax]
+      () => columns(showMedian, showFees, showMax, showDirected),
+      [showMedian, showFees, showMax, showDirected]
     ),
     data: pools,
     sortable: true,
