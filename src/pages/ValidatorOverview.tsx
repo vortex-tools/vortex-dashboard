@@ -588,38 +588,8 @@ const ValidatorOverview = () => {
           <Col xs={12}>
             {/* Details (keys and node facts), then Notices below it. */}
             <Row className="g-3 align-items-stretch">
-              {/* Addresses (its keys, and their recent changes) | Details
-                  (everything else about it); stacked on phones. */}
-              <Col xs={12} lg={6}>
-                <SectionCard title="Addresses" icon="key">
-                  <div className="detail-lines min-w-0">
-                    <AddressLine
-                      label="Identity"
-                      value={nodeAddress}
-                      labelWidth={keyLabelWidth}
-                    />
-                    <AddressLine
-                      label="Vote Account"
-                      value={voteAddress}
-                      labelWidth={keyLabelWidth}
-                    />
-                    <ValidatorWithdrawer
-                      nodeAddress={nodeAddress}
-                      labelWidth={keyLabelWidth}
-                    />
-                    {/* The voter, collectors and a missing BLS key. */}
-                    <ValidatorKeyLines
-                      nodeAddress={nodeAddress}
-                      voteAddress={voteAddress}
-                      labelWidth={keyLabelWidth}
-                    />
-                  </div>
-                  <RecentVoteAccountChanges
-                    nodeAddress={nodeAddress}
-                    voteAddress={voteAddress}
-                  />
-                </SectionCard>
-              </Col>
+              {/* Details (about it) | Addresses (its keys, and their recent
+                  changes); stacked on phones, Details first. */}
               <Col xs={12} lg={6}>
                 <SectionCard title="Details" icon="file-text">
                   {/* Name, Site, Version, Client, Location, Commission,
@@ -649,6 +619,36 @@ const ValidatorOverview = () => {
                       labelWidth={factLabelWidth}
                     />
                   </div>
+                </SectionCard>
+              </Col>
+              <Col xs={12} lg={6}>
+                <SectionCard title="Addresses" icon="key">
+                  <div className="detail-lines min-w-0">
+                    <AddressLine
+                      label="Identity"
+                      value={nodeAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <AddressLine
+                      label="Vote Account"
+                      value={voteAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    <ValidatorWithdrawer
+                      nodeAddress={nodeAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    {/* The voter, collectors and a missing BLS key. */}
+                    <ValidatorKeyLines
+                      nodeAddress={nodeAddress}
+                      voteAddress={voteAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                  </div>
+                  <RecentVoteAccountChanges
+                    nodeAddress={nodeAddress}
+                    voteAddress={voteAddress}
+                  />
                 </SectionCard>
               </Col>
               {/* Under them, full width: what needs attention (when
