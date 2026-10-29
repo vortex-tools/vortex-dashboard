@@ -34,8 +34,8 @@ const Line = ({
 /**
  * The vote account's other keys, as lines in the Details box after its
  * Identity / Vote / Withdrawer: the authorized voter (and who takes over
- * from a pending change's epoch), the two commission collectors, and
- * whether its BLS key is set. A key that is one already listed says which
+ * from a pending change's epoch), the two commission collectors, and a
+ * missing BLS key. A key that is one already listed says which
  * ("Identity", "Vote account"), its address on hover; else the address,
  * linked to Solana Explorer. From /validators/status's voteState.
  */
@@ -125,18 +125,17 @@ export const ValidatorKeyLines = ({
           <Key value={vs.blockRevenueCollector} />
         </Line>
       )}
-      <Line label="BLS key" labelWidth={labelWidth}>
-        {vs.blsPubkeySet ? (
-          'Set'
-        ) : (
+      {/* Only when missing: a set key is the norm and says nothing. */}
+      {!vs.blsPubkeySet && (
+        <Line label="BLS key" labelWidth={labelWidth}>
           <span
             className="text-warning-emphasis"
             title="A vote account without a BLS key can't vote under Alpenglow"
           >
             Not set
           </span>
-        )}
-      </Line>
+        </Line>
+      )}
     </>
   );
 };
