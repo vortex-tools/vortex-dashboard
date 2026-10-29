@@ -4,6 +4,7 @@ import SectionCard from 'components/common/SectionCard';
 import {
   ChangeBadge,
   changeValue,
+  isNoopChange,
   voterLabel,
   whenText
 } from 'components/changes/changes';
@@ -162,9 +163,11 @@ export const RecentVoteAccountChanges = ({
   }, [nodeAddress, fetchChanges]);
   const changes =
     context?.validatorVoteAccountChangesState.data.get(nodeAddress)?.events;
+  // Without the no-op ones (a value set to what it was).
+  const real = (changes ?? []).filter(e => !isNoopChange(e));
   // Nothing to list: no section (the record starts at epoch 1064).
-  if (!changes?.length) return null;
-  const recent = [...changes].reverse().slice(0, RECENT_CHANGES);
+  if (!real.length) return null;
+  const recent = [...real].reverse().slice(0, RECENT_CHANGES);
   return (
     <SectionCard
       title="Recent Activity"

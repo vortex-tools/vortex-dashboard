@@ -8,6 +8,7 @@ import {
   ShortAddress,
   changeValue,
   eventTime,
+  isNoopChange,
   softwareLabel,
   voterLabel,
   whenText
@@ -353,6 +354,7 @@ const Activity = () => {
     const keys = keyList ? new Set(keyList.split(' ')) : null;
     return (data?.events ?? []).filter(
       e =>
+        !isNoopChange(e) &&
         (!kind || e.kind === kind) &&
         (!keys || keys.has(e.voteKey ?? '') || keys.has(e.identity ?? ''))
     );

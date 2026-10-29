@@ -78,6 +78,17 @@ export const voterLabel = (e: ActivityEvent) => {
   return e.oldBlsPubkey ? 'BLS key rotated' : 'BLS key registered';
 };
 
+/** A change that set something to what it already was (a commission
+ *  re-sent at its rate, a collector or authority re-set, the voter
+ *  re-authorized with the same BLS key): not listed. */
+export const isNoopChange = (e: ActivityEvent) => {
+  if (e.kind === 'voter')
+    return e.voterChanged === false && e.blsKeyChanged === false;
+  if (HOST_KINDS.has(e.kind) || e.kind === 'withdraw' || e.kind === 'create')
+    return false;
+  return e.oldValue != null && e.oldValue === e.newValue;
+};
+
 /** A voter event that only touched the BLS key (same voter). */
 const blsOnly = (e: ActivityEvent) =>
   e.kind === 'voter' && e.voterChanged === false;
