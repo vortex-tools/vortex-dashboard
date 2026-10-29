@@ -354,28 +354,29 @@ const ValidatorOverview = () => {
     <StatCard
       key="blocks"
       label="Blocks Produced"
-      // The blocks so far; under it what the rest of its leader slots
-      // are - skipped, or still to come ("20 / 48" read either way).
+      // Produced / leader slots, and under it how many are still to come
+      // (and any skipped, in red) - so the gap isn't read as skips.
       value={
-        blocksProduced !== undefined ? blocksProduced.toLocaleString() : '—'
+        blocksProduced !== undefined
+          ? `${blocksProduced.toLocaleString()}${
+              totalSlots ? ` / ${totalSlots.toLocaleString()}` : ''
+            }`
+          : '—'
       }
-      wrapSublabel
       sublabel={
         !blockIncomeTracked ? (
           'Not tracked on testnet'
-        ) : totalSlots != null ? (
+        ) : slotsToCome != null ? (
           <>
-            of {totalSlots.toLocaleString()} leader slots
-            {skippedSlots != null && (
-              <>
+            {slotsToCome
+              ? `${slotsToCome.toLocaleString()} to come`
+              : 'none to come'}
+            {!!skippedSlots && (
+              <span className="text-danger">
                 {' · '}
-                <span className={skippedSlots > 0 ? 'text-danger' : undefined}>
-                  {skippedSlots.toLocaleString()} skipped
-                </span>
-              </>
+                {skippedSlots.toLocaleString()} skipped
+              </span>
             )}
-            {slotsToCome != null &&
-              ` · ${slotsToCome.toLocaleString()} to come`}
           </>
         ) : (
           'Current epoch'
