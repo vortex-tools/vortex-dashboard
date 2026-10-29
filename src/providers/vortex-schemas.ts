@@ -2855,6 +2855,33 @@ export const poolSummarySchema = z.object({
   maxStake: z.number().nullable().optional().catch(null),
   maxVoteKey: z.string().nullable().optional().catch(null),
   maxName: validatorNameSchema.optional().catch(null),
+  // Validators it started / stopped delegating to this epoch, largest
+  // first (at most 20 each; the counts are the full numbers); null when
+  // its holdings couldn't be read. Absent on older APIs.
+  added: z
+    .array(
+      z.object({
+        voteKey: z.string(),
+        name: validatorNameSchema.catch(null),
+        stake: z.number().nullable().catch(null)
+      })
+    )
+    .nullable()
+    .optional()
+    .catch(null),
+  addedCount: z.number().nullable().optional().catch(null),
+  dropped: z
+    .array(
+      z.object({
+        voteKey: z.string(),
+        name: validatorNameSchema.catch(null),
+        stakePrev: z.number().nullable().catch(null)
+      })
+    )
+    .nullable()
+    .optional()
+    .catch(null),
+  droppedCount: z.number().nullable().optional().catch(null),
   fees: poolFeesSchema,
   // Validators held only at a pool's minimum stake (<= 50 SOL): not
   // delegations, not listed.

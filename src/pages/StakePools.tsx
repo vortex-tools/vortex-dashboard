@@ -45,10 +45,26 @@ const END = {
   cellProps: { className: 'text-nowrap text-end font-monospace' }
 };
 
+/** "Hylo ◎173.4K" per line: a hover list of the validators added or
+ *  dropped, with "and N more" past the ones listed. */
+const refList = <R extends { name: string | null; voteKey: string }>(
+  refs: R[] | null | undefined,
+  stakeOf: (r: R) => number | null,
+  more: number
+) =>
+  (refs ?? [])
+    .map(r => {
+      const stake = stakeOf(r);
+      return `${r.name ?? `${r.voteKey.slice(0, 4)}…${r.voteKey.slice(-4)}`}${stake != null ? ` ${compactSol(stake)}` : ''}`;
+    })
+    .concat(more > 0 ? [`and ${more.toLocaleString()} more`] : [])
+    .join('\n');
+
 const columns = (
   showMedian: boolean,
   showFees: boolean,
-  showMax: boolean
+  showMax: boolean,
+  showChurn: boolean
 ): ColumnDef<PoolSummary>[] => [
   {
     id: 'name',
@@ -114,6 +130,53 @@ const columns = (
     ),
     meta: END
   },
+  // This epoch's adds and drops (the validators on hover).
+  ...(showChurn
+    ? [
+        {
+          id: 'churn',
+          header: 'Added / dropped',
+          accessorFn: (p: PoolSummary) =>
+            (p.addedCount ?? 0) + (p.droppedCount ?? 0),
+          cell: ({
+            row: { original: p }
+          }: {
+            row: { original: PoolSummary };
+          }) => {
+            if (p.added == null && p.dropped == null)
+              return <span className="text-body-quaternary">—</span>;
+            const added = p.addedCount ?? p.added?.length ?? 0;
+            const dropped = p.droppedCount ?? p.dropped?.length ?? 0;
+            return (
+              <>
+                <span
+                  className={added ? 'text-success' : 'text-body-quaternary'}
+                  title={
+                    added
+                      ? `Started delegating to:\n${refList(p.added, r => r.stake, added - (p.added?.length ?? 0))}`
+                      : undefined
+                  }
+                >
+                  {added ? `+${added.toLocaleString()}` : '0'}
+                </span>
+                <span className="text-body-quaternary"> / </span>
+                <span
+                  className={dropped ? 'text-danger' : 'text-body-quaternary'}
+                  title={
+                    dropped
+                      ? `Stopped delegating to:\n${refList(p.dropped, r => r.stakePrev, dropped - (p.dropped?.length ?? 0))}`
+                      : undefined
+                  }
+                >
+                  {dropped ? `−${dropped.toLocaleString()}` : '0'}
+                </span>
+              </>
+            );
+          },
+          meta: END
+        } as ColumnDef<PoolSummary>
+      ]
+    : []),
   ...(showFees
     ? [
         {
@@ -235,6 +298,8 @@ const StakePools = () => {
   const showFees = allPools.some(p => p.fees != null);
   // And its largest single delegation.
   const showMax = allPools.some(p => p.maxStake != null);
+  // And this epoch's adds and drops.
+  const showChurn = allPools.some(p => p.added != null || p.dropped != null);
   // Totals and shares are over every pool, shown or not.
   const total = useMemo(
     () => allPools.reduce((a, p) => a + p.stake, 0),
@@ -242,8 +307,8 @@ const StakePools = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(showMedian, showFees, showMax),
-      [showMedian, showFees, showMax]
+      () => columns(showMedian, showFees, showMax, showChurn),
+      [showMedian, showFees, showMax, showChurn]
     ),
     data: pools,
     sortable: true,
@@ -299,10 +364,10 @@ const StakePools = () => {
             <div className="col-6 col-lg-3">
               <StatCard
                 label="Stake Pools"
-                value={allPools
-                  .filter(p => p.kind === 'stake-pool')
-                  .length.toLocaleString()}
-                sublabel={`${compactSol(stakeOf('stake-pool'))} delegated`}
+                value={allPools.filter(isPool).length.toLocaleString()}
+                sublabel={`${compactSol(
+                  allPools.filter(isPool).reduce((a, p) => a + p.stake, 0)
+                )} delegated`}
               />
             </div>
             <div className="col-6 col-lg-3">

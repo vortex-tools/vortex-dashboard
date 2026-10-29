@@ -18,7 +18,7 @@ export const kindOf = (kind: string | null, name?: string) =>
       ? /msol/i.test(name ?? '')
         ? KIND_STYLE.pool
         : KIND_STYLE.direct
-      : kind === 'stake-pool'
+      : kind === 'stake-pool' || kind === 'lido'
         ? KIND_STYLE.pool
         : null;
 /** The labels, for text that lists them. */
