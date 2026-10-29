@@ -34,7 +34,94 @@ const NOWRAP = {
   cellProps: { className: 'text-nowrap' }
 };
 
-const columns = (isTestnet: boolean): ColumnDef<ActivityEvent>[] => [
+/** A failover's partner: the move away (out) and the move back, matched
+ *  per validator - host A to B, then B to A. */
+type Pair = { color: string; role: 'out' | 'back'; gapSecs: number | null };
+// Pair colors, cycled (neighbouring pairs get different ones).
+const PAIR_COLORS = [
+  '#3f7fd0',
+  '#e09a2c',
+  '#8e5bd0',
+  '#2aa198',
+  '#d04f8e',
+  '#7a9a2a'
+];
+
+/** "46 min", "3 h 5 min", "2 d 4 h". */
+const duration = (secs: number) => {
+  const m = Math.round(secs / 60);
+  if (m < 60) return `${Math.max(1, m)} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} h${m % 60 ? ` ${m % 60} min` : ''}`;
+  const d = Math.floor(h / 24);
+  return `${d} d${h % 24 ? ` ${h % 24} h` : ''}`;
+};
+
+/** Each validator's failovers in time order, paired out and back. A move
+ *  with no return in range is an "out" with no gap (still away). */
+const pairFailovers = (events: ActivityEvent[]) => {
+  const pairs = new Map<ActivityEvent, Pair>();
+  const byValidator = new Map<string, ActivityEvent[]>();
+  for (const e of events) {
+    if (e.kind !== 'failover') continue;
+    const k = e.voteKey ?? e.identity ?? '';
+    byValidator.set(k, [...(byValidator.get(k) ?? []), e]);
+  }
+  let n = 0;
+  for (const list of byValidator.values()) {
+    list.sort((a, b) => (eventTime(a) ?? 0) - (eventTime(b) ?? 0));
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      const b = list[i + 1];
+      const color = PAIR_COLORS[n++ % PAIR_COLORS.length];
+      const back =
+        b &&
+        a.before?.host != null &&
+        a.after?.host != null &&
+        b.before?.host === a.after.host &&
+        b.after?.host === a.before.host;
+      if (!back) {
+        pairs.set(a, { color, role: 'out', gapSecs: null });
+        continue;
+      }
+      const ta = eventTime(a);
+      const tb = eventTime(b);
+      const gap = ta != null && tb != null ? tb - ta : null;
+      pairs.set(a, { color, role: 'out', gapSecs: gap });
+      pairs.set(b, { color, role: 'back', gapSecs: gap });
+      i++;
+    }
+  }
+  return pairs;
+};
+
+const PairMark = ({ p }: { p: Pair }) => (
+  <span
+    className="d-inline-flex align-items-center gap-1 fs-10 text-body-tertiary ms-2"
+    title={
+      p.role === 'back'
+        ? 'The return of the failover in the same color'
+        : p.gapSecs != null
+          ? 'Moved back later: the row in the same color'
+          : 'No move back in this range yet'
+    }
+  >
+    <span
+      className="d-inline-block rounded-circle flex-shrink-0"
+      style={{ width: 8, height: 8, background: p.color }}
+    />
+    {p.role === 'back'
+      ? `return after ${p.gapSecs != null ? duration(p.gapSecs) : '?'}`
+      : p.gapSecs != null
+        ? `back ${duration(p.gapSecs)} later`
+        : 'not back yet'}
+  </span>
+);
+
+const columns = (
+  isTestnet: boolean,
+  pairs: Map<ActivityEvent, Pair>
+): ColumnDef<ActivityEvent>[] => [
   {
     id: 'when',
     header: 'When',
@@ -79,7 +166,12 @@ const columns = (isTestnet: boolean): ColumnDef<ActivityEvent>[] => [
     id: 'kind',
     header: 'Change',
     accessorFn: e => CHANGE_KIND[e.kind]?.label ?? e.kind,
-    cell: ({ row: { original: e } }) => <ChangeBadge kind={e.kind} />,
+    cell: ({ row: { original: e } }) => (
+      <>
+        <ChangeBadge kind={e.kind} />
+        {pairs.get(e) && <PairMark p={pairs.get(e)!} />}
+      </>
+    ),
     meta: NOWRAP
   },
   {
@@ -234,7 +326,10 @@ const Activity = () => {
   }, [data]);
 
   const table = useAdvanceTable({
-    columns: useMemo(() => columns(isTestnet), [isTestnet]),
+    columns: useMemo(
+      () => columns(isTestnet, pairFailovers(data?.events ?? [])),
+      [isTestnet, data]
+    ),
     data: events,
     sortable: true,
     pagination: true,
