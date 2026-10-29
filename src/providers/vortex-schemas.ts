@@ -3006,6 +3006,32 @@ export const poolDetailSchema = z.object({
           .optional()
           .catch(null),
         stewardSelected: z.number().nullable().optional().catch(null),
+        // The facts behind it, one per source: a holder's (or a
+        // protocol's) ticket, an admin-set target, the pool's own
+        // validator, a gauge vote, matching - with curated context.
+        directedSources: z
+          .array(
+            z.object({
+              kind: z.string(),
+              lamports: z.number().nullable().catch(null),
+              target: z.number().nullable().catch(null),
+              basis: z.string().nullable().catch(null),
+              ticket: z
+                .object({
+                  authority: z.string().nullable().catch(null),
+                  protocol: z.boolean().nullable().catch(null)
+                })
+                .nullable()
+                .catch(null),
+              label: z.string().nullable().catch(null),
+              note: z.string().nullable().catch(null),
+              attribution: z.string().nullable().catch(null),
+              sourceUrl: z.string().nullable().catch(null)
+            })
+          )
+          .nullable()
+          .optional()
+          .catch(null),
         // SFDP's stake on the same validator (overlap).
         sfdpStake: z.number().nullable().catch(null),
         // Other known pools (not this one, not SFDP; only pools with 10+

@@ -98,9 +98,68 @@ const rewardDetail = (v: Validator) =>
     .filter(Boolean)
     .join(' · ');
 
-/** "User ◎20K · gauge ◎10K · protocol ◎0 · matching ◎5K · steward-
- *  selected ◎45K": a validator's pool stake by who chose it. */
+type Source = NonNullable<Validator['directedSources']>[number];
+/** Who chose a source's stake: the pool's holders (a holder's ticket, a
+ *  gauge vote), a protocol (its ticket), the pool itself (an admin-set
+ *  target, its own validator), or matching. */
+const chooser = (x: Source) =>
+  x.kind === 'gauge' || (x.kind === 'ticket' && !x.ticket?.protocol)
+    ? 'holders'
+    : x.kind === 'ticket'
+      ? 'protocol'
+      : x.kind === 'adminTarget' || x.kind === 'poolOwn'
+        ? 'pool'
+        : 'matching';
+const amountOf = (x: Source) => x.lamports ?? x.target ?? 0;
+
+/** Stake its holders chose here: from the sources where the API lists
+ *  them, else its directedStake sum. */
+const holderDirected = (v: Validator) =>
+  v.directedSources
+    ? v.directedSources
+        .filter(x => chooser(x) === 'holders')
+        .reduce((a, x) => a + amountOf(x), 0)
+    : (v.directedStake ?? 0);
+
+const KIND_LABEL: Record<string, string> = {
+  ticket: 'Ticket',
+  adminTarget: 'Set by the pool',
+  poolOwn: "The pool's own validator",
+  gauge: 'Gauge vote',
+  matching: 'Matching'
+};
+const ATTRIBUTION: Record<string, string> = {
+  onchain: 'on-chain',
+  poolData: 'per the pool',
+  inferred: 'inferred'
+};
+
+/** A validator's pool stake by who chose it, one line per source (with
+ *  its label and where the fact comes from); an admin allocation nobody
+ *  has attributed is called out. Else the API's sums. */
 const directedDetail = (v: Validator) => {
+  if (v.directedSources?.length)
+    return [
+      ...v.directedSources.map(x => {
+        const what =
+          x.kind === 'ticket' && x.ticket?.protocol
+            ? 'Protocol ticket'
+            : (KIND_LABEL[x.kind] ?? x.kind);
+        const who =
+          x.label ??
+          (x.kind === 'adminTarget' ? 'unattributed admin allocation' : null);
+        return `${what}${who ? ` (${who})` : ''}: ${compactSol(amountOf(x))}${
+          x.basis === 'target' ? ' target' : ''
+        }${x.attribution ? ` · ${ATTRIBUTION[x.attribution] ?? x.attribution}` : ''}${
+          x.note ? `\n  ${x.note}` : ''
+        }`;
+      }),
+      v.stewardSelected != null
+        ? `Steward-selected: ${compactSol(v.stewardSelected)}`
+        : null
+    ]
+      .filter(Boolean)
+      .join('\n');
   const b = v.directedBreakdown;
   const part = (label: string, x: number | null | undefined) =>
     x != null ? `${label} ${compactSol(x)}` : null;
@@ -136,19 +195,22 @@ const columns = (
     header: 'Validator',
     accessorFn: v => `${v.name ?? ''} ${v.voteKey} ${v.identity ?? ''}`,
     cell: ({ row: { original: v } }) => (
+      // The name truncates; its New / Dropped badge stays whole after it.
       <span
-        className="d-block text-truncate"
+        className="d-flex align-items-center min-w-0"
         style={{ maxWidth: 'min(50vw, 22rem)' }}
       >
-        <ValidatorLink v={v} />
+        <span className="text-truncate min-w-0">
+          <ValidatorLink v={v} />
+        </span>
         {v.dropped ? (
-          <span className="badge badge-soft badge-soft-danger ms-2">
+          <span className="badge badge-soft badge-soft-danger ms-2 flex-shrink-0">
             Dropped
           </span>
         ) : (
           // New: no stake from it the epoch before (none, or 0).
           !v.stakePrev && (
-            <span className="badge badge-soft badge-soft-success ms-2">
+            <span className="badge badge-soft badge-soft-success ms-2 flex-shrink-0">
               New
             </span>
           )
@@ -190,13 +252,13 @@ const columns = (
         {
           id: 'directed',
           header: 'Directed',
-          accessorFn: (v: Validator) => v.directedStake ?? 0,
+          accessorFn: (v: Validator) => holderDirected(v),
           cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
-            v.directedStake ? (
+            holderDirected(v) ? (
               <span title={directedDetail(v)}>
-                {compactSol(v.directedStake)}
+                {compactSol(holderDirected(v))}
                 <Delta
-                  now={v.directedStake}
+                  now={holderDirected(v)}
                   prev={v.directedStakePrev}
                   format={signedSol}
                   below
@@ -573,7 +635,9 @@ const StakePool = () => {
   // Shown once the API gives the pool's rewards per validator.
   const showRewards = !!data?.validators.some(v => v.inflationReward != null);
   // And its holder-directed stake (JitoSOL, bSOL, JSOL, vSOL).
-  const showDirected = !!data?.validators.some(v => v.directedStake != null);
+  const showDirected = !!data?.validators.some(
+    v => v.directedStake != null || v.directedSources != null
+  );
   // Epochs a year at the epoch's observed length, for an annual yield.
   const progress = context?.currentEpochState.progress;
   const epochsPerYear =
@@ -607,7 +671,7 @@ const StakePool = () => {
   const shown = useMemo(
     () =>
       view === 'directed'
-        ? validators.filter(v => (v.directedStake ?? 0) > 0)
+        ? validators.filter(v => holderDirected(v) > 0)
         : view === 'changes' && churn
           ? [
               // Added: their rows (marked New); dropped: a row each, with
