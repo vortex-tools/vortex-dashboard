@@ -10,6 +10,7 @@ interface Directed {
     user?: number | null;
     gauge?: number | null;
     protocol?: number | null;
+    protocolTicket?: number | null;
     matching?: number | null;
   } | null;
   stewardSelected?: number | null;
@@ -92,7 +93,8 @@ export const directedDetail = (v: Directed) => {
   return [
     part('Holders (user)', b?.user),
     part('Holders (gauge)', b?.gauge),
-    part('Protocol / operator', b?.protocol),
+    part('Protocol ticket', b?.protocolTicket),
+    part('Set by the pool', b?.protocol),
     part('Matching', b?.matching),
     part('Steward-selected', v.stewardSelected)
   ]

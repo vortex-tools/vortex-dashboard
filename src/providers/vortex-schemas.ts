@@ -3032,7 +3032,10 @@ export const poolDetailSchema = z.object({
           .object({
             user: z.number().nullable().catch(null),
             gauge: z.number().nullable().catch(null),
+            // Pool-chosen: adminTarget + poolOwn.
             protocol: z.number().nullable().catch(null),
+            // A protocol-held ticket's stake.
+            protocolTicket: z.number().nullable().optional().catch(null),
             matching: z.number().nullable().catch(null)
           })
           .nullable()
