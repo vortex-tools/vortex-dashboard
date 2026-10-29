@@ -3,7 +3,6 @@ import AddressLine from 'components/common/AddressLine';
 import SectionCard from 'components/common/SectionCard';
 import { ChangeBadge, changeValue, whenText } from 'components/changes/changes';
 import { explorerTx } from 'helpers/explorer';
-import { IS_STAGING } from 'helpers/apiEndpoint';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ReactNode, useContext, useEffect } from 'react';
@@ -166,16 +165,13 @@ export const RecentVoteAccountChanges = ({
       title="Recent Activity"
       icon="activity"
       info="Its vote account's latest changes: withdrawer, voter, identity, commission and collectors, and withdrawals. The record starts at epoch 1064 (Alpenglow)."
-      // The Activity page is staging only for now.
       aside={
-        IS_STAGING ? (
-          <Link
-            to={`/activity?validator=${voteAddress}&epochs=10`}
-            className="fs-9"
-          >
-            All activity →
-          </Link>
-        ) : undefined
+        <Link
+          to={`/activity?validator=${voteAddress}&epochs=10`}
+          className="fs-9"
+        >
+          All activity →
+        </Link>
       }
     >
       <ul className="list-unstyled fs-9 mb-0 detail-lines">
@@ -185,7 +181,18 @@ export const RecentVoteAccountChanges = ({
             className="d-flex flex-wrap align-items-center column-gap-2"
           >
             <ChangeBadge kind={e.kind} />
-            <span className="min-w-0">{changeValue(e, 'new', isTestnet)}</span>
+            {/* A key change shows the key it replaced, when on record. */}
+            <span className="min-w-0">
+              {changeValue(e, 'old', isTestnet) &&
+                e.kind !== 'withdraw' &&
+                e.kind !== 'create' && (
+                  <>
+                    {changeValue(e, 'old', isTestnet)}
+                    <span className="text-body-tertiary"> → </span>
+                  </>
+                )}
+              {changeValue(e, 'new', isTestnet)}
+            </span>
             <span className="ms-auto text-body-tertiary fs-10 text-nowrap">
               epoch {e.epoch.toLocaleString()}
               {e.blockTime != null && ` · ${whenText(e.blockTime)}`}
