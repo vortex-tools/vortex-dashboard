@@ -716,6 +716,53 @@ const StakePool = () => {
           </Col>
         </Row>
 
+        {/* The latest epoch's adds and drops, from its history (the Epoch
+            Changes table has every epoch's). */}
+        {newest[0]?.compared && (
+          <SectionCard
+            title={`Added & Dropped · epoch ${newest[0].epoch.toLocaleString()}`}
+            icon="shuffle"
+            info="Validators it started delegating to this epoch (over 50 SOL), and those it stopped delegating to, largest first. Earlier epochs are in Epoch Changes."
+          >
+            <Row className="g-3">
+              <Col xs={12} md={6}>
+                <div className="fs-10 text-uppercase text-body-tertiary mb-1">
+                  Added (
+                  {(
+                    newest[0].added.length + newest[0].moreAdded
+                  ).toLocaleString()}
+                  )
+                </div>
+                <RefList
+                  refs={newest[0].added}
+                  more={newest[0].moreAdded}
+                  value={r => (r.stake != null ? compactSol(r.stake) : null)}
+                  max={20}
+                  order={r => r.stake ?? 0}
+                />
+              </Col>
+              <Col xs={12} md={6}>
+                <div className="fs-10 text-uppercase text-body-tertiary mb-1">
+                  Dropped (
+                  {(
+                    newest[0].dropped.length + newest[0].moreDropped
+                  ).toLocaleString()}
+                  )
+                </div>
+                <RefList
+                  refs={newest[0].dropped}
+                  more={newest[0].moreDropped}
+                  value={r =>
+                    r.stakePrev != null ? compactSol(r.stakePrev) : null
+                  }
+                  max={20}
+                  order={r => r.stakePrev ?? 0}
+                />
+              </Col>
+            </Row>
+          </SectionCard>
+        )}
+
         <SectionCard
           title="Validators"
           icon="server"
