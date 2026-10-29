@@ -513,7 +513,7 @@ const LiveConsensus = () => {
       <Col xs="auto">
         <h3>Cluster Status</h3>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
-          The cluster&apos;s latest slots as they happen, and any halt
+          The cluster&apos;s latest slots as they happen
         </p>
       </Col>
     </Row>
