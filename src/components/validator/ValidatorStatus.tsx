@@ -899,7 +899,7 @@ export const ValidatorAge = ({
         className="text-body-tertiary fs-9 flex-shrink-0"
         style={{ minWidth: labelWidth }}
       >
-        Running
+        Operating
       </span>
       <span
         className="fs-9 text-truncate"

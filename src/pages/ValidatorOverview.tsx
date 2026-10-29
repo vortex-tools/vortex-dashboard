@@ -605,7 +605,7 @@ const ValidatorOverview = () => {
               <Col xs={12} lg={6}>
                 <SectionCard title="Details" icon="file-text">
                   {/* Name, Site, Client, Version, Location, Commission,
-                      Vote balance, Running. */}
+                      Vote balance, Operating. */}
                   <div className="detail-lines min-w-0">
                     <div className="d-flex align-items-baseline gap-2 min-w-0">
                       <span
