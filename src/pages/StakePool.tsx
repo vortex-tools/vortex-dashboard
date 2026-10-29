@@ -514,6 +514,15 @@ const PoolNotFound = ({ name }: { name: string }) => {
     fetchPools?.(FEATURES_KEY, { force: true });
   }, [fetchPools]);
   const listing = context?.poolsState.data.get(FEATURES_KEY);
+  // Without the listing, nothing says the name is wrong: the API is.
+  if (!listing)
+    return context?.poolsState.error ? (
+      <UntrackedState>
+        Stake pools aren&apos;t available right now.
+      </UntrackedState>
+    ) : (
+      <DelayedSpinner loading label="Loading the stake pool…" />
+    );
   const q = name.toLowerCase();
   const matches = (listing?.pools ?? []).filter(p => {
     const n = p.name.toLowerCase();
