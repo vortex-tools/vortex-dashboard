@@ -964,47 +964,6 @@ export const ValidatorWithdrawer = ({
   );
 };
 
-/**
- * SFDP as a line in the Details box (mainnet, where the full card is on
- * the Staking tab): its state and SFDP stake, linking that tab. Nothing
- * for validators outside the program.
- */
-export const ValidatorSfdpLine = ({
-  nodeAddress,
-  labelWidth = '3rem'
-}: Props & { labelWidth?: string }) => {
-  const s =
-    useContext(VortexDataContext)?.validatorStatusState.data.get(nodeAddress);
-  const state = s?.sfdp.participant?.state;
-  if (!s || !isSfdpState(state)) return null;
-  const stake = s.sfdp.stake;
-  return (
-    <div className="d-flex align-items-baseline gap-2 min-w-0">
-      <span
-        className="text-body-tertiary fs-9 flex-shrink-0"
-        style={{ minWidth: labelWidth }}
-      >
-        SFDP
-      </span>
-      <span className="fs-9 text-truncate">
-        <Link
-          to={validatorTabPath(nodeAddress, 'staking')}
-          className="fw-semibold"
-          title="Its SFDP status and delegation, on the Staking tab"
-        >
-          {SFDP_STATE_LABELS[state ?? ''] ?? state}
-        </Link>
-        {stake && (
-          <span className="text-body-tertiary">
-            {' '}
-            · {formatLamports(stake.effective, 0)}
-          </span>
-        )}
-      </span>
-    </div>
-  );
-};
-
 export const ValidatorWebsite = ({
   nodeAddress,
   labelWidth = '3rem'

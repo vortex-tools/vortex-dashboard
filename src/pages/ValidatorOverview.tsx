@@ -18,7 +18,6 @@ import ValidatorStatus, {
   ValidatorNotices,
   useValidatorNotices,
   ValidatorSfdpBox,
-  ValidatorSfdpLine,
   WIDE_KEY_LABEL,
   FACT_TILES,
   ValidatorFacts,
@@ -594,12 +593,6 @@ const ValidatorOverview = () => {
                       nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
                     />
-                    {!isTestnet && (
-                      <ValidatorSfdpLine
-                        nodeAddress={nodeAddress}
-                        labelWidth={keyLabelWidth}
-                      />
-                    )}
                     <ValidatorFacts
                       nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
@@ -613,8 +606,7 @@ const ValidatorOverview = () => {
               </Col>
               {sideColumn && (
                 <Col xs={12} lg={5} className="d-flex flex-column gap-3">
-                  {/* Mainnet: on the Staking tab (a line in Details here);
-                    testnet has no Staking tab. */}
+                  {/* Mainnet: on the Staking tab; testnet has none. */}
                   {isTestnet && <ValidatorSfdpBox nodeAddress={nodeAddress} />}
                   {/* Notices: what needs attention (fixed height, two at a
                     time, paged), else the all-clear. */}
