@@ -202,6 +202,10 @@ const sfdpStakeSchema = z.object({
       stakeWithinLimit: z.boolean(),
       commissionWithinLimit: z.boolean().nullable(),
       versionMeetsMinimum: z.boolean().nullable(),
+      // Concentration: its data center (ASN + city) <= 15% of stake, its
+      // ASN <= 25%. Absent on older APIs.
+      dataCenterWithinLimit: z.boolean().nullable().optional().catch(null),
+      asnWithinLimit: z.boolean().nullable().optional().catch(null),
       eligible: z.boolean()
     })
     .nullable()

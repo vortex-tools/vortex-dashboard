@@ -979,6 +979,33 @@ export default ValidatorStatus;
 
 type Severity = 'fail' | 'warn' | 'info';
 
+/** The SFDP criteria it fails, named ("its ASN over 25% of stake"), or
+ *  null when the API names none. */
+const failedSfdpCriteria = (
+  c:
+    | {
+        approved: boolean;
+        stakeWithinLimit: boolean;
+        commissionWithinLimit: boolean | null;
+        versionMeetsMinimum: boolean | null;
+        dataCenterWithinLimit?: boolean | null;
+        asnWithinLimit?: boolean | null;
+      }
+    | null
+    | undefined
+) => {
+  if (!c) return null;
+  const failed = [
+    !c.approved && 'not approved',
+    !c.stakeWithinLimit && 'total stake over 1M SOL',
+    c.commissionWithinLimit === false && 'inflation commission over 5%',
+    c.versionMeetsMinimum === false && 'version below the minimum',
+    c.dataCenterWithinLimit === false && 'its data center over 15% of stake',
+    c.asnWithinLimit === false && 'its ASN over 25% of stake'
+  ].filter(Boolean);
+  return failed.length ? failed.join(', ') : null;
+};
+
 // Short notice copy per SFDP matching status (full meaning on expand).
 const MATCH_NOTICE: Record<string, { title: string; message: string }> = {
   pulled: {
@@ -995,7 +1022,7 @@ const MATCH_NOTICE: Record<string, { title: string; message: string }> = {
   },
   ineligible: {
     title: 'Not eligible',
-    message: 'fails a program criterion (stake, commission or version)'
+    message: 'fails a program criterion'
   }
 };
 export interface Notice {
@@ -1145,7 +1172,11 @@ export const useValidatorNotices = (
               : 'info',
         source: 'SFDP',
         title: MATCH_NOTICE[match.kind].title,
-        message: MATCH_NOTICE[match.kind].message,
+        // Not eligible: the criteria it fails, by name, where the API says.
+        message:
+          match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
+            ? `fails ${failedSfdpCriteria(stake?.criteria)}`
+            : MATCH_NOTICE[match.kind].message,
         detail: sfdpMatchMeaning(match.kind)
       });
   }

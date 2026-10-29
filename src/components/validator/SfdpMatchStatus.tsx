@@ -20,9 +20,9 @@ const MEANING: Record<SfdpMatchKind, string> = {
   withheld:
     'Clearly below the rule while eligible and settled: matching layer withheld (5-epoch skip rate more than 5 points above the cluster average), or a criterion the API cannot measure.',
   pulled:
-    'No delegation while eligible on everything measurable: the residual is pulled too, so a criterion the API cannot measure is failing (vote credits ≥ 97% of cluster, Jito MEV commission ≤ 10%, ASN and ASN + city concentration, testnet performance, metrics, responsiveness).',
+    'No delegation while eligible on everything measurable: the residual is pulled too, so a criterion the API cannot measure is failing (vote credits ≥ 97% of cluster, Jito MEV commission ≤ 10%, testnet performance, metrics, responsiveness).',
   ineligible:
-    'Fails a program criterion (total stake ≤ 1M SOL, inflation commission ≤ 5%, version at the minimum): no delegation is due.'
+    'Fails a program criterion (total stake ≤ 1M SOL, inflation commission ≤ 5%, version at the minimum, data center ≤ 15% and ASN ≤ 25% of stake): no delegation is due.'
 };
 
 export const sfdpMatchMeaning = (kind: SfdpMatchKind) => MEANING[kind];
