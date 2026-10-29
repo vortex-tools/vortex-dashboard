@@ -566,7 +566,7 @@ const ValidatorOverview = () => {
                       labelWidth={keyLabelWidth}
                     />
                     <AddressLine
-                      label="Vote"
+                      label="Vote Account"
                       value={voteAddress}
                       labelWidth={keyLabelWidth}
                     />
