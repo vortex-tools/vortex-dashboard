@@ -40,6 +40,7 @@ const ValidatorStaking = () => {
               <ValidatorSfdpBox nodeAddress={nodeAddress} />
               <DelegatorsCards identity={nodeAddress} />
               <StakeChangesCards identity={nodeAddress} />
+              <DelegatorsCards identity={nodeAddress} part="sizes" />
             </div>
           )
         )}

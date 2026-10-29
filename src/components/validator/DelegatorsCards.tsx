@@ -10,7 +10,7 @@ import { useAppContext } from 'providers/AppProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ValidatorDelegators } from 'providers/vortex-schemas';
 import { useContext, useEffect, useState } from 'react';
-import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
+import { ButtonGroup, Table, ToggleButton } from 'react-bootstrap';
 
 echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
@@ -204,10 +204,17 @@ const TopStakers = ({
 
 /**
  * Who stakes to a validator, at the last completed epoch's end
- * (/validators/delegators): the stake-size distribution and the top
- * stakers. Shows nothing until the API serves it.
+ * (/validators/delegators): its top stakers, or (`part="sizes"`) the
+ * stake-size distribution - the Staking tab puts them apart, Top Stakers
+ * first and Stake Sizes last. Shows nothing until the API serves it.
  */
-const DelegatorsCards = ({ identity }: { identity: string }) => {
+const DelegatorsCards = ({
+  identity,
+  part = 'top'
+}: {
+  identity: string;
+  part?: 'top' | 'sizes';
+}) => {
   const context = useContext(VortexDataContext);
   const fetchData = context?.delegatorsState.fetchData;
   const d = context?.delegatorsState.data.get(identity);
@@ -218,61 +225,58 @@ const DelegatorsCards = ({ identity }: { identity: string }) => {
   const [poolsOnly, setPoolsOnly] = useState(false);
   if (!d) return null;
   const top = poolsOnly ? d.top.filter(t => t.label) : d.top;
+  if (part === 'sizes')
+    return (
+      <SectionCard
+        title={`Stake Sizes · epoch ${d.epoch}`}
+        icon="bar-chart"
+        info="Its stakers grouped by how much they stake here (a stake pool counts as one)."
+      >
+        {d.sizes.length ? (
+          <StakeSizes d={d} />
+        ) : (
+          <p className="fs-9 text-body-tertiary mb-0">No stake.</p>
+        )}
+      </SectionCard>
+    );
   return (
-    <Row className="g-3">
-      <Col xs={12} lg={6}>
-        <SectionCard
-          title={`Top Stakers · epoch ${d.epoch}`}
-          icon="users"
-          info="Its largest stakers at the epoch's end. Pools are named and link to their pages."
-        >
-          {/* As the Stake Sizes card's toggle. */}
-          <div className="d-flex align-items-center justify-content-between mb-1">
-            <span className="fs-10 text-body-tertiary">
-              {poolsOnly
-                ? 'Stake pools, Marinade and SFDP'
-                : 'Largest first, by withdraw authority'}
-            </span>
-            <ButtonGroup size="sm">
-              {([false, true] as const).map(v => (
-                <ToggleButton
-                  key={String(v)}
-                  id={`top-stakers-${v ? 'pools' : 'all'}`}
-                  type="radio"
-                  name="top-stakers"
-                  variant="soft-secondary"
-                  value={String(v)}
-                  checked={poolsOnly === v}
-                  onChange={() => setPoolsOnly(v)}
-                >
-                  {v ? 'Pools only' : 'All stakers'}
-                </ToggleButton>
-              ))}
-            </ButtonGroup>
-          </div>
-          {top.length ? (
-            <TopStakers key={String(poolsOnly)} d={d} top={top} />
-          ) : (
-            <p className="fs-9 text-body-tertiary mb-0">
-              {poolsOnly ? 'No pools stake here.' : 'No stakers.'}
-            </p>
-          )}
-        </SectionCard>
-      </Col>
-      <Col xs={12} lg={6}>
-        <SectionCard
-          title={`Stake Sizes · epoch ${d.epoch}`}
-          icon="bar-chart"
-          info="Its stakers grouped by how much they stake here (a stake pool counts as one)."
-        >
-          {d.sizes.length ? (
-            <StakeSizes d={d} />
-          ) : (
-            <p className="fs-9 text-body-tertiary mb-0">No stake.</p>
-          )}
-        </SectionCard>
-      </Col>
-    </Row>
+    <SectionCard
+      title={`Top Stakers · epoch ${d.epoch}`}
+      icon="users"
+      info="Its largest stakers at the epoch's end. Pools are named and link to their pages."
+    >
+      {/* As the Stake Sizes card's toggle. */}
+      <div className="d-flex align-items-center justify-content-between mb-1">
+        <span className="fs-10 text-body-tertiary">
+          {poolsOnly
+            ? 'Stake pools, Marinade and SFDP'
+            : 'Largest first, by withdraw authority'}
+        </span>
+        <ButtonGroup size="sm">
+          {([false, true] as const).map(v => (
+            <ToggleButton
+              key={String(v)}
+              id={`top-stakers-${v ? 'pools' : 'all'}`}
+              type="radio"
+              name="top-stakers"
+              variant="soft-secondary"
+              value={String(v)}
+              checked={poolsOnly === v}
+              onChange={() => setPoolsOnly(v)}
+            >
+              {v ? 'Pools only' : 'All stakers'}
+            </ToggleButton>
+          ))}
+        </ButtonGroup>
+      </div>
+      {top.length ? (
+        <TopStakers key={String(poolsOnly)} d={d} top={top} />
+      ) : (
+        <p className="fs-9 text-body-tertiary mb-0">
+          {poolsOnly ? 'No pools stake here.' : 'No stakers.'}
+        </p>
+      )}
+    </SectionCard>
   );
 };
 
