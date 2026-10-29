@@ -41,7 +41,9 @@ echarts.use([
   CanvasRenderer
 ]);
 
-type Validator = PoolDetail['validators'][number];
+/** A validator it delegates to; `dropped` marks a row added for one it
+ *  stopped delegating to (the Changes view), which has no stake now. */
+type Validator = PoolDetail['validators'][number] & { dropped?: boolean };
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const ValidatorLink = ({ v }: { v: PoolValidatorRef | Validator }) => (
@@ -139,8 +141,16 @@ const columns = (
         style={{ maxWidth: 'min(50vw, 22rem)' }}
       >
         <ValidatorLink v={v} />
-        {v.stakePrev == null && (
-          <span className="badge badge-soft badge-soft-success ms-2">New</span>
+        {v.dropped ? (
+          <span className="badge badge-soft badge-soft-danger ms-2">
+            Dropped
+          </span>
+        ) : (
+          v.stakePrev == null && (
+            <span className="badge badge-soft badge-soft-success ms-2">
+              New
+            </span>
+          )
         )}
       </span>
     ),
@@ -579,17 +589,11 @@ const StakePool = () => {
   );
   // The Validators card's view: all of them, or the latest epoch's adds
   // (a filter of the table) or drops (no longer in it: their own list).
-  const [view, setView] = useState<'all' | 'added' | 'dropped' | 'directed'>(
-    'all'
-  );
+  const [view, setView] = useState<'all' | 'directed' | 'changes'>('all');
   const latest = data?.history.length
     ? data.history[data.history.length - 1]
     : null;
   const churn = latest?.compared ? latest : null;
-  const addedKeys = useMemo(
-    () => new Set((churn?.added ?? []).map(r => r.voteKey)),
-    [churn]
-  );
   // The Validators card's filter: all, the directed ones, the latest
   // epoch's adds and drops.
   const viewOptions: Array<[typeof view, string]> = [
@@ -597,27 +601,35 @@ const StakePool = () => {
     ...(showDirected
       ? [['directed', 'Directed'] as [typeof view, string]]
       : []),
-    ...(churn
-      ? ([
-          [
-            'added',
-            `Added ${(churn.added.length + churn.moreAdded).toLocaleString()}`
-          ],
-          [
-            'dropped',
-            `Dropped ${(churn.dropped.length + churn.moreDropped).toLocaleString()}`
-          ]
-        ] as Array<[typeof view, string]>)
-      : [])
+    ...(churn ? [['changes', 'Changes'] as [typeof view, string]] : [])
   ];
   const shown = useMemo(
     () =>
-      view === 'added'
-        ? validators.filter(v => addedKeys.has(v.voteKey))
-        : view === 'directed'
-          ? validators.filter(v => (v.directedStake ?? 0) > 0)
+      view === 'directed'
+        ? validators.filter(v => (v.directedStake ?? 0) > 0)
+        : view === 'changes' && churn
+          ? [
+              // Added: their rows (marked New); dropped: a row each, with
+              // no stake now and what it held before.
+              ...validators.filter(v =>
+                churn.added.some(a => a.voteKey === v.voteKey)
+              ),
+              ...churn.dropped.map(
+                d =>
+                  ({
+                    voteKey: d.voteKey,
+                    identity: null,
+                    name: d.name,
+                    stake: 0,
+                    stakePrev: d.stakePrev ?? null,
+                    shareOfPool: null,
+                    shareOfValidator: null,
+                    dropped: true
+                  }) as unknown as Validator
+              )
+            ]
           : validators,
-    [view, validators, addedKeys]
+    [view, validators, churn]
   );
   const table = useAdvanceTable({
     columns: useMemo(
@@ -854,7 +866,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Added / Dropped: the latest epoch's changes."
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Changes: the latest epoch's adds and drops."
           aside={
             churn || showDirected ? (
               <ButtonGroup size="sm">
@@ -876,46 +888,29 @@ const StakePool = () => {
             ) : undefined
           }
         >
-          {view === 'dropped' && churn ? (
-            // No longer in the table: the validators it stopped delegating
-            // to, with what it held on each.
-            <>
-              <p className="fs-10 text-body-tertiary mb-2">
-                No longer delegated to after epoch{' '}
-                {churn.epoch.toLocaleString()}, with its stake there before
-              </p>
-              {churn.dropped.length ? (
-                <RefList
-                  refs={churn.dropped}
-                  more={churn.moreDropped}
-                  value={r =>
-                    r.stakePrev != null ? compactSol(r.stakePrev) : null
-                  }
-                  max={50}
-                  order={r => r.stakePrev ?? 0}
-                />
-              ) : (
-                <p className="fs-9 text-body-tertiary mb-0">
-                  None dropped in epoch {churn.epoch.toLocaleString()}.
-                </p>
-              )}
-            </>
-          ) : (
-            <AdvanceTableProvider {...table}>
-              <div className="mb-3">
-                <SearchBox
-                  placeholder="Search validators, vote or identity keys"
-                  onChange={e =>
-                    table.setGlobalFilter(e.target.value || undefined)
-                  }
-                />
-              </div>
-              <AdvanceTable
-                tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
-              />
-              <AdvanceTableFooter viewAll={false} />
-            </AdvanceTableProvider>
+          {view === 'changes' && churn && (
+            <p className="fs-10 text-body-tertiary mb-2">
+              Epoch {churn.epoch.toLocaleString()}: the validators it started
+              delegating to (New) and stopped delegating to (Dropped, with its
+              stake there before)
+              {churn.moreAdded + churn.moreDropped > 0 &&
+                ` - and ${(churn.moreAdded + churn.moreDropped).toLocaleString()} more in Epoch Changes`}
+            </p>
           )}
+          <AdvanceTableProvider {...table}>
+            <div className="mb-3">
+              <SearchBox
+                placeholder="Search validators, vote or identity keys"
+                onChange={e =>
+                  table.setGlobalFilter(e.target.value || undefined)
+                }
+              />
+            </div>
+            <AdvanceTable
+              tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
+            />
+            <AdvanceTableFooter viewAll={false} />
+          </AdvanceTableProvider>
         </SectionCard>
 
         <SectionCard
