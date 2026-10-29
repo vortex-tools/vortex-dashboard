@@ -75,14 +75,14 @@ const columns = (served: string): ColumnDef<SimdSummary>[] => [
       const title = s.title ?? (prTitle ? gateName(prTitle) : null);
       return (
         <span className="d-flex align-items-center gap-2">
-          <Link
-            to={`/simd/${s.simd}`}
+          {/* The number links; the title is plain text. */}
+          <span
             className="d-block text-truncate"
             style={NAME_WIDTH}
             title={title ?? undefined}
           >
             {title ?? <span className="text-body-tertiary">Untitled</span>}
-          </Link>
+          </span>
           {s.openPrs.length > 0 && (
             <Badge
               bg="secondary"
