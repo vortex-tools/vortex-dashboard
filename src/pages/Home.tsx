@@ -4,6 +4,7 @@ import useConsensus from 'hooks/useConsensus';
 import FeatherIcon from 'feather-icons-react';
 import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
+import ClientDiversityCard from 'components/home/ClientDiversityCard';
 import ThroughputCard from 'components/home/ThroughputCard';
 import HomeAnnouncements from 'components/home/HomeAnnouncements';
 import ValidatorSearch from 'components/common/ValidatorSearch';
@@ -220,8 +221,12 @@ const Home = () => {
       : null;
   // Rows of three; testnet's first row has a fourth (participation).
   const cardCol = blockIncomeTracked ? { xs: 6, md: 4 } : { xs: 6, md: 3 };
-  const rowTwoCol = { xs: 6, md: 4 };
+  const rowTwoCol = { xs: 6, md: 6 };
   const halt = useClusterHalt();
+  // The Client Diversity chart, once there are epochs of versions.
+  const hasDiversity =
+    (context?.clusterVersionsState.data.get(10)?.epochs.filter(e => e.stake)
+      .length ?? 0) >= 2;
   // Halted: the halted chain's last slot (the epoch reading can show the
   // restart snapshot's slot once our node has restarted onto it).
   const tickingSlot = useTickingSlot(live.progress, !!halt);
@@ -256,12 +261,24 @@ const Home = () => {
               check={live.loaded && !halt ? true : null}
               plainCheck
               alert={!!halt}
+              // Halted: since when. Else the stake whose validators
+              // aren't voting (amber past 5%).
               sublabel={
-                halt
-                  ? `since ${formatDuration(Date.now() / 1000 - halt.since)} ago`
-                  : skipRate != null
-                    ? `skip rate ${(skipRate * 100).toFixed(1)}% this epoch`
-                    : undefined
+                halt ? (
+                  `since ${formatDuration(Date.now() / 1000 - halt.since)} ago`
+                ) : snapshot ? (
+                  <span
+                    className={
+                      snapshot.delinquentShare > 0.05
+                        ? 'text-warning-emphasis'
+                        : undefined
+                    }
+                    title={`${compactSol(snapshot.delinquentShare * snapshot.total)} of ${compactSol(snapshot.total)} active stake${skipRate != null ? ` · skip rate ${(skipRate * 100).toFixed(1)}% this epoch` : ''}`}
+                  >
+                    {(snapshot.delinquentShare * 100).toFixed(2)}% stake
+                    delinquent
+                  </span>
+                ) : undefined
               }
               linkTo="/status"
             />
@@ -310,40 +327,13 @@ const Home = () => {
             </Col>
           )}
           <Col {...rowTwoCol}>
-            {/* Delinquent stake: the share of activated stake whose
-                validators aren't voting, its amount of the whole under it. */}
-            <StatCard
-              label="Delinquent Stake"
-              value={
-                snapshot
-                  ? `${(snapshot.delinquentShare * 100).toFixed(2)}%`
-                  : '—'
-              }
-              sublabel={
-                snapshot
-                  ? `${compactSol(snapshot.delinquentShare * snapshot.total)} of ${compactSol(snapshot.total)} active`
-                  : 'of active stake'
-              }
-              tone={
-                snapshot && snapshot.delinquentShare > 0.05
-                  ? 'warning'
-                  : undefined
-              }
-              linkTo="/validators"
-            />
-          </Col>
-          <Col {...rowTwoCol}>
             <StatCard
               label="Validators"
-              value={
-                active
-                  ? `${active.active.toLocaleString()} / ${active.staked.toLocaleString()}`
-                  : '—'
-              }
+              value={active ? active.active.toLocaleString() : '—'}
               sublabel={
-                consensusKpis
-                  ? `active of staked · ${consensusKpis.admitted.toLocaleString()} in consensus`
-                  : 'active of staked'
+                active
+                  ? `active of ${active.staked.toLocaleString()} staked${consensusKpis ? ` · ${consensusKpis.admitted.toLocaleString()} in consensus` : ''}`
+                  : 'active'
               }
               linkTo="/validators"
             />
@@ -375,20 +365,25 @@ const Home = () => {
         </Row>
 
         <HomeAnnouncements />
+        {/* Live Slots | Client Diversity, then Live TPS | Fees per Minute;
+            either takes the row when its partner has nothing to show
+            (testnet: no versions yet, no block income). */}
         <Row className="g-3 mb-3">
-          <Col xs={12} lg={6}>
+          <Col xs={12} lg={hasDiversity ? 6 : 12}>
             <SlotStrip />
           </Col>
-          <Col xs={12} lg={6}>
+          <Col xs={12} lg={6} className={hasDiversity ? undefined : 'd-none'}>
+            <ClientDiversityCard compact />
+          </Col>
+          <Col xs={12} lg={blockIncomeTracked ? 6 : 12}>
             <ThroughputCard metrics={['tps', 'cu']} compact />
           </Col>
+          {blockIncomeTracked && (
+            <Col xs={12} lg={6}>
+              <ThroughputCard metrics={['income']} compact />
+            </Col>
+          )}
         </Row>
-
-        {blockIncomeTracked && (
-          <div className="mb-3">
-            <ThroughputCard metrics={['income']} />
-          </div>
-        )}
 
         {/* Leaderboard quick-launch. On Alpenglow clusters the consensus
             leaderboard leads (Tower voting is historical); without block
