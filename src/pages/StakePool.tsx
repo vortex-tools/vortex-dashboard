@@ -24,7 +24,16 @@ import {
   signedCount,
   signedSol
 } from 'components/pools/pools';
-import { directedDetail, holderDirected } from 'components/pools/directed';
+import {
+  addBy,
+  choosersLine,
+  directedBy,
+  directedDetail,
+  directedTotal,
+  onlyHolders,
+  poolDirectedBy,
+  sumBy
+} from 'components/pools/directed';
 import useAdvanceTable from 'hooks/useAdvanceTable';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { useAppContext } from 'providers/AppProvider';
@@ -175,24 +184,27 @@ const columns = (
     cell: ({ row: { original: v } }) => pct(v.shareOfPool, 2),
     meta: END
   },
-  // The part of its stake here the pool's holders directed (the rest by
-  // who chose it on hover).
+  // The part of its stake here someone chose rather than the pool's own
+  // selection (who, on hover).
   ...(showDirected
     ? [
         {
           id: 'directed',
           header: 'Directed',
-          accessorFn: (v: Validator) => holderDirected(v),
+          accessorFn: (v: Validator) => directedTotal(v),
           cell: ({ row: { original: v } }: { row: { original: Validator } }) =>
-            holderDirected(v) ? (
+            directedTotal(v) ? (
               <span title={directedDetail(v)}>
-                {compactSol(holderDirected(v))}
-                <Delta
-                  now={holderDirected(v)}
-                  prev={v.directedStakePrev}
-                  format={signedSol}
-                  below
-                />
+                {compactSol(directedTotal(v))}
+                {/* The previous epoch's figure counts holders only. */}
+                {onlyHolders(v) && (
+                  <Delta
+                    now={directedTotal(v)}
+                    prev={v.directedStakePrev}
+                    format={signedSol}
+                    below
+                  />
+                )}
               </span>
             ) : (
               <span
@@ -605,10 +617,11 @@ const StakePool = () => {
   const showOther = !!data?.validators.some(v => v.otherPools != null);
   // Shown once the API gives the pool's rewards per validator.
   const showRewards = !!data?.validators.some(v => v.inflationReward != null);
-  // And its holder-directed stake (JitoSOL, bSOL, JSOL, vSOL).
+  // And its directed stake (JitoSOL, bSOL, JSOL, vSOL): chosen by its
+  // holders, a protocol, the pool itself or matching.
   // Only where some of it is (JitoSOL's directed sources are all the
   // pool's or a protocol's).
-  const showDirected = !!data?.validators.some(v => holderDirected(v) > 0);
+  const showDirected = !!data?.validators.some(v => directedTotal(v) > 0);
   // Epochs a year at the epoch's observed length, for an annual yield.
   const progress = context?.currentEpochState.progress;
   const epochsPerYear =
@@ -642,7 +655,7 @@ const StakePool = () => {
   const shown = useMemo(
     () =>
       view === 'directed'
-        ? validators.filter(v => holderDirected(v) > 0)
+        ? validators.filter(v => directedTotal(v) > 0)
         : view === 'changes' && churn
           ? [
               // Added: their rows (marked New); dropped: a row each, with
@@ -717,19 +730,24 @@ const StakePool = () => {
           epochsPerYear -
         1
       : null;
-  // Stake its holders chose: from the per-validator sources where the API
-  // lists them (the column's figure), else its own total.
+  // Its directed stake by who chose it: from the per-validator sources
+  // where the API lists them (the column's figures), else its own sums.
   const hasSources = validators.some(v => v.directedSources != null);
+  const d = data.directed;
   const directed = hasSources
-    ? (() => {
-        const each = validators.map(holderDirected).filter(x => x > 0);
-        return {
-          stake: each.reduce((a, x) => a + x, 0),
-          validators: each.length,
-          basis: data.directed?.basis ?? null
-        };
-      })()
-    : data.directed;
+    ? {
+        by: addBy(validators.map(directedBy)),
+        validators: validators.filter(v => directedTotal(v) > 0).length,
+        basis: d?.basis ?? null
+      }
+    : d
+      ? {
+          by: poolDirectedBy(data),
+          validators: d.validators,
+          basis: d.basis
+        }
+      : null;
+  const directedStake = directed ? sumBy(directed.by) : 0;
   const history = data.history;
   const prev = history.length > 1 ? history[history.length - 2] : null;
   const newest = [...history].reverse();
@@ -856,18 +874,23 @@ const StakePool = () => {
               />
             </Col>
           )}
-          {directed && directed.stake > 0 && data.stake > 0 && (
+          {directed && directedStake > 0 && data.stake > 0 && (
             <Col xs={6} lg>
-              {/* Stake its holders chose (user + gauge), of all its stake. */}
+              {/* Stake someone chose rather than its own selection, and
+                  who: its holders, a protocol, the pool itself, matching. */}
               <StatCard
                 label="Directed"
-                value={pct(directed.stake / data.stake)}
+                value={pct(directedStake / data.stake)}
                 wrapSublabel
-                sublabel={`${compactSol(directed.stake)}${
-                  directed.validators != null
-                    ? ` to ${directed.validators.toLocaleString()} ${directed.validators === 1 ? 'validator' : 'validators'}`
-                    : ''
-                }${directed.basis === 'target' ? ' · target' : ''}`}
+                sublabel={
+                  <>
+                    {compactSol(directedStake)}
+                    {directed.validators != null &&
+                      ` to ${directed.validators.toLocaleString()} ${directed.validators === 1 ? 'validator' : 'validators'}`}
+                    {directed.basis === 'target' && ' · target'}
+                    <span className="d-block">{choosersLine(directed.by)}</span>
+                  </>
+                }
               />
             </Col>
           )}

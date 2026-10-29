@@ -1,3 +1,4 @@
+import { choosersLine, poolDirectedBy, sumBy } from 'components/pools/directed';
 import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
@@ -154,26 +155,27 @@ const columns = (
     ),
     meta: END
   },
-  // Its holder-directed share (JitoSOL, bSOL, JSOL, vSOL).
+  // Its directed share (JitoSOL, bSOL, JSOL, vSOL): stake its holders, a
+  // protocol, the pool itself or matching chose (who, on hover).
   ...(showDirected
     ? [
         {
           id: 'directed',
           header: 'Directed',
           accessorFn: (p: PoolSummary) =>
-            p.directed && p.stake ? p.directed.stake / p.stake : -1,
+            p.directed && p.stake ? sumBy(poolDirectedBy(p)) / p.stake : -1,
           cell: ({
             row: { original: p }
           }: {
             row: { original: PoolSummary };
           }) =>
-            p.directed && p.stake ? (
+            p.directed && p.stake && sumBy(poolDirectedBy(p)) > 0 ? (
               <span
-                title={`${compactSol(p.directed.stake)} directed by its holders${
+                title={`${compactSol(sumBy(poolDirectedBy(p)))} directed${
                   p.directed.basis === 'target' ? ' (targets)' : ''
-                }${p.directed.validators != null ? ` to ${p.directed.validators.toLocaleString()} validators` : ''}`}
+                }: ${choosersLine(poolDirectedBy(p))}`}
               >
-                {pct(p.directed.stake / p.stake)}
+                {pct(sumBy(poolDirectedBy(p)) / p.stake)}
               </span>
             ) : (
               <span className="text-body-quaternary">—</span>

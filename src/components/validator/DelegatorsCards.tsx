@@ -1,4 +1,4 @@
-import { directedDetail, holderDirected } from 'components/pools/directed';
+import { directedDetail, directedTotal } from 'components/pools/directed';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { BarChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
@@ -168,17 +168,17 @@ const TopStakers = ({
                 title={`Withdraw authority ${t.withdrawer}${t.staker && t.staker !== t.withdrawer ? ` · stake authority ${t.staker}` : ''}`}
               >
                 <StakerName label={t.label} withdrawer={t.withdrawer} />
-                {/* A pool row: the part its holders directed here. */}
-                {!!holderDirected(t) && (
+                {/* A pool row: the part directed here (by its holders, a protocol, the pool, matching). */}
+                {!!directedTotal(t) && (
                   <span
                     className="text-body-tertiary fs-10 ms-2"
                     title={
                       t.directedSources?.length
                         ? directedDetail(t)
-                        : "Directed here by the pool's holders (the rest the pool chose)"
+                        : "Directed here by the pool's holders"
                     }
                   >
-                    {sol(holderDirected(t))} directed
+                    {sol(directedTotal(t))} directed
                   </span>
                 )}
               </td>

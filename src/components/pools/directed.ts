@@ -33,14 +33,93 @@ const chooser = (x: DirectedSource) =>
           : 'other';
 const amountOf = (x: DirectedSource) => x.lamports ?? x.target ?? 0;
 
-/** Stake its holders chose here: from the sources where the API lists
- *  them, else its directedStake sum. */
-export const holderDirected = (v: Directed) =>
-  v.directedSources
-    ? v.directedSources
-        .filter(x => chooser(x) === 'holders')
-        .reduce((a, x) => a + amountOf(x), 0)
-    : (v.directedStake ?? 0);
+/** Who can choose a pool's stake beyond its own selection, in the order
+ *  shown. */
+export const CHOOSERS = ['holders', 'protocol', 'pool', 'matching'] as const;
+export type Chooser = (typeof CHOOSERS)[number];
+const CHOOSER_LABEL: Record<Chooser, string> = {
+  holders: 'holders',
+  protocol: 'protocols',
+  pool: 'the pool',
+  matching: 'matching'
+};
+export type ByChooser = Record<Chooser, number>;
+const none = (): ByChooser => ({
+  holders: 0,
+  protocol: 0,
+  pool: 0,
+  matching: 0
+});
+
+/** Its directed stake by who chose it: from the sources where the API
+ *  lists them, else its breakdown sums, else its directedStake (holders). */
+export const directedBy = (v: Directed): ByChooser => {
+  const out = none();
+  if (v.directedSources) {
+    for (const x of v.directedSources) {
+      const c = chooser(x);
+      if (c !== 'other') out[c] += amountOf(x);
+    }
+    return out;
+  }
+  const b = v.directedBreakdown;
+  if (b) {
+    out.holders = (b.user ?? 0) + (b.gauge ?? 0);
+    out.protocol = b.protocolTicket ?? 0;
+    out.pool = b.protocol ?? 0;
+    out.matching = b.matching ?? 0;
+    return out;
+  }
+  out.holders = v.directedStake ?? 0;
+  return out;
+};
+
+export const sumBy = (b: ByChooser) => CHOOSERS.reduce((a, c) => a + b[c], 0);
+
+/** Stake directed here, by anyone. */
+export const directedTotal = (v: Directed) => sumBy(directedBy(v));
+
+/** A pool's directed stake by who chose it, from its own sums
+ *  (/pools, /pool directed): holders, a protocol's ticket, the pool's own
+ *  choices (protocol = adminTarget + poolOwn), matching. */
+export const poolDirectedBy = (p: {
+  directed?: {
+    stake: number;
+    protocolTicket?: number | null;
+    protocol?: number | null;
+    matching?: number | null;
+  } | null;
+}): ByChooser => ({
+  holders: p.directed?.stake ?? 0,
+  protocol: p.directed?.protocolTicket ?? 0,
+  pool: p.directed?.protocol ?? 0,
+  matching: p.directed?.matching ?? 0
+});
+
+/** Several validators' (or a pool's) parts added up. */
+export const addBy = (all: ByChooser[]) => {
+  const out = none();
+  for (const b of all) for (const c of CHOOSERS) out[c] += b[c];
+  return out;
+};
+
+/** "by holders" / "the pool 91% · protocols 9%": who chose it. */
+export const choosersLine = (b: ByChooser) => {
+  const total = sumBy(b);
+  const parts = CHOOSERS.filter(c => b[c] > 0).sort((x, y) => b[y] - b[x]);
+  if (!total || !parts.length) return '';
+  if (parts.length === 1) return `by ${CHOOSER_LABEL[parts[0]]}`;
+  return parts
+    .map(c => `${CHOOSER_LABEL[c]} ${Math.round((b[c] / total) * 100)}%`)
+    .join(' · ');
+};
+
+/** Only its holders chose it (a delta against directedStakePrev, which
+ *  counts holders only, compares like with like). */
+export const onlyHolders = (v: Directed) => {
+  const b = directedBy(v);
+  return b.holders > 0 && b.holders === sumBy(b);
+};
 
 const KIND_LABEL: Record<string, string> = {
   ticket: 'Ticket',

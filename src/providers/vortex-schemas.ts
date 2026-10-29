@@ -2925,13 +2925,15 @@ export const poolSummarySchema = z.object({
   droppedCount: z.number().nullable().optional().catch(null),
   // Curated: who runs it and how it picks validators, and its site.
   // null for pools not curated; absent on older APIs.
-  // Its holder-directed stake (user + gauge), and the protocol / matching
-  // parts; basis 'target' where only targets are published (vSOL). null:
-  // a pool without directed staking.
+  // Its holder-directed stake (user + gauge); a protocol's ticket
+  // (protocolTicket); the pool's own choices (protocol = adminTarget +
+  // poolOwn); matching. basis 'target' where only targets are published
+  // (vSOL). null: a pool without directed staking.
   directed: z
     .object({
       stake: z.number().catch(0),
       validators: z.number().nullable().catch(null),
+      protocolTicket: z.number().nullable().optional().catch(null),
       protocol: z.number().nullable().catch(null),
       matching: z.number().nullable().catch(null),
       source: z.string().nullable().catch(null),
@@ -2980,13 +2982,15 @@ export const poolDetailSchema = z.object({
   fullName: z.string().nullable().catch(null),
   // Curated: who runs it and how it picks validators, and its site.
   // null for pools not curated; absent on older APIs.
-  // Its holder-directed stake (user + gauge), and the protocol / matching
-  // parts; basis 'target' where only targets are published (vSOL). null:
-  // a pool without directed staking.
+  // Its holder-directed stake (user + gauge); a protocol's ticket
+  // (protocolTicket); the pool's own choices (protocol = adminTarget +
+  // poolOwn); matching. basis 'target' where only targets are published
+  // (vSOL). null: a pool without directed staking.
   directed: z
     .object({
       stake: z.number().catch(0),
       validators: z.number().nullable().catch(null),
+      protocolTicket: z.number().nullable().optional().catch(null),
       protocol: z.number().nullable().catch(null),
       matching: z.number().nullable().catch(null),
       source: z.string().nullable().catch(null),
