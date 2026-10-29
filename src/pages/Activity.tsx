@@ -124,21 +124,30 @@ const columns = (
   pairs: Map<ActivityEvent, Pair>
 ): ColumnDef<ActivityEvent>[] => [
   {
+    id: 'epoch',
+    header: 'Epoch',
+    accessorFn: e => e.epoch,
+    cell: ({ row: { original: e } }) => (
+      <span className="font-monospace">{e.epoch.toLocaleString()}</span>
+    ),
+    meta: NOWRAP
+  },
+  {
     id: 'when',
     header: 'When',
     // By time (host changes have no slot), then slot.
     accessorFn: e => eventTime(e) ?? e.slot ?? e.epoch,
     cell: ({ row: { original: e } }) => {
       const t = eventTime(e);
-      return (
+      return t != null ? (
         <span
-          title={t != null ? new Date(t * 1000).toLocaleString() : undefined}
+          className="text-body-tertiary"
+          title={new Date(t * 1000).toLocaleString()}
         >
-          <span className="font-monospace">{e.epoch.toLocaleString()}</span>
-          {t != null && (
-            <span className="text-body-tertiary fs-10 ms-2">{whenText(t)}</span>
-          )}
+          {whenText(t)}
         </span>
+      ) : (
+        <span className="text-body-quaternary">—</span>
       );
     },
     meta: NOWRAP

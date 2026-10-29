@@ -12,7 +12,9 @@ export const CHANGE_KIND: Record<
   { label: string; bg: 'warning' | 'info' | 'secondary' | 'primary' }
 > = {
   withdrawer: { label: 'Withdrawer', bg: 'warning' },
-  withdraw: { label: 'Withdrawal', bg: 'warning' },
+  // Gray, unlike the withdrawer change (amber): a withdrawal is routine
+  // (commission taken out), a new withdrawer is the key that matters.
+  withdraw: { label: 'Withdrawal', bg: 'secondary' },
   voter: { label: 'Voter', bg: 'info' },
   identity: { label: 'Identity', bg: 'info' },
   inflationCommission: { label: 'Inflation commission', bg: 'primary' },
