@@ -359,7 +359,7 @@ const ValidatorOverview = () => {
                 monospace they spread the numbers apart. */}
             {blocksProduced.toLocaleString()}
             <span
-              className="fs-10 fw-normal text-body-tertiary mx-1"
+              className="fs-10 fw-normal text-body-tertiary mx-2"
               style={{ fontFamily: 'var(--vx-body-font-family)' }}
             >
               of
