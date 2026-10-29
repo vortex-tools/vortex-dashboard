@@ -355,7 +355,16 @@ const ValidatorOverview = () => {
           '—'
         ) : totalSlots ? (
           <>
-            {blocksProduced.toLocaleString()} of {totalSlots.toLocaleString()}
+            {/* "of" and "scheduled" in the text font: in the value's
+                monospace they spread the numbers apart. */}
+            {blocksProduced.toLocaleString()}
+            <span
+              className="fs-10 fw-normal text-body-tertiary mx-1"
+              style={{ fontFamily: 'var(--vx-body-font-family)' }}
+            >
+              of
+            </span>
+            {totalSlots.toLocaleString()}
             <span
               className="fs-10 fw-normal text-body-tertiary ms-1"
               style={{ fontFamily: 'var(--vx-body-font-family)' }}
