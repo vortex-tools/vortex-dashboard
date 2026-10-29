@@ -86,6 +86,16 @@ body {
   --#{$prefix}btn-hover-color: var(--#{$prefix}emphasis-color);
   --#{$prefix}btn-active-color: var(--#{$prefix}soft-btn-secondary);
 }
+// A toggle group's picked option: the primary tint and border, so it
+// stands out in both themes (the hover fill alone was faint in dark).
+.btn-check:checked + .btn-soft-secondary,
+.btn-soft-secondary.active {
+  --#{$prefix}btn-active-color: var(--#{$prefix}primary-text-emphasis);
+  --#{$prefix}btn-active-bg: var(--#{$prefix}primary-bg-subtle);
+  --#{$prefix}btn-active-border-color: var(--#{$prefix}primary-border-subtle);
+  position: relative;
+  z-index: 1;
+}
 
 // Search: an input with an icon inside on the left.
 .search-field {
