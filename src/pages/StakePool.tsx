@@ -597,9 +597,9 @@ const StakePool = () => {
   // Shown once the API gives the pool's rewards per validator.
   const showRewards = !!data?.validators.some(v => v.inflationReward != null);
   // And its holder-directed stake (JitoSOL, bSOL, JSOL, vSOL).
-  const showDirected = !!data?.validators.some(
-    v => v.directedStake != null || v.directedSources != null
-  );
+  // Only where some of it is (JitoSOL's directed sources are all the
+  // pool's or a protocol's).
+  const showDirected = !!data?.validators.some(v => holderDirected(v) > 0);
   // Epochs a year at the epoch's observed length, for an annual yield.
   const progress = context?.currentEpochState.progress;
   const epochsPerYear =
@@ -708,6 +708,19 @@ const StakePool = () => {
           epochsPerYear -
         1
       : null;
+  // Stake its holders chose: from the per-validator sources where the API
+  // lists them (the column's figure), else its own total.
+  const hasSources = validators.some(v => v.directedSources != null);
+  const directed = hasSources
+    ? (() => {
+        const each = validators.map(holderDirected).filter(x => x > 0);
+        return {
+          stake: each.reduce((a, x) => a + x, 0),
+          validators: each.length,
+          basis: data.directed?.basis ?? null
+        };
+      })()
+    : data.directed;
   const history = data.history;
   const prev = history.length > 1 ? history[history.length - 2] : null;
   const newest = [...history].reverse();
@@ -834,18 +847,18 @@ const StakePool = () => {
               />
             </Col>
           )}
-          {data.directed && data.stake > 0 && (
+          {directed && directed.stake > 0 && data.stake > 0 && (
             <Col xs={6} lg>
               {/* Stake its holders chose (user + gauge), of all its stake. */}
               <StatCard
                 label="Directed"
-                value={pct(data.directed.stake / data.stake)}
+                value={pct(directed.stake / data.stake)}
                 wrapSublabel
-                sublabel={`${compactSol(data.directed.stake)}${
-                  data.directed.validators != null
-                    ? ` to ${data.directed.validators.toLocaleString()} validators`
+                sublabel={`${compactSol(directed.stake)}${
+                  directed.validators != null
+                    ? ` to ${directed.validators.toLocaleString()} ${directed.validators === 1 ? 'validator' : 'validators'}`
                     : ''
-                }${data.directed.basis === 'target' ? ' · target' : ''}`}
+                }${directed.basis === 'target' ? ' · target' : ''}`}
               />
             </Col>
           )}
