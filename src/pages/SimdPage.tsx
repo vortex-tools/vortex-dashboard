@@ -153,7 +153,7 @@ const SimdPage = () => {
       <div className="mb-9 pt-4">
         {!valid || slice?.error ? (
           <UntrackedState>
-            No SIMD with this number. <Link to="/simds">All SIMDs</Link>
+            No SIMD with this number. <Link to="/features">Feature gates</Link>
           </UntrackedState>
         ) : (
           <DelayedSpinner loading label="Loading the SIMD…" />
@@ -185,7 +185,8 @@ const SimdPage = () => {
           </p>
         </div>
         <div className="col-auto d-flex flex-wrap gap-2">
-          <BackLink to="/simds" label="All SIMDs" />
+          {/* Reached from Feature Gates (the SIMDs list is hidden). */}
+          <BackLink to="/features" label="Feature gates" />
           {s.url && (
             <a
               href={s.url}

@@ -46,8 +46,8 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
   { name: 'Versions', icon: 'activity', path: '/client-versions' },
   // Feature gates: what's active, what activates next.
   { name: 'Feature Gates', icon: 'toggle-right', path: '/features' },
-  // SIMDs and how far their gates have activated.
-  { name: 'SIMDs', icon: 'file-text', path: '/simds' },
+  // SIMDs (/simds) is out of the nav for now: SIMD pages are reached
+  // from Feature Gates.
   // Solana governance proposals (mainnet only).
   { name: 'Governance', icon: 'check-square', path: '/governance' },
   // Who stake pools and SFDP delegate to (mainnet only).
