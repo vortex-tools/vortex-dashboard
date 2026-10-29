@@ -70,11 +70,17 @@ const candidateText = (a: Announcement) =>
 export const announcementTitle = (a: Announcement) => {
   const kind = ANNOUNCEMENT_KIND[a.kind] ?? a.kind;
   const clients = clientsOf(a);
-  if (a.kind === 'downgrade' && clients.length === 1)
-    return `${clients[0]} downgrade`;
-  return a.kind === 'upgrade' && clients.length === 1
-    ? `${clients[0]} upgrade${isCandidate(a) ? ' candidate' : ''}`
-    : kind;
+  // A test run (switching release lines as an exercise): "... test".
+  const test = a.testRun ? ' test' : '';
+  if (a.kind === 'downgrade')
+    return clients.length === 1
+      ? `${clients[0]} downgrade${test}`
+      : `Downgrade${test}`;
+  if (a.kind === 'upgrade')
+    return clients.length === 1
+      ? `${clients[0]} upgrade${test || (isCandidate(a) ? ' candidate' : '')}`
+      : `Upgrade${test}`;
+  return kind;
 };
 
 /**

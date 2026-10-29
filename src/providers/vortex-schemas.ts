@@ -2420,6 +2420,9 @@ const announcementFactsSchema = {
   // An upgrade post's adoption target (0..1: "10% of Mainnet-Beta stake"),
   // and whether it calls the release an upgrade candidate. Coming.
   stakeTarget: z.number().nullable().optional().catch(null),
+  // An upgrade / downgrade post asking everyone to switch release lines
+  // as an exercise (testnet's routine tests), not a release to run.
+  testRun: z.boolean().nullable().optional().catch(null),
   candidate: z.boolean().nullable().optional().catch(null)
 };
 

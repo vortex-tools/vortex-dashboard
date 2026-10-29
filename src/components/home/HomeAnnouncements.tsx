@@ -112,12 +112,15 @@ const HomeAnnouncements = () => {
       } else if (a.kind === 'upgrade' || a.kind === 'downgrade') {
         // Its title opens the Versions page (who has moved yet); the
         // post beside it. Testnet has no Versions page: the post.
+        // A test run (everyone switching lines as an exercise) is still
+        // something to do, but last.
+        const rank = a.urgent && !a.testRun ? 1 : a.testRun ? 5 : 4;
         if (postedSinceLastEpoch(a))
           out.push(
             isTestnet
-              ? post(a, a.urgent ? 1 : 4)
+              ? post(a, rank)
               : {
-                  ...post(a, a.urgent ? 1 : 4),
+                  ...post(a, rank),
                   to: '/client-versions',
                   external: false,
                   post: a.url
