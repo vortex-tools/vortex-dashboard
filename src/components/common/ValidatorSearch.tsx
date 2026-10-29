@@ -160,8 +160,9 @@ const ValidatorSearch = ({
                         </span>
                         {/* Two validators can share a name: how long each
                             has run tells them apart. */}
+                        {/* Records start at 369: there it means "or earlier". */}
                         {v.firstEpoch != null &&
-                          ` · since epoch ${v.firstEpoch.toLocaleString()}`}
+                          ` · since epoch ${v.firstEpoch <= 369 ? '≤ ' : ''}${v.firstEpoch.toLocaleString()}`}
                       </span>
                     </div>
                   </button>
