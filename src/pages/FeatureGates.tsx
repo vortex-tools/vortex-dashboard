@@ -96,13 +96,6 @@ const NOWRAP = {
 
 const columns = (served: string): ColumnDef<FeatureGate>[] => [
   {
-    id: 'simd',
-    header: 'SIMD',
-    accessorFn: f => f.simds[0] ?? (f.simdExempt ? -1 : 0),
-    cell: ({ row: { original: f } }) => <SimdCell f={f} />,
-    meta: NOWRAP
-  },
-  {
     id: 'name',
     header: 'Feature',
     accessorFn: f =>
@@ -117,6 +110,13 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
         {featureName(f)}
       </Link>
     ),
+    meta: NOWRAP
+  },
+  {
+    id: 'simd',
+    header: 'SIMD',
+    accessorFn: f => f.simds[0] ?? (f.simdExempt ? -1 : 0),
+    cell: ({ row: { original: f } }) => <SimdCell f={f} />,
     meta: NOWRAP
   },
   ...[...CLUSTERS]
@@ -295,8 +295,8 @@ const FeatureGates = () => {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th className="text-nowrap">SIMD</th>
                     <th>Feature</th>
+                    <th className="text-nowrap">SIMD</th>
                     <th style={{ minWidth: '7rem' }}>Stake ready</th>
                     <th className="text-nowrap">Minimum versions</th>
                     {CLUSTERS.filter(c => c.key !== served).map(c => (
@@ -314,9 +314,6 @@ const FeatureGates = () => {
                           ? 'next epoch'
                           : i + 1}
                       </td>
-                      <td className="text-nowrap">
-                        <SimdCell f={f} />
-                      </td>
                       <td>
                         <Link
                           to={`/feature/${f.id}`}
@@ -327,6 +324,9 @@ const FeatureGates = () => {
                           {featureName(f)}
                         </Link>
                         <UpNextNotes f={f} cluster={served} />
+                      </td>
+                      <td className="text-nowrap">
+                        <SimdCell f={f} />
                       </td>
                       <td>
                         <ReadinessBar readiness={f.readiness} />

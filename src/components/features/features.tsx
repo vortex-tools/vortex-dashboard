@@ -65,8 +65,11 @@ export const SimdCell = ({
   if (f.simds.length || !f.simdExempt) return <SimdLinks simds={f.simds} />;
   const reason = f.simdExemptReason ?? null;
   return (
+    // Neutral gray and italic: the tertiary tint sat too close to the
+    // links' color in dark mode.
     <span
-      className="text-body-tertiary text-nowrap"
+      className="fst-italic text-nowrap"
+      style={{ color: 'var(--vx-gray-500)' }}
       title={
         reason && SIMD_EXEMPT_REASON[reason]
           ? `No SIMD needed (${EXEMPT_SHORT[reason] ?? reason}): it ${SIMD_EXEMPT_REASON[reason]}`
@@ -139,7 +142,11 @@ export const StatusChip = ({
         {inLine(state.queuePosition)}
       </Badge>
     );
-  return <Badge bg="secondary">Not scheduled</Badge>;
+  return (
+    <span className="text-body-quaternary" title="Not scheduled">
+      —
+    </span>
+  );
 };
 
 const CLIENT_LABEL: Record<string, string> = {
@@ -270,9 +277,9 @@ export const StageChip = ({ rollup }: { rollup: SimdRollup | undefined }) => {
       </Badge>
     );
   return (
-    <Badge bg="secondary" className="text-nowrap">
-      Not scheduled
-    </Badge>
+    <span className="text-body-quaternary" title="Not scheduled">
+      —
+    </span>
   );
 };
 
