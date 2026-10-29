@@ -31,6 +31,8 @@ type Item = {
   /** An internal path, or the post (external). */
   to: string;
   external?: boolean;
+  /** The post, when the title links elsewhere (an upgrade's versions). */
+  post?: string | null;
   urgent?: boolean;
   /** Unix s, for the right-hand date (and ordering within a priority). */
   at: number | null;
@@ -108,7 +110,19 @@ const HomeAnnouncements = () => {
         if (a.restart?.finished !== true && (!!halt || postedThisEpoch(a)))
           out.push(post(a, 0));
       } else if (a.kind === 'upgrade' || a.kind === 'downgrade') {
-        if (postedSinceLastEpoch(a)) out.push(post(a, a.urgent ? 1 : 4));
+        // Its title opens the Versions page (who has moved yet); the
+        // post beside it. Testnet has no Versions page: the post.
+        if (postedSinceLastEpoch(a))
+          out.push(
+            isTestnet
+              ? post(a, a.urgent ? 1 : 4)
+              : {
+                  ...post(a, a.urgent ? 1 : 4),
+                  to: '/client-versions',
+                  external: false,
+                  post: a.url
+                }
+          );
       }
     }
     // Feature gates queued for the next boundary or activated this epoch.
@@ -152,6 +166,7 @@ const HomeAnnouncements = () => {
     features,
     proposals,
     halt,
+    isTestnet,
     epochStartedAt,
     epochSecs
   ]);
@@ -183,6 +198,16 @@ const HomeAnnouncements = () => {
                   </Link>
                 )}
                 {it.urgent && <Badge bg="danger">Urgent</Badge>}
+                {it.post && (
+                  <a
+                    href={it.post}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="fs-10 text-body-tertiary"
+                  >
+                    post ↗
+                  </a>
+                )}
                 {it.at != null && (
                   <span className="text-body-tertiary fs-10 ms-auto text-nowrap">
                     {postedWhen(it.at)}

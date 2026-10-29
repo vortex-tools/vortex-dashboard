@@ -46,49 +46,6 @@ const useTickingSlot = (progress: EpochProgress | null, halted: boolean) => {
   return progress.absoluteSlot + Math.floor(elapsed / slotMs);
 };
 
-/** "84%", or "<1%" / ">99%" at the ends. */
-const pctShare = (x: number) => {
-  const p = x * 100;
-  return p > 0 && p < 1
-    ? '<1%'
-    : p > 99 && p < 100
-      ? '>99%'
-      : `${Math.round(p)}%`;
-};
-
-/** Activated stake by client: Agave from the left, Firedancer from the
- *  right, anything else between. */
-const ClientSplitBar = ({
-  agave,
-  firedancer,
-  other
-}: {
-  agave: number;
-  firedancer: number;
-  other: number;
-}) => (
-  <span
-    className="d-block"
-    title={`Agave ${pctShare(agave)} · Firedancer ${pctShare(firedancer)}${other >= 0.005 ? ` · other / unknown ${pctShare(other)}` : ''} of activated stake`}
-  >
-    <span
-      className="d-flex rounded-1 overflow-hidden bg-body-highlight"
-      style={{ height: 6 }}
-    >
-      <span className="bg-primary" style={{ width: `${agave * 100}%` }} />
-      <span style={{ width: `${other * 100}%` }} />
-      <span
-        className="bg-client-firedancer"
-        style={{ width: `${firedancer * 100}%` }}
-      />
-    </span>
-    <span className="d-flex justify-content-between gap-2 mt-1">
-      <span>Agave</span>
-      <span>Firedancer</span>
-    </span>
-  </span>
-);
-
 /** "◎437.7M". */
 const compactSol = (lamports: number) => {
   const sol = lamports / 1e9;
@@ -163,7 +120,7 @@ const Home = () => {
           }
         : undefined;
 
-  // The cluster snapshot's second row, from the status summary.
+  // Stake and its delinquent share, from the status summary.
   const snapshot = useMemo(() => {
     if (!summary?.validators.length) return null;
     const vs = summary.validators;
@@ -172,20 +129,7 @@ const Home = () => {
     const delinquent = vs
       .filter(v => v.delinquent)
       .reduce((a, v) => a + v.activatedStake, 0);
-    const byFamily = new Map<string, number>();
-    for (const v of vs) {
-      const f = v.software?.family ?? 'unknown';
-      byFamily.set(f, (byFamily.get(f) ?? 0) + v.activatedStake);
-    }
-    // The client split: Agave (Jito included) vs Firedancer, of all
-    // activated stake; the rest (other clients, unknown) is "other".
-    const agave = (byFamily.get('agave') ?? 0) / total;
-    const firedancer = (byFamily.get('firedancer') ?? 0) / total;
-    return {
-      total,
-      delinquentShare: delinquent / total,
-      clients: { agave, firedancer, other: Math.max(0, 1 - agave - firedancer) }
-    };
+    return { total, delinquentShare: delinquent / total };
   }, [summary]);
 
   // Without block data (testnet), the validator KPIs come from the
@@ -220,8 +164,9 @@ const Home = () => {
       ? totals.skippedSlots / totals.processedSlots
       : null;
   // Rows of three; testnet's first row has a fourth (participation).
-  const cardCol = blockIncomeTracked ? { xs: 6, md: 4 } : { xs: 6, md: 3 };
-  const rowTwoCol = { xs: 6, md: 6 };
+  // One row from md up (four cards; five on testnet, with Consensus
+  // Participation), two across on phones.
+  const cardCol = { xs: 6, md: true };
   const halt = useClusterHalt();
   // The Client Diversity chart, once there are epochs of versions.
   const hasDiversity =
@@ -326,7 +271,7 @@ const Home = () => {
               />
             </Col>
           )}
-          <Col {...rowTwoCol}>
+          <Col {...cardCol}>
             <StatCard
               label="Validators"
               value={active ? active.active.toLocaleString() : '—'}
@@ -336,30 +281,6 @@ const Home = () => {
                   : 'active'
               }
               linkTo="/validators"
-            />
-          </Col>
-          <Col {...rowTwoCol}>
-            <StatCard
-              label="Clients"
-              mono={false}
-              value={
-                snapshot ? (
-                  <span className="d-flex justify-content-between gap-2">
-                    <span className="text-primary">
-                      {pctShare(snapshot.clients.agave)}
-                    </span>
-                    <span className="text-client-firedancer">
-                      {pctShare(snapshot.clients.firedancer)}
-                    </span>
-                  </span>
-                ) : (
-                  '—'
-                )
-              }
-              sublabel={
-                snapshot ? <ClientSplitBar {...snapshot.clients} /> : 'of stake'
-              }
-              linkTo={isTestnet ? '/decentralization' : '/client-versions'}
             />
           </Col>
         </Row>
