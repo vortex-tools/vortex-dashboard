@@ -146,7 +146,8 @@ const columns = (
             Dropped
           </span>
         ) : (
-          v.stakePrev == null && (
+          // New: no stake from it the epoch before (none, or 0).
+          !v.stakePrev && (
             <span className="badge badge-soft badge-soft-success ms-2">
               New
             </span>
