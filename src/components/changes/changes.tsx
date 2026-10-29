@@ -1,4 +1,5 @@
 import Badge from 'components/base/Badge';
+import { clientBase, isKnownClient } from 'helpers/clients';
 import { explorerAddress } from 'helpers/explorer';
 import { formatLamports } from 'helpers/utils';
 import { ActivityEvent, HostState } from 'providers/vortex-schemas';
@@ -28,11 +29,53 @@ export const CHANGE_KIND: Record<
 /** The host-change kinds (no transaction, no signer). */
 export const HOST_KINDS = new Set(['failover', 'migration', 'software']);
 
-export const ChangeBadge = ({ kind }: { kind: string }) => {
+/** Versions compared by their numbers, then a release (no suffix) above
+ *  its pre-releases: 4.3.2 < 4.4.0-rc.0 < 4.4.0-rc.1 < 4.4.0. */
+const compareVersions = (a: string, b: string) => {
+  const parse = (v: string) => {
+    const [core, pre] = v.replace(/^v/, '').split('-', 2);
+    return { nums: core.split('.').map(Number), pre: pre ?? null };
+  };
+  const x = parse(a);
+  const y = parse(b);
+  for (let i = 0; i < Math.max(x.nums.length, y.nums.length); i++) {
+    const d = (x.nums[i] ?? 0) - (y.nums[i] ?? 0);
+    if (d) return d;
+  }
+  if (x.pre === y.pre) return 0;
+  if (x.pre == null) return 1;
+  if (y.pre == null) return -1;
+  return x.pre.localeCompare(y.pre, undefined, { numeric: true });
+};
+
+/** A software change as what it was: a client switch (another base
+ *  client), else an upgrade or downgrade of the version. */
+export const softwareLabel = (e: ActivityEvent) => {
+  const base = (id: string | null | undefined) =>
+    id && isKnownClient(id) ? clientBase(id) : id;
+  const from = e.before;
+  const to = e.after;
+  if (base(from?.clientId) !== base(to?.clientId)) return 'Client switch';
+  if (from?.version && to?.version) {
+    const c = compareVersions(to.version, from.version);
+    if (c > 0) return 'Upgrade';
+    if (c < 0) return 'Downgrade';
+  }
+  return null;
+};
+
+export const ChangeBadge = ({
+  kind,
+  label
+}: {
+  kind: string;
+  /** In place of the kind's label (a software change's "Upgrade"). */
+  label?: string | null;
+}) => {
   const k = CHANGE_KIND[kind];
   return (
     <Badge bg={k?.bg ?? 'secondary'} className="text-nowrap">
-      {k?.label ?? kind}
+      {label ?? k?.label ?? kind}
     </Badge>
   );
 };
@@ -62,7 +105,7 @@ const bpsPct = (v: unknown) =>
   typeof v === 'number' ? `${(v / 100).toLocaleString()}%` : null;
 
 /** Where a host is ("Frankfurt, DE · OVH SAS") and, for a software
- *  change, what it runs ("AgaveBam 4.3.2"). */
+ *  change, what it runs ("Agave 4.3.2"). */
 const placeOf = (h: HostState | null | undefined) =>
   [
     [h?.geo?.city, h?.geo?.countryCode].filter(Boolean).join(', '),
@@ -76,7 +119,13 @@ const hostText = (
   software: boolean
 ) => {
   if (!h) return null;
-  const run = [h.clientId, h.version].filter(Boolean).join(' ');
+  // The base client and its version ("Agave 4.3.2"): which fork it builds
+  // blocks with (Jito, BAM, Harmonic) is left out.
+  const client =
+    h.clientId && isKnownClient(h.clientId)
+      ? clientBase(h.clientId)
+      : h.clientId;
+  const run = [client, h.version].filter(Boolean).join(' ');
   if (software) return run || null;
   const place = placeOf(h);
   const host = h.host != null ? `host ${h.host}` : null;

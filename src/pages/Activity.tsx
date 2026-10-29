@@ -8,6 +8,7 @@ import {
   ShortAddress,
   changeValue,
   eventTime,
+  softwareLabel,
   whenText
 } from 'components/changes/changes';
 import DelayedSpinner from 'components/common/DelayedSpinner';
@@ -168,7 +169,10 @@ const columns = (
     accessorFn: e => CHANGE_KIND[e.kind]?.label ?? e.kind,
     cell: ({ row: { original: e } }) => (
       <>
-        <ChangeBadge kind={e.kind} />
+        <ChangeBadge
+          kind={e.kind}
+          label={e.kind === 'software' ? softwareLabel(e) : null}
+        />
         {pairs.get(e) && <PairMark p={pairs.get(e)!} />}
       </>
     ),
