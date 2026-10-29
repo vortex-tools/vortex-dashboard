@@ -1,5 +1,6 @@
 import FeatherIcon from 'feather-icons-react';
 import AddressLine from 'components/common/AddressLine';
+import SectionCard from 'components/common/SectionCard';
 import { ChangeBadge, changeValue, whenText } from 'components/changes/changes';
 import { explorerTx } from 'helpers/explorer';
 import { IS_STAGING } from 'helpers/apiEndpoint';
@@ -138,9 +139,9 @@ export const ValidatorKeyLines = ({
 
 /**
  * Its vote account's latest changes (withdrawer, voter, identity,
- * commission, collectors, withdrawals), newest first, under the Details
- * lines; the Activity page (staging) for the rest. Nothing until the API
- * has the history.
+ * commission, collectors, withdrawals), newest first, as the Recent
+ * Activity card at the bottom of the Overview; the Activity page
+ * (staging) for the rest. Nothing while there are none.
  */
 export const RecentVoteAccountChanges = ({
   nodeAddress,
@@ -161,21 +162,22 @@ export const RecentVoteAccountChanges = ({
   if (!changes?.length) return null;
   const recent = [...changes].reverse().slice(0, RECENT_CHANGES);
   return (
-    <div className="mt-3 pt-3 border-top border-translucent">
-      <div className="d-flex align-items-center mb-2">
-        <span className="fs-10 fw-bold text-uppercase text-body-tertiary">
-          Recent key changes
-        </span>
-        {/* The Activity page is staging only for now. */}
-        {IS_STAGING && (
+    <SectionCard
+      title="Recent Activity"
+      icon="activity"
+      info="Its vote account's latest changes: withdrawer, voter, identity, commission and collectors, and withdrawals. The record starts at epoch 1064 (Alpenglow)."
+      // The Activity page is staging only for now.
+      aside={
+        IS_STAGING ? (
           <Link
             to={`/activity?validator=${voteAddress}&epochs=10`}
-            className="fs-10 ms-auto"
+            className="fs-9"
           >
             All activity →
           </Link>
-        )}
-      </div>
+        ) : undefined
+      }
+    >
       <ul className="list-unstyled fs-9 mb-0 detail-lines">
         {recent.map(e => (
           <li
@@ -203,6 +205,6 @@ export const RecentVoteAccountChanges = ({
           </li>
         ))}
       </ul>
-    </div>
+    </SectionCard>
   );
 };

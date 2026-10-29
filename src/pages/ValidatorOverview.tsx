@@ -595,7 +595,7 @@ const ValidatorOverview = () => {
                   changes); stacked on phones, Details first. */}
               <Col xs={12} lg={6}>
                 <SectionCard title="Details" icon="file-text">
-                  {/* Name, Site, Version, Client, Location, Commission,
+                  {/* Name, Site, Client, Version, Location, Commission,
                       Vote balance, Running. */}
                   <div className="detail-lines min-w-0">
                     <div className="d-flex align-items-baseline gap-2 min-w-0">
@@ -648,10 +648,6 @@ const ValidatorOverview = () => {
                       labelWidth={keyLabelWidth}
                     />
                   </div>
-                  <RecentVoteAccountChanges
-                    nodeAddress={nodeAddress}
-                    voteAddress={voteAddress}
-                  />
                 </SectionCard>
               </Col>
               {/* Under them, full width: what needs attention (when
@@ -697,6 +693,15 @@ const ValidatorOverview = () => {
               </Col>
             )}
             {nodeAddress && <GovernanceCard identity={nodeAddress} />}
+            {/* Last: its vote account's recent changes (when any). */}
+            {nodeAddress && voteAddress && (
+              <Col xs={12}>
+                <RecentVoteAccountChanges
+                  nodeAddress={nodeAddress}
+                  voteAddress={voteAddress}
+                />
+              </Col>
+            )}
           </Row>
         ) : (
           <Row className="g-3 mb-3">
