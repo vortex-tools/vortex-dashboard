@@ -1,6 +1,7 @@
+import FeatherIcon from 'feather-icons-react';
 import AddressLine from 'components/common/AddressLine';
 import { ChangeBadge, changeValue, whenText } from 'components/changes/changes';
-import { explorerAddress, explorerTx } from 'helpers/explorer';
+import { explorerTx } from 'helpers/explorer';
 import { IS_STAGING } from 'helpers/apiEndpoint';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -36,8 +37,8 @@ const Line = ({
  * Identity / Vote / Withdrawer: the authorized voter (and who takes over
  * from a pending change's epoch), the two commission collectors, and a
  * missing BLS key. A key that is one already listed says which
- * ("Identity", "Vote account"), its address on hover; else the address,
- * linked to Solana Explorer. From /validators/status's voteState.
+ * ("Identity" after an arrow up to it), its address on hover; else the
+ * address, with a copy button. From /validators/status's voteState.
  */
 export const ValidatorKeyLines = ({
   nodeAddress,
@@ -49,7 +50,6 @@ export const ValidatorKeyLines = ({
   labelWidth: string;
 }) => {
   const context = useContext(VortexDataContext);
-  const { isTestnet } = useCluster();
   const vs = context?.validatorStatusState.data.get(nodeAddress)?.voteState;
   if (!vs) return null;
 
@@ -61,24 +61,20 @@ export const ValidatorKeyLines = ({
         : key === vs.authorizedWithdrawer
           ? 'Withdrawer'
           : null;
+  // A key that is one listed above says which, with an arrow up to it
+  // (its address on hover); else the address with a copy button.
   const Key = ({ value }: { value: string }) => {
     const same = sameAs(value);
     return same ? (
-      <a
-        href={explorerAddress(value, isTestnet)}
-        target="_blank"
-        rel="noreferrer"
+      <span
+        className="d-inline-flex align-items-center gap-1 text-body-secondary"
         title={value}
       >
+        <FeatherIcon icon="corner-right-up" size={12} />
         {same}
-      </a>
+      </span>
     ) : (
-      <AddressLine
-        label="Address"
-        value={value}
-        bare
-        href={explorerAddress(value, isTestnet)}
-      />
+      <AddressLine label="Address" value={value} bare />
     );
   };
 
