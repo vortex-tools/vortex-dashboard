@@ -23,6 +23,7 @@ export const CHANGE_KIND: Record<
   blockRevenueCollector: { label: 'Block-reward collector', bg: 'secondary' },
   create: { label: 'Created', bg: 'secondary' },
   // Host changes (where and what it runs).
+  // A failover's move back reads Failback (paired on the Activity page).
   failover: { label: 'Failover', bg: 'info' },
   migration: { label: 'Migration', bg: 'primary' },
   software: { label: 'Software', bg: 'secondary' }

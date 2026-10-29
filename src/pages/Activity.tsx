@@ -22,7 +22,7 @@ import useCluster from 'hooks/useCluster';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ActivityEvent } from 'providers/vortex-schemas';
-import { useContext, useEffect, useMemo } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Form } from 'react-bootstrap';
 import { Link, useSearchParams } from 'react-router';
 
@@ -35,18 +35,9 @@ const NOWRAP = {
   cellProps: { className: 'text-nowrap' }
 };
 
-/** A failover's partner: the move away (out) and the move back, matched
- *  per validator - host A to B, then B to A. */
-type Pair = { color: string; role: 'out' | 'back'; gapSecs: number | null };
-// Pair colors, cycled (neighbouring pairs get different ones).
-const PAIR_COLORS = [
-  '#3f7fd0',
-  '#e09a2c',
-  '#8e5bd0',
-  '#2aa198',
-  '#d04f8e',
-  '#7a9a2a'
-];
+/** A failover and its failback (the move back), matched per validator -
+ *  host A to B, then B to A - under one pair id. */
+type Pair = { id: number; role: 'out' | 'back'; gapSecs: number | null };
 
 /** "46 min", "3 h 5 min", "2 d 4 h". */
 const duration = (secs: number) => {
@@ -74,7 +65,7 @@ const pairFailovers = (events: ActivityEvent[]) => {
     for (let i = 0; i < list.length; i++) {
       const a = list[i];
       const b = list[i + 1];
-      const color = PAIR_COLORS[n++ % PAIR_COLORS.length];
+      const id = n++;
       const back =
         b &&
         a.before?.host != null &&
@@ -82,37 +73,26 @@ const pairFailovers = (events: ActivityEvent[]) => {
         b.before?.host === a.after.host &&
         b.after?.host === a.before.host;
       if (!back) {
-        pairs.set(a, { color, role: 'out', gapSecs: null });
+        pairs.set(a, { id, role: 'out', gapSecs: null });
         continue;
       }
       const ta = eventTime(a);
       const tb = eventTime(b);
       const gap = ta != null && tb != null ? tb - ta : null;
-      pairs.set(a, { color, role: 'out', gapSecs: gap });
-      pairs.set(b, { color, role: 'back', gapSecs: gap });
+      pairs.set(a, { id, role: 'out', gapSecs: gap });
+      pairs.set(b, { id, role: 'back', gapSecs: gap });
       i++;
     }
   }
   return pairs;
 };
 
+/** How long until the failback (on a failover), or since the failover
+ *  (on its failback). */
 const PairMark = ({ p }: { p: Pair }) => (
-  <span
-    className="d-inline-flex align-items-center gap-1 fs-10 text-body-tertiary ms-2"
-    title={
-      p.role === 'back'
-        ? 'The return of the failover in the same color'
-        : p.gapSecs != null
-          ? 'Moved back later: the row in the same color'
-          : 'No move back in this range yet'
-    }
-  >
-    <span
-      className="d-inline-block rounded-circle flex-shrink-0"
-      style={{ width: 8, height: 8, background: p.color }}
-    />
+  <span className="fs-10 text-body-tertiary ms-2">
     {p.role === 'back'
-      ? `return after ${p.gapSecs != null ? duration(p.gapSecs) : '?'}`
+      ? `after ${p.gapSecs != null ? duration(p.gapSecs) : '?'}`
       : p.gapSecs != null
         ? `back ${duration(p.gapSecs)} later`
         : 'not back yet'}
@@ -121,7 +101,10 @@ const PairMark = ({ p }: { p: Pair }) => (
 
 const columns = (
   isTestnet: boolean,
-  pairs: Map<ActivityEvent, Pair>
+  pairs: Map<ActivityEvent, Pair>,
+  /** The pair a hovered row belongs to: its two rows keep their badges,
+   *  the other failovers' turn gray. */
+  hovered: number | null
 ): ColumnDef<ActivityEvent>[] => [
   {
     id: 'epoch',
@@ -178,11 +161,31 @@ const columns = (
     accessorFn: e => CHANGE_KIND[e.kind]?.label ?? e.kind,
     cell: ({ row: { original: e } }) => (
       <>
-        <ChangeBadge
-          kind={e.kind}
-          label={e.kind === 'software' ? softwareLabel(e) : null}
-        />
-        {pairs.get(e) && <PairMark p={pairs.get(e)!} />}
+        {(() => {
+          const p = pairs.get(e);
+          // A failover's move back is a failback.
+          const label =
+            e.kind === 'software'
+              ? softwareLabel(e)
+              : p?.role === 'back'
+                ? 'Failback'
+                : null;
+          const dimmed = hovered != null && !!p && p.id !== hovered;
+          return (
+            <>
+              <span
+                style={{
+                  filter: dimmed ? 'grayscale(1)' : undefined,
+                  opacity: dimmed ? 0.5 : undefined,
+                  transition: 'filter 120ms, opacity 120ms'
+                }}
+              >
+                <ChangeBadge kind={e.kind} label={label} />
+              </span>
+              {p && <PairMark p={p} />}
+            </>
+          );
+        })()}
       </>
     ),
     meta: NOWRAP
@@ -357,10 +360,13 @@ const Activity = () => {
     return Object.keys(CHANGE_KIND).filter(k => seen.has(k));
   }, [data]);
 
+  // Failovers paired with their failbacks; hovering one marks its pair.
+  const pairs = useMemo(() => pairFailovers(data?.events ?? []), [data]);
+  const [hovered, setHovered] = useState<number | null>(null);
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(isTestnet, pairFailovers(data?.events ?? [])),
-      [isTestnet, data]
+      () => columns(isTestnet, pairs, hovered),
+      [isTestnet, pairs, hovered]
     ),
     data: events,
     sortable: true,
@@ -465,8 +471,12 @@ const Activity = () => {
           )
         ) : events.length ? (
           <AdvanceTableProvider {...table}>
-            <AdvanceTable
+            <AdvanceTable<ActivityEvent>
               tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
+              rowProps={e => ({
+                onMouseEnter: () => setHovered(pairs.get(e)?.id ?? null),
+                onMouseLeave: () => setHovered(null)
+              })}
             />
             <AdvanceTableFooter viewAll={false} />
           </AdvanceTableProvider>

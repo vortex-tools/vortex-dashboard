@@ -1,3 +1,4 @@
+import { HTMLAttributes } from 'react';
 import { Header, flexRender } from '@tanstack/react-table';
 import InfoTip from 'components/common/InfoTip';
 import { useAdvanceTableContext } from 'providers/AdvanceTableProvider';
@@ -17,7 +18,14 @@ const sortClass = (h: Header<any, unknown>) => {
  * the page. Column meta: `headerProps` on the <th>, `cellProps` on each
  * <td>.
  */
-const AdvanceTable = ({ tableProps }: { tableProps?: TableProps }) => {
+const AdvanceTable = <T,>({
+  tableProps,
+  rowProps
+}: {
+  tableProps?: TableProps;
+  /** Extra props per body row (e.g. hover handlers), from its data. */
+  rowProps?: (row: T) => HTMLAttributes<HTMLTableRowElement>;
+}) => {
   const table = useAdvanceTableContext();
   const rows = [...table.getTopRows(), ...table.getCenterRows()];
   return (
@@ -63,6 +71,7 @@ const AdvanceTable = ({ tableProps }: { tableProps?: TableProps }) => {
             <tr
               key={row.id}
               className={row.getIsPinned() ? 'pinned-row' : undefined}
+              {...rowProps?.(row.original as T)}
             >
               {row.getVisibleCells().map(cell => (
                 <td key={cell.id} {...cell.column.columnDef.meta?.cellProps}>
