@@ -32,6 +32,12 @@ const LABEL: Record<Metric, string> = {
   cu: 'CUs',
   income: 'Income'
 };
+/** After the header's live reading. */
+const UNIT: Record<Metric, string> = {
+  tps: 'TPS',
+  cu: 'CUs / block',
+  income: '/ min'
+};
 const TITLE: Record<Metric, string> = {
   tps: 'Live TPS',
   cu: 'Live CUs per Block',
@@ -526,25 +532,43 @@ const ThroughputCard = ({
       title={TITLE[shown]}
       icon={shown === 'income' ? 'dollar-sign' : 'activity'}
       info={INFO[shown]}
+      // The live reading (the chart's newest point), then the metric
+      // toggle where there is one.
       aside={
-        offered.length > 1 ? (
-          <ButtonGroup size="sm">
-            {offered.map(k => (
-              <ToggleButton
-                key={k}
-                id={`live-metric-${k}`}
-                type="radio"
-                name={`live-metric-${metrics.join('-')}`}
-                variant="soft-secondary"
-                value={k}
-                checked={shown === k}
-                onChange={() => setMetric(k)}
+        <span className="d-flex align-items-center gap-3">
+          {view?.figures[0] && (
+            <span
+              className="font-monospace fw-bold text-body-emphasis fs-8"
+              title={view.figures[0][0]}
+            >
+              {view.figures[0][1]}
+              <span
+                className="fs-10 fw-normal text-body-tertiary ms-1"
+                style={{ fontFamily: 'var(--vx-body-font-family)' }}
               >
-                {LABEL[k]}
-              </ToggleButton>
-            ))}
-          </ButtonGroup>
-        ) : undefined
+                {UNIT[shown]}
+              </span>
+            </span>
+          )}
+          {offered.length > 1 && (
+            <ButtonGroup size="sm">
+              {offered.map(k => (
+                <ToggleButton
+                  key={k}
+                  id={`live-metric-${k}`}
+                  type="radio"
+                  name={`live-metric-${metrics.join('-')}`}
+                  variant="soft-secondary"
+                  value={k}
+                  checked={shown === k}
+                  onChange={() => setMetric(k)}
+                >
+                  {LABEL[k]}
+                </ToggleButton>
+              ))}
+            </ButtonGroup>
+          )}
+        </span>
       }
     >
       <div
