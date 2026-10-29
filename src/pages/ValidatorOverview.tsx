@@ -622,16 +622,29 @@ const ValidatorOverview = () => {
               </Col>
               <Col xs={12} lg={6}>
                 <SectionCard title="Details" icon="file-text">
+                  {/* Name, Site, Version, Client, Location, Commission,
+                      Vote balance, Running. */}
                   <div className="detail-lines min-w-0">
+                    <div className="d-flex align-items-baseline gap-2 min-w-0">
+                      <span
+                        className="text-body-tertiary fs-9 flex-shrink-0"
+                        style={{ minWidth: factLabelWidth }}
+                      >
+                        Name
+                      </span>
+                      <span className="fs-9 fw-semibold text-truncate">
+                        {displayName}
+                      </span>
+                    </div>
                     <ValidatorWebsite
                       nodeAddress={nodeAddress}
                       labelWidth={factLabelWidth}
                     />
-                    <ValidatorAge
+                    <ValidatorFacts
                       nodeAddress={nodeAddress}
                       labelWidth={factLabelWidth}
                     />
-                    <ValidatorFacts
+                    <ValidatorAge
                       nodeAddress={nodeAddress}
                       labelWidth={factLabelWidth}
                     />

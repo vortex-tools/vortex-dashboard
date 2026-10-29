@@ -157,7 +157,8 @@ export const RecentVoteAccountChanges = ({
   }, [nodeAddress, fetchChanges]);
   const changes =
     context?.validatorVoteAccountChangesState.data.get(nodeAddress)?.events;
-  if (!changes) return null;
+  // Nothing to list: no section (the record starts at epoch 1064).
+  if (!changes?.length) return null;
   const recent = [...changes].reverse().slice(0, RECENT_CHANGES);
   return (
     <div className="mt-3 pt-3 border-top border-translucent">
@@ -175,41 +176,33 @@ export const RecentVoteAccountChanges = ({
           </Link>
         )}
       </div>
-      {recent.length ? (
-        <ul className="list-unstyled fs-9 mb-0 detail-lines">
-          {recent.map(e => (
-            <li
-              key={`${e.signature}-${e.kind}`}
-              className="d-flex flex-wrap align-items-center column-gap-2"
-            >
-              <ChangeBadge kind={e.kind} />
-              <span className="min-w-0">
-                {changeValue(e, 'new', isTestnet)}
-              </span>
-              <span className="ms-auto text-body-tertiary fs-10 text-nowrap">
-                epoch {e.epoch.toLocaleString()}
-                {e.blockTime != null && ` · ${whenText(e.blockTime)}`}
-                {e.signature && (
-                  <>
-                    {' · '}
-                    <a
-                      href={explorerTx(e.signature, isTestnet)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Tx
-                    </a>
-                  </>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="fs-9 text-body-tertiary mb-0">
-          No changes since epoch 1064 (Alpenglow), where the record starts.
-        </p>
-      )}
+      <ul className="list-unstyled fs-9 mb-0 detail-lines">
+        {recent.map(e => (
+          <li
+            key={`${e.signature}-${e.kind}`}
+            className="d-flex flex-wrap align-items-center column-gap-2"
+          >
+            <ChangeBadge kind={e.kind} />
+            <span className="min-w-0">{changeValue(e, 'new', isTestnet)}</span>
+            <span className="ms-auto text-body-tertiary fs-10 text-nowrap">
+              epoch {e.epoch.toLocaleString()}
+              {e.blockTime != null && ` · ${whenText(e.blockTime)}`}
+              {e.signature && (
+                <>
+                  {' · '}
+                  <a
+                    href={explorerTx(e.signature, isTestnet)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Tx
+                  </a>
+                </>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

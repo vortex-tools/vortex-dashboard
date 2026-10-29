@@ -443,29 +443,42 @@ export const ValidatorFacts = ({
   labelWidth = '3rem'
 }: Props & { labelWidth?: string }) => {
   const { tiles } = useStatusTiles(nodeAddress);
+  const line = (label: string, value: ReactNode, sub?: ReactNode) => (
+    <div key={label} className="d-flex align-items-baseline gap-2 min-w-0">
+      <span
+        className="text-body-tertiary fs-9 flex-shrink-0"
+        style={{ minWidth: labelWidth }}
+      >
+        {label}
+      </span>
+      <span className="fs-9 text-truncate">
+        <span className="fw-semibold">{value}</span>
+        {sub && <span className="text-body-tertiary"> · {sub}</span>}
+      </span>
+    </div>
+  );
   return (
     <>
       {tiles
         .filter(t => FACT_TILES.includes(t.label))
-        .map(t => (
-          <div
-            key={t.label}
-            className="d-flex align-items-baseline gap-2 min-w-0"
-          >
-            <span
-              className="text-body-tertiary fs-9 flex-shrink-0"
-              style={{ minWidth: labelWidth }}
-            >
-              {t.label === 'Vote Balance' ? 'Vote balance' : t.label}
-            </span>
-            <span className="fs-9 text-truncate">
-              <span className="fw-semibold">{t.value}</span>
-              {t.sublabel && (
-                <span className="text-body-tertiary"> · {t.sublabel}</span>
-              )}
-            </span>
-          </div>
-        ))}
+        .flatMap(t =>
+          // The client tile's version (its sublabel) is a line of its own,
+          // before it: Version, then Client ("Agave · BAM").
+          t.label === 'Client'
+            ? [
+                ...(t.sublabel && t.value !== '—'
+                  ? [line('Version', t.sublabel)]
+                  : []),
+                line('Client', t.value, t.value === '—' ? t.sublabel : null)
+              ]
+            : [
+                line(
+                  t.label === 'Vote Balance' ? 'Vote balance' : t.label,
+                  t.value,
+                  t.sublabel
+                )
+              ]
+        )}
     </>
   );
 };
