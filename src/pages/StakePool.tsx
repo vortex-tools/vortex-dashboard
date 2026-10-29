@@ -604,8 +604,34 @@ const StakePool = () => {
         <div className="col">
           <h3>{data.name}</h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">{data.fullName}</p>
+          {/* Curated: who runs it and how it picks validators. */}
+          {data.info?.description && (
+            <p className="fs-9 text-body-secondary lh-sm mb-0 mt-1 w-100">
+              {data.info.description}
+            </p>
+          )}
         </div>
-        <div className="col-auto">
+        <div className="col-auto d-flex flex-wrap gap-2">
+          {data.info?.website && (
+            <a
+              href={data.info.website}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-sm btn-soft-secondary"
+            >
+              Website ↗
+            </a>
+          )}
+          {data.info?.docsUrl && (
+            <a
+              href={data.info.docsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-sm btn-soft-secondary"
+            >
+              Docs ↗
+            </a>
+          )}
           <BackLink to="/pools" label="All stake pools" />
         </div>
       </div>

@@ -2888,6 +2888,18 @@ export const poolSummarySchema = z.object({
     .optional()
     .catch(null),
   droppedCount: z.number().nullable().optional().catch(null),
+  // Curated: who runs it and how it picks validators, and its site.
+  // null for pools not curated; absent on older APIs.
+  info: z
+    .object({
+      description: z.string().nullable().catch(null),
+      website: z.string().nullable().catch(null),
+      docsUrl: z.string().nullable().optional().catch(null),
+      updatedAt: z.number().nullable().optional().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   fees: poolFeesSchema,
   // Validators held only at a pool's minimum stake (<= 50 SOL): not
   // delegations, not listed.
@@ -2915,6 +2927,18 @@ export const poolDetailSchema = z.object({
   name: z.string(),
   kind: z.string().nullable().catch(null),
   fullName: z.string().nullable().catch(null),
+  // Curated: who runs it and how it picks validators, and its site.
+  // null for pools not curated; absent on older APIs.
+  info: z
+    .object({
+      description: z.string().nullable().catch(null),
+      website: z.string().nullable().catch(null),
+      docsUrl: z.string().nullable().optional().catch(null),
+      updatedAt: z.number().nullable().optional().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   authorities: z.array(z.string()).catch([]),
   epoch: z.number().nullable().catch(null),
   stake: z.number().catch(0),
