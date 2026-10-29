@@ -30,7 +30,7 @@ import { useAppContext } from 'providers/AppProvider';
 import { FEATURES_KEY, VortexDataContext } from 'providers/VortexDataProvider';
 import { PoolDetail, PoolValidatorRef } from 'providers/vortex-schemas';
 import { Fragment, useContext, useEffect, useMemo, useState } from 'react';
-import { Col, Row, Table } from 'react-bootstrap';
+import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
 import { Link, Navigate, useParams } from 'react-router';
 
 echarts.use([
@@ -526,16 +526,35 @@ const StakePool = () => {
     () => [...(data?.validators ?? [])].sort((a, b) => b.stake - a.stake),
     [data]
   );
+  // The Validators card's view: all of them, or the latest epoch's adds
+  // (a filter of the table) or drops (no longer in it: their own list).
+  const [view, setView] = useState<'all' | 'added' | 'dropped'>('all');
+  const latest = data?.history.length
+    ? data.history[data.history.length - 1]
+    : null;
+  const churn = latest?.compared ? latest : null;
+  const addedKeys = useMemo(
+    () => new Set((churn?.added ?? []).map(r => r.voteKey)),
+    [churn]
+  );
+  const shown = useMemo(
+    () =>
+      view === 'added'
+        ? validators.filter(v => addedKeys.has(v.voteKey))
+        : validators,
+    [view, validators, addedKeys]
+  );
   const table = useAdvanceTable({
     columns: useMemo(
       () => columns(isSfdp, showOther, showRewards),
       [isSfdp, showOther, showRewards]
     ),
-    data: validators,
+    data: shown,
     sortable: true,
     pagination: true,
     pageSize: 10,
     getRowId: v => v.voteKey,
+    resetPageKey: view,
     initialState: { sorting: [{ id: 'stake', desc: true }] }
   });
   const [open, setOpen] = useState<number | null>(null);
@@ -716,72 +735,83 @@ const StakePool = () => {
           </Col>
         </Row>
 
-        {/* The latest epoch's adds and drops, from its history (the Epoch
-            Changes table has every epoch's). */}
-        {newest[0]?.compared && (
-          <SectionCard
-            title={`Added & Dropped · epoch ${newest[0].epoch.toLocaleString()}`}
-            icon="shuffle"
-            info="Validators it started delegating to this epoch (over 50 SOL), and those it stopped delegating to, largest first. Earlier epochs are in Epoch Changes."
-          >
-            <Row className="g-3">
-              <Col xs={12} md={6}>
-                <div className="fs-10 text-uppercase text-body-tertiary mb-1">
-                  Added (
-                  {(
-                    newest[0].added.length + newest[0].moreAdded
-                  ).toLocaleString()}
-                  )
-                </div>
-                <RefList
-                  refs={newest[0].added}
-                  more={newest[0].moreAdded}
-                  value={r => (r.stake != null ? compactSol(r.stake) : null)}
-                  max={20}
-                  order={r => r.stake ?? 0}
-                />
-              </Col>
-              <Col xs={12} md={6}>
-                <div className="fs-10 text-uppercase text-body-tertiary mb-1">
-                  Dropped (
-                  {(
-                    newest[0].dropped.length + newest[0].moreDropped
-                  ).toLocaleString()}
-                  )
-                </div>
-                <RefList
-                  refs={newest[0].dropped}
-                  more={newest[0].moreDropped}
-                  value={r =>
-                    r.stakePrev != null ? compactSol(r.stakePrev) : null
-                  }
-                  max={20}
-                  order={r => r.stakePrev ?? 0}
-                />
-              </Col>
-            </Row>
-          </SectionCard>
-        )}
-
         <SectionCard
           title="Validators"
           icon="server"
-          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too."
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Added / Dropped: the latest epoch's changes."
+          aside={
+            churn ? (
+              <ButtonGroup size="sm">
+                {(
+                  [
+                    ['all', 'All'],
+                    [
+                      'added',
+                      `Added ${(churn.added.length + churn.moreAdded).toLocaleString()}`
+                    ],
+                    [
+                      'dropped',
+                      `Dropped ${(churn.dropped.length + churn.moreDropped).toLocaleString()}`
+                    ]
+                  ] as const
+                ).map(([k, label]) => (
+                  <ToggleButton
+                    key={k}
+                    id={`pool-validators-${k}`}
+                    type="radio"
+                    name="pool-validators"
+                    variant="soft-secondary"
+                    value={k}
+                    checked={view === k}
+                    onChange={() => setView(k)}
+                  >
+                    {label}
+                  </ToggleButton>
+                ))}
+              </ButtonGroup>
+            ) : undefined
+          }
         >
-          <AdvanceTableProvider {...table}>
-            <div className="mb-3">
-              <SearchBox
-                placeholder="Search validators, vote or identity keys"
-                onChange={e =>
-                  table.setGlobalFilter(e.target.value || undefined)
-                }
+          {view === 'dropped' && churn ? (
+            // No longer in the table: the validators it stopped delegating
+            // to, with what it held on each.
+            <>
+              <p className="fs-10 text-body-tertiary mb-2">
+                No longer delegated to after epoch{' '}
+                {churn.epoch.toLocaleString()}, with its stake there before
+              </p>
+              {churn.dropped.length ? (
+                <RefList
+                  refs={churn.dropped}
+                  more={churn.moreDropped}
+                  value={r =>
+                    r.stakePrev != null ? compactSol(r.stakePrev) : null
+                  }
+                  max={50}
+                  order={r => r.stakePrev ?? 0}
+                />
+              ) : (
+                <p className="fs-9 text-body-tertiary mb-0">
+                  None dropped in epoch {churn.epoch.toLocaleString()}.
+                </p>
+              )}
+            </>
+          ) : (
+            <AdvanceTableProvider {...table}>
+              <div className="mb-3">
+                <SearchBox
+                  placeholder="Search validators, vote or identity keys"
+                  onChange={e =>
+                    table.setGlobalFilter(e.target.value || undefined)
+                  }
+                />
+              </div>
+              <AdvanceTable
+                tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
               />
-            </div>
-            <AdvanceTable
-              tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
-            />
-            <AdvanceTableFooter viewAll={false} />
-          </AdvanceTableProvider>
+              <AdvanceTableFooter viewAll={false} />
+            </AdvanceTableProvider>
+          )}
         </SectionCard>
 
         <SectionCard
