@@ -827,9 +827,6 @@ export const pendingChangeItems = (
   return items;
 };
 
-/** Label width for the keys box once collector lines are in it. */
-export const WIDE_KEY_LABEL = '7.5rem';
-
 /**
  * Custom commission collectors (SIMD-0232) as lines in the keys box -
  * only when a validator has redirected commission away from the default
@@ -861,40 +858,6 @@ export const customCollectors = (
     inflation: inflation && inflation !== voteAddress ? inflation : null,
     blocks: blocks && blocks !== nodeAddress ? blocks : null
   };
-};
-
-export const ValidatorCollectors = ({
-  nodeAddress,
-  voteAddress
-}: {
-  nodeAddress: string;
-  voteAddress: string;
-}) => {
-  const vs =
-    useContext(VortexDataContext)?.validatorStatusState.data.get(
-      nodeAddress
-    )?.voteState;
-  const c = customCollectors(vs, nodeAddress, voteAddress);
-  return (
-    <>
-      {c.inflation && (
-        <AddressLine
-          label="Inflation rewards"
-          labelTitle="Inflation commission is paid to this account instead of the vote account (custom collector, SIMD-0232)"
-          value={c.inflation}
-          labelWidth={WIDE_KEY_LABEL}
-        />
-      )}
-      {c.blocks && (
-        <AddressLine
-          label="Block rewards"
-          labelTitle="Block-reward commission is paid to this account instead of the node identity (custom collector, SIMD-0232)"
-          value={c.blocks}
-          labelWidth={WIDE_KEY_LABEL}
-        />
-      )}
-    </>
-  );
 };
 
 /**

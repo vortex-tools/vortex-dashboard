@@ -1,7 +1,10 @@
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
 import useCluster from 'hooks/useCluster';
 import AddressLine from 'components/common/AddressLine';
-import AuthoritiesCard from 'components/validator/AuthoritiesCard';
+import {
+  RecentVoteAccountChanges,
+  ValidatorKeyLines
+} from 'components/validator/ValidatorKeys';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
@@ -14,15 +17,12 @@ import ValidatorConsensus, {
 } from 'components/validator/ValidatorConsensus';
 import useConsensus from 'hooks/useConsensus';
 import ValidatorStatus, {
-  ValidatorCollectors,
   ValidatorNotices,
   useValidatorNotices,
   ValidatorSfdpBox,
-  WIDE_KEY_LABEL,
   FACT_TILES,
   ValidatorFacts,
   ValidatorWithdrawer,
-  customCollectors,
   ValidatorAge,
   ValidatorWebsite
 } from 'components/validator/ValidatorStatus';
@@ -302,23 +302,13 @@ const ValidatorOverview = () => {
   // takes the row.
   const statusSlice = context.validatorStatusState;
   const status = statusSlice.data.get(nodeAddress);
-  // With the Keys card in it, it's there once the status has its vote
-  // state.
   const sideColumn =
-    !!status?.voteState ||
     (isTestnet && !!status && isSfdpState(status.sfdp.participant?.state)) ||
     notices.length > 0 ||
     (!status && !statusSlice.isLoading && !!statusSlice.error);
-  // The keys box's label column widens for custom commission-collector
-  // lines (SIMD-0232), so all values stay aligned.
-  const collectors = customCollectors(
-    context.validatorStatusState.data.get(nodeAddress)?.voteState,
-    nodeAddress,
-    voteAddress
-  );
-  // Room for "Commission" / "Vote balance" (and custom collectors).
-  const keyLabelWidth =
-    collectors.inflation || collectors.blocks ? WIDE_KEY_LABEL : '6rem';
+  // One label column for every Details line ("Inflation collector" the
+  // longest), so the values align.
+  const keyLabelWidth = '8.5rem';
   const blocksProduced = incomeRecord?.confirmedSlots;
   const totalSlots = incomeRecord?.totalSlots;
   const medianBlockIncome = incomeRecord
@@ -565,14 +555,14 @@ const ValidatorOverview = () => {
       <div className="mb-9">
         <Row className="align-items-start justify-content-between mb-3 g-3">
           <Col xs={12}>
-            {/* Details (keys and node facts), and the SFDP and Notices
-                boxes stacked beside it; on phones all full width. */}
+            {/* Details (keys and node facts), and Notices beside it (with
+                SFDP on testnet); on phones all full width. */}
             <Row className="g-3 align-items-stretch">
               <Col xs={12} lg={sideColumn ? 7 : 12}>
                 <SectionCard title="Details" icon="file-text">
                   <div className="detail-lines min-w-0">
                     <AddressLine
-                      label="Node"
+                      label="Identity"
                       value={nodeAddress}
                       labelWidth={keyLabelWidth}
                     />
@@ -583,6 +573,12 @@ const ValidatorOverview = () => {
                     />
                     <ValidatorWithdrawer
                       nodeAddress={nodeAddress}
+                      labelWidth={keyLabelWidth}
+                    />
+                    {/* The voter, collectors and BLS key. */}
+                    <ValidatorKeyLines
+                      nodeAddress={nodeAddress}
+                      voteAddress={voteAddress}
                       labelWidth={keyLabelWidth}
                     />
                     <ValidatorWebsite
@@ -597,15 +593,20 @@ const ValidatorOverview = () => {
                       nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
                     />
-                    <ValidatorCollectors
-                      nodeAddress={nodeAddress}
-                      voteAddress={voteAddress}
-                    />
                   </div>
+                  <RecentVoteAccountChanges
+                    nodeAddress={nodeAddress}
+                    voteAddress={voteAddress}
+                  />
                 </SectionCard>
               </Col>
               {sideColumn && (
-                <Col xs={12} lg={5} className="d-flex flex-column gap-3">
+                // Its own height (not stretched to the taller Details).
+                <Col
+                  xs={12}
+                  lg={5}
+                  className="d-flex flex-column gap-3 align-self-start"
+                >
                   {/* Mainnet: on the Staking tab; testnet has none. */}
                   {isTestnet && <ValidatorSfdpBox nodeAddress={nodeAddress} />}
                   {/* Notices: what needs attention (fixed height, two at a
@@ -613,11 +614,6 @@ const ValidatorOverview = () => {
                   <ValidatorNotices
                     notices={notices}
                     nodeAddress={nodeAddress}
-                  />
-                  {/* Its vote account's keys, beside the Details. */}
-                  <AuthoritiesCard
-                    nodeAddress={nodeAddress}
-                    voteAddress={voteAddress}
                   />
                 </Col>
               )}
