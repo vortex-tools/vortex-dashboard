@@ -16,6 +16,8 @@ import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 const REFRESH_MS = 60_000;
+/** Epochs listed on the Overview. */
+const ROWS = 10;
 
 const pct = (v: number | null | undefined) =>
   v == null ? '—' : `${(v * 100).toFixed(2)}%`;
@@ -130,7 +132,8 @@ const ValidatorProduction = ({
                 </td>
               </tr>
             )}
-            {rows.map(({ epoch, record, rank, rankedOf }) => (
+            {/* The newest ROWS epochs; the Production record has them all. */}
+            {rows.slice(0, ROWS).map(({ epoch, record, rank, rankedOf }) => (
               <tr key={epoch}>
                 <td className="text-nowrap">
                   <Link

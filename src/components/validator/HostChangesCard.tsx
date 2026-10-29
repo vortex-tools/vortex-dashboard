@@ -4,7 +4,7 @@ import { HostChanges, HostState } from 'providers/vortex-schemas';
 import { useContext, useEffect, useState } from 'react';
 import { Table } from 'react-bootstrap';
 
-const FIRST_MIGRATIONS = 5;
+const FIRST_MIGRATIONS = 10;
 
 const flag = (cc: string | null | undefined) =>
   cc && /^[A-Z]{2}$/.test(cc)

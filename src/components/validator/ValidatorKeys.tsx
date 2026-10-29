@@ -9,7 +9,7 @@ import { ReactNode, useContext, useEffect } from 'react';
 import { Link } from 'react-router';
 
 /** Recent changes listed; the rest on the Activity page. */
-const RECENT_CHANGES = 5;
+const RECENT_CHANGES = 10;
 
 /** A Details line: its label in the box's label column, then the value. */
 const Line = ({

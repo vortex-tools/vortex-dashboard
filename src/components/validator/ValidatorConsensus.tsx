@@ -18,6 +18,9 @@ import {
 } from 'providers/VortexDataProvider';
 import { useContext, useEffect } from 'react';
 
+/** Epochs listed on the Overview. */
+const ROWS = 10;
+
 const REFRESH_MS = 60_000;
 
 const pct = (v: number | null) =>
@@ -254,8 +257,11 @@ const ValidatorConsensus = ({
         <DelayedSpinner loading label="Loading participation…" />
       ) : (
         <>
+          {/* The newest ROWS epochs; the Voting record has every one. */}
           <ParticipationTable
-            rows={next && !next.admitted ? [...history, next] : history}
+            rows={(next && !next.admitted ? [...history, next] : history).slice(
+              -ROWS
+            )}
             currentEpoch={currentEpoch}
             voteAddress={voteAddress}
             linkAddress={linkAddress}
