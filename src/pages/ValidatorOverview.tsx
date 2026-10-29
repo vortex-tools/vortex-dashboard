@@ -297,12 +297,12 @@ const ValidatorOverview = () => {
   }
 
   const { nodeAddress, voteAddress, displayName } = identity;
-  // The column beside Details: SFDP (participants only) and Notices (only
-  // with something to say, or no status to say it from). Empty, Details
-  // takes the row.
+  // The row under Details: SFDP on testnet (participants only) and Notices (only
+  // with something to say, or no status to say it from); nothing when
+  // neither has anything.
   const statusSlice = context.validatorStatusState;
   const status = statusSlice.data.get(nodeAddress);
-  const sideColumn =
+  const belowDetails =
     (isTestnet && !!status && isSfdpState(status.sfdp.participant?.state)) ||
     notices.length > 0 ||
     (!status && !statusSlice.isLoading && !!statusSlice.error);
@@ -555,10 +555,9 @@ const ValidatorOverview = () => {
       <div className="mb-9">
         <Row className="align-items-start justify-content-between mb-3 g-3">
           <Col xs={12}>
-            {/* Details (keys and node facts), and Notices beside it (with
-                SFDP on testnet); on phones all full width. */}
+            {/* Details (keys and node facts), then Notices below it. */}
             <Row className="g-3 align-items-stretch">
-              <Col xs={12} lg={sideColumn ? 7 : 12}>
+              <Col xs={12}>
                 <SectionCard title="Details" icon="file-text">
                   <div className="detail-lines min-w-0">
                     <AddressLine
@@ -600,17 +599,12 @@ const ValidatorOverview = () => {
                   />
                 </SectionCard>
               </Col>
-              {sideColumn && (
-                // Its own height (not stretched to the taller Details).
-                <Col
-                  xs={12}
-                  lg={5}
-                  className="d-flex flex-column gap-3 align-self-start"
-                >
-                  {/* Mainnet: on the Staking tab; testnet has none. */}
+              {/* Under Details, full width: what needs attention (when
+                  anything does), and SFDP on testnet (mainnet: Staking
+                  tab). */}
+              {belowDetails && (
+                <Col xs={12} className="d-flex flex-column gap-3">
                   {isTestnet && <ValidatorSfdpBox nodeAddress={nodeAddress} />}
-                  {/* Notices: what needs attention (fixed height, two at a
-                    time, paged), else the all-clear. */}
                   <ValidatorNotices
                     notices={notices}
                     nodeAddress={nodeAddress}
