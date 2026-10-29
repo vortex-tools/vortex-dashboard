@@ -173,7 +173,7 @@ const AnnouncementsTable = ({
 export default AnnouncementsTable;
 
 /** "Restart · 4.4.0-beta.1, 26.10.4": what a post is, in a line. */
-const summary = (a: Announcement) =>
+export const summary = (a: Announcement) =>
   [
     a.restart?.lastConfirmedSlot != null &&
       `last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
