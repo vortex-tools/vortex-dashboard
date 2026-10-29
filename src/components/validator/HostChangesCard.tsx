@@ -239,27 +239,36 @@ const HostChangesCard = ({
                         <td className="fw-semibold text-nowrap">
                           {l.out.kind === 'failover' ? 'Failover' : 'Moved'}
                         </td>
-                        <td className="text-body-secondary">
-                          {/* To the backup and back: what it ran there, for
-                              how long, and the upgrade it covered. */}
-                          {(() => {
-                            const away = l.out.after;
-                            const ranThere =
-                              (l.out.versionChanged || l.out.clientChanged) &&
-                              runs(away);
-                            const before = runs(l.out.before);
-                            const after = runs(l.back.after);
-                            const upgrade =
-                              before && after && before !== after
-                                ? ` during the ${before} → ${l.back.after.version ?? '?'} upgrade`
-                                : '';
-                            const gap =
-                              l.out.observedAt && l.back.observedAt
-                                ? `, back after ${lasted(l.back.observedAt - l.out.observedAt)}`
-                                : ', back';
-                            return `to ${ranThere ? `the ${ranThere} backup (${place(away)})` : place(away)}${upgrade}${gap}`;
-                          })()}
-                        </td>
+                        {/* To the backup and back: where, for how long,
+                            and the upgrade it covered (the whole story on
+                            hover). */}
+                        {(() => {
+                          const away = l.out.after;
+                          const ranThere =
+                            (l.out.versionChanged || l.out.clientChanged) &&
+                            runs(away);
+                          const before = runs(l.out.before);
+                          const after = runs(l.back.after);
+                          const upgraded =
+                            !!before && !!after && before !== after;
+                          const span =
+                            l.out.observedAt && l.back.observedAt
+                              ? lasted(l.back.observedAt - l.out.observedAt)
+                              : null;
+                          const full = `To ${ranThere ? `the ${ranThere} backup (${place(away)})` : place(away)}${upgraded ? ` during the ${before} → ${l.back.after.version ?? '?'} upgrade` : ''}${span ? `, back after ${span}` : ', back'}`;
+                          return (
+                            <td className="text-body-secondary" title={full}>
+                              {place(away)}
+                              {span && ` · ${span}`}
+                              {upgraded && (
+                                <span className="text-body-tertiary">
+                                  {' '}
+                                  · → {l.back.after.version ?? after}
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })()}
                       </>
                     ) : (
                       <>
