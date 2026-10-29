@@ -198,12 +198,14 @@ const Validators = () => {
       rows.length ? rows.reduce((acc, r) => acc + r.activatedStake, 0) : null,
     [rows]
   );
+  const showActiveFrom = rows.some(r => r.firstEpoch != null);
   const columns = useMemo(
     () =>
       createValidatorsStatusColumns({
-        totalStake
+        totalStake,
+        showActiveFrom
       }),
-    [totalStake]
+    [totalStake, showActiveFrom]
   );
 
   const [delinquentOnly, setDelinquentOnly] = useState(false);

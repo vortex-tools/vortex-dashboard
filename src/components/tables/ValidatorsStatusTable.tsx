@@ -168,8 +168,41 @@ const producingColumn: ColumnDef<ValidatorsTableRow> = {
   }
 };
 
+/** The first epoch it voted or had stake (oldest first sorts by tenure). */
+const activeFromColumn: ColumnDef<ValidatorsTableRow> = {
+  id: 'firstEpoch',
+  accessorFn: row => row.firstEpoch ?? undefined,
+  sortUndefined: 'last',
+  sortDescFirst: false,
+  header: () => (
+    <span title="The first epoch it voted or had stake">Active from</span>
+  ),
+  cell: ({ row }) => {
+    const { firstEpoch, epochsActive } = row.original;
+    return firstEpoch == null ? (
+      <span className="opacity-50">—</span>
+    ) : (
+      <span
+        className="font-monospace"
+        title={
+          epochsActive != null
+            ? `Active (voted or staked) in ${epochsActive.toLocaleString()} epochs since`
+            : undefined
+        }
+      >
+        {firstEpoch.toLocaleString()}
+      </span>
+    );
+  },
+  meta: {
+    cellProps: { className: 'text-body text-end text-nowrap' },
+    headerProps: { className: 'text-end text-nowrap' }
+  }
+};
+
 const allColumns = (
-  totalStake: number | null
+  totalStake: number | null,
+  showActiveFrom: boolean
 ): ColumnDef<ValidatorsTableRow>[] => [
   {
     id: 'validator',
@@ -228,6 +261,7 @@ const allColumns = (
       headerProps: { className: 'text-end' }
     }
   },
+  ...(showActiveFrom ? [activeFromColumn] : []),
   // Software group - Base / Fork / Version, as on the vote leaderboard.
   {
     id: 'softwareBase',
@@ -367,11 +401,15 @@ const allColumns = (
  * columns.)
  */
 export const createValidatorsStatusColumns = ({
-  totalStake = null
+  totalStake = null,
+  showActiveFrom = false
 }: {
   /** Stake column's share denominator: every staked validator's stake. */
   totalStake?: number | null;
-} = {}): ColumnDef<ValidatorsTableRow>[] => allColumns(totalStake);
+  /** Once the API serves firstEpoch. */
+  showActiveFrom?: boolean;
+} = {}): ColumnDef<ValidatorsTableRow>[] =>
+  allColumns(totalStake, showActiveFrom);
 
 const ValidatorsStatusTable = () => (
   <div>

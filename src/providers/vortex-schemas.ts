@@ -490,6 +490,10 @@ export const validatorStatusSummarySchema = z.object({
       pendingCommissionIncrease: z.boolean().nullable().optional().catch(null),
       // tickets the vote account funds beyond rent; null if not read
       vatEpochsFunded: z.number().nullable().catch(null),
+      // The first epoch it voted or had stake, and how many it did since
+      // (as /validators/status); absent on older APIs.
+      firstEpoch: z.number().nullable().optional().catch(null),
+      epochsActive: z.number().nullable().optional().catch(null),
       // Its leader slots this epoch so far (the production leaderboard's
       // numbers); null before its first; absent on older APIs.
       producing: z
