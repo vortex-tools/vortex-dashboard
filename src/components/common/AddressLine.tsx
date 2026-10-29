@@ -41,6 +41,9 @@ interface AddressLineProps {
   bare?: boolean;
   /** Links the address (e.g. to an explorer; opens in a new tab). */
   href?: string;
+  /** Always the middle-truncated form (a narrow column), never the
+   *  whole address. */
+  compact?: boolean;
 }
 
 const AddressLine = ({
@@ -50,7 +53,8 @@ const AddressLine = ({
   note,
   labelTitle,
   bare = false,
-  href
+  href,
+  compact = false
 }: AddressLineProps) => {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,10 +90,13 @@ const AddressLine = ({
           {label}
         </span>
       )}
-      {[
-        { text: value, cls: 'd-none d-xxl-inline' },
-        { text: short, cls: 'd-xxl-none' }
-      ].map(({ text, cls }) =>
+      {(compact
+        ? [{ text: short, cls: '' }]
+        : [
+            { text: value, cls: 'd-none d-xxl-inline' },
+            { text: short, cls: 'd-xxl-none' }
+          ]
+      ).map(({ text, cls }) =>
         href ? (
           <a
             key={cls}

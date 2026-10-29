@@ -302,7 +302,10 @@ const ValidatorOverview = () => {
   // takes the row.
   const statusSlice = context.validatorStatusState;
   const status = statusSlice.data.get(nodeAddress);
+  // With the Keys card in it, it's there once the status has its vote
+  // state.
   const sideColumn =
+    !!status?.voteState ||
     (!!status && isSfdpState(status.sfdp.participant?.state)) ||
     notices.length > 0 ||
     (!status && !statusSlice.isLoading && !!statusSlice.error);
@@ -610,6 +613,11 @@ const ValidatorOverview = () => {
                     notices={notices}
                     nodeAddress={nodeAddress}
                   />
+                  {/* Its vote account's keys, beside the Details. */}
+                  <AuthoritiesCard
+                    nodeAddress={nodeAddress}
+                    voteAddress={voteAddress}
+                  />
                 </Col>
               )}
             </Row>
@@ -634,12 +642,6 @@ const ValidatorOverview = () => {
                 nodeAddress={nodeAddress}
               />
             </Col>
-            {nodeAddress && voteAddress && (
-              <AuthoritiesCard
-                nodeAddress={nodeAddress}
-                voteAddress={voteAddress}
-              />
-            )}
             {nodeAddress && (
               <Col xs={12} lg={6}>
                 <HostChangesCard

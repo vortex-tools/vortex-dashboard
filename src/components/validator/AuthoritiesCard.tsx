@@ -7,7 +7,6 @@ import { IS_STAGING } from 'helpers/apiEndpoint';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ReactNode, useContext, useEffect } from 'react';
-import { Col } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 /** Recent changes listed here; the rest on the changes page. */
@@ -19,13 +18,6 @@ const Row2 = ({ label, children }: { label: string; children: ReactNode }) => (
     <dd className="col-7 col-sm-8 mb-0">{children}</dd>
   </>
 );
-
-type Fact = { tone: 'warning' | 'info' | 'success'; text: string };
-const FACT_ICON = {
-  warning: 'alert-triangle',
-  info: 'info',
-  success: 'check-circle'
-} as const;
 
 /**
  * The vote account's authorities, withdrawer first: who can withdraw it,
@@ -72,20 +64,29 @@ const AuthoritiesCard = ({
         : key === vs.authorizedWithdrawer
           ? 'withdrawer'
           : null;
+  // A key that is another one listed here just says which ("Identity"),
+  // its address on hover; else the address, linked, with a copy button.
   const Key = ({ value, self }: { value: string; self?: string }) => {
     const same = sameAs(value);
-    return (
-      <span className="d-flex align-items-center gap-2 flex-wrap">
-        <AddressLine
-          label="Address"
-          value={value}
-          bare
+    if (same && same !== self)
+      return (
+        <a
           href={explorerAddress(value, isTestnet)}
-        />
-        {same && same !== self && (
-          <span className="text-body-tertiary fs-10">same as {same}</span>
-        )}
-      </span>
+          target="_blank"
+          rel="noreferrer"
+          title={value}
+        >
+          {same[0].toUpperCase() + same.slice(1)}
+        </a>
+      );
+    return (
+      <AddressLine
+        label="Address"
+        value={value}
+        bare
+        compact
+        href={explorerAddress(value, isTestnet)}
+      />
     );
   };
 
@@ -105,35 +106,8 @@ const AuthoritiesCard = ({
         ? { key: vs.nextAuthorizedVoter, from: null }
         : null;
 
-  const facts: Fact[] = [];
-  if (vs.authorizedWithdrawer === nodeAddress)
-    facts.push({
-      tone: 'warning',
-      text: 'The withdrawer is the node identity, a key kept on the server: if it leaks, the vote account can be taken, and its delegators would have to redelegate.'
-    });
-  else if (vs.authorizedWithdrawer === vs.authorizedVoter)
-    facts.push({
-      tone: 'warning',
-      text: 'The withdrawer is also the authorized voter: if the voter key leaks, the vote account can be taken.'
-    });
-  else
-    facts.push({
-      tone: 'success',
-      text: 'The withdrawer is a key of its own, not the identity or the voter.'
-    });
-  if (vs.authorizedVoter && vs.authorizedVoter === nodeAddress)
-    facts.push({
-      tone: 'info',
-      text: 'The authorized voter is the node identity (common): a leaked identity also leaks the voter. Both can be rotated in place.'
-    });
-  if (vs.blockRevenueCollector && vs.blockRevenueCollector === nodeAddress)
-    facts.push({
-      tone: 'info',
-      text: "Block-reward commission is paid to the node identity's account (the default since vote state V4)."
-    });
-
   return (
-    <Col xs={12} lg={6}>
+    <>
       <SectionCard
         title="Keys"
         icon="key"
@@ -228,20 +202,8 @@ const AuthoritiesCard = ({
             )}
           </div>
         )}
-        <ul className="list-unstyled fs-10 mt-3 mb-0 pt-3 border-top border-translucent d-flex flex-column gap-1">
-          {facts.map(f => (
-            <li key={f.text} className="d-flex gap-2">
-              <FeatherIcon
-                icon={FACT_ICON[f.tone]}
-                size={13}
-                className={`flex-shrink-0 mt-1 text-${f.tone}`}
-              />
-              <span>{f.text}</span>
-            </li>
-          ))}
-        </ul>
       </SectionCard>
-    </Col>
+    </>
   );
 };
 
