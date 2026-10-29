@@ -1,5 +1,4 @@
 import SectionCard from 'components/common/SectionCard';
-import UntrackedState from 'components/common/UntrackedState';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { HostChanges, HostState } from 'providers/vortex-schemas';
 import { useContext, useEffect, useState } from 'react';
@@ -105,48 +104,52 @@ const HostChangesCard = ({
         </p>
       )}
 
-      <h6 className="fs-10 text-uppercase text-body-tertiary mb-2">
-        This epoch
-      </h6>
-      {now.length ? (
-        <Table size="sm" className="data-table compact-rows fs-9 mb-3">
-          <tbody>
-            {now.map((e, i) => (
-              <tr key={`${e.observedAt}-${i}`}>
-                <td
-                  className="text-nowrap text-body-tertiary"
-                  title={
-                    e.observedAt
-                      ? new Date(e.observedAt * 1000).toUTCString()
-                      : undefined
-                  }
-                  style={{ width: '6rem' }}
-                >
-                  {e.observedAt ? ago(e.observedAt) : '—'}
-                </td>
-                <td className="fw-semibold text-nowrap">{eventWhat(e)}</td>
-                <td className="text-body-secondary">
-                  {e.kind === 'software'
-                    ? place(e.after)
-                    : sameSite(e.before, e.after)
-                      ? `another host at ${place(e.after)}`
-                      : `${place(e.before)} → ${place(e.after)}`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      ) : (
-        <p className="fs-9 text-body-tertiary mb-3">
-          No failovers, moves or upgrades recorded this epoch.
+      {/* Each section only when it has something; neither: one line. */}
+      {!now.length && !moves.length && (
+        <p className="fs-9 text-body-tertiary mb-0">
+          No host changes recorded.
         </p>
       )}
-
-      <h6 className="fs-10 text-uppercase text-body-tertiary mb-2">
-        Migrations
-      </h6>
-      {moves.length ? (
+      {now.length > 0 && (
         <>
+          <h6 className="fs-10 text-uppercase text-body-tertiary mb-2">
+            This epoch
+          </h6>
+          <Table size="sm" className="data-table compact-rows fs-9 mb-3">
+            <tbody>
+              {now.map((e, i) => (
+                <tr key={`${e.observedAt}-${i}`}>
+                  <td
+                    className="text-nowrap text-body-tertiary"
+                    title={
+                      e.observedAt
+                        ? new Date(e.observedAt * 1000).toUTCString()
+                        : undefined
+                    }
+                    style={{ width: '6rem' }}
+                  >
+                    {e.observedAt ? ago(e.observedAt) : '—'}
+                  </td>
+                  <td className="fw-semibold text-nowrap">{eventWhat(e)}</td>
+                  <td className="text-body-secondary">
+                    {e.kind === 'software'
+                      ? place(e.after)
+                      : sameSite(e.before, e.after)
+                        ? `another host at ${place(e.after)}`
+                        : `${place(e.before)} → ${place(e.after)}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </>
+      )}
+
+      {moves.length > 0 && (
+        <>
+          <h6 className="fs-10 text-uppercase text-body-tertiary mb-2">
+            Migrations
+          </h6>
           <Table size="sm" className="data-table compact-rows fs-9 mb-0">
             <tbody>
               {shownMoves.map(m => (
@@ -176,12 +179,6 @@ const HostChangesCard = ({
             </button>
           )}
         </>
-      ) : data.migrations.length ? (
-        <p className="fs-9 text-body-tertiary mb-0">
-          No migrations in the last 100 epochs (only failovers).
-        </p>
-      ) : (
-        <UntrackedState>No host changes in the last 100 epochs.</UntrackedState>
       )}
     </SectionCard>
   );
