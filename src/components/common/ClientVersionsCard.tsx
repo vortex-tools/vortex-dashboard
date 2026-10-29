@@ -497,7 +497,12 @@ const FamilyPanel = ({
  * (from /validators/status/summary). Below, the picked epoch's upgrades
  * and downgrades by stake.
  */
+type ChangeSort = { key: 'name' | 'stake' | 'when'; desc: boolean } | null;
+
 const ClientVersionsCard = () => {
+  // The Recent Upgrades table's sort: null = its default (newest first
+  // for the epoch in progress, else most stake).
+  const [sort, setSort] = useState<ChangeSort>(null);
   const context = useContext(VortexDataContext);
   const fetchData = context?.clusterVersionsState.fetchData;
   const data = context?.clusterVersionsState.data.get(EPOCHS);
@@ -551,102 +556,148 @@ const ClientVersionsCard = () => {
     epochs.find(e => e.epoch === picked) ?? epochs[epochs.length - 1];
   if (!epoch) return null;
 
-  const changes = epoch.changes.filter(
-    c => c.kind === 'upgrade' || c.kind === 'downgrade'
+  const effective: NonNullable<ChangeSort> = sort ?? {
+    key: epoch.inProgress ? 'when' : 'stake',
+    desc: true
+  };
+  const changes = epoch.changes
+    .filter(c => c.kind === 'upgrade' || c.kind === 'downgrade')
+    .sort((a, b) => {
+      const v = (c: typeof a) =>
+        effective.key === 'stake'
+          ? c.stake
+          : effective.key === 'when'
+            ? (c.observedAt ?? 0)
+            : (c.name ?? c.identity).toLowerCase();
+      const x = v(a);
+      const y = v(b);
+      const d =
+        typeof x === 'number' && typeof y === 'number'
+          ? x - y
+          : String(x).localeCompare(String(y));
+      return effective.desc ? -d : d;
+    });
+  // A header that sorts by its column (again: the other way).
+  const sortTh = (
+    k: NonNullable<ChangeSort>['key'],
+    label: string,
+    end = false
+  ) => (
+    <th
+      className={`text-nowrap${end ? ' text-end' : ''}`}
+      role="button"
+      onClick={() =>
+        setSort({
+          key: k,
+          desc: effective.key === k ? !effective.desc : k !== 'name'
+        })
+      }
+    >
+      {label}
+      <span className="ms-1 text-body-quaternary">
+        {effective.key === k ? (effective.desc ? '▾' : '▴') : '↕'}
+      </span>
+    </th>
   );
 
   return (
-    <SectionCard
-      title="Client Upgrades"
-      icon="git-branch"
-      info="Each client's stake by version per epoch, against a target you can change (* = so far). Click an epoch for its upgrades."
-    >
-      <Row className="g-4">
-        {FAMILIES.map(f => (
-          <Col key={f.key} xs={12} lg={6}>
-            <FamilyPanel
-              family={f}
-              epochs={epochs}
-              picked={epoch.epoch}
-              onPick={setPicked}
-              running={running.get(f.key) ?? []}
-              timeline={timeline}
-            />
-          </Col>
-        ))}
-      </Row>
-      {!isTestnet &&
-        cutoverEpoch != null &&
-        epochs.some(e => e.epoch === cutoverEpoch - 1) && (
-          <p className="fs-10 text-body-tertiary mt-3 mb-0">
-            Epoch {(cutoverEpoch - 1).toLocaleString()}, the last before
-            Alpenglow: Firedancer couldn&apos;t cross the cutover, so its
-            validators ran Agave for that epoch and switched back after.
+    <div className="d-flex flex-column gap-3">
+      <SectionCard
+        title="Client Upgrades"
+        icon="git-branch"
+        info="Each client's stake by version per epoch, against a target you can change (* = so far). Click an epoch for its upgrades below."
+      >
+        <Row className="g-4">
+          {FAMILIES.map(f => (
+            <Col key={f.key} xs={12} lg={6}>
+              <FamilyPanel
+                family={f}
+                epochs={epochs}
+                picked={epoch.epoch}
+                onPick={setPicked}
+                running={running.get(f.key) ?? []}
+                timeline={timeline}
+              />
+            </Col>
+          ))}
+        </Row>
+        {!isTestnet &&
+          cutoverEpoch != null &&
+          epochs.some(e => e.epoch === cutoverEpoch - 1) && (
+            <p className="fs-10 text-body-tertiary mt-3 mb-0">
+              Epoch {(cutoverEpoch - 1).toLocaleString()}, the last before
+              Alpenglow: Firedancer couldn&apos;t cross the cutover, so its
+              validators ran Agave for that epoch and switched back after.
+            </p>
+          )}
+      </SectionCard>
+
+      {/* The picked epoch's upgrades and downgrades (the chart's click),
+        largest stake first. */}
+      <SectionCard
+        title={`Recent Upgrades · epoch ${epoch.epoch.toLocaleString()}${epoch.inProgress ? ' (so far)' : ''}`}
+        icon="arrow-up-circle"
+        info="Validators that upgraded or downgraded in the epoch picked on the chart above: newest first while the epoch is in progress, else most stake first. Click a header to sort."
+      >
+        {changes.length ? (
+          <Table
+            size="sm"
+            responsive
+            className="data-table compact-rows fs-9 mb-0"
+          >
+            <thead>
+              <tr>
+                {sortTh('name', 'Validator')}
+                <th>Change</th>
+                {sortTh('stake', 'Stake', true)}
+                {epoch.inProgress && sortTh('when', 'When', true)}
+              </tr>
+            </thead>
+            <tbody>
+              {changes.map(c => (
+                <tr key={`${c.identity}-${c.kind}`}>
+                  <td className="text-nowrap">
+                    <Link to={`/validator/${c.identity}`}>
+                      {c.name ??
+                        `${c.identity.slice(0, 6)}…${c.identity.slice(-6)}`}
+                    </Link>
+                  </td>
+                  <td className="text-nowrap">
+                    <span
+                      className={`badge badge-soft me-2 badge-soft-${c.kind === 'upgrade' ? 'success' : 'warning'}`}
+                    >
+                      {c.kind}
+                    </span>
+                    <span className="font-monospace">
+                      {c.from.version ?? '?'} → {c.to.version ?? '?'}
+                    </span>
+                  </td>
+                  <td className="text-end font-monospace">
+                    {epoch.stake ? pct(c.stake / epoch.stake) : '—'}
+                  </td>
+                  {epoch.inProgress && (
+                    <td
+                      className="text-end text-body-tertiary text-nowrap"
+                      title={
+                        c.observedAt
+                          ? new Date(c.observedAt * 1000).toUTCString()
+                          : undefined
+                      }
+                    >
+                      {c.observedAt ? ago(c.observedAt) : '—'}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <p className="fs-9 text-body-tertiary mb-0">
+            No upgrades or downgrades recorded in this epoch.
           </p>
         )}
-
-      <h6 className="fs-10 text-uppercase text-body-tertiary mt-4 mb-2">
-        Upgrades in epoch {epoch.epoch.toLocaleString()}
-        {epoch.inProgress && ' (so far)'}
-      </h6>
-      {changes.length ? (
-        <Table
-          size="sm"
-          responsive
-          className="data-table compact-rows fs-9 mb-0"
-        >
-          <thead>
-            <tr>
-              <th>Validator</th>
-              <th>Change</th>
-              <th className="text-end">Stake</th>
-              {epoch.inProgress && <th className="text-end">When</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {changes.map(c => (
-              <tr key={`${c.identity}-${c.kind}`}>
-                <td className="text-nowrap">
-                  <Link to={`/validator/${c.identity}`}>
-                    {c.name ??
-                      `${c.identity.slice(0, 6)}…${c.identity.slice(-6)}`}
-                  </Link>
-                </td>
-                <td className="text-nowrap">
-                  <span
-                    className={`badge badge-soft me-2 badge-soft-${c.kind === 'upgrade' ? 'success' : 'warning'}`}
-                  >
-                    {c.kind}
-                  </span>
-                  <span className="font-monospace">
-                    {c.from.version ?? '?'} → {c.to.version ?? '?'}
-                  </span>
-                </td>
-                <td className="text-end font-monospace">
-                  {epoch.stake ? pct(c.stake / epoch.stake) : '—'}
-                </td>
-                {epoch.inProgress && (
-                  <td
-                    className="text-end text-body-tertiary text-nowrap"
-                    title={
-                      c.observedAt
-                        ? new Date(c.observedAt * 1000).toUTCString()
-                        : undefined
-                    }
-                  >
-                    {c.observedAt ? ago(c.observedAt) : '—'}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      ) : (
-        <p className="fs-9 text-body-tertiary mb-0">
-          No upgrades or downgrades recorded in this epoch.
-        </p>
-      )}
-    </SectionCard>
+      </SectionCard>
+    </div>
   );
 };
 
