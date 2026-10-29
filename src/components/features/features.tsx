@@ -9,10 +9,11 @@ import {
 } from 'providers/vortex-schemas';
 
 /** The clusters a gate is tracked on, in display order. */
+// In the order gates roll out to them: mainnet, devnet, testnet.
 export const CLUSTERS = [
   { key: 'mainnet-beta', label: 'Mainnet' },
-  { key: 'testnet', label: 'Testnet' },
-  { key: 'devnet', label: 'Devnet' }
+  { key: 'devnet', label: 'Devnet' },
+  { key: 'testnet', label: 'Testnet' }
 ] as const;
 export const clusterLabel = (key: string | null | undefined) =>
   CLUSTERS.find(c => c.key === key)?.label ?? key ?? '—';
