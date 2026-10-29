@@ -154,8 +154,14 @@ const ValidatorSearch = ({
                       <span className="text-body fw-semibold">
                         {v.name || truncateAddress(v.nodeAddress)}
                       </span>
-                      <span className="text-body-tertiary font-monospace fs-10">
-                        {truncateAddress(v.nodeAddress)}
+                      <span className="text-body-tertiary fs-10">
+                        <span className="font-monospace">
+                          {truncateAddress(v.nodeAddress)}
+                        </span>
+                        {/* Two validators can share a name: how long each
+                            has run tells them apart. */}
+                        {v.firstEpoch != null &&
+                          ` · since epoch ${v.firstEpoch.toLocaleString()}`}
                       </span>
                     </div>
                   </button>

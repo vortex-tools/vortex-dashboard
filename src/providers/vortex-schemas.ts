@@ -691,7 +691,10 @@ export type EpochEarnings = z.infer<typeof epochEarningsSchema>;
 export const validatorSchema = z.object({
   nodeAddress: z.string(),
   voteAddress: z.string().nullable(),
-  name: validatorNameSchema
+  name: validatorNameSchema,
+  // Its vote account's first epoch with stake (as /validators/status's),
+  // so validators with the same name can be told apart. Requested.
+  firstEpoch: z.number().nullable().optional().catch(null)
 });
 
 export const validatorsResponseSchema = z.object({
