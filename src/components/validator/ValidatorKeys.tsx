@@ -37,7 +37,7 @@ const Line = ({
  * Identity / Vote / Withdrawer: the authorized voter (and who takes over
  * from a pending change's epoch), the two commission collectors, and a
  * missing BLS key. A key that is one already listed says which
- * ("Identity" after an arrow up to it), its address on hover; else the
+ * ("Identity", an arrow up to it after), its address on hover; else the
  * address, with a copy button. From /validators/status's voteState.
  */
 export const ValidatorKeyLines = ({
@@ -70,8 +70,8 @@ export const ValidatorKeyLines = ({
         className="d-inline-flex align-items-center gap-1 text-body-secondary"
         title={value}
       >
-        <FeatherIcon icon="corner-right-up" size={12} />
         {same}
+        <FeatherIcon icon="corner-right-up" size={12} />
       </span>
     ) : (
       <AddressLine label="Address" value={value} bare />
