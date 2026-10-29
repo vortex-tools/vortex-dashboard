@@ -1,4 +1,6 @@
-import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
+import ValidatorPageHeader, {
+  validatorTabPath
+} from 'components/validator/ValidatorPageHeader';
 import useCluster from 'hooks/useCluster';
 import AddressLine from 'components/common/AddressLine';
 import {
@@ -312,6 +314,13 @@ const ValidatorOverview = () => {
   const factLabelWidth = '6.5rem';
   const blocksProduced = incomeRecord?.confirmedSlots;
   const totalSlots = incomeRecord?.totalSlots;
+  const skippedSlots = incomeRecord?.skippedSlots;
+  // Leader slots still ahead this epoch: scheduled, neither produced nor
+  // skipped yet.
+  const slotsToCome =
+    totalSlots != null && blocksProduced != null && skippedSlots != null
+      ? Math.max(0, totalSlots - blocksProduced - skippedSlots)
+      : null;
   const medianBlockIncome = incomeRecord
     ? incomeRecord.medianIncome.baseFees +
       incomeRecord.medianIncome.priorityFees +
@@ -345,14 +354,34 @@ const ValidatorOverview = () => {
     <StatCard
       key="blocks"
       label="Blocks Produced"
+      // The blocks so far; under it what the rest of its leader slots
+      // are - skipped, or still to come ("20 / 48" read either way).
       value={
-        blocksProduced !== undefined
-          ? `${blocksProduced.toLocaleString()}${
-              totalSlots ? ` / ${totalSlots.toLocaleString()}` : ''
-            }`
-          : '—'
+        blocksProduced !== undefined ? blocksProduced.toLocaleString() : '—'
       }
-      sublabel={blockIncomeTracked ? 'Current epoch' : 'Not tracked on testnet'}
+      wrapSublabel
+      sublabel={
+        !blockIncomeTracked ? (
+          'Not tracked on testnet'
+        ) : totalSlots != null ? (
+          <>
+            of {totalSlots.toLocaleString()} leader slots
+            {skippedSlots != null && (
+              <>
+                {' · '}
+                <span className={skippedSlots > 0 ? 'text-danger' : undefined}>
+                  {skippedSlots.toLocaleString()} skipped
+                </span>
+              </>
+            )}
+            {slotsToCome != null &&
+              ` · ${slotsToCome.toLocaleString()} to come`}
+          </>
+        ) : (
+          'Current epoch'
+        )
+      }
+      linkTo={validatorTabPath(nodeAddress, 'production')}
     />,
     <StatCard
       key="median-income"
