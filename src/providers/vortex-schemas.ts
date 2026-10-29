@@ -1979,6 +1979,29 @@ export const blockIncomeRowsSchema = z.array(
 );
 export type BlockIncomeRows = z.infer<typeof blockIncomeRowsSchema>;
 
+// One fact behind a pool's stake on a validator (/pool validators,
+// /validators/delegators pool rows): kind ticket (a holder's or, with
+// ticket.protocol, a protocol's), adminTarget, poolOwn, user, gauge or
+// matching; lamports staked, or its target.
+export const directedSourceSchema = z.object({
+  kind: z.string(),
+  lamports: z.number().nullable().catch(null),
+  target: z.number().nullable().catch(null),
+  basis: z.string().nullable().catch(null),
+  ticket: z
+    .object({
+      authority: z.string().nullable().catch(null),
+      protocol: z.boolean().nullable().catch(null)
+    })
+    .nullable()
+    .catch(null),
+  label: z.string().nullable().catch(null),
+  note: z.string().nullable().catch(null),
+  attribution: z.string().nullable().catch(null),
+  sourceUrl: z.string().nullable().catch(null)
+});
+export type DirectedSource = z.infer<typeof directedSourceSchema>;
+
 // One validator's delegators at an epoch's end (/validators/delegators,
 // requested of vortex-data): by withdraw authority, as in stake-changes.
 const delegatorLabelSchema = z
@@ -2005,8 +2028,14 @@ export const validatorDelegatorsSchema = z.object({
       stake: z.number(),
       share: z.number().nullable().catch(null),
       stakeAccounts: z.number().nullable().catch(null),
-      // A pool row: the part its holders directed here.
-      directedStake: z.number().nullable().optional().catch(null)
+      // A pool row: the part its holders directed here, and the facts
+      // behind its stake (as on /pool).
+      directedStake: z.number().nullable().optional().catch(null),
+      directedSources: z
+        .array(directedSourceSchema)
+        .nullable()
+        .optional()
+        .catch(null)
     })
   ),
   moreDelegators: z.number().nullable().catch(null),
@@ -3014,25 +3043,7 @@ export const poolDetailSchema = z.object({
         // protocol's) ticket, an admin-set target, the pool's own
         // validator, a gauge vote, matching - with curated context.
         directedSources: z
-          .array(
-            z.object({
-              kind: z.string(),
-              lamports: z.number().nullable().catch(null),
-              target: z.number().nullable().catch(null),
-              basis: z.string().nullable().catch(null),
-              ticket: z
-                .object({
-                  authority: z.string().nullable().catch(null),
-                  protocol: z.boolean().nullable().catch(null)
-                })
-                .nullable()
-                .catch(null),
-              label: z.string().nullable().catch(null),
-              note: z.string().nullable().catch(null),
-              attribution: z.string().nullable().catch(null),
-              sourceUrl: z.string().nullable().catch(null)
-            })
-          )
+          .array(directedSourceSchema)
           .nullable()
           .optional()
           .catch(null),
