@@ -306,9 +306,10 @@ const ValidatorOverview = () => {
     (isTestnet && !!status && isSfdpState(status.sfdp.participant?.state)) ||
     notices.length > 0 ||
     (!status && !statusSlice.isLoading && !!statusSlice.error);
-  // One label column for every Details line ("Inflation collector" the
-  // longest), so the values align.
+  // A label column per card, so its values align ("Inflation collector",
+  // "Vote balance" the longest).
   const keyLabelWidth = '8.5rem';
+  const factLabelWidth = '6.5rem';
   const blocksProduced = incomeRecord?.confirmedSlots;
   const totalSlots = incomeRecord?.totalSlots;
   const medianBlockIncome = incomeRecord
@@ -557,8 +558,10 @@ const ValidatorOverview = () => {
           <Col xs={12}>
             {/* Details (keys and node facts), then Notices below it. */}
             <Row className="g-3 align-items-stretch">
-              <Col xs={12}>
-                <SectionCard title="Details" icon="file-text">
+              {/* Addresses (its keys, and their recent changes) | Details
+                  (everything else about it); stacked on phones. */}
+              <Col xs={12} lg={6}>
+                <SectionCard title="Addresses" icon="key">
                   <div className="detail-lines min-w-0">
                     <AddressLine
                       label="Identity"
@@ -574,22 +577,10 @@ const ValidatorOverview = () => {
                       nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
                     />
-                    {/* The voter, collectors and BLS key. */}
+                    {/* The voter, collectors and a missing BLS key. */}
                     <ValidatorKeyLines
                       nodeAddress={nodeAddress}
                       voteAddress={voteAddress}
-                      labelWidth={keyLabelWidth}
-                    />
-                    <ValidatorWebsite
-                      nodeAddress={nodeAddress}
-                      labelWidth={keyLabelWidth}
-                    />
-                    <ValidatorAge
-                      nodeAddress={nodeAddress}
-                      labelWidth={keyLabelWidth}
-                    />
-                    <ValidatorFacts
-                      nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
                     />
                   </div>
@@ -599,7 +590,25 @@ const ValidatorOverview = () => {
                   />
                 </SectionCard>
               </Col>
-              {/* Under Details, full width: what needs attention (when
+              <Col xs={12} lg={6}>
+                <SectionCard title="Details" icon="file-text">
+                  <div className="detail-lines min-w-0">
+                    <ValidatorWebsite
+                      nodeAddress={nodeAddress}
+                      labelWidth={factLabelWidth}
+                    />
+                    <ValidatorAge
+                      nodeAddress={nodeAddress}
+                      labelWidth={factLabelWidth}
+                    />
+                    <ValidatorFacts
+                      nodeAddress={nodeAddress}
+                      labelWidth={factLabelWidth}
+                    />
+                  </div>
+                </SectionCard>
+              </Col>
+              {/* Under them, full width: what needs attention (when
                   anything does), and SFDP on testnet (mainnet: Staking
                   tab). */}
               {belowDetails && (
