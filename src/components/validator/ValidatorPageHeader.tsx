@@ -19,7 +19,7 @@ const TABS: Array<{ key: ValidatorTab; label: string }> = [
   { key: 'voting', label: 'Voting' },
   { key: 'production', label: 'Production' },
   { key: 'earnings', label: 'Earnings' },
-  { key: 'block-income', label: 'Block Income' },
+  { key: 'block-income', label: 'Fees' },
   { key: 'staking', label: 'Staking' }
 ];
 
