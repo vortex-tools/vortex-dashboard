@@ -3,6 +3,7 @@ import AddressLine from 'components/common/AddressLine';
 import SectionCard from 'components/common/SectionCard';
 import { ChangeBadge, changeValue, whenText } from 'components/changes/changes';
 import { explorerAddress, explorerTx } from 'helpers/explorer';
+import { IS_STAGING } from 'helpers/apiEndpoint';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ReactNode, useContext, useEffect } from 'react';
@@ -179,12 +180,15 @@ const AuthoritiesCard = ({
               <span className="fs-10 fw-bold text-uppercase text-body-tertiary">
                 Recent changes
               </span>
-              <Link
-                to={`/activity?validator=${voteAddress}&epochs=10`}
-                className="fs-10 ms-auto"
-              >
-                All activity →
-              </Link>
+              {/* The Activity page is staging only for now. */}
+              {IS_STAGING && (
+                <Link
+                  to={`/activity?validator=${voteAddress}&epochs=10`}
+                  className="fs-10 ms-auto"
+                >
+                  All activity →
+                </Link>
+              )}
             </div>
             {recent.length ? (
               <ul className="list-unstyled fs-9 mb-0 detail-lines">

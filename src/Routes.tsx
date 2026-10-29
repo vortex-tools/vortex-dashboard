@@ -36,6 +36,7 @@ import SimdPage from 'pages/SimdPage';
 import StakePool from 'pages/StakePool';
 import StakePools from 'pages/StakePools';
 import Activity from 'pages/Activity';
+import { IS_STAGING } from 'helpers/apiEndpoint';
 import Simds from 'pages/Simds';
 import Governance from 'pages/Governance';
 import GovernanceProposal from 'pages/GovernanceProposal';
@@ -179,12 +180,18 @@ const routes: RouteObject[] = [
               { path: '/feature/:id', element: <FeatureGatePage /> },
               { path: '/simds', element: <Simds /> },
               { path: '/pools', element: <StakePools /> },
-              { path: '/activity', element: <Activity /> },
-              // Its first name: keeps the filters.
-              {
-                path: '/vote-account-changes',
-                element: <RedirectKeepSearch to="/activity" />
-              },
+              // Validator activity: staging only for now (elsewhere the
+              // catch-all 404 answers).
+              ...(IS_STAGING
+                ? [
+                    { path: '/activity', element: <Activity /> },
+                    // Its first name: keeps the filters.
+                    {
+                      path: '/vote-account-changes',
+                      element: <RedirectKeepSearch to="/activity" />
+                    }
+                  ]
+                : []),
               { path: '/pool/:name', element: <StakePool /> },
               { path: '/simd/:simd', element: <SimdPage /> },
               { path: '/governance', element: <Governance /> },

@@ -1,6 +1,7 @@
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
 import useCluster from 'hooks/useCluster';
+import { IS_STAGING } from 'helpers/apiEndpoint';
 import useConsensus from 'hooks/useConsensus';
 import { useMemo } from 'react';
 
@@ -52,8 +53,10 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
   // Who stake pools and SFDP delegate to (mainnet only).
   { name: 'Stake Pools', icon: 'layers', path: '/pools' },
   // Key, commission and collector changes, withdrawals, failovers and
-  // migrations, across validators.
-  { name: 'Activity', icon: 'activity', path: '/activity' },
+  // migrations, across validators. Staging only for now.
+  ...(IS_STAGING
+    ? [{ name: 'Activity', icon: 'activity', path: '/activity' }]
+    : []),
   // How spread out the stake is (clients, providers, countries).
   { name: 'Decentralization', icon: 'globe', path: '/decentralization' }
 ];
