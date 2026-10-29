@@ -1049,7 +1049,9 @@ const NoticeRow = ({ n }: { n: Notice }) => {
         {meta.label}
       </Badge>
       <div
-        className={`min-w-0 fs-9 flex-grow-1 ${open ? '' : 'text-truncate'}`}
+        // Wrapped, not truncated: the reason is often at the end ("...
+        // but epoch 1073 requires 4.4.0-rc.1").
+        className="min-w-0 fs-9 flex-grow-1"
         role={expandable ? 'button' : undefined}
         tabIndex={expandable ? 0 : undefined}
         aria-expanded={expandable ? open : undefined}
