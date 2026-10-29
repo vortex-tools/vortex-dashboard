@@ -979,7 +979,7 @@ export default ValidatorStatus;
 
 type Severity = 'fail' | 'warn' | 'info';
 
-/** The SFDP criteria it fails, named ("its ASN over 25% of stake"), or
+/** The SFDP criteria it fails, named ("ASN over 25% of stake"), or
  *  null when the API names none. */
 const failedSfdpCriteria = (
   c:
@@ -996,12 +996,12 @@ const failedSfdpCriteria = (
 ) => {
   if (!c) return null;
   const failed = [
-    !c.approved && 'not approved',
-    !c.stakeWithinLimit && 'total stake over 1M SOL',
-    c.commissionWithinLimit === false && 'inflation commission over 5%',
-    c.versionMeetsMinimum === false && 'version below the minimum',
-    c.dataCenterWithinLimit === false && 'its data center over 15% of stake',
-    c.asnWithinLimit === false && 'its ASN over 25% of stake'
+    !c.approved && 'Not approved',
+    !c.stakeWithinLimit && 'Total stake over 1M SOL',
+    c.commissionWithinLimit === false && 'Inflation commission over 5%',
+    c.versionMeetsMinimum === false && 'Version below the minimum',
+    c.dataCenterWithinLimit === false && 'Data center over 15% of stake',
+    c.asnWithinLimit === false && 'ASN over 25% of stake'
   ].filter(Boolean);
   return failed.length ? failed.join(', ') : null;
 };
@@ -1172,12 +1172,16 @@ export const useValidatorNotices = (
               : 'info',
         source: 'SFDP',
         title: MATCH_NOTICE[match.kind].title,
-        // Not eligible: the criteria it fails, by name, where the API says.
+        // Not eligible: just the criterion it fails, when the API names it
+        // (no list of every criterion to expand).
         message:
           match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
-            ? `fails ${failedSfdpCriteria(stake?.criteria)}`
+            ? failedSfdpCriteria(stake?.criteria)!
             : MATCH_NOTICE[match.kind].message,
-        detail: sfdpMatchMeaning(match.kind)
+        detail:
+          match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
+            ? undefined
+            : sfdpMatchMeaning(match.kind)
       });
   }
 
