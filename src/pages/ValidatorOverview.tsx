@@ -18,6 +18,7 @@ import ValidatorStatus, {
   ValidatorNotices,
   useValidatorNotices,
   ValidatorSfdpBox,
+  ValidatorSfdpLine,
   WIDE_KEY_LABEL,
   FACT_TILES,
   ValidatorFacts,
@@ -66,7 +67,7 @@ const ValidatorOverview = () => {
   // on an Alpenglow cluster the page shows the Consensus card instead, and
   // identity resolves through the validator directory.
   const towerCurrent = consensusKnown && !alpenglowActive;
-  const { blockIncomeTracked } = useCluster();
+  const { blockIncomeTracked, isTestnet } = useCluster();
   const { address } = useParams();
   const context = useContext(VortexDataContext);
 
@@ -306,7 +307,7 @@ const ValidatorOverview = () => {
   // state.
   const sideColumn =
     !!status?.voteState ||
-    (!!status && isSfdpState(status.sfdp.participant?.state)) ||
+    (isTestnet && !!status && isSfdpState(status.sfdp.participant?.state)) ||
     notices.length > 0 ||
     (!status && !statusSlice.isLoading && !!statusSlice.error);
   // The keys box's label column widens for custom commission-collector
@@ -593,6 +594,12 @@ const ValidatorOverview = () => {
                       nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
                     />
+                    {!isTestnet && (
+                      <ValidatorSfdpLine
+                        nodeAddress={nodeAddress}
+                        labelWidth={keyLabelWidth}
+                      />
+                    )}
                     <ValidatorFacts
                       nodeAddress={nodeAddress}
                       labelWidth={keyLabelWidth}
@@ -606,7 +613,9 @@ const ValidatorOverview = () => {
               </Col>
               {sideColumn && (
                 <Col xs={12} lg={5} className="d-flex flex-column gap-3">
-                  <ValidatorSfdpBox nodeAddress={nodeAddress} />
+                  {/* Mainnet: on the Staking tab (a line in Details here);
+                    testnet has no Staking tab. */}
+                  {isTestnet && <ValidatorSfdpBox nodeAddress={nodeAddress} />}
                   {/* Notices: what needs attention (fixed height, two at a
                     time, paged), else the all-clear. */}
                   <ValidatorNotices

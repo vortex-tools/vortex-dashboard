@@ -2,6 +2,7 @@ import UntrackedState from 'components/common/UntrackedState';
 import DelegatorsCards from 'components/validator/DelegatorsCards';
 import StakeChangesCards from 'components/validator/StakeChangesCards';
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
+import { ValidatorSfdpBox } from 'components/validator/ValidatorStatus';
 import useCluster from 'hooks/useCluster';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
 import { useParams } from 'react-router';
@@ -35,6 +36,8 @@ const ValidatorStaking = () => {
         ) : (
           nodeAddress && (
             <div className="d-flex flex-column gap-3">
+              {/* SFDP's status and delegation (only for participants). */}
+              <ValidatorSfdpBox nodeAddress={nodeAddress} />
               <DelegatorsCards identity={nodeAddress} />
               <StakeChangesCards identity={nodeAddress} />
             </div>
