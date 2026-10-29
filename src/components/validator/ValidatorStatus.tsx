@@ -463,13 +463,13 @@ export const ValidatorFacts = ({
         .filter(t => FACT_TILES.includes(t.label))
         .flatMap(t =>
           // The client tile's version (its sublabel) is a line of its own,
-          // before it: Version, then Client ("Agave · BAM").
+          // after it: Client ("Agave · BAM"), then Version.
           t.label === 'Client'
             ? [
+                line('Client', t.value, t.value === '—' ? t.sublabel : null),
                 ...(t.sublabel && t.value !== '—'
                   ? [line('Version', t.sublabel)]
-                  : []),
-                line('Client', t.value, t.value === '—' ? t.sublabel : null)
+                  : [])
               ]
             : [
                 line(
