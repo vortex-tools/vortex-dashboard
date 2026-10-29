@@ -23,13 +23,16 @@ interface ValidatorSearchProps {
   /** Clears the input after a successful pick. Defaults to true. */
   clearOnSelect?: boolean;
   autoFocus?: boolean;
+  /** A filter's size (a form-control-sm row) rather than the hero's. */
+  compact?: boolean;
 }
 
 const ValidatorSearch = ({
   onSelect,
   placeholder,
   clearOnSelect = true,
-  autoFocus
+  autoFocus,
+  compact = false
 }: ValidatorSearchProps) => {
   const context = useContext(VortexDataContext);
   const navigate = useNavigate();
@@ -86,16 +89,21 @@ const ValidatorSearch = ({
       : 'Validator directory loading…');
 
   return (
-    <div className="position-relative">
-      <div className="d-flex align-items-center bg-body-emphasis rounded border border-translucent px-3 py-2">
+    <div
+      className="position-relative"
+      style={compact ? { width: '20rem', maxWidth: '100%' } : undefined}
+    >
+      <div
+        className={`d-flex align-items-center bg-body-emphasis rounded border border-translucent ${compact ? 'px-2 py-1 fs-9' : 'px-3 py-2'}`}
+      >
         <FeatherIcon
           icon="search"
-          size={18}
+          size={compact ? 14 : 18}
           className="text-body-tertiary me-2 flex-shrink-0"
         />
         <input
           type="text"
-          className="form-control border-0 bg-transparent p-0"
+          className={`form-control border-0 bg-transparent p-0${compact ? ' fs-9' : ''}`}
           style={{ boxShadow: 'none' }}
           placeholder={resolvedPlaceholder}
           value={query}

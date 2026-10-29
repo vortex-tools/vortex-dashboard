@@ -12,7 +12,7 @@ import {
   whenText
 } from 'components/changes/changes';
 import DelayedSpinner from 'components/common/DelayedSpinner';
-import SearchBox from 'components/common/SearchBox';
+import ValidatorSearch from 'components/common/ValidatorSearch';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import FeatherIcon from 'feather-icons-react';
@@ -319,10 +319,29 @@ const Activity = () => {
     ? context?.clusterVoteAccountChangesState.data.get(epochs)
     : activity?.data.get(epochs);
 
-  const events = useMemo(
-    () => (data?.events ?? []).filter(e => !kind || e.kind === kind),
-    [data, kind]
-  );
+  // The picked validator (vote or identity key in the URL), as the
+  // directory knows it.
+  const dir = context?.validatorDirectoryState;
+  const picked = validator
+    ? (dir?.byVoteAddress.get(validator) ??
+      dir?.byNodeAddress.get(validator) ?? {
+        name: null,
+        voteAddress: validator,
+        nodeAddress: validator
+      })
+    : null;
+  // Its keys, joined (a stable memo dependency).
+  const keyList = picked
+    ? [validator, picked.voteAddress, picked.nodeAddress].join(' ')
+    : '';
+  const events = useMemo(() => {
+    const keys = keyList ? new Set(keyList.split(' ')) : null;
+    return (data?.events ?? []).filter(
+      e =>
+        (!kind || e.kind === kind) &&
+        (!keys || keys.has(e.voteKey ?? '') || keys.has(e.identity ?? ''))
+    );
+  }, [data, kind, keyList]);
   // Kinds present in the range, for the filter (in the order defined).
   const kinds = useMemo(() => {
     const seen = new Set((data?.events ?? []).map(e => e.kind));
@@ -343,11 +362,6 @@ const Activity = () => {
     resetPageKey: `${epochs}${kind}`,
     initialState: { sorting: [{ id: 'when', desc: true }] }
   });
-  // The validator filter is the table's global search.
-  const setGlobalFilter = table.setGlobalFilter;
-  useEffect(() => {
-    setGlobalFilter(validator || undefined);
-  }, [setGlobalFilter, validator]);
 
   return (
     <div className="mb-9">
@@ -367,11 +381,30 @@ const Activity = () => {
         info="Vote-account changes come from the vote program's instructions in successful transactions (a multisig's included), since Alpenglow (epoch 1064): a withdrawer change or a withdrawal is what matters most to delegators. Failovers, migrations and software changes come from each validator's gossip address and version, as our chain-state writer sees them. From is the previous value on record."
       >
         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-          <SearchBox
-            placeholder="Validator name or key"
-            defaultValue={validator}
-            onChange={e => set('validator', e.target.value)}
-          />
+          {/* Pick a validator (suggestions as you type); it shows as a
+              chip, x to clear. */}
+          {picked ? (
+            <span
+              className="badge badge-soft badge-soft-primary fs-9 d-inline-flex align-items-center gap-2 py-2"
+              style={{ textTransform: 'none' }}
+            >
+              {picked.name ?? `${validator.slice(0, 4)}…${validator.slice(-4)}`}
+              <button
+                type="button"
+                className="btn btn-link p-0 lh-1 text-reset"
+                aria-label="Show every validator"
+                onClick={() => set('validator', '')}
+              >
+                ×
+              </button>
+            </span>
+          ) : (
+            <ValidatorSearch
+              compact
+              placeholder="Filter by validator…"
+              onSelect={v => set('validator', v.voteAddress ?? v.nodeAddress)}
+            />
+          )}
           <Form.Select
             size="sm"
             className="w-auto"
@@ -430,8 +463,13 @@ const Activity = () => {
           </AdvanceTableProvider>
         ) : (
           <UntrackedState>
-            No {kind ? (CHANGE_KIND[kind]?.label ?? kind).toLowerCase() : ''}{' '}
-            changes in this range.
+            No{' '}
+            {kind ? `${(CHANGE_KIND[kind]?.label ?? kind).toLowerCase()} ` : ''}
+            activity
+            {picked
+              ? ` for ${picked.name ?? `${validator.slice(0, 4)}…${validator.slice(-4)}`}`
+              : ''}{' '}
+            in the selected range.
           </UntrackedState>
         )}
       </SectionCard>
