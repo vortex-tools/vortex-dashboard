@@ -27,7 +27,12 @@ import {
 import useAdvanceTable from 'hooks/useAdvanceTable';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { useAppContext } from 'providers/AppProvider';
-import { FEATURES_KEY, VortexDataContext } from 'providers/VortexDataProvider';
+import { sfdpMatch } from 'helpers/sfdp';
+import {
+  FEATURES_KEY,
+  VALIDATOR_STATUS_SUMMARY_KEY,
+  VortexDataContext
+} from 'providers/VortexDataProvider';
 import { PoolDetail, PoolValidatorRef } from 'providers/vortex-schemas';
 import { Fragment, useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
@@ -630,6 +635,38 @@ const StakePool = () => {
     if (name) fetchData?.(name);
   }, [name, fetchData]);
   const isSfdp = data?.kind === 'sfdp';
+  // SFDP: the matching rule and each validator's standing against it.
+  const fetchSummary = context?.validatorStatusSummaryState.fetchData;
+  useEffect(() => {
+    if (isSfdp) fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
+  }, [isSfdp, fetchSummary]);
+  const summary = context?.validatorStatusSummaryState.data.get(
+    VALIDATOR_STATUS_SUMMARY_KEY
+  );
+  // How many it delegates to sit at the program's cap (the validator
+  // page's "Capped"): more outside stake earns them no more matching.
+  const atCap = useMemo(() => {
+    const program = summary?.sfdpProgram;
+    if (!isSfdp || !summary || !program) return null;
+    let capped = 0;
+    let matched = 0;
+    for (const v of summary.validators) {
+      const m = sfdpMatch(
+        v.sfdpState,
+        {
+          effective: v.sfdpStake,
+          externalStake: v.externalStake,
+          shortfall: v.sfdpShortfall,
+          inTransition: v.sfdpInTransition,
+          eligible: v.sfdpEligible
+        },
+        program
+      );
+      if (m?.kind === 'capped') capped++;
+      if (m?.kind === 'capped' || m?.kind === 'uncapped') matched++;
+    }
+    return { capped, matched, cap: program.cap };
+  }, [isSfdp, summary]);
   // Shown once the API counts other pools per validator.
   const showOther = !!data?.validators.some(v => v.otherPools != null);
   // Shown once the API gives the pool's rewards per validator.
@@ -834,7 +871,17 @@ const StakePool = () => {
               }
             />
           </Col>
-          {showRewards && (
+          {isSfdp && atCap && (
+            <Col xs={6} lg>
+              <StatCard
+                label="At the Cap"
+                value={atCap.capped.toLocaleString()}
+                wrapSublabel
+                sublabel={`of ${atCap.matched.toLocaleString()} matched · cap ${compactSol(atCap.cap)}`}
+              />
+            </Col>
+          )}
+          {showRewards && !isSfdp && (
             <Col xs={6} lg>
               <StatCard
                 label="Staking Yield"

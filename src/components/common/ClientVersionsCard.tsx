@@ -17,7 +17,7 @@ import {
 import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';
 import { ClusterVersions, VersionsTimeline } from 'providers/vortex-schemas';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { Col, Form, Row, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
@@ -112,6 +112,8 @@ interface PanelProps {
   }[];
   /** Hourly points over the last epochs, or null (not served yet). */
   timeline: VersionsTimeline['points'] | null;
+  /** Small print at the card's foot. */
+  note?: ReactNode;
 }
 
 const FamilyPanel = ({
@@ -120,7 +122,8 @@ const FamilyPanel = ({
   picked,
   onPick,
   running,
-  timeline
+  timeline,
+  note
 }: PanelProps) => {
   const { getThemeColor } = useAppContext();
   const per = useMemo(() => byVersion(epochs, family.key), [epochs, family]);
@@ -287,9 +290,11 @@ const FamilyPanel = ({
   };
 
   return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
-        <h6 className="mb-0">{family.label}</h6>
+    <SectionCard
+      title={`${family.label} Upgrades`}
+      icon="git-branch"
+      info={`${family.label} stake by version per epoch, against a target you can change (* = so far). Click an epoch for its upgrades in Recent Upgrades.`}
+      aside={
         <Form.Select
           size="sm"
           className="w-auto"
@@ -303,7 +308,8 @@ const FamilyPanel = ({
             </option>
           ))}
         </Form.Select>
-      </div>
+      }
+    >
       <p className="mb-2">
         {nowShare == null ? (
           <span className="fs-9 text-body-tertiary">
@@ -485,7 +491,8 @@ const FamilyPanel = ({
       ) : (
         <UntrackedState>Loading validators…</UntrackedState>
       )}
-    </div>
+      {note && <p className="fs-10 text-body-tertiary mt-3 mb-0">{note}</p>}
+    </SectionCard>
   );
 };
 
@@ -552,6 +559,10 @@ const ClientVersionsCard = () => {
       </SectionCard>
     );
   const epochs = data.epochs;
+  const cutoverNote =
+    !isTestnet &&
+    cutoverEpoch != null &&
+    epochs.some(e => e.epoch === cutoverEpoch - 1);
   const epoch =
     epochs.find(e => e.epoch === picked) ?? epochs[epochs.length - 1];
   if (!epoch) return null;
@@ -602,42 +613,38 @@ const ClientVersionsCard = () => {
 
   return (
     <div className="d-flex flex-column gap-3">
-      <SectionCard
-        title="Client Upgrades"
-        icon="git-branch"
-        info="Each client's stake by version per epoch, against a target you can change (* = so far). Click an epoch for its upgrades below."
-      >
-        <Row className="g-4">
-          {FAMILIES.map(f => (
-            <Col key={f.key} xs={12} lg={6}>
-              <FamilyPanel
-                family={f}
-                epochs={epochs}
-                picked={epoch.epoch}
-                onPick={setPicked}
-                running={running.get(f.key) ?? []}
-                timeline={timeline}
-              />
-            </Col>
-          ))}
-        </Row>
-        {!isTestnet &&
-          cutoverEpoch != null &&
-          epochs.some(e => e.epoch === cutoverEpoch - 1) && (
-            <p className="fs-10 text-body-tertiary mt-3 mb-0">
-              Epoch {(cutoverEpoch - 1).toLocaleString()}, the last before
-              Alpenglow: Firedancer couldn&apos;t cross the cutover, so its
-              validators ran Agave for that epoch and switched back after.
-            </p>
-          )}
-      </SectionCard>
+      <Row className="g-3">
+        {FAMILIES.map(f => (
+          <Col key={f.key} xs={12} lg={6}>
+            <FamilyPanel
+              family={f}
+              epochs={epochs}
+              picked={epoch.epoch}
+              onPick={setPicked}
+              running={running.get(f.key) ?? []}
+              timeline={timeline}
+              note={
+                f.key === 'firedancer' &&
+                cutoverNote && (
+                  <>
+                    Epoch {(cutoverEpoch! - 1).toLocaleString()}, the last
+                    before Alpenglow: Firedancer couldn&apos;t cross the
+                    cutover, so its validators ran Agave for that epoch and
+                    switched back after.
+                  </>
+                )
+              }
+            />
+          </Col>
+        ))}
+      </Row>
 
       {/* The picked epoch's upgrades and downgrades (the chart's click),
         largest stake first. */}
       <SectionCard
         title={`Recent Upgrades · epoch ${epoch.epoch.toLocaleString()}${epoch.inProgress ? ' (so far)' : ''}`}
         icon="arrow-up-circle"
-        info="Validators that upgraded or downgraded in the epoch picked on the chart above: newest first while the epoch is in progress, else most stake first. Click a header to sort."
+        info="Validators that upgraded or downgraded in the epoch picked on the charts above: newest first while the epoch is in progress, else most stake first. Click a header to sort."
       >
         {changes.length ? (
           <Table
