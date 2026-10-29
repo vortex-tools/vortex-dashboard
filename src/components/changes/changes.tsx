@@ -67,6 +67,21 @@ export const softwareLabel = (e: ActivityEvent) => {
   return null;
 };
 
+/** A voter event as what it was: under the same voter, a BLS key
+ *  registered (the account's first), rotated or (unknown which) set; else
+ *  the voter changed. null: older APIs (plain "Voter"). */
+export const voterLabel = (e: ActivityEvent) => {
+  if (e.kind !== 'voter' || e.voterChanged == null) return null;
+  if (e.voterChanged) return 'Voter changed';
+  if (e.blsKeyChanged == null) return 'BLS key set';
+  if (!e.blsKeyChanged) return 'Voter re-authorized';
+  return e.oldBlsPubkey ? 'BLS key rotated' : 'BLS key registered';
+};
+
+/** A voter event that only touched the BLS key (same voter). */
+const blsOnly = (e: ActivityEvent) =>
+  e.kind === 'voter' && e.voterChanged === false;
+
 export const ChangeBadge = ({
   kind,
   label
@@ -182,6 +197,15 @@ export const changeValue = (
         )}
       </>
     );
+  }
+  // Same voter, new BLS key: the keys are the BLS ones (not linkable).
+  if (blsOnly(e)) {
+    const k = which === 'new' ? e.blsPubkey : e.oldBlsPubkey;
+    return k ? (
+      <span className="font-monospace" title={`BLS key ${k}`}>
+        {`${k.slice(0, 4)}…${k.slice(-4)}`}
+      </span>
+    ) : null;
   }
   if (typeof v !== 'string') return null;
   const bls = which === 'new' ? e.blsPubkey : e.oldBlsPubkey;

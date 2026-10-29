@@ -3053,6 +3053,10 @@ export const voteAccountChangeSchema = z.object({
   oldValue: z.unknown().optional(),
   blsPubkey: z.string().nullable().catch(null),
   oldBlsPubkey: z.string().nullable().catch(null),
+  // A voter event: whether the voter itself changed, and whether the BLS
+  // key did (null: unknown). Same voter, new key = a BLS key change.
+  voterChanged: z.boolean().nullable().optional().catch(null),
+  blsKeyChanged: z.boolean().nullable().optional().catch(null),
   lamports: z.number().nullable().catch(null),
   effectiveEpoch: z.number().nullable().catch(null),
   // The cluster feed's: whose vote account (its identity and name today).

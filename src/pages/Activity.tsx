@@ -9,6 +9,7 @@ import {
   changeValue,
   eventTime,
   softwareLabel,
+  voterLabel,
   whenText
 } from 'components/changes/changes';
 import DelayedSpinner from 'components/common/DelayedSpinner';
@@ -167,9 +168,11 @@ const columns = (
           const label =
             e.kind === 'software'
               ? softwareLabel(e)
-              : p?.role === 'back'
-                ? 'Failback'
-                : null;
+              : e.kind === 'voter'
+                ? voterLabel(e)
+                : p?.role === 'back'
+                  ? 'Failback'
+                  : null;
           const dimmed = hovered != null && !!p && p.id !== hovered;
           return (
             <>

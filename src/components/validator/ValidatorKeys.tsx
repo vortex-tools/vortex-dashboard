@@ -1,7 +1,12 @@
 import FeatherIcon from 'feather-icons-react';
 import AddressLine from 'components/common/AddressLine';
 import SectionCard from 'components/common/SectionCard';
-import { ChangeBadge, changeValue, whenText } from 'components/changes/changes';
+import {
+  ChangeBadge,
+  changeValue,
+  voterLabel,
+  whenText
+} from 'components/changes/changes';
 import { explorerTx } from 'helpers/explorer';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -180,7 +185,7 @@ export const RecentVoteAccountChanges = ({
             key={`${e.signature}-${e.kind}`}
             className="d-flex flex-wrap align-items-center column-gap-2"
           >
-            <ChangeBadge kind={e.kind} />
+            <ChangeBadge kind={e.kind} label={voterLabel(e)} />
             {/* A key change shows the key it replaced, when on record. */}
             <span className="min-w-0">
               {changeValue(e, 'old', isTestnet) &&
