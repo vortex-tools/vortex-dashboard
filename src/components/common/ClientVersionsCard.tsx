@@ -38,7 +38,8 @@ const TIMELINE_EPOCHS = 3;
 const NAMED = 6;
 /** A version is named once it held this share of its client's stake. */
 const NAMED_MIN = 0.02;
-/** The default target: the newest release holding at least this share. */
+/** The default target: the newest version (a release, or a candidate
+ *  being rolled out) holding at least this share. */
 const TARGET_MIN = 0.05;
 const BEHIND_FIRST = 8;
 
@@ -125,20 +126,26 @@ const FamilyPanel = ({
   const per = useMemo(() => byVersion(epochs, family.key), [epochs, family]);
   const latest = [...per].reverse().find(Boolean) ?? null;
 
+  // Targets offered: every release, and a pre-release once it holds
+  // TARGET_MIN of the stake (an upgrade candidate being rolled out, like
+  // 4.4.0-rc.1) - alphas a few run aren't.
+  const shareNow = (v: string) =>
+    latest ? (latest.m.get(v)?.stake ?? 0) / latest.stake : 0;
   const releases = useMemo(() => {
     const all = new Set(per.flatMap(p => (p ? [...p.m.keys()] : [])));
-    return [...all].filter(isRelease).sort((a, b) => cmp(b, a));
-  }, [per]);
-  const defaultTarget = useMemo(() => {
-    if (!latest) return null;
-    return (
-      releases.find(
-        v => (latest.m.get(v)?.stake ?? 0) / latest.stake >= TARGET_MIN
-      ) ??
+    return [...all]
+      .filter(v => parse(v) && (isRelease(v) || shareNow(v) >= TARGET_MIN))
+      .sort((a, b) => cmp(b, a));
+  }, [per, latest]);
+  // The default: the newest of them with TARGET_MIN of the stake now.
+  const defaultTarget = useMemo(
+    () =>
+      releases.find(v => shareNow(v) >= TARGET_MIN) ??
+      releases.find(isRelease) ??
       releases[0] ??
-      null
-    );
-  }, [latest, releases]);
+      null,
+    [releases]
+  );
   const [chosen, setChosen] = useState<string | null>(null);
   const target = chosen ?? defaultTarget;
   const [allBehind, setAllBehind] = useState(false);
