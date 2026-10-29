@@ -541,3 +541,25 @@ th.leaderboard-sticky-col {
     margin-left: 0 !important;
   }
 }
+
+// Cluster Status's Leaders map from xl up: as tall as the Current Leader
+// card beside it (which sets the row), never taller; the map fills the
+// card's body, centered at its own aspect.
+@include media-breakpoint-up(xl) {
+  .fit-row-height-xl {
+    position: relative;
+    height: 100%;
+    min-height: 14rem;
+    > .section-card {
+      position: absolute;
+      inset: 0;
+      > :last-child {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+    }
+    .leader-map-fill {
+      height: 100%;
+    }
+  }
+}

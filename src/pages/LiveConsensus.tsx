@@ -102,6 +102,8 @@ const STATUS_BG: Record<string, 'info' | 'primary' | 'success' | 'warning'> = {
  * voted yet. Alpenglow only.
  */
 const LiveConsensus = () => {
+  // From xl the Leaders map fills the Current Leader card's height.
+  const isXl = useMediaQuery('(min-width: 1200px)');
   const context = useContext(VortexDataContext);
   const { alpenglowActive, phase, known, unavailable } = useConsensus();
   const live = useEpochLive(alpenglowActive, POLL_MS);
@@ -697,17 +699,24 @@ const LiveConsensus = () => {
                 />
               </Col>
               <Col xs={12} xl={5}>
-                <SectionCard
-                  title="Leaders"
-                  icon="globe"
-                  info="The current leader pulses; recent leaders fade with age, and a ball flies along each hand-off. Gray dots are every validator, sized by stake. Locations from IP geolocation (DB-IP)."
-                >
-                  <LeaderMap
-                    geo={geo}
-                    leaders={recentLeaders}
-                    nameOf={nameOf}
-                  />
-                </SectionCard>
+                {/* From xl up: Current Leader's height, the map filling
+                    it (wider screens: more space at its sides). */}
+                <div className="fit-row-height-xl">
+                  <SectionCard
+                    title="Leaders"
+                    icon="globe"
+                    info="The current leader pulses; recent leaders fade with age, and a ball flies along each hand-off. Gray dots are every validator, sized by stake. Locations from IP geolocation (DB-IP)."
+                  >
+                    <div className="leader-map-fill">
+                      <LeaderMap
+                        geo={geo}
+                        leaders={recentLeaders}
+                        nameOf={nameOf}
+                        fill={isXl}
+                      />
+                    </div>
+                  </SectionCard>
+                </div>
               </Col>
             </Row>
 

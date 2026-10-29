@@ -25,32 +25,54 @@ echarts.use([
  * passed from the previous leader to the new one - so leadership hopping around the world is visible as
  * the slots play.
  */
+/** The world map's width to height (Antarctica dropped). */
+const ASPECT = 1.9;
+/** The least height the map takes when filling its parent. */
+const MIN_FILL_HEIGHT = 100;
+
 const LeaderMap = ({
   geo,
   leaders,
-  nameOf
+  nameOf,
+  fill = false
 }: {
   geo: Map<string, ValidatorGeo> | null;
+  /** Take its parent's height (it must give one) rather than one from
+   *  its width. */
+  fill?: boolean;
   /** Leaders of the latest windows, newest first (current first). */
   leaders: string[];
   nameOf: (node: string | null | undefined) => string;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
   const [ready, setReady] = useState(false);
-  // Height from the width at the world map's aspect (~2:1, the geo box is
-  // filled edge to edge, so a fixed height stretched it on phones), up to
-  // the desktop height.
-  const [width, setWidth] = useState<number | null>(null);
+  // Its box: from the width at the world map's aspect (~2:1), up to the
+  // desktop height - or, with `fill`, the height its parent gives it (beside
+  // Current Leader, which sets the row's height). Either way the map keeps
+  // its aspect, centered: a wider box only adds space at the sides.
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = boxRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    const read = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    const ro = new ResizeObserver(read);
     ro.observe(el);
-    setWidth(el.clientWidth);
+    read();
     return () => ro.disconnect();
   }, []);
-  const height = width != null ? Math.round(Math.min(260, width * 0.5)) : 260;
+  const width = size?.w ?? null;
+  const height = fill
+    ? Math.max(MIN_FILL_HEIGHT, size?.h ?? MIN_FILL_HEIGHT)
+    : width != null
+      ? Math.round(Math.min(260, width * 0.5))
+      : 260;
+  // The map's own width in the box: as wide as the height allows at its
+  // aspect, never wider than the box.
+  const mapWidth =
+    width != null
+      ? Math.max(0, Math.min(width - 8, (height - 8) * ASPECT))
+      : null;
   useEffect(() => {
     let alive = true;
     loadWorld().then(() => alive && setReady(true));
@@ -102,10 +124,9 @@ const LeaderMap = ({
         map: 'world',
         roam: false,
         silent: true,
-        top: 4,
-        bottom: 4,
-        left: 4,
-        right: 4,
+        // Centered at its own aspect (see mapWidth).
+        layoutCenter: ['50%', '50%'],
+        layoutSize: mapWidth ?? '100%',
         itemStyle: {
           areaColor: getThemeColor(isDark ? 'body-highlight-bg' : 'gray-100'),
           borderColor: getThemeColor('border-color'),
@@ -150,7 +171,7 @@ const LeaderMap = ({
         }
       ]
     };
-  }, [all, leadersKey, geo, getThemeColor, isDark]);
+  }, [all, leadersKey, geo, getThemeColor, isDark, mapWidth]);
 
   // One flight per hand-off: when the leader changes (to a different
   // place), move the ball along a gentle curve from the previous leader
@@ -222,7 +243,7 @@ const LeaderMap = ({
   }, [handoff?.key, ready]);
 
   return (
-    <div ref={boxRef}>
+    <div ref={boxRef} style={fill ? { height: '100%' } : undefined}>
       {!ready || !geo ? (
         <div
           className="d-flex align-items-center justify-content-center text-body-tertiary fs-9"
