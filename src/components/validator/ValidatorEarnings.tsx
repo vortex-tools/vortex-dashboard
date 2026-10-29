@@ -118,7 +118,7 @@ const ValidatorEarnings = ({ nodeAddress }: { nodeAddress: string }) => {
     <SectionCard title="Earnings" icon="dollar-sign">
       {unavailable ? (
         <p className="text-body-tertiary fs-9 mb-0">
-          Earnings aren't available from this API yet.
+          Earnings aren't available right now.
         </p>
       ) : !rows ? (
         <DelayedSpinner loading label="Loading earnings…" />

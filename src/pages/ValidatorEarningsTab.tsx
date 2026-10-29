@@ -1,4 +1,5 @@
 import DelayedSpinner from 'components/common/DelayedSpinner';
+import UntrackedState from 'components/common/UntrackedState';
 import SectionCard from 'components/common/SectionCard';
 import InflationRewardsTable from 'components/validator/InflationRewardsTable';
 import ValidatorEarnings from 'components/validator/ValidatorEarnings';
@@ -53,6 +54,17 @@ const ValidatorEarningsTab = () => {
   useEffect(() => {
     if (withEarnings) fetchEarnings?.(nodeAddress!);
   }, [withEarnings, nodeAddress, fetchEarnings]);
+  // A read that failed (the API down) says so instead of spinning; the
+  // live refresh retries it.
+  const rewardsFailed =
+    (alpenglowActive &&
+      rows === undefined &&
+      !slice?.isLoading &&
+      !!slice?.error) ||
+    (withEarnings &&
+      earnings === undefined &&
+      !earningsSlice?.isLoading &&
+      !!earningsSlice?.error);
   const rewardsLoading =
     (alpenglowActive && rows === undefined) ||
     (withEarnings && earnings === undefined);
@@ -79,7 +91,11 @@ const ValidatorEarningsTab = () => {
               icon="award"
               info="Rewards before commission, per epoch: Voting and Production (Alpenglow), and what missed votes didn't earn. The current epoch is so far, its commission estimated (≈)."
             >
-              {rewardsLoading ? (
+              {rewardsFailed ? (
+                <UntrackedState>
+                  Rewards aren&apos;t available right now.
+                </UntrackedState>
+              ) : rewardsLoading ? (
                 <DelayedSpinner loading label="Loading rewards…" />
               ) : (
                 <InflationRewardsTable

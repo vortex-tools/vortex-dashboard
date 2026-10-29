@@ -546,7 +546,7 @@ const ClientVersionsCard = () => {
       <SectionCard title="Client Upgrades" icon="git-branch">
         <UntrackedState>
           {context?.clusterVersionsState.error
-            ? "This cluster's API doesn't serve client versions yet."
+            ? "Client versions aren't available right now."
             : 'Loading versions…'}
         </UntrackedState>
       </SectionCard>

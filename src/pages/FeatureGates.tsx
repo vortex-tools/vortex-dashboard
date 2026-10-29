@@ -225,7 +225,7 @@ const FeatureGates = () => {
       {!data ? (
         all?.error ? (
           <UntrackedState>
-            Feature gates aren&apos;t available from this API yet.
+            Feature gates aren&apos;t available right now.
           </UntrackedState>
         ) : (
           <DelayedSpinner loading label="Loading feature gates…" />

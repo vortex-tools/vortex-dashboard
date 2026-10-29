@@ -449,7 +449,7 @@ const Activity = () => {
         {!data ? (
           slice?.error ? (
             <UntrackedState>
-              Validator activity isn&apos;t available from this API yet.
+              Validator activity isn&apos;t available right now.
             </UntrackedState>
           ) : (
             <DelayedSpinner loading label="Loading changes…" />

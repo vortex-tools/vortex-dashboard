@@ -201,7 +201,7 @@ const ValidatorDivergentVotes = () => {
             )}
             {historyUnavailable ? (
               <UntrackedState>
-                The slot timeline isn&apos;t available from this API yet.
+                The slot timeline isn&apos;t available right now.
               </UntrackedState>
             ) : !history || !timeline ? (
               <DelayedSpinner loading label="Loading votes…" />

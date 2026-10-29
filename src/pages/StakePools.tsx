@@ -273,7 +273,7 @@ const StakePools = () => {
       {!data ? (
         slice?.error ? (
           <UntrackedState>
-            Stake pools aren&apos;t available from this API yet.
+            Stake pools aren&apos;t available right now.
           </UntrackedState>
         ) : (
           <DelayedSpinner loading label="Loading stake pools…" />

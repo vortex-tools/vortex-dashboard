@@ -4,6 +4,7 @@ import StakeChangesCards from 'components/validator/StakeChangesCards';
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
 import { ValidatorSfdpBox } from 'components/validator/ValidatorStatus';
 import useCluster from 'hooks/useCluster';
+import useConsensus from 'hooks/useConsensus';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
 import { useParams } from 'react-router';
 
@@ -16,6 +17,8 @@ import { useParams } from 'react-router';
 const ValidatorStaking = () => {
   const { address = '' } = useParams();
   const { isTestnet } = useCluster();
+  // The API down: say so (nothing would load).
+  const { unavailable } = useConsensus();
   const identity = useValidatorIdentity(address);
   const nodeAddress =
     identity && identity.source !== 'fallback' ? identity.nodeAddress : null;
@@ -28,7 +31,9 @@ const ValidatorStaking = () => {
         tab="staking"
       />
       <div className="mb-9">
-        {isTestnet ? (
+        {unavailable ? (
+          <UntrackedState>The API is unavailable right now.</UntrackedState>
+        ) : isTestnet ? (
           <UntrackedState>
             Testnet stake is delegated by the foundation, so its changes
             aren&apos;t tracked.

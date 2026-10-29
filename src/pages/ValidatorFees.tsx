@@ -1,4 +1,6 @@
 import BlockIncomeSection from 'components/validator/BlockIncomeSection';
+import UntrackedState from 'components/common/UntrackedState';
+import useConsensus from 'hooks/useConsensus';
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
 import { useParams } from 'react-router';
@@ -10,6 +12,8 @@ import { useParams } from 'react-router';
 const ValidatorFees = () => {
   const { address = '' } = useParams();
   const identity = useValidatorIdentity(address);
+  // The API down: say so (nothing would load).
+  const { unavailable } = useConsensus();
   const nodeAddress =
     identity && identity.source !== 'fallback' ? identity.nodeAddress : null;
   return (
@@ -21,7 +25,11 @@ const ValidatorFees = () => {
         tab="block-income"
       />
       <div className="mb-9">
-        {nodeAddress && <BlockIncomeSection nodeAddress={nodeAddress} />}
+        {unavailable ? (
+          <UntrackedState>The API is unavailable right now.</UntrackedState>
+        ) : (
+          nodeAddress && <BlockIncomeSection nodeAddress={nodeAddress} />
+        )}
       </div>
     </div>
   );

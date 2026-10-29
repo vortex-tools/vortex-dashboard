@@ -253,7 +253,7 @@ const ProducerWindowsTable = ({
   if (failed)
     return (
       <UntrackedState className="mb-0">
-        Leader slots aren&apos;t available from this API yet.
+        Leader slots aren&apos;t available right now.
       </UntrackedState>
     );
   if (!data) return <DelayedSpinner loading label="Loading leader slots…" />;

@@ -1,4 +1,5 @@
 import DelayedSpinner from 'components/common/DelayedSpinner';
+import UntrackedState from 'components/common/UntrackedState';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import SectionCard from 'components/common/SectionCard';
 import {
@@ -10,14 +11,11 @@ import { formatLamports } from 'helpers/utils';
 import useLiveRefresh from 'hooks/useLiveRefresh';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ProducerLeaderboardRecord } from 'providers/vortex-schemas';
-import { useContext, useEffect, useMemo } from 'react';
+import { useContext, useEffect } from 'react';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 const REFRESH_MS = 60_000;
-// Fallback while an API doesn't serve /epochs/production: the last few
-// epochs' producer leaderboards.
-const EPOCHS = 5;
 
 const pct = (v: number | null | undefined) =>
   v == null ? '—' : `${(v * 100).toFixed(2)}%`;
@@ -47,23 +45,9 @@ const ValidatorProduction = ({
     if (voteAddress) fetchHistory?.(voteAddress);
   }, [voteAddress, fetchHistory]);
 
-  // Fallback: the last few boards (an API without /epochs/production).
-  const slice = context?.producerLeaderboardState;
-  const fetchBoard = slice?.fetchData;
-  const epochs = useMemo(
-    () =>
-      currentEpoch == null || !historyFailed
-        ? []
-        : Array.from({ length: EPOCHS }, (_, i) => currentEpoch - i),
-    [currentEpoch, historyFailed]
-  );
-  useEffect(() => {
-    for (const e of epochs) fetchBoard?.(e);
-  }, [epochs, fetchBoard]);
+  // Refreshed while shown; a failed read (the API down) retries then too.
   useLiveRefresh(currentEpoch != null, REFRESH_MS, () => {
-    if (served) fetchHistory?.(voteAddress, { force: true });
-    else if (historyFailed && currentEpoch != null)
-      fetchBoard?.(currentEpoch, { force: true });
+    fetchHistory?.(voteAddress, { force: true });
   });
 
   const rows: Array<{
@@ -93,20 +77,7 @@ const ValidatorProduction = ({
           };
         });
       })()
-    : epochs
-        .filter(e => slice?.data.has(e))
-        .map(e => {
-          const board = slice!.data.get(e)!;
-          const record = board.records.find(
-            r => r.voteAddress === voteAddress || r.nodeAddress === nodeAddress
-          );
-          return {
-            epoch: e,
-            record,
-            rank: record?.rank ?? null,
-            rankedOf: board.records.length
-          };
-        });
+    : [];
   const anyLoaded = rows.length > 0 || (!!served && served.length === 0);
 
   return (
@@ -116,7 +87,11 @@ const ValidatorProduction = ({
       linkTo={recordPath(nodeAddress || voteAddress, null, 'blocks')}
       linkLabel="Production record"
     >
-      {!anyLoaded ? (
+      {historyFailed ? (
+        <UntrackedState>
+          Production isn&apos;t available right now.
+        </UntrackedState>
+      ) : !anyLoaded ? (
         <DelayedSpinner loading label="Loading production…" />
       ) : (
         <Table responsive size="sm" className="data-table fs-9 mb-0">

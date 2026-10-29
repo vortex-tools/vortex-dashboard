@@ -613,7 +613,7 @@ const ThroughputCard = ({
         </>
       ) : slice?.error && shown === 'tps' ? (
         <UntrackedState>
-          Throughput isn&apos;t available from this API.
+          Throughput isn&apos;t available right now.
         </UntrackedState>
       ) : (
         <div style={{ height: chartHeight }} />

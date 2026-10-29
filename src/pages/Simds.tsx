@@ -210,7 +210,7 @@ const Simds = () => {
       {!data ? (
         slice?.error ? (
           <UntrackedState>
-            SIMDs aren&apos;t available from this API yet.
+            SIMDs aren&apos;t available right now.
           </UntrackedState>
         ) : (
           <DelayedSpinner loading label="Loading SIMDs…" />
