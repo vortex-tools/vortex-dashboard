@@ -63,8 +63,7 @@ const refList = <R extends { name: string | null; voteKey: string }>(
 const columns = (
   showMedian: boolean,
   showFees: boolean,
-  showMax: boolean,
-  showChurn: boolean
+  showMax: boolean
 ): ColumnDef<PoolSummary>[] => [
   {
     id: 'name',
@@ -120,63 +119,40 @@ const columns = (
     cell: ({ row: { original: p } }) => (
       <>
         {p.validators.toLocaleString()}
-        <Delta
-          now={p.validators}
-          prev={p.validatorsPrev}
-          format={signedCount}
-          below
-        />
+        {/* This epoch's adds and drops (the validators on hover) where
+            the API has them, else the net change. */}
+        {p.addedCount != null || p.droppedCount != null ? (
+          <span className="fs-10 d-block lh-1">
+            {!!p.addedCount && (
+              <span
+                className="text-success"
+                title={`Started delegating to:\n${refList(p.added, x => x.stake, p.addedCount - (p.added?.length ?? 0))}`}
+              >
+                +{p.addedCount.toLocaleString()}
+              </span>
+            )}
+            {!!p.addedCount && !!p.droppedCount && ' '}
+            {!!p.droppedCount && (
+              <span
+                className="text-danger"
+                title={`Stopped delegating to:\n${refList(p.dropped, x => x.stakePrev, p.droppedCount - (p.dropped?.length ?? 0))}`}
+              >
+                −{p.droppedCount.toLocaleString()}
+              </span>
+            )}
+          </span>
+        ) : (
+          <Delta
+            now={p.validators}
+            prev={p.validatorsPrev}
+            format={signedCount}
+            below
+          />
+        )}
       </>
     ),
     meta: END
   },
-  // This epoch's adds and drops (the validators on hover).
-  ...(showChurn
-    ? [
-        {
-          id: 'churn',
-          header: 'Added / dropped',
-          accessorFn: (p: PoolSummary) =>
-            (p.addedCount ?? 0) + (p.droppedCount ?? 0),
-          cell: ({
-            row: { original: p }
-          }: {
-            row: { original: PoolSummary };
-          }) => {
-            if (p.added == null && p.dropped == null)
-              return <span className="text-body-quaternary">—</span>;
-            const added = p.addedCount ?? p.added?.length ?? 0;
-            const dropped = p.droppedCount ?? p.dropped?.length ?? 0;
-            return (
-              <>
-                <span
-                  className={added ? 'text-success' : 'text-body-quaternary'}
-                  title={
-                    added
-                      ? `Started delegating to:\n${refList(p.added, r => r.stake, added - (p.added?.length ?? 0))}`
-                      : undefined
-                  }
-                >
-                  {added ? `+${added.toLocaleString()}` : '0'}
-                </span>
-                <span className="text-body-quaternary"> / </span>
-                <span
-                  className={dropped ? 'text-danger' : 'text-body-quaternary'}
-                  title={
-                    dropped
-                      ? `Stopped delegating to:\n${refList(p.dropped, r => r.stakePrev, dropped - (p.dropped?.length ?? 0))}`
-                      : undefined
-                  }
-                >
-                  {dropped ? `−${dropped.toLocaleString()}` : '0'}
-                </span>
-              </>
-            );
-          },
-          meta: END
-        } as ColumnDef<PoolSummary>
-      ]
-    : []),
   ...(showFees
     ? [
         {
@@ -298,8 +274,6 @@ const StakePools = () => {
   const showFees = allPools.some(p => p.fees != null);
   // And its largest single delegation.
   const showMax = allPools.some(p => p.maxStake != null);
-  // And this epoch's adds and drops.
-  const showChurn = allPools.some(p => p.added != null || p.dropped != null);
   // Totals and shares are over every pool, shown or not.
   const total = useMemo(
     () => allPools.reduce((a, p) => a + p.stake, 0),
@@ -307,8 +281,8 @@ const StakePools = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(showMedian, showFees, showMax, showChurn),
-      [showMedian, showFees, showMax, showChurn]
+      () => columns(showMedian, showFees, showMax),
+      [showMedian, showFees, showMax]
     ),
     data: pools,
     sortable: true,
