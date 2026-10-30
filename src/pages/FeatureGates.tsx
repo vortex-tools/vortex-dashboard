@@ -119,19 +119,18 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
     cell: ({ row: { original: f } }) => <SimdCell f={f} />,
     meta: NOWRAP
   },
-  ...[...CLUSTERS]
-    .sort((a, b) => Number(b.key === served) - Number(a.key === served))
-    .map(
-      (c): ColumnDef<FeatureGate> => ({
-        id: c.key,
-        header: c.label,
-        accessorFn: f => statusRank(f, c.key),
-        cell: ({ row: { original: f } }) => (
-          <StatusChip state={f.clusters[c.key]} />
-        ),
-        meta: NOWRAP
-      })
-    )
+  // Mainnet, Devnet, Testnet on every cluster's site.
+  ...CLUSTERS.map(
+    (c): ColumnDef<FeatureGate> => ({
+      id: c.key,
+      header: c.label,
+      accessorFn: f => statusRank(f, c.key),
+      cell: ({ row: { original: f } }) => (
+        <StatusChip state={f.clusters[c.key]} />
+      ),
+      meta: NOWRAP
+    })
+  )
 ];
 
 /**
