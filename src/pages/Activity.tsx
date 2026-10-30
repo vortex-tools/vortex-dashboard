@@ -299,6 +299,10 @@ const columns = (
  * (failovers, migrations, software), from /cluster/activity. Filtered by kind, by validator (name or either key) and by how
  * many epochs back, all in the URL (?kind=&validator=&epochs=).
  */
+/** A kind's name in the change filter. */
+const kindLabel = (k: string) =>
+  k === BLS_FILTER ? 'BLS key' : (CHANGE_KIND[k]?.label ?? k);
+
 const Activity = () => {
   const context = useContext(VortexDataContext);
   const { isTestnet } = useCluster();
@@ -354,9 +358,8 @@ const Activity = () => {
   const kinds = useMemo(() => {
     const seen = new Set((data?.events ?? []).map(e => e.kind));
     const out = Object.keys(CHANGE_KIND).filter(k => seen.has(k));
-    // BLS key changes (voter events) as an option after Voter.
-    if ((data?.events ?? []).some(isBlsChange))
-      out.splice(out.indexOf('voter') + 1, 0, BLS_FILTER);
+    // BLS key changes (voter events) as an option of their own.
+    if ((data?.events ?? []).some(isBlsChange)) out.push(BLS_FILTER);
     return out;
   }, [data]);
 
@@ -428,13 +431,27 @@ const Activity = () => {
             onChange={e => set('kind', e.target.value)}
           >
             <option value="">All changes</option>
-            {(kinds.includes(kind) || !kind ? kinds : [...kinds, kind]).map(
-              k => (
-                <option key={k} value={k}>
-                  {k === BLS_FILTER ? 'BLS key' : (CHANGE_KIND[k]?.label ?? k)}
-                </option>
+            {/* On-chain (vote-account transactions) and infrastructure
+                (gossip: hosts and software), each alphabetical. */}
+            {[
+              ['On-chain', false],
+              ['Infrastructure', true]
+            ].map(([group, host]) => {
+              const shown = (
+                kinds.includes(kind) || !kind ? kinds : [...kinds, kind]
               )
-            )}
+                .filter(k => HOST_KINDS.has(k) === host)
+                .sort((x, y) => kindLabel(x).localeCompare(kindLabel(y)));
+              return shown.length ? (
+                <optgroup key={String(group)} label={String(group)}>
+                  {shown.map(k => (
+                    <option key={k} value={k}>
+                      {kindLabel(k)}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null;
+            })}
           </Form.Select>
           <Form.Select
             size="sm"
