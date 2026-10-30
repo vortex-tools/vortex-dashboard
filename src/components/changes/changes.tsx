@@ -78,6 +78,16 @@ export const voterLabel = (e: ActivityEvent) => {
   return e.oldBlsPubkey ? 'BLS key rotated' : 'BLS key registered';
 };
 
+/** A voter event that gave the account a new BLS key (with or without a
+ *  new voter); older APIs' same-voter events count. */
+export const isBlsChange = (e: ActivityEvent) =>
+  e.kind === 'voter' &&
+  (e.blsKeyChanged === true ||
+    (e.voterChanged === false && e.blsKeyChanged == null));
+
+/** The Activity filter's BLS option (voter events with a new BLS key). */
+export const BLS_FILTER = 'bls';
+
 /** A change that set something to what it already was (a commission
  *  re-sent at its rate, a collector or authority re-set, the voter
  *  re-authorized with the same BLS key): not listed. */

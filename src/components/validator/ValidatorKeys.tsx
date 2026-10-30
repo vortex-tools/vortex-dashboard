@@ -4,6 +4,7 @@ import SectionCard from 'components/common/SectionCard';
 import {
   ChangeBadge,
   changeValue,
+  isBlsChange,
   isNoopChange,
   voterLabel,
   whenText
@@ -56,7 +57,23 @@ export const ValidatorKeyLines = ({
   labelWidth: string;
 }) => {
   const context = useContext(VortexDataContext);
+  const fetchChanges = context?.validatorVoteAccountChangesState.fetchData;
+  useEffect(() => {
+    if (nodeAddress) fetchChanges?.(nodeAddress);
+  }, [nodeAddress, fetchChanges]);
   const vs = context?.validatorStatusState.data.get(nodeAddress)?.voteState;
+  // Its latest BLS key change, if this epoch or the last: a new key the
+  // node has to vote with.
+  const epoch = context?.currentEpochState.epoch;
+  const blsChange =
+    epoch != null
+      ? [
+          ...(context?.validatorVoteAccountChangesState.data.get(nodeAddress)
+            ?.events ?? [])
+        ]
+          .reverse()
+          .find(e => isBlsChange(e) && e.epoch >= epoch - 1)
+      : undefined;
   if (!vs) return null;
 
   const sameAs = (key: string) =>
@@ -127,7 +144,27 @@ export const ValidatorKeyLines = ({
           <Key value={vs.blockRevenueCollector} />
         </Line>
       )}
-      {/* Only when missing: a set key is the norm and says nothing. */}
+      {/* Only when missing or just changed: a set key is the norm and
+          says nothing. */}
+      {vs.blsPubkeySet && blsChange && (
+        <Line label="BLS key" labelWidth={labelWidth}>
+          <span
+            className="text-warning-emphasis"
+            title={`${blsChange.blsPubkey ? `New BLS key ${blsChange.blsPubkey}. ` : ''}It votes only while its node runs the voter key this BLS key belongs to.`}
+          >
+            {blsChange.voterChanged
+              ? 'changed with the voter'
+              : blsChange.oldBlsPubkey
+                ? 'rotated'
+                : 'registered'}
+            <span className="text-body-tertiary">
+              {' · '}epoch {blsChange.epoch.toLocaleString()}
+              {blsChange.blockTime != null &&
+                ` · ${whenText(blsChange.blockTime)}`}
+            </span>
+          </span>
+        </Line>
+      )}
       {!vs.blsPubkeySet && (
         <Line label="BLS key" labelWidth={labelWidth}>
           <span

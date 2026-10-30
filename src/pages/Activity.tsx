@@ -4,10 +4,12 @@ import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import {
   CHANGE_KIND,
   ChangeBadge,
+  BLS_FILTER,
   HOST_KINDS,
   ShortAddress,
   changeValue,
   eventTime,
+  isBlsChange,
   isNoopChange,
   softwareLabel,
   voterLabel,
@@ -355,14 +357,18 @@ const Activity = () => {
     return (data?.events ?? []).filter(
       e =>
         !isNoopChange(e) &&
-        (!kind || e.kind === kind) &&
+        (!kind || (kind === BLS_FILTER ? isBlsChange(e) : e.kind === kind)) &&
         (!keys || keys.has(e.voteKey ?? '') || keys.has(e.identity ?? ''))
     );
   }, [data, kind, keyList]);
   // Kinds present in the range, for the filter (in the order defined).
   const kinds = useMemo(() => {
     const seen = new Set((data?.events ?? []).map(e => e.kind));
-    return Object.keys(CHANGE_KIND).filter(k => seen.has(k));
+    const out = Object.keys(CHANGE_KIND).filter(k => seen.has(k));
+    // BLS key changes (voter events) as an option after Voter.
+    if ((data?.events ?? []).some(isBlsChange))
+      out.splice(out.indexOf('voter') + 1, 0, BLS_FILTER);
+    return out;
   }, [data]);
 
   // Failovers paired with their failbacks; hovering one marks its pair.
@@ -436,7 +442,7 @@ const Activity = () => {
             {(kinds.includes(kind) || !kind ? kinds : [...kinds, kind]).map(
               k => (
                 <option key={k} value={k}>
-                  {CHANGE_KIND[k]?.label ?? k}
+                  {k === BLS_FILTER ? 'BLS key' : (CHANGE_KIND[k]?.label ?? k)}
                 </option>
               )
             )}
