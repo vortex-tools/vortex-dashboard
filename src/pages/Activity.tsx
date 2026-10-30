@@ -176,7 +176,7 @@ const columns = (
                 : p?.role === 'back'
                   ? 'Failback'
                   : null;
-          const dimmed = hovered != null && !!p && p.id !== hovered;
+          const dimmed = hovered != null && p?.id !== hovered;
           return (
             <>
               <span
