@@ -3154,8 +3154,8 @@ export const clusterHaltSchema = z.object({
 });
 export type ClusterHaltRunUp = z.infer<typeof clusterHaltSchema>;
 
-// ---- Vote-account changes (/cluster/vote-account-changes,
-// /validators/vote-account-changes) --------------------------------------
+// ---- Vote-account changes (/validators/vote-account-changes; the
+// /cluster/activity feed's) ------------------------------------------------
 // Administrative changes to vote accounts since epoch 1064 (Alpenglow):
 // withdrawer, voter (and BLS key), identity, commissions, collectors,
 // withdrawals and creation. newValue: an address, a rate in bps, a
@@ -3189,15 +3189,6 @@ export const voteAccountChangeSchema = z.object({
   name: validatorNameSchema.optional().catch(null)
 });
 export type VoteAccountChange = z.infer<typeof voteAccountChangeSchema>;
-
-export const clusterVoteAccountChangesSchema = z.object({
-  startEpoch: z.number().nullable().catch(null),
-  endEpoch: z.number().nullable().catch(null),
-  events: z.array(voteAccountChangeSchema).catch([])
-});
-export type ClusterVoteAccountChanges = z.infer<
-  typeof clusterVoteAccountChangesSchema
->;
 
 export const validatorVoteAccountChangesSchema = z.object({
   voteKey: z.string().nullable().catch(null),

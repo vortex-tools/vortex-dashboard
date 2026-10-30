@@ -296,9 +296,7 @@ const columns = (
  * Validator activity, newest first: vote-account changes (withdrawer,
  * voter and BLS key, identity, commissions, collectors, withdrawals, new
  * vote accounts; since Alpenglow, epoch 1064) and host changes
- * (failovers, migrations, software). From /cluster/activity; until the
- * API serves it, /cluster/vote-account-changes (vote-account changes
- * only). Filtered by kind, by validator (name or either key) and by how
+ * (failovers, migrations, software), from /cluster/activity. Filtered by kind, by validator (name or either key) and by how
  * many epochs back, all in the URL (?kind=&validator=&epochs=).
  */
 const Activity = () => {
@@ -321,21 +319,12 @@ const Activity = () => {
       { replace: true }
     );
 
-  // The combined feed; while it 404s, the vote-account changes alone.
-  const activity = context?.clusterActivityState;
-  const fetchActivity = activity?.fetchData;
+  const slice = context?.clusterActivityState;
+  const fetchActivity = slice?.fetchData;
   useEffect(() => {
     fetchActivity?.(epochs);
   }, [fetchActivity, epochs]);
-  const fallback = !!activity?.error && !activity.data.get(epochs);
-  const slice = fallback ? context?.clusterVoteAccountChangesState : activity;
-  const fetchChanges = context?.clusterVoteAccountChangesState.fetchData;
-  useEffect(() => {
-    if (fallback) fetchChanges?.(epochs);
-  }, [fallback, fetchChanges, epochs]);
-  const data = fallback
-    ? context?.clusterVoteAccountChangesState.data.get(epochs)
-    : activity?.data.get(epochs);
+  const data = slice?.data.get(epochs);
 
   // The picked validator (vote or identity key in the URL), as the
   // directory knows it.

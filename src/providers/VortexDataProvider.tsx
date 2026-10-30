@@ -96,8 +96,6 @@ import {
   poolsSchema,
   Pools,
   poolDetailSchema,
-  clusterVoteAccountChangesSchema,
-  ClusterVoteAccountChanges,
   validatorVoteAccountChangesSchema,
   ValidatorVoteAccountChanges,
   clusterActivitySchema,
@@ -825,14 +823,6 @@ const poolRequest = (name: string) => ({
   schema: poolDetailSchema,
   timeout: 20_000
 });
-// Every vote account's changes over the last N epochs (the key); the page
-// filters by kind and validator itself.
-const clusterVoteAccountChangesRequest = (epochs: number) => ({
-  path: '/cluster/vote-account-changes',
-  params: { epochs },
-  schema: clusterVoteAccountChangesSchema,
-  timeout: 20_000
-});
 // Every validator's activity (vote-account and host changes) over the last
 // N epochs: /cluster/activity, requested from vortex-data.
 const clusterActivityRequest = (epochs: number) => ({
@@ -1432,7 +1422,6 @@ interface VortexDataState {
   clusterBlocksState: KeyedSlice<string, ClusterBlocks>;
   poolsState: KeyedSlice<string, Pools>;
   poolState: KeyedSlice<string, PoolDetail>;
-  clusterVoteAccountChangesState: KeyedSlice<number, ClusterVoteAccountChanges>;
   validatorVoteAccountChangesState: KeyedSlice<
     string,
     ValidatorVoteAccountChanges
@@ -1565,10 +1554,6 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: poolRequest,
     toEntries: keyed<string, PoolDetail>()
   });
-  const clusterVoteAccountChangesState = useKeyedSlice({
-    request: clusterVoteAccountChangesRequest,
-    toEntries: keyed<number, ClusterVoteAccountChanges>()
-  });
   const clusterActivityState = useKeyedSlice({
     request: clusterActivityRequest,
     toEntries: keyed<number, ClusterActivity>()
@@ -1694,7 +1679,6 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       clusterBlocksState,
       poolsState,
       poolState,
-      clusterVoteAccountChangesState,
       validatorVoteAccountChangesState,
       clusterActivityState,
       governanceProposalState,
@@ -1745,7 +1729,6 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       clusterBlocksState,
       poolsState,
       poolState,
-      clusterVoteAccountChangesState,
       validatorVoteAccountChangesState,
       clusterActivityState,
       governanceProposalState,

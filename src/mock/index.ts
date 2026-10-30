@@ -199,7 +199,7 @@ const withFields =
     return { ...(await res.json()), ...add(q) };
   };
 
-// ---- vote-account changes (/cluster/vote-account-changes,
+// ---- vote-account changes (/cluster/activity,
 // /validators/vote-account-changes) ---------------------------------------
 
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -340,18 +340,6 @@ const ROUTES: Record<string, Route> = {
     const t = (x: Record<string, unknown>) =>
       Number(x.blockTime ?? x.observedAt ?? 0);
     events.sort((a, b) => t(b) - t(a));
-    return { startEpoch: 1071 - epochs, endEpoch: 1070, events };
-  },
-  '/cluster/vote-account-changes': async q => {
-    const epochs = Math.min(10, Math.max(1, Number(q.get('epochs') ?? 3)));
-    const dir = (await directory()).filter(d => d.voteAddress);
-    const events = [];
-    for (let e = 1070; e > 1070 - epochs; e--) {
-      const r = rng(`changes-${e}`);
-      for (let i = 0; i < 40; i++)
-        events.push(changeEvent(r, dir[Math.floor(r() * dir.length)], e));
-    }
-    events.sort((a, b) => b.slot - a.slot);
     return { startEpoch: 1071 - epochs, endEpoch: 1070, events };
   },
   '/validators/vote-account-changes': async q => {
