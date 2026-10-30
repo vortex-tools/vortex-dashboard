@@ -9,7 +9,10 @@ import { ReactNode } from 'react';
  *  what a leak would cost delegators (the withdrawer, withdrawals). */
 export const CHANGE_KIND: Record<
   string,
-  { label: string; bg: 'warning' | 'info' | 'secondary' | 'primary' }
+  {
+    label: string;
+    bg: 'warning' | 'info' | 'secondary' | 'primary' | 'success';
+  }
 > = {
   withdrawer: { label: 'Withdrawer', bg: 'warning' },
   // Gray, unlike the withdrawer change (amber): a withdrawal is routine
@@ -24,7 +27,8 @@ export const CHANGE_KIND: Record<
   create: { label: 'Created', bg: 'secondary' },
   // Host changes (where and what it runs).
   // A failover's move back reads Failback (paired on the Activity page).
-  failover: { label: 'Failover', bg: 'info' },
+  // Green: its own color, apart from the key changes' info.
+  failover: { label: 'Failover', bg: 'success' },
   migration: { label: 'Migration', bg: 'primary' },
   software: { label: 'Software', bg: 'secondary' }
 };
