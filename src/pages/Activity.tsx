@@ -186,7 +186,11 @@ const columns = (
                   transition: 'filter 120ms, opacity 120ms'
                 }}
               >
-                <ChangeBadge kind={e.kind} label={label} />
+                <ChangeBadge
+                  kind={e.kind}
+                  label={label}
+                  shade={p?.role === 'back'}
+                />
               </span>
               {p && <PairMark p={p} />}
             </>
@@ -299,6 +303,20 @@ const columns = (
  * (failovers, migrations, software), from /cluster/activity. Filtered by kind, by validator (name or either key) and by how
  * many epochs back, all in the URL (?kind=&validator=&epochs=).
  */
+/** The change filter's group options: every on-chain or every host
+ *  change. */
+const ONCHAIN = 'onchain';
+const INFRA = 'infra';
+const matchesKind = (e: ActivityEvent, kind: string) =>
+  !kind ||
+  (kind === ONCHAIN
+    ? !HOST_KINDS.has(e.kind)
+    : kind === INFRA
+      ? HOST_KINDS.has(e.kind)
+      : kind === BLS_FILTER
+        ? isBlsChange(e)
+        : e.kind === kind);
+
 /** A kind's name in the change filter. */
 const kindLabel = (k: string) =>
   k === BLS_FILTER ? 'BLS key' : (CHANGE_KIND[k]?.label ?? k);
@@ -350,7 +368,7 @@ const Activity = () => {
     return (data?.events ?? []).filter(
       e =>
         !isNoopChange(e) &&
-        (!kind || (kind === BLS_FILTER ? isBlsChange(e) : e.kind === kind)) &&
+        matchesKind(e, kind) &&
         (!keys || keys.has(e.voteKey ?? '') || keys.has(e.identity ?? ''))
     );
   }, [data, kind, keyList]);
@@ -438,12 +456,20 @@ const Activity = () => {
               ['Infrastructure', true]
             ].map(([group, host]) => {
               const shown = (
-                kinds.includes(kind) || !kind ? kinds : [...kinds, kind]
+                kinds.includes(kind) ||
+                !kind ||
+                kind === ONCHAIN ||
+                kind === INFRA
+                  ? kinds
+                  : [...kinds, kind]
               )
                 .filter(k => HOST_KINDS.has(k) === host)
                 .sort((x, y) => kindLabel(x).localeCompare(kindLabel(y)));
               return shown.length ? (
                 <optgroup key={String(group)} label={String(group)}>
+                  <option value={host ? INFRA : ONCHAIN}>
+                    All {host ? 'infrastructure' : 'on-chain'}
+                  </option>
                   {shown.map(k => (
                     <option key={k} value={k}>
                       {kindLabel(k)}

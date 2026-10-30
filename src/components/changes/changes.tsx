@@ -109,15 +109,22 @@ const blsOnly = (e: ActivityEvent) =>
 
 export const ChangeBadge = ({
   kind,
-  label
+  label,
+  shade = false
 }: {
   kind: string;
   /** In place of the kind's label (a software change's "Upgrade"). */
   label?: string | null;
+  /** A slightly different shade of the kind's color (a failback beside
+   *  its failover). */
+  shade?: boolean;
 }) => {
   const k = CHANGE_KIND[kind];
   return (
-    <Badge bg={k?.bg ?? 'secondary'} className="text-nowrap">
+    <Badge
+      bg={k?.bg ?? 'secondary'}
+      className={`text-nowrap${shade ? ' badge-soft-shade' : ''}`}
+    >
       {label ?? k?.label ?? kind}
     </Badge>
   );
