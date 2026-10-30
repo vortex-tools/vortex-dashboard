@@ -71,12 +71,12 @@ const TopBlocksCard = ({
           <thead>
             <tr>
               <th>Slot</th>
-              <th className="text-end">Income</th>
+              <th className="text-end">Total</th>
               <th className="text-end d-none d-sm-table-cell">Fees</th>
               <th className="text-end d-none d-sm-table-cell">Tips</th>
               <th
                 className="text-end"
-                title="Its income over the median of other leaders' blocks within 100 slots"
+                title="Its fees over the median of other leaders' blocks within 100 slots"
               >
                 vs Around It
               </th>

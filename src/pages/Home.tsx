@@ -189,7 +189,7 @@ const Home = () => {
             className="text-body-tertiary mb-3 px-2"
             style={{ textWrap: 'balance' }}
           >
-            Solana validator performance, vote quality, and block income.
+            Solana validator performance, vote quality, and fees.
           </p>
           <div className="mx-auto" style={{ maxWidth: '40rem' }}>
             <ValidatorSearch />
@@ -323,9 +323,9 @@ const Home = () => {
               <Col xs={12} md={6}>
                 {blockIncomeTracked ? (
                   <LeaderboardCard
-                    title="Block Income Leaderboard"
-                    description="Validators ranked by median block income this epoch."
-                    linkTo="/leaderboards/block-income"
+                    title="Fees Leaderboard"
+                    description="Validators ranked by their median block\u2019s fees this epoch."
+                    linkTo="/leaderboards/fees"
                     icon="dollar-sign"
                   />
                 ) : (
@@ -385,9 +385,9 @@ const Home = () => {
               </Col>
               <Col xs={12} md={6}>
                 <LeaderboardCard
-                  title="Block Income Leaderboard"
-                  description="Validators ranked by median block income this epoch."
-                  linkTo="/leaderboards/block-income"
+                  title="Fees Leaderboard"
+                  description="Validators ranked by their median block\u2019s fees this epoch."
+                  linkTo="/leaderboards/fees"
                   icon="dollar-sign"
                 />
               </Col>

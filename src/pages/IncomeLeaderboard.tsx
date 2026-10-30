@@ -34,7 +34,7 @@ import EpochIncomeLeaderboardTable, {
 
 const leaderboardBreadcrumbItems: Crumb[] = [
   { label: 'Home', url: '/' },
-  { label: 'Block Income', active: true }
+  { label: 'Fees', active: true }
 ];
 
 interface SelectedEpoch {
@@ -252,9 +252,9 @@ const IncomeLeaderboard = () => {
       <div>
         <PageBreadcrumb items={leaderboardBreadcrumbItems} />
         <div className="mb-9">
-          <h3>Block Income Leaderboard</h3>
+          <h3>Fees Leaderboard</h3>
           <p className="text-body-tertiary lh-sm mb-4 mt-1">
-            Validators ranked by median block income
+            Validators ranked by their median block\u2019s fees
           </p>
           <UntrackedState>{BLOCK_INCOME_UNTRACKED}</UntrackedState>
         </div>
@@ -267,7 +267,7 @@ const IncomeLeaderboard = () => {
       <div className="mb-9">
         <Row className="page-header align-items-start justify-content-between g-3">
           <Col xs="auto">
-            <h3>Block Income Leaderboard</h3>
+            <h3>Fees Leaderboard</h3>
             <p className="text-body-tertiary lh-sm mb-0 mt-1">
               {capture
                 ? 'Validators ranked by what their blocks earn against the blocks around them'
@@ -332,7 +332,7 @@ const IncomeLeaderboard = () => {
             </Col>
             <Col xs={6} md={3}>
               <StatCard
-                label="Block Income"
+                label="Total Fees"
                 value={formatLamports(kpis.totalRevenue, 2)}
                 sublabel="fees + tips, every block this epoch"
               />

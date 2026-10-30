@@ -22,7 +22,7 @@ const ValidatorFees = () => {
         address={address}
         name={identity?.displayName ?? 'Validator'}
         nodeAddress={nodeAddress}
-        tab="block-income"
+        tab="fees"
       />
       <div className="mb-9">
         {unavailable ? (

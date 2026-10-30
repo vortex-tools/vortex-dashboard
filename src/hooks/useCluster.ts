@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 
 /** Empty-state copy wherever block-derived data is missing on testnet. */
-export const BLOCK_INCOME_UNTRACKED = "Block income isn't tracked on testnet.";
+export const BLOCK_INCOME_UNTRACKED = "Fees aren't tracked on testnet.";
 
 /**
  * The cluster the API serves, from /epochs/current (never the hostname).

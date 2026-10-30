@@ -71,10 +71,10 @@ const DEVELOPERS: RouteItems = {
   label: 'developers',
   pages: [{ name: 'Usage', icon: faRobot, path: '/usage' }]
 };
-const BLOCK_INCOME: Route = {
-  name: 'Block Income',
+const FEES: Route = {
+  name: 'Leaderboard',
   icon: 'dollar-sign',
-  path: '/leaderboards/block-income'
+  path: '/leaderboards/fees'
 };
 const TOWER_VOTING: Route = {
   name: 'Voting',
@@ -82,17 +82,17 @@ const TOWER_VOTING: Route = {
   path: '/leaderboards/voting'
 };
 
-/** The nav before Alpenglow: Tower voting and block income as the
+/** The nav before Alpenglow: Tower voting and fees as the
  *  leaderboards. */
 export const routes: RouteItems[] = [
   OVERVIEW,
   { label: 'cluster', pages: clusterPages(false) },
-  { label: 'leaderboards', pages: [TOWER_VOTING, BLOCK_INCOME] },
+  { label: 'leaderboards', pages: [TOWER_VOTING, { ...FEES, name: 'Fees' }] },
   DEVELOPERS
 ];
 
 /** The nav once Alpenglow is on: the consensus leaderboard's three views
- *  listed under Consensus (not a dropdown), block income in a section of
+ *  listed under Consensus (not a dropdown), fees in a section of
  *  its own for now, and Tower voting under Historical. */
 const alpenglowRoutes: RouteItems[] = [
   OVERVIEW,
@@ -120,7 +120,7 @@ const alpenglowRoutes: RouteItems[] = [
       }
     ]
   },
-  { label: 'income', pages: [BLOCK_INCOME] },
+  { label: 'fees', pages: [FEES] },
   { label: 'historical', pages: [{ ...TOWER_VOTING, name: 'Voting (Tower)' }] },
   DEVELOPERS
 ];
@@ -128,7 +128,7 @@ const alpenglowRoutes: RouteItems[] = [
 /**
  * The nav, following the cluster's consensus (see useConsensus): `routes`
  * while Tower is current, `alpenglowRoutes` once Alpenglow is active.
- * Testnet (by the API's cluster) has no block income, no client-upgrade
+ * Testnet (by the API's cluster) has no fees data, no client-upgrade
  * data, governance or stake pools, and only Alpenglow worth showing:
  * those are left out of the nav (their pages still answer direct links).
  */
@@ -145,7 +145,7 @@ export const useNavRoutes = (): RouteItems[] => {
             ...g,
             pages: g.pages.filter(
               r =>
-                r.path !== '/leaderboards/block-income' &&
+                r.path !== '/leaderboards/fees' &&
                 r.path !== '/client-versions' &&
                 r.path !== '/governance' &&
                 r.path !== '/pools' &&

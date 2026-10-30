@@ -76,17 +76,15 @@ const RedirectOldVoteHistoryBucket = () => {
     />
   );
 };
-// The Block Income tab's older URLs: /validator/:a/income (the page
-// before the tabs) and /fees (the tab's first name).
+// The Fees tab's older URLs: /validator/:a/income (the page before the
+// tabs) and /block-income (its name before Fees).
 const ValidatorFeesRedirect = () => {
   const { address } = useParams();
-  return <Navigate to={`/validator/${address}/block-income`} replace />;
+  return <Navigate to={`/validator/${address}/fees`} replace />;
 };
 const RedirectOldIncome = () => {
   const { validatorAddress } = useParams();
-  return (
-    <Navigate to={`/validator/${validatorAddress}/block-income`} replace />
-  );
+  return <Navigate to={`/validator/${validatorAddress}/fees`} replace />;
 };
 const RedirectOldClusterVoteStatsEpoch = () => {
   const { epoch } = useParams();
@@ -132,12 +130,17 @@ const routes: RouteObject[] = [
                 )
               },
               {
-                path: '/leaderboards/block-income',
+                path: '/leaderboards/fees',
                 element: <IncomeLeaderboard />
+              },
+              // Its names before Fees.
+              {
+                path: '/leaderboards/block-income',
+                element: <Navigate to="/leaderboards/fees" replace />
               },
               {
                 path: '/leaderboards/income',
-                element: <Navigate to="/leaderboards/block-income" replace />
+                element: <Navigate to="/leaderboards/fees" replace />
               },
               // The Tower production leaderboard is gone (block production is
               // the Alpenglow producers board). Redirect old links.
@@ -217,14 +220,14 @@ const routes: RouteObject[] = [
                 element: <ValidatorEarningsTab />
               },
               {
-                path: '/validator/:address/block-income',
+                path: '/validator/:address/fees',
                 element: <ValidatorFees />
               },
               {
-                path: '/validator/:address/fees',
+                path: '/validator/:address/block-income',
                 element: <ValidatorFeesRedirect />
               },
-              // The block-income page's URL, before the tabs.
+              // The fees page's URL, before the tabs.
               {
                 path: '/validator/:address/income',
                 element: <ValidatorFeesRedirect />
@@ -281,7 +284,7 @@ const routes: RouteObject[] = [
               },
               {
                 path: '/cluster/income',
-                element: <Navigate to="/leaderboards/block-income" replace />
+                element: <Navigate to="/leaderboards/fees" replace />
               },
               {
                 path: '/vote-stats/:voteAddress',

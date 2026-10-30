@@ -254,7 +254,7 @@ const ProducerLeaderboard = () => {
           <p className="text-body-tertiary">
             Alpenglow isn&apos;t active on this cluster yet
             {phase ? ` (${phase})` : ''}: block production is on the{' '}
-            <Link to="/leaderboards/block-income">income leaderboard</Link>.
+            <Link to="/leaderboards/fees">fees leaderboard</Link>.
           </p>
         </div>
       </div>

@@ -95,7 +95,7 @@ const BlockIncomeSection = ({ nodeAddress }: { nodeAddress: string }) => {
   if (epochIncomeState.error)
     return (
       <p className="fs-9 text-body-tertiary mb-0">
-        Block income couldn&apos;t be loaded just now.
+        Fees couldn&apos;t be loaded just now.
       </p>
     );
 
@@ -109,16 +109,13 @@ const BlockIncomeSection = ({ nodeAddress }: { nodeAddress: string }) => {
   return (
     <PageSection>
       {isLoadingValidator ? (
-        <DelayedSpinner
-          loading={isLoadingValidator}
-          label="Loading block income…"
-        />
+        <DelayedSpinner loading={isLoadingValidator} label="Loading fees…" />
       ) : (
         <div className="d-flex flex-column gap-3">
           <SectionCard
-            title="Block Income History"
+            title="Fees History"
             icon="list"
-            info="Its block income per epoch, newest first. Capture: its typical block against the blocks other leaders made around it (1.00× earns like them). Missed: what its skipped slots would have earned."
+            info="Its fees (and tips) per epoch, newest first. Capture: its typical block against the blocks other leaders made around it (1.00× earns like them). Missed: what its skipped slots would have earned."
           >
             <AdvanceTableProvider {...epochTable}>
               <div className="mx-n3 mb-n3">

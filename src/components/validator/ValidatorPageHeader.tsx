@@ -11,7 +11,7 @@ export type ValidatorTab =
   | 'voting'
   | 'production'
   | 'earnings'
-  | 'block-income'
+  | 'fees'
   | 'staking';
 
 const TABS: Array<{ key: ValidatorTab; label: string }> = [
@@ -19,7 +19,7 @@ const TABS: Array<{ key: ValidatorTab; label: string }> = [
   { key: 'voting', label: 'Voting' },
   { key: 'production', label: 'Production' },
   { key: 'earnings', label: 'Earnings' },
-  { key: 'block-income', label: 'Fees' },
+  { key: 'fees', label: 'Fees' },
   { key: 'staking', label: 'Staking' }
 ];
 
@@ -71,7 +71,7 @@ const ValidatorPageHeader = ({
     t =>
       (alpenglowActive || t.key !== 'production') &&
       (!isTestnet || t.key !== 'staking') &&
-      (blockIncomeTracked || t.key !== 'block-income')
+      (blockIncomeTracked || t.key !== 'fees')
   );
   const to = (t: ValidatorTab) =>
     !alpenglowActive && t === 'voting'

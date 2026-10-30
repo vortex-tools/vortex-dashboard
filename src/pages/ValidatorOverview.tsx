@@ -336,14 +336,14 @@ const ValidatorOverview = () => {
     />,
     <StatCard
       key="income-rank"
-      label="Income Rank"
+      label="Fees Rank"
       value={
         blockIncomeTracked && incomeRank
           ? `#${incomeRank.toLocaleString()}`
           : '—'
       }
       sublabel={blockIncomeTracked ? 'Current epoch' : 'Not tracked on testnet'}
-      linkTo={blockIncomeTracked ? '/leaderboards/block-income' : undefined}
+      linkTo={blockIncomeTracked ? '/leaderboards/fees' : undefined}
     />,
     <StatCard
       key="blocks"
@@ -398,7 +398,7 @@ const ValidatorOverview = () => {
     />,
     <StatCard
       key="median-income"
-      label="Median Block Income"
+      label="Median Block Fees"
       value={
         medianBlockIncome !== undefined
           ? formatLamports(medianBlockIncome, 4)

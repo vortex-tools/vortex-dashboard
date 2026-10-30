@@ -62,7 +62,7 @@ export const SkippedCell = ({
 };
 
 export const MISSED_TITLE =
-  'Estimated income its skipped leader slots cost it: what the blocks other leaders made around them earned';
+  'Estimated fees its skipped leader slots cost it: what the blocks other leaders made around them earned';
 
 /** What its skipped slots would have earned (lamports): the blocks other
  *  leaders made around them, summed - the income the skips cost it. */
@@ -178,7 +178,7 @@ export const createIncomeLeaderboardTableColumns = (
               return <span className="fw-semibold">Cluster</span>;
             }
             return (
-              <Link to={`/validator/${row.original.nodeAddress}/block-income`}>
+              <Link to={`/validator/${row.original.nodeAddress}/fees`}>
                 {row.original.nodeName || row.original.nodeAddress}
               </Link>
             );
@@ -228,7 +228,7 @@ export const createIncomeLeaderboardTableColumns = (
             cellProps: { className: 'text-body text-end' },
             headerProps: {
               className: 'text-end',
-              title: 'Leader slots with no block: income it never earned'
+              title: 'Leader slots with no block: fees it never earned'
             }
           }
         },
@@ -316,7 +316,7 @@ export const createIncomeLeaderboardTableColumns = (
             cellProps: { className: 'text-body' },
             headerProps: {
               title:
-                'Its epoch income over its blocks: counts the big blocks the median leaves out'
+                'Its epoch fees over its blocks: counts the big blocks the median leaves out'
             }
           }
         },
@@ -324,7 +324,7 @@ export const createIncomeLeaderboardTableColumns = (
           id: 'epochTotal',
           accessorFn: row =>
             sumKeys(row.totalIncome, ['baseFees', 'priorityFees', 'mevTips']),
-          header: 'Epoch Income',
+          header: 'Epoch Fees',
           cell: ({ getValue, row }) =>
             isCluster(row.original) ? (
               <Dash />
@@ -396,7 +396,7 @@ export const createIncomeLeaderboardTableColumns = (
               return <span className="fw-semibold">Cluster</span>;
             }
             return (
-              <Link to={`/validator/${row.original.nodeAddress}/block-income`}>
+              <Link to={`/validator/${row.original.nodeAddress}/fees`}>
                 {row.original.nodeName || row.original.nodeAddress}
               </Link>
             );
@@ -446,7 +446,7 @@ export const createIncomeLeaderboardTableColumns = (
             cellProps: { className: 'text-body text-end' },
             headerProps: {
               className: 'text-end',
-              title: 'Leader slots with no block: income it never earned'
+              title: 'Leader slots with no block: fees it never earned'
             }
           }
         },
@@ -489,7 +489,7 @@ export const createIncomeLeaderboardTableColumns = (
             cellProps: { className: 'text-body' },
             headerProps: {
               title:
-                'Its epoch income over its blocks: counts the big blocks the median leaves out'
+                'Its epoch fees over its blocks: counts the big blocks the median leaves out'
             }
           }
         },
@@ -532,7 +532,7 @@ export const createIncomeLeaderboardTableColumns = (
           id: 'epochTotal',
           accessorFn: row =>
             sumKeys(row.totalIncome, ['baseFees', 'priorityFees', 'mevTips']),
-          header: 'Epoch Income',
+          header: 'Epoch Fees',
           cell: ({ getValue, row }) =>
             isCluster(row.original) ? (
               <Dash />

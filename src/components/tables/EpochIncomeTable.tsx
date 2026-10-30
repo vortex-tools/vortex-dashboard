@@ -76,7 +76,7 @@ export const createEpochIncomeTableColumns = (
         cellProps: { className: 'text-body text-end' },
         headerProps: {
           className: 'text-end',
-          title: 'Leader slots with no block: income it never earned'
+          title: 'Leader slots with no block: fees it never earned'
         }
       }
     },
@@ -119,7 +119,7 @@ export const createEpochIncomeTableColumns = (
         cellProps: { className: 'text-body' },
         headerProps: {
           title:
-            'Its epoch income over its blocks: counts the big blocks the median leaves out'
+            'Its epoch fees over its blocks: counts the big blocks the median leaves out'
         }
       }
     },
@@ -161,7 +161,7 @@ export const createEpochIncomeTableColumns = (
     {
       id: 'epochTotal',
       accessorFn: row => total(row.totalIncome),
-      header: 'Epoch Income',
+      header: 'Epoch Fees',
       cell: ({ getValue }) => (
         <span className="font-monospace">
           {formatLamports(getValue<number>(), 2)}

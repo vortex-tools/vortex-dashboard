@@ -20,7 +20,7 @@ const breadcrumbItems: Crumb[] = [
 
 const EXAMPLE_PROMPTS = [
   'Which validators had the highest vote accuracy in the most recent epoch?',
-  'Compare the block income of two validators over the last 10 epochs.',
+  'Compare the fees of two validators over the last 10 epochs.',
   'Show me the worst-performing validators by missed credits this epoch.'
 ];
 
@@ -83,7 +83,7 @@ const Usage = () => {
             </div>
             <p className="text-body-tertiary fs-9 mb-0">
               Paste the URL into Claude or ChatGPT and ask about validator vote
-              quality, block income, or rankings.
+              quality, fees, or rankings.
             </p>
           </div>
         </Col>
