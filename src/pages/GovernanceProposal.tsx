@@ -57,7 +57,7 @@ const OV_PAGE = 10;
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const when = (unixS: number | null | undefined) =>
   unixS
-    ? new Date(unixS * 1000).toLocaleString(undefined, {
+    ? new Date(unixS * 1000).toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -709,7 +709,7 @@ const GovernanceProposal = () => {
                         p.creationTimestamp &&
                           new Date(
                             p.creationTimestamp * 1000
-                          ).toLocaleDateString()
+                          ).toLocaleDateString('en-US')
                       ]
                         .filter(Boolean)
                         .join(' · ') || '—'

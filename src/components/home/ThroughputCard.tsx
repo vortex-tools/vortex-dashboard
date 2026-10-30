@@ -601,7 +601,7 @@ const ThroughputCard = ({
           {filling != null && shown !== 'tps' && (
             <p className="fs-10 text-body-tertiary mb-0 mt-1">
               Collecting since{' '}
-              {new Date(filling * 1000).toLocaleTimeString(undefined, {
+              {new Date(filling * 1000).toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit'
               })}

@@ -2,6 +2,7 @@ import Badge from 'components/base/Badge';
 import SectionCard from 'components/common/SectionCard';
 import {
   announcementTitle,
+  isSuperseded,
   postedWhen,
   summary
 } from 'components/features/announcements';
@@ -109,7 +110,11 @@ const HomeAnnouncements = () => {
       if (a.kind === 'restart') {
         if (a.restart?.finished !== true && (!!halt || postedThisEpoch(a)))
           out.push(post(a, 0));
-      } else if (a.kind === 'upgrade' || a.kind === 'downgrade') {
+      } else if (
+        (a.kind === 'upgrade' || a.kind === 'downgrade') &&
+        // Replaced by a later post for the same client.
+        !isSuperseded(a, announcements ?? [])
+      ) {
         // Its title opens the Versions page (who has moved yet); the
         // post beside it. Testnet has no Versions page: the post.
         // A test run (everyone switching lines as an exercise) is still

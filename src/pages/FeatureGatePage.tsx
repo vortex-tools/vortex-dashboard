@@ -32,7 +32,7 @@ import { Link, useParams } from 'react-router';
 
 const when = (unixS: number | null | undefined) =>
   unixS
-    ? new Date(unixS * 1000).toLocaleString(undefined, {
+    ? new Date(unixS * 1000).toLocaleString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

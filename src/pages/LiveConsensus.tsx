@@ -20,7 +20,9 @@ import RestartAnnouncementCard from 'components/live/RestartAnnouncementCard';
 import RestartCard from 'components/live/RestartCard';
 import useRestartAnnouncement from 'hooks/useRestartAnnouncement';
 import useAnnouncements from 'hooks/useAnnouncements';
-import AnnouncementsTable from 'components/features/announcements';
+import AnnouncementsTable, {
+  isSuperseded
+} from 'components/features/announcements';
 import { formatDuration as duration } from 'helpers/utils';
 import { clusterHaltOf, useEpochLive } from 'hooks/useIngestion';
 import useLiveConsensus from 'hooks/useLiveConsensus';
@@ -148,9 +150,10 @@ const LiveConsensus = () => {
   const halt = clusterHaltOf(live, now);
   const restartPost = useRestartAnnouncement(halt);
   const announcements = useAnnouncements();
-  // A restart the cluster has finished is history: not listed here.
+  // A restart the cluster has finished is history, and so is an upgrade
+  // a later post for the same client replaced: not listed here.
   const current = (announcements ?? []).filter(
-    a => a.restart?.finished !== true
+    a => a.restart?.finished !== true && !isSuperseded(a, announcements ?? [])
   );
   const chainTip =
     p?.absoluteSlot != null

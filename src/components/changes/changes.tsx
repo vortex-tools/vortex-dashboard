@@ -265,7 +265,7 @@ export const whenText = (unixS: number | null) => {
   const secs = Date.now() / 1000 - unixS;
   if (secs < 3600) return `${Math.max(1, Math.round(secs / 60))} min ago`;
   if (secs < 86_400) return `${Math.round(secs / 3600)} h ago`;
-  return new Date(unixS * 1000).toLocaleDateString(undefined, {
+  return new Date(unixS * 1000).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric'
   });

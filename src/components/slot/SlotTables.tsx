@@ -202,7 +202,7 @@ export const OverviewTable = ({
         ms != null && {
           label: ag?.footer?.producerTimeNanos ? 'Produced' : 'Block time',
           icon: 'clock',
-          title: `${new Date(ms).toLocaleString()} local${clamp ? `. SIMD-0363 clamped this block's time to ${clamp === 'floor' ? "parent + 1 ns: its producer's clock is behind" : "the ceiling: its producer's clock is ahead"}.` : ''}`,
+          title: `${new Date(ms).toLocaleString('en-US')} local${clamp ? `. SIMD-0363 clamped this block's time to ${clamp === 'floor' ? "parent + 1 ns: its producer's clock is behind" : "the ceiling: its producer's clock is ahead"}.` : ''}`,
           value: (
             <>
               <span className="font-monospace">{utc(ms)}</span>

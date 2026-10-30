@@ -49,7 +49,7 @@ const EpochProgressSublabel = ({
   const title = [
     `slot ${progress.slotIndex.toLocaleString()} of ${progress.slotsInEpoch.toLocaleString()}`,
     !halted && progress.estimatedEndTime != null
-      ? `ends around ${new Date(progress.estimatedEndTime * 1000).toLocaleString()}`
+      ? `ends around ${new Date(progress.estimatedEndTime * 1000).toLocaleString('en-US')}`
       : null,
     freshness(ingestion, sources)?.title
   ]

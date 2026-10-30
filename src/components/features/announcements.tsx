@@ -13,14 +13,19 @@ export const ANNOUNCEMENT_KIND: Record<string, string> = {
   other: 'Announcement'
 };
 
-export const postedWhen = (unixS: number) =>
-  new Date(unixS * 1000).toLocaleString(undefined, {
-    year: 'numeric',
+/** "Oct 31, 12:07 AM" (the year too when it isn't this one). */
+export const postedWhen = (unixS: number) => {
+  const d = new Date(unixS * 1000);
+  return d.toLocaleString('en-US', {
+    ...(d.getFullYear() !== new Date().getFullYear()
+      ? { year: 'numeric' }
+      : {}),
     month: 'short',
     day: 'numeric',
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit'
   });
+};
 
 /** Which client a version is: Firedancer's are calendar versions
  *  ("26.10.4"), Agave's semver ("4.4.0-rc.1"). */
@@ -56,13 +61,34 @@ export const isCandidate = (a: Announcement) =>
     (a.versions.length > 0 && a.versions.every(v => /-rc\b/i.test(v))));
 
 /** "for 10% of stake" once the API reads the post's target, else that a
- *  release candidate is for some of the stake. */
+ *  release candidate is for some of the stake; a release (not a
+ *  candidate, not a test) is for every validator. */
 const candidateText = (a: Announcement) =>
-  a.stakeTarget != null
+  a.stakeTarget != null && a.stakeTarget < 1
     ? `for ${Math.round(a.stakeTarget * 100)}% of stake`
     : isCandidate(a)
       ? 'release candidate: for some of the stake, not all'
-      : null;
+      : a.kind === 'upgrade' && !a.testRun
+        ? 'ready for all validators'
+        : null;
+
+/** A test run stands apart; any other upgrade or downgrade post is
+ *  replaced by a later one for the same client (4.4.0-rc.1 for 10% of
+ *  stake, then for 20%, then 4.4.0 for everyone: only the last matters). */
+export const isSuperseded = (a: Announcement, all: Announcement[]) => {
+  if ((a.kind !== 'upgrade' && a.kind !== 'downgrade') || a.testRun)
+    return false;
+  const clients = clientsOf(a);
+  return all.some(
+    b =>
+      b !== a &&
+      b.cluster === a.cluster &&
+      (b.kind === 'upgrade' || b.kind === 'downgrade') &&
+      !b.testRun &&
+      b.postedAt > a.postedAt &&
+      clientsOf(b).some(c => clients.includes(c))
+  );
+};
 
 /** "Agave upgrade" (or "Agave upgrade candidate", "Agave downgrade"): an
  *  upgrade or downgrade post's kind, with its client when it names only

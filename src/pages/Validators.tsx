@@ -268,7 +268,7 @@ const Validators = () => {
                 value={kpis.validators.toLocaleString()}
                 sublabel={
                   summary
-                    ? `epoch ${summary.epoch} · as of ${new Date(summary.asOf * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                    ? `epoch ${summary.epoch} · as of ${new Date(summary.asOf * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
                     : undefined
                 }
               />

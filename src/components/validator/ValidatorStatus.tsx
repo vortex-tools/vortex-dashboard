@@ -1359,7 +1359,7 @@ export const ValidatorNotices = ({
   const boxStyle = { flex: '1 1 auto', minWidth: 0 };
   const asOf = status && (
     <span className="text-body-tertiary fs-10 ms-auto">
-      as of {new Date(status.asOf * 1000).toLocaleTimeString()}
+      as of {new Date(status.asOf * 1000).toLocaleTimeString('en-US')}
     </span>
   );
   // Nothing to say (all checks pass) or still loading: no card. Without a

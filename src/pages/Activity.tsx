@@ -129,7 +129,7 @@ const columns = (
       return t != null ? (
         <span
           className="text-body-tertiary"
-          title={new Date(t * 1000).toLocaleString()}
+          title={new Date(t * 1000).toLocaleString('en-US')}
         >
           {whenText(t)}
         </span>
