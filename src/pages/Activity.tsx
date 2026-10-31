@@ -318,8 +318,8 @@ const matchesKind = (e: ActivityEvent, kind: string) =>
         ? isBlsChange(e)
         : e.kind === kind);
 
-/** Identity withdrawals under this many SOL are routine payments, hidden
- *  by default. */
+/** Identity withdrawals under this many SOL are routine payments: not
+ *  listed. */
 const SMALL_SOL = 1;
 
 const isSmall = (e: ActivityEvent) => {
@@ -373,27 +373,23 @@ const Activity = () => {
   const keyList = picked
     ? [validator, picked.voteAddress, picked.nodeAddress].join(' ')
     : '';
-  // Identity withdrawals under SMALL_SOL (routine operator payments) are
-  // left out unless asked for (?small=1); counted when they are.
-  const showSmall = params.get('small') === '1';
-  const { events, smallHidden } = useMemo(() => {
+  // Identity withdrawals under SMALL_SOL (routine operator payments)
+  // are left out: noise next to the rest.
+  const events = useMemo(() => {
     const keys = keyList ? new Set(keyList.split(' ')) : null;
-    const shown = (data?.events ?? []).filter(
+    return (data?.events ?? []).filter(
       e =>
         !isNoopChange(e) &&
+        !isSmall(e) &&
         matchesKind(e, kind) &&
         (!keys || keys.has(e.voteKey ?? '') || keys.has(e.identity ?? ''))
     );
-    const small = shown.filter(isSmall);
-    return {
-      events: showSmall ? shown : shown.filter(e => !small.includes(e)),
-      smallHidden: showSmall ? 0 : small.length
-    };
-  }, [data, kind, keyList, showSmall]);
-  const anySmall = (data?.events ?? []).some(isSmall);
+  }, [data, kind, keyList]);
   // Kinds present in the range, for the filter (in the order defined).
   const kinds = useMemo(() => {
-    const seen = new Set((data?.events ?? []).map(e => e.kind));
+    const seen = new Set(
+      (data?.events ?? []).filter(e => !isSmall(e)).map(e => e.kind)
+    );
     const out = Object.keys(CHANGE_KIND).filter(k => seen.has(k));
     // BLS key changes (voter events) as an option of their own.
     if ((data?.events ?? []).some(isBlsChange)) out.push(BLS_FILTER);
@@ -516,16 +512,6 @@ const Activity = () => {
               </option>
             ))}
           </Form.Select>
-          {anySmall && (
-            <Form.Check
-              type="switch"
-              id="activity-small-withdrawals"
-              className="mb-0 fs-9"
-              label={`Withdrawals under ◎${SMALL_SOL}${smallHidden ? ` (${smallHidden.toLocaleString()} hidden)` : ''}`}
-              checked={showSmall}
-              onChange={e => set('small', e.target.checked ? '1' : '')}
-            />
-          )}
           {data?.startEpoch != null && data.endEpoch != null && (
             <span className="fs-10 text-body-tertiary ms-auto">
               Epochs {data.startEpoch.toLocaleString()}–
