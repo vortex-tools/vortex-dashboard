@@ -1,6 +1,6 @@
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { z } from 'zod';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // /cluster/blocks/recent: the block ingestor's newest blocks, slot
 // ascending (skipped slots absent), served from memory. Block time is
@@ -31,54 +31,70 @@ const POLL_MS = 2_000;
  *  again this rarely. */
 const ABSENT_RETRY_MS = 5 * 60_000;
 
+// One poller for every card that reads them (Live TPS and Fees per
+// Minute share it): blocks held here, listeners told on each change.
+let held: RecentBlock[] | null = null;
+const listeners = new Set<(b: RecentBlock[] | null) => void>();
+let stopPoll: (() => void) | null = null;
+
+const startPoll = () => {
+  let stop = false;
+  let t: ReturnType<typeof setTimeout>;
+  const poll = async () => {
+    let next = POLL_MS;
+    if (document.visibilityState !== 'hidden') {
+      const after = held?.length ? held[held.length - 1].slot : null;
+      const params = new URLSearchParams({ slots: String(KEEP) });
+      if (after != null) params.set('afterSlot', String(after));
+      try {
+        const res = await fetch(
+          `${API_ENDPOINT}/cluster/blocks/recent?${params}`,
+          { signal: AbortSignal.timeout(10_000) }
+        );
+        if (res.status === 404) next = ABSENT_RETRY_MS;
+        else if (res.ok) {
+          const { blocks: got } = recentBlocksSchema.parse(await res.json());
+          if (!stop && got.length) {
+            held = [
+              ...(held ?? []).filter(b => b.slot < got[0].slot),
+              ...got
+            ].slice(-KEEP);
+            for (const l of listeners) l(held);
+          }
+        }
+      } catch {
+        // Transient: the next poll tries again.
+      }
+    }
+    if (!stop) t = setTimeout(poll, next);
+  };
+  poll();
+  return () => {
+    stop = true;
+    clearTimeout(t);
+  };
+};
+
 /**
  * The cluster's newest blocks, kept up to date: the last KEEP on the
  * first read, then every 2 s only those after the newest held (afterSlot),
- * while the tab is visible. Null until there are any (or where the
- * endpoint doesn't exist).
+ * while the tab is visible - one poll however many cards read them,
+ * running while any does. Null until there are any (or where the endpoint
+ * doesn't exist).
  */
 const useRecentBlocks = (enabled = true): RecentBlock[] | null => {
-  const [blocks, setBlocks] = useState<RecentBlock[] | null>(null);
-  const ref = useRef<RecentBlock[] | null>(null);
-  ref.current = blocks;
+  const [blocks, setBlocks] = useState<RecentBlock[] | null>(held);
   useEffect(() => {
     if (!enabled) return;
-    let stop = false;
-    let t: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      let next = POLL_MS;
-      if (document.visibilityState !== 'hidden') {
-        const have = ref.current;
-        const after = have?.length ? have[have.length - 1].slot : null;
-        const params = new URLSearchParams({ slots: String(KEEP) });
-        if (after != null) params.set('afterSlot', String(after));
-        try {
-          const res = await fetch(
-            `${API_ENDPOINT}/cluster/blocks/recent?${params}`,
-            { signal: AbortSignal.timeout(10_000) }
-          );
-          if (res.status === 404) next = ABSENT_RETRY_MS;
-          else if (res.ok) {
-            const { blocks: got } = recentBlocksSchema.parse(await res.json());
-            if (!stop && got.length)
-              setBlocks(prev => {
-                const merged = [
-                  ...(prev ?? []).filter(b => b.slot < got[0].slot),
-                  ...got
-                ];
-                return merged.slice(-KEEP);
-              });
-          }
-        } catch {
-          // Transient: the next poll tries again.
-        }
-      }
-      if (!stop) t = setTimeout(poll, next);
-    };
-    poll();
+    listeners.add(setBlocks);
+    setBlocks(held);
+    if (!stopPoll) stopPoll = startPoll();
     return () => {
-      stop = true;
-      clearTimeout(t);
+      listeners.delete(setBlocks);
+      if (!listeners.size && stopPoll) {
+        stopPoll();
+        stopPoll = null;
+      }
     };
   }, [enabled]);
   return blocks;

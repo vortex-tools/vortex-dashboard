@@ -254,7 +254,7 @@ const IncomeLeaderboard = () => {
         <div className="mb-9">
           <h3>Fees Leaderboard</h3>
           <p className="text-body-tertiary lh-sm mb-4 mt-1">
-            Validators ranked by their median block\u2019s fees
+            Validators ranked by their median block’s fees
           </p>
           <UntrackedState>{BLOCK_INCOME_UNTRACKED}</UntrackedState>
         </div>

@@ -841,7 +841,8 @@ const validatorVoteAccountChangesRequest = (identity: string) => ({
 // Announcements by cluster ('' = both).
 const announcementsRequest = (cluster: string) => ({
   path: '/announcements',
-  params: cluster ? { cluster, limit: 50 } : { limit: 50 },
+  // Both clusters' (''): twice the posts, so neither crowds the other out.
+  params: cluster ? { cluster, limit: 50 } : { limit: 100 },
   schema: announcementsSchema,
   timeout: 20_000
 });

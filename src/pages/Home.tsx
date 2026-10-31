@@ -15,10 +15,74 @@ import { Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router';
 import { EpochProgress } from 'providers/vortex-schemas';
 import {
+  FEATURES_KEY,
+  GOVERNANCE_KEY,
   IDEAL_RECORD_KEY,
   VALIDATOR_STATUS_SUMMARY_KEY,
   VortexDataContext
 } from 'providers/VortexDataProvider';
+import ChartSkeleton from 'components/common/ChartSkeleton';
+import { ALL_ANNOUNCEMENTS } from 'hooks/useAnnouncements';
+
+/** Longest the live cards wait for the reads that decide the layout. */
+const SETTLE_MAX_MS = 3_000;
+
+/** The live cards' stand-in while the layout is decided: a card's
+ *  outline, a title bar and a chart skeleton, at about its height. */
+const PlaceholderCard = () => (
+  <div className="bg-body-emphasis rounded border border-translucent p-3 h-100">
+    <div className="placeholder-glow mb-3">
+      <span className="placeholder col-4 rounded bg-body-secondary" />
+    </div>
+    <ChartSkeleton height={150} />
+  </div>
+);
+
+/**
+ * Whether the reads that decide which live cards show, and where, are in:
+ * the cluster (testnet has no versions or fees), its client versions, and
+ * what the Announcements card would list (posts, feature gates,
+ * governance). Started here so they run together from the first render;
+ * true after SETTLE_MAX_MS whatever is still out, or once an answer is an
+ * error.
+ */
+const useHomeLayoutSettled = () => {
+  const context = useContext(VortexDataContext);
+  const versions = context?.clusterVersionsState;
+  const features = context?.featuresState;
+  const governance = context?.governanceProposalsState;
+  const announcements = context?.announcementsState;
+  const fetchVersions = versions?.fetchData;
+  const fetchFeatures = features?.fetchData;
+  const fetchGovernance = governance?.fetchData;
+  const fetchAnnouncements = announcements?.fetchData;
+  useEffect(() => {
+    fetchVersions?.(10);
+    fetchFeatures?.(FEATURES_KEY);
+    fetchGovernance?.(GOVERNANCE_KEY);
+    fetchAnnouncements?.(ALL_ANNOUNCEMENTS);
+  }, [fetchVersions, fetchFeatures, fetchGovernance, fetchAnnouncements]);
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), SETTLE_MAX_MS);
+    return () => clearTimeout(t);
+  }, []);
+  const epoch = context?.currentEpochState;
+  const testnet = epoch?.cluster === 'testnet';
+  const done = <K, T>(
+    x: { data: Map<K, T>; error: string | null } | undefined,
+    key: K
+  ) => !!x && (x.data.has(key) || !!x.error);
+  return (
+    timedOut ||
+    (!!epoch &&
+      (epoch.epoch != null || !!epoch.error) &&
+      (testnet || done(versions, 10)) &&
+      done(features, FEATURES_KEY) &&
+      (testnet || done(governance, GOVERNANCE_KEY)) &&
+      done(announcements, ALL_ANNOUNCEMENTS))
+  );
+};
 
 /** Don't run the estimate on further than this past the last reading. */
 const SLOT_TICK_MAX_MS = 120_000;
@@ -175,6 +239,9 @@ const Home = () => {
   // Halted: the halted chain's last slot (the epoch reading can show the
   // restart snapshot's slot once our node has restarted onto it).
   const tickingSlot = useTickingSlot(live.progress, !!halt);
+  // The live cards wait for the reads that place them, then come in
+  // together (stand-ins until then), rather than one by one.
+  const settled = useHomeLayoutSettled();
   const currentSlot = halt ? halt.slot : tickingSlot;
 
   return (
@@ -285,26 +352,53 @@ const Home = () => {
           </Col>
         </Row>
 
-        <HomeAnnouncements />
-        {/* Live Slots | Client Diversity, then Live TPS | Fees per Minute;
+        {settled && <HomeAnnouncements />}
+        {/* Until settled the live cards load unseen, at full width (so
+            their charts size right), under stand-ins of the same grid. */}
+        <div className="position-relative">
+          {!settled && (
+            <Row className="g-3 mb-3">
+              {[0, 1, 2, 3].map(i => (
+                <Col key={i} xs={12} lg={6}>
+                  <PlaceholderCard />
+                </Col>
+              ))}
+            </Row>
+          )}
+          {/* Live Slots | Client Diversity, then Live TPS | Fees per Minute;
             either takes the row when its partner has nothing to show
             (testnet: no versions yet, no block income). */}
-        <Row className="g-3 mb-3">
-          <Col xs={12} lg={hasDiversity ? 6 : 12}>
-            <SlotStrip />
-          </Col>
-          <Col xs={12} lg={6} className={hasDiversity ? undefined : 'd-none'}>
-            <ClientDiversityCard compact />
-          </Col>
-          <Col xs={12} lg={blockIncomeTracked ? 6 : 12}>
-            <ThroughputCard metrics={['tps', 'cu']} compact />
-          </Col>
-          {blockIncomeTracked && (
-            <Col xs={12} lg={6}>
-              <ThroughputCard metrics={['income']} compact />
+          <Row
+            className="g-3 mb-3"
+            style={
+              settled
+                ? undefined
+                : {
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    visibility: 'hidden'
+                  }
+            }
+            aria-hidden={!settled || undefined}
+          >
+            <Col xs={12} lg={hasDiversity ? 6 : 12}>
+              <SlotStrip />
             </Col>
-          )}
-        </Row>
+            <Col xs={12} lg={6} className={hasDiversity ? undefined : 'd-none'}>
+              <ClientDiversityCard compact />
+            </Col>
+            <Col xs={12} lg={blockIncomeTracked ? 6 : 12}>
+              <ThroughputCard metrics={['tps', 'cu']} compact />
+            </Col>
+            {blockIncomeTracked && (
+              <Col xs={12} lg={6}>
+                <ThroughputCard metrics={['income']} compact />
+              </Col>
+            )}
+          </Row>
+        </div>
 
         {/* Leaderboard quick-launch. On Alpenglow clusters the consensus
             leaderboard leads (Tower voting is historical); without block
@@ -324,7 +418,7 @@ const Home = () => {
                 {blockIncomeTracked ? (
                   <LeaderboardCard
                     title="Fees Leaderboard"
-                    description="Validators ranked by their median block\u2019s fees this epoch."
+                    description="Validators ranked by their median block’s fees this epoch."
                     linkTo="/leaderboards/fees"
                     icon="dollar-sign"
                   />
@@ -386,7 +480,7 @@ const Home = () => {
               <Col xs={12} md={6}>
                 <LeaderboardCard
                   title="Fees Leaderboard"
-                  description="Validators ranked by their median block\u2019s fees this epoch."
+                  description="Validators ranked by their median block’s fees this epoch."
                   linkTo="/leaderboards/fees"
                   icon="dollar-sign"
                 />
