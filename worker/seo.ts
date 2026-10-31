@@ -17,6 +17,7 @@
  */
 
 import {
+  ARCHIVE,
   BASE58,
   Crumb,
   FeatureFacts,
@@ -111,6 +112,8 @@ const head = (env: SeoEnv, origin: string, meta: Meta, fullTitle: string) => {
   }
   if (meta.noindex || !indexable(env))
     tags.push(`<meta name="robots" content="noindex" />`);
+  else if (meta.archive)
+    tags.push(`<meta name="robots" content="noindex, follow" />`);
   if (meta.crumbs)
     tags.push(
       jsonLd({
@@ -300,7 +303,9 @@ const sitemap = async (env: SeoEnv, origin: string, part: string) => {
   if (part === 'pages')
     return urlset(
       origin,
-      Object.keys(STATIC).filter(p => !(isTestnet(env) && MAINNET_ONLY.has(p)))
+      Object.keys(STATIC).filter(
+        p => !ARCHIVE.has(p) && !(isTestnet(env) && MAINNET_ONLY.has(p))
+      )
     );
   if (part === 'validators') {
     const d = await api<{ validators: Array<{ voteAddress: string | null }> }>(

@@ -48,6 +48,9 @@ export interface Meta {
   /** Extra summary paragraphs (plain text). */
   facts?: string[];
   noindex?: boolean;
+  /** A real page kept out of search results (noindex, follow: its links
+   *  still count): epoch archives and the historical Tower boards. */
+  archive?: boolean;
   status?: number;
 }
 
@@ -79,6 +82,13 @@ export const sections = (env: Site): Crumb[] =>
     { name: 'Activity', path: '/activity' },
     { name: 'API and AI usage', path: '/usage' }
   ].filter(c => !(isTestnet(env) && MAINNET_ONLY.has(c.path)));
+
+/** Fixed pages served but kept out of search: the TowerBFT-era voting
+ *  boards (historical; pre-Alpenglow metrics). Not in the sitemap. */
+export const ARCHIVE = new Set([
+  '/leaderboards/voting',
+  '/leaderboards/voting/compare'
+]);
 
 /** Fixed pages: [title, description, crumb name]. */
 export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
@@ -317,9 +327,11 @@ const validatorMeta = (
   // The tabs' epoch views (voting/epoch/N, votes/epoch/N[/bucket/B]).
   const epoch =
     parts[1] === 'epoch' && /^\d+$/.test(parts[2] ?? '') ? parts[2] : null;
-  const bucket = epoch && parts[3] === 'bucket' && /^\d+$/.test(parts[4] ?? '');
+  const bucket =
+    epoch && parts[3] === 'bucket' && /^\d+$/.test(parts[4] ?? '')
+      ? parts[4]
+      : null;
   if (parts.length > (bucket ? 5 : epoch ? 3 : 1)) return MISSING;
-  if (bucket) return PASS;
 
   const vote = s?.voteAccount ?? address;
   const name = s?.info?.name?.trim() || short(vote);
@@ -342,12 +354,16 @@ const validatorMeta = (
     );
   }
   facts.push(`Identity ${s?.identity ?? 'unknown'}, vote account ${vote}.`);
-  const title = tab.title(name) + (epoch ? ` (epoch ${epoch})` : '');
+  const title =
+    tab.title(name) +
+    (epoch ? ` (epoch ${epoch}${bucket ? `, bucket ${bucket}` : ''})` : '');
   const description = `${facts[0] ?? `${name} is a ${solana(env)} validator.`} On Vortex: ${tab.about}${epoch ? ` in epoch ${epoch}` : ''}.`;
   return {
     title,
     description,
-    canonical: epoch ? `${tabPath}/epoch/${epoch}` : tabPath,
+    canonical: epoch
+      ? `${tabPath}/epoch/${epoch}${bucket ? `/bucket/${bucket}` : ''}`
+      : tabPath,
     h1: name,
     facts,
     crumbs: [
@@ -363,7 +379,10 @@ const validatorMeta = (
     // A key the live directory doesn't know (a validator that left, or a
     // typo) still renders its stored history in the app: keep it out of
     // the index but serve it.
-    noindex: !s
+    noindex: !s,
+    // Per-epoch views (hundreds per validator) and the TowerBFT history:
+    // served and followed, but the tab itself is what ranks.
+    archive: !!epoch || tab.seg === 'votes'
   };
 };
 
@@ -685,7 +704,8 @@ export const pageMeta = (
       title,
       description,
       canonical,
-      crumbs: path === '/' ? undefined : [HOME, { name: crumb, path }]
+      crumbs: path === '/' ? undefined : [HOME, { name: crumb, path }],
+      archive: ARCHIVE.has(path)
     };
   }
 
@@ -704,7 +724,10 @@ export const pageMeta = (
         HOME,
         { name: c, path: '/leaderboards/consensus' },
         { name: `Epoch ${m[1]}`, path }
-      ]
+      ],
+      // Hundreds of near-identical epoch pages nobody searches for: the
+      // current board ranks, these pass their links on.
+      archive: true
     };
   }
   if ((m = path.match(/^\/leaderboards\/voting\/epoch\/(\d+)$/))) {
@@ -716,7 +739,8 @@ export const pageMeta = (
         HOME,
         { name: 'Voting (Tower)', path: '/leaderboards/voting' },
         { name: `Epoch ${m[1]}`, path }
-      ]
+      ],
+      archive: true
     };
   }
   if (isTestnet(env) && /^\/(pool|governance)\//.test(path)) return PASS;
