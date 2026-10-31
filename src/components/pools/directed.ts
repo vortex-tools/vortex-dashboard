@@ -51,8 +51,9 @@ const CHOOSER_LABEL: Record<Chooser, string> = {
   protocol: 'protocols',
   pool: 'the pool',
   matching: 'matching',
-  // Validators' bids (Marinade's auction; bSOL votes bought on Votex).
-  bought: 'bought'
+  // Validators' bids (Marinade's auction; bSOL votes bought on Votex),
+  // shown as paid stake.
+  bought: 'paid'
 };
 export type ByChooser = Record<Chooser, number>;
 const none = (): ByChooser => ({
@@ -123,7 +124,8 @@ export const choosersLine = (b: ByChooser) => {
   const total = sumBy(b);
   const parts = CHOOSERS.filter(c => b[c] > 0).sort((x, y) => b[y] - b[x]);
   if (!total || !parts.length) return '';
-  if (parts.length === 1) return `by ${CHOOSER_LABEL[parts[0]]}`;
+  if (parts.length === 1)
+    return parts[0] === 'bought' ? 'paid' : `by ${CHOOSER_LABEL[parts[0]]}`;
   return parts
     .map(c => `${CHOOSER_LABEL[c]} ${Math.round((b[c] / total) * 100)}%`)
     .join(' · ');
@@ -143,7 +145,7 @@ const KIND_LABEL: Record<string, string> = {
   user: 'Holders',
   gauge: 'Gauge vote',
   matching: 'Matching',
-  bought: 'Bought'
+  bought: 'Paid'
 };
 const ATTRIBUTION: Record<string, string> = {
   onchain: 'on-chain',
