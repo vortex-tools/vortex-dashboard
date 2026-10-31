@@ -3280,7 +3280,29 @@ const tipPathSchema = z.object({
   stakers: n,
   commissionBps: n,
   builder: z.string().nullable().optional().catch(null),
-  source: z.string().nullable().optional().catch(null)
+  source: z.string().nullable().optional().catch(null),
+  // On chain: the epoch's distribution account (jitoTips / priority
+  // fees), the merkle-root upload, the claims (the validator's own, and
+  // how many in all) and the priority-fee funding transfers. null until
+  // recorded.
+  tipDistributionAccount: z.string().nullable().optional().catch(null),
+  priorityFeeDistributionAccount: z.string().nullable().optional().catch(null),
+  merkleRootUploadTx: z.string().nullable().optional().catch(null),
+  claimTxs: z
+    .object({
+      validator: z.string().nullable().optional().catch(null),
+      count: z.number().nullable().optional().catch(null),
+      total: z.number().nullable().optional().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  fundingTxs: z
+    .array(z.object({ signature: z.string(), lamports: z.number() }))
+    .nullable()
+    .optional()
+    .catch(null),
+  fundingTxCount: z.number().nullable().optional().catch(null)
 });
 export type TipPath = z.infer<typeof tipPathSchema>;
 export const validatorTipsSchema = z.object({
@@ -3333,7 +3355,21 @@ export const validatorTipBlocksSchema = z.object({
         time: z.number().nullable().catch(null),
         baseFees: z.number().catch(0),
         priorityFees: z.number().catch(0),
-        mevTips: z.number().catch(0)
+        mevTips: z.number().catch(0),
+        // The block's tip transfers (largest first, at most 10) and how
+        // many there were; null for blocks before they were recorded.
+        tipTxs: z
+          .array(
+            z.object({
+              signature: z.string(),
+              lamports: z.number(),
+              tipAccount: z.string().nullable().optional().catch(null)
+            })
+          )
+          .nullable()
+          .optional()
+          .catch(null),
+        tipTxCount: z.number().nullable().optional().catch(null)
       })
     )
     .catch([])

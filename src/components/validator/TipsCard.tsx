@@ -1,7 +1,7 @@
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import DelayedSpinner from 'components/common/DelayedSpinner';
-import { explorerBlock } from 'helpers/explorer';
+import { explorerAddress, explorerBlock, explorerTx } from 'helpers/explorer';
 import { formatLamports } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -10,6 +10,9 @@ import { Fragment, useContext, useEffect, useState } from 'react';
 import { Table } from 'react-bootstrap';
 
 type Epoch = ValidatorTips['epochs'][number];
+
+/** Tip transactions linked per block (the rest counted). */
+const TXS_SHOWN = 3;
 
 /** Blocks listed when an epoch is opened, most tips first. */
 const BLOCKS_FIRST = 20;
@@ -30,8 +33,60 @@ const sol = (lamports: number | null | undefined) =>
 const bps = (b: number | null | undefined) =>
   b == null ? null : `${(b / 100).toLocaleString('en-US')}%`;
 
+/** The epoch's distribution on chain, as explorer links: its account,
+ *  the merkle root's upload, the validator's commission claim, and how
+ *  many claims were made. Each where the API has it. */
+const OnChainLine = ({
+  jito,
+  isTestnet
+}: {
+  jito: TipPath;
+  isTestnet: boolean;
+}) => {
+  const link = (href: string, label: string, title?: string) => (
+    <a href={href} target="_blank" rel="noreferrer" title={title}>
+      {label} ↗
+    </a>
+  );
+  const parts = [
+    jito.tipDistributionAccount &&
+      link(
+        explorerAddress(jito.tipDistributionAccount, isTestnet),
+        'Distribution account',
+        jito.tipDistributionAccount
+      ),
+    jito.merkleRootUploadTx &&
+      link(
+        explorerTx(jito.merkleRootUploadTx, isTestnet),
+        'Merkle root upload'
+      ),
+    jito.claimTxs?.validator &&
+      link(explorerTx(jito.claimTxs.validator, isTestnet), 'Commission claim'),
+    jito.claimTxs?.count != null &&
+      `${jito.claimTxs.count.toLocaleString()} claims${
+        jito.claimTxs.total != null ? ` (${sol(jito.claimTxs.total)})` : ''
+      }`
+  ].filter(Boolean);
+  return parts.length ? (
+    <div className="d-flex flex-wrap column-gap-3 row-gap-1 fs-10 mb-2">
+      {parts.map((p, i) => (
+        <span key={i}>{p}</span>
+      ))}
+    </div>
+  ) : null;
+};
+
 /** An epoch's blocks with their tips: each links to it in the explorer. */
-const TipBlocks = ({ voteKey, epoch }: { voteKey: string; epoch: number }) => {
+const TipBlocks = ({
+  voteKey,
+  epoch,
+  jito
+}: {
+  voteKey: string;
+  epoch: number;
+  /** The epoch's jitoTips path: its accounts and transactions. */
+  jito?: TipPath;
+}) => {
   const context = useContext(VortexDataContext);
   const { isTestnet } = useCluster();
   const key = `${voteKey}:${epoch}`;
@@ -53,20 +108,27 @@ const TipBlocks = ({ voteKey, epoch }: { voteKey: string; epoch: number }) => {
     .filter(b => b.mevTips > 0)
     .sort((a, b) => b.mevTips - a.mevTips);
   const shown = all ? tipped : tipped.slice(0, BLOCKS_FIRST);
+  const hasTxs = tipped.some(b => b.tipTxs?.length);
+  const onChain = jito && <OnChainLine jito={jito} isTestnet={isTestnet} />;
   if (!tipped.length)
     return (
-      <p className="fs-9 text-body-tertiary mb-0">
-        No Jito tips in its {data.blocks.length.toLocaleString()} blocks.
-      </p>
+      <>
+        {onChain}
+        <p className="fs-9 text-body-tertiary mb-0">
+          No Jito tips in its {data.blocks.length.toLocaleString()} blocks.
+        </p>
+      </>
     );
   return (
     <>
+      {onChain}
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
           <tr>
             <th>Block</th>
             <th>When</th>
             <th className="text-end">Jito tips</th>
+            {hasTxs && <th>Tip txs</th>}
             <th className="text-end">Priority fees</th>
           </tr>
         </thead>
@@ -94,6 +156,32 @@ const TipBlocks = ({ voteKey, epoch }: { voteKey: string; epoch: number }) => {
                   : '—'}
               </td>
               <td className="text-end font-monospace">{sol(b.mevTips)}</td>
+              {hasTxs && (
+                <td className="text-nowrap">
+                  {(b.tipTxs ?? []).slice(0, TXS_SHOWN).map(t => (
+                    <a
+                      key={t.signature}
+                      href={explorerTx(t.signature, isTestnet)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-monospace fs-10 me-2"
+                      title={`${sol(t.lamports)} tip`}
+                    >
+                      {t.signature.slice(0, 6)}… ↗
+                    </a>
+                  ))}
+                  {(b.tipTxCount ?? 0) >
+                    Math.min(TXS_SHOWN, b.tipTxs?.length ?? 0) && (
+                    <span className="text-body-tertiary fs-10">
+                      +
+                      {(
+                        (b.tipTxCount ?? 0) -
+                        Math.min(TXS_SHOWN, b.tipTxs?.length ?? 0)
+                      ).toLocaleString()}
+                    </span>
+                  )}
+                </td>
+              )}
               <td className="text-end font-monospace text-body-tertiary">
                 {sol(b.priorityFees)}
               </td>
@@ -239,7 +327,7 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
                   {isOpen && (
                     <tr>
                       <td colSpan={7} className="bg-body-highlight">
-                        <TipBlocks voteKey={voteKey} epoch={e.epoch} />
+                        <TipBlocks voteKey={voteKey} epoch={e.epoch} jito={j} />
                       </td>
                     </tr>
                   )}
