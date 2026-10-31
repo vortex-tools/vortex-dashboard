@@ -78,11 +78,20 @@ const head = (env: SeoEnv, origin: string, meta: Meta, fullTitle: string) => {
     `<meta property="og:title" content="${esc(fullTitle)}" />`,
     `<meta property="og:description" content="${esc(meta.description)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
-    `<meta name="twitter:card" content="summary" />`,
+    `<meta name="twitter:card" content="${meta.noindex ? 'summary' : 'summary_large_image'}" />`,
     `<meta name="twitter:site" content="@vxtools" />`,
     `<meta name="twitter:title" content="${esc(fullTitle)}" />`,
     `<meta name="twitter:description" content="${esc(meta.description)}" />`
   ];
+  if (!meta.noindex) {
+    const image = `${origin}${ogImagePath(meta.canonical)}`;
+    tags.push(
+      `<meta property="og:image" content="${esc(image)}" />`,
+      `<meta property="og:image:width" content="1200" />`,
+      `<meta property="og:image:height" content="630" />`,
+      `<meta name="twitter:image" content="${esc(image)}" />`
+    );
+  }
   if (meta.noindex || !indexable(env))
     tags.push(`<meta name="robots" content="noindex" />`);
   if (meta.crumbs)
@@ -169,6 +178,10 @@ export const metaFor = async (
       : undefined
   });
 };
+
+/** The page's card image (worker/index.tsx renders /og/<path>.png). */
+export const ogImagePath = (canonical: string) =>
+  `/og${canonical === '/' ? '/index' : canonical.split('?')[0]}.png`;
 
 /** index.html for this request, with the page's tags and summary. */
 const renderPage = async (

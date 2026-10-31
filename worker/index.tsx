@@ -21,7 +21,7 @@ import {
   cardVersion,
   readinessView
 } from '../src/helpers/alpenglowClient';
-import { seo } from './seo';
+import { metaFor, seo } from './seo';
 
 interface Env {
   ASSETS: { fetch: (req: Request) => Promise<Response> };
@@ -278,6 +278,103 @@ const Card = ({
   </div>
 );
 
+/** A page's card (/og/<page path>.png): its title and description, from
+ *  the same tags the page serves (worker/seo.ts). */
+const PageCard = ({
+  title,
+  subtitle,
+  site
+}: {
+  title: string;
+  subtitle: string;
+  site: string;
+}) => (
+  <div
+    style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      background: `linear-gradient(135deg, ${C.bg} 0%, #2a1452 100%)`,
+      color: C.text,
+      padding: '56px 64px',
+      fontFamily: 'Nunito Sans'
+    }}
+  >
+    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', fontSize: 30, fontWeight: 800 }}>
+        <span style={{ color: C.purple }}>vortex</span>
+      </div>
+      <div style={{ display: 'flex', fontSize: 26, color: C.muted }}>
+        {site}
+      </div>
+    </div>
+    <div
+      style={{
+        display: 'flex',
+        marginTop: 'auto',
+        fontSize: title.length > 60 ? 54 : title.length > 32 ? 64 : 76,
+        fontWeight: 900,
+        lineHeight: 1.1
+      }}
+    >
+      {title}
+    </div>
+    <div
+      style={{
+        display: 'flex',
+        marginTop: 24,
+        marginBottom: 'auto',
+        fontSize: 30,
+        lineHeight: 1.35,
+        color: C.muted
+      }}
+    >
+      {subtitle.length > 190
+        ? `${subtitle.slice(0, 190).replace(/[\s,.:;]+\S*$/, '')}…`
+        : subtitle}
+    </div>
+  </div>
+);
+
+const NUNITO = () => [
+  new GoogleFont('Nunito Sans', { weight: 400 }),
+  new GoogleFont('Nunito Sans', { weight: 700 }),
+  new GoogleFont('Nunito Sans', { weight: 800 }),
+  new GoogleFont('Nunito Sans', { weight: 900 })
+];
+
+/** /og/<page path>.png: the card of a page that has tags (404 otherwise).
+ *  Cached per URL for a day. */
+const ogCard = async (req: Request, env: Env, ctx: ExecutionContext) => {
+  const url = new URL(req.url);
+  const m = url.pathname.match(/^\/og(\/.*)\.png$/);
+  if (!m) return null;
+  const edge = caches.default;
+  const hit = await edge.match(req);
+  if (hit) return hit;
+  const path = m[1] === '/index' ? '/' : m[1];
+  const meta = await metaFor(env, path, url.search);
+  if (typeof meta === 'string' || meta.noindex)
+    return new Response('no card', { status: 404 });
+  cache.setExecutionContext(ctx);
+  const img = await ImageResponse.async(
+    <PageCard
+      title={meta.h1 ?? meta.title}
+      // A validator / pool: its facts (stake, client, location) under its
+      // name; other pages: the description under the title.
+      subtitle={(meta.h1 && meta.facts?.[0]) || meta.description}
+      site={url.host}
+    />,
+    { width: 1200, height: 630, fonts: NUNITO() }
+  );
+  const headers = new Headers(img.headers);
+  headers.set('cache-control', 'public, max-age=86400');
+  const res = new Response(img.body, { status: 200, headers });
+  ctx.waitUntil(edge.put(req, res.clone()));
+  return res;
+};
+
 const page = (origin: string, identity: string, s: Status | null) => {
   const r = s ? readiness(s) : null;
   const title = r
@@ -324,7 +421,11 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext) {
     if (!new URL(req.url).pathname.startsWith('/share/')) {
       try {
-        return (await seo(req, env)) ?? (await env.ASSETS.fetch(req));
+        return (
+          (await ogCard(req, env, ctx)) ??
+          (await seo(req, env)) ??
+          (await env.ASSETS.fetch(req))
+        );
       } catch (e) {
         // Tags are a bonus: on any failure serve the page as it is.
         console.error('seo: failed', String(e), (e as Error)?.stack);
@@ -380,12 +481,7 @@ const handle = async (req: Request, env: Env, ctx: ExecutionContext) => {
     {
       width: 1200,
       height: 630,
-      fonts: [
-        new GoogleFont('Nunito Sans', { weight: 400 }),
-        new GoogleFont('Nunito Sans', { weight: 700 }),
-        new GoogleFont('Nunito Sans', { weight: 800 }),
-        new GoogleFont('Nunito Sans', { weight: 900 })
-      ]
+      fonts: NUNITO()
     }
   );
   const headers = new Headers(img.headers);

@@ -53,7 +53,7 @@ staging.vx.tools and testnet.vx.tools builds.
 - All data comes through `src/providers/VortexDataProvider.tsx`; every API
   response is validated with Zod (`src/providers/vortex-schemas.ts`).
 - A small Cloudflare Worker (`worker/`) serves each page with its own title,
-  description, canonical URL and a short summary for crawlers
+  description, canonical URL, card image and a short summary for crawlers
   (`worker/seo.ts`, sharing `src/helpers/pageMeta.ts` with the app), plus
   robots.txt, sitemaps and llms.txt, and renders share cards; JS, CSS and
   icons are static assets.
