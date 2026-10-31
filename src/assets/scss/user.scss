@@ -429,6 +429,7 @@ th.leaderboard-sticky-col {
     padding-top: 0.65rem;
     padding-bottom: 0.65rem;
     // The subtitle always starts on its own line under the title.
+    h1 + p,
     h3 + p {
       line-height: 1.3;
       flex-basis: 100%;
@@ -452,12 +453,14 @@ th.leaderboard-sticky-col {
 }
 .page-header,
 .validator-title {
+  h1,
   h2,
   h3 {
     display: inline;
     font-size: 1.25rem;
     margin: 0;
   }
+  h1 + p,
   h3 + p {
     display: inline;
     margin: 0 !important;

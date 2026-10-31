@@ -403,7 +403,7 @@ const Activity = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col-auto">
-          <h3>Validator Activity</h3>
+          <h1 className="h3">Validator Activity</h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             Key, commission and collector changes, withdrawals, failovers and
             migrations

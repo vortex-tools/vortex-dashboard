@@ -262,7 +262,7 @@ const Home = () => {
       <div className="mb-9">
         {/* Search, then the cluster at a glance. */}
         <div className="text-center pt-5 mt-3 mb-4">
-          <h2 className="mb-1">Vortex</h2>
+          <h1 className="h2 mb-1">Vortex</h1>
           {/* Padded and balanced, so a phone splits it into two even lines
               rather than leaving "income." alone. */}
           <p

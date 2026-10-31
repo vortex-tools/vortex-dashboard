@@ -690,7 +690,7 @@ const Decentralization = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col-auto">
-          <h3>Decentralization</h3>
+          <h1 className="h3">Decentralization</h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             How spread out the cluster&apos;s stake is
           </p>

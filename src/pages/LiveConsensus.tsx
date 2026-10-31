@@ -529,7 +529,7 @@ const LiveConsensus = () => {
   const header = (
     <Row className="page-header align-items-start justify-content-between g-3">
       <Col xs="auto">
-        <h3>Cluster Status</h3>
+        <h1 className="h3">Cluster Status</h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
           The cluster&apos;s latest slots as they happen
         </p>

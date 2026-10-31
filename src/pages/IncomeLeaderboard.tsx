@@ -252,7 +252,7 @@ const IncomeLeaderboard = () => {
       <div>
         <PageBreadcrumb items={leaderboardBreadcrumbItems} />
         <div className="mb-9">
-          <h3>Fees Leaderboard</h3>
+          <h1 className="h3">Fees Leaderboard</h1>
           <p className="text-body-tertiary lh-sm mb-4 mt-1">
             Validators ranked by their median block’s fees
           </p>
@@ -267,7 +267,7 @@ const IncomeLeaderboard = () => {
       <div className="mb-9">
         <Row className="page-header align-items-start justify-content-between g-3">
           <Col xs="auto">
-            <h3>Fees Leaderboard</h3>
+            <h1 className="h3">Fees Leaderboard</h1>
             <p className="text-body-tertiary lh-sm mb-0 mt-1">
               {capture
                 ? 'Validators ranked by what their blocks earn against the blocks around them'

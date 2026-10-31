@@ -26,7 +26,7 @@ const ConsensusHeader = ({
 }) => (
   <Row className="page-header align-items-end justify-content-between g-3">
     <Col xs="auto">
-      <h3>Consensus Leaderboard</h3>
+      <h1 className="h3">Consensus Leaderboard</h1>
       <p className="text-body-tertiary lh-sm mb-0 mt-1">{SUBTITLE[view]}</p>
     </Col>
     <Col xs="auto">

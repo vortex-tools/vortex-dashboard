@@ -264,7 +264,7 @@ const SlotPage = () => {
         <div className="mb-9">
           <Row className="page-header align-items-end justify-content-between g-3">
             <Col xs="auto">
-              <h3>Slot {valid ? slot.toLocaleString() : '—'}</h3>
+              <h1 className="h3">Slot {valid ? slot.toLocaleString() : '—'}</h1>
             </Col>
             <Col xs="auto">{nav}</Col>
           </Row>
@@ -449,13 +449,13 @@ const SlotHeader = ({
     <Row className="page-header align-items-end justify-content-between g-3">
       <Col xs="auto">
         {/* A slot that produced a block is that block's page. */}
-        <h3>
+        <h1 className="h3">
           {page.alpenglow?.outcome === 'block' ||
           (!page.alpenglow && page.tower?.isSkipped === false)
             ? 'Block'
             : 'Slot'}{' '}
           {page.slot.toLocaleString()}
-        </h3>
+        </h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">{subtitle}</p>
       </Col>
       <Col xs="auto">{nav}</Col>

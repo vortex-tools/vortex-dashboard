@@ -37,7 +37,7 @@ const Usage = () => {
         >
           <FontAwesomeIcon icon={faRobot} size="2x" />
         </div>
-        <h2 className="mb-2">Use Vortex with AI</h2>
+        <h1 className="h2 mb-2">Use Vortex with AI</h1>
         <p
           className="text-body-tertiary mb-0 mx-auto"
           style={{ maxWidth: '36rem' }}

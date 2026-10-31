@@ -9,7 +9,7 @@ const Error404 = () => (
     >
       404
     </p>
-    <h2 className="mb-3">Nothing here</h2>
+    <h1 className="h2 mb-3">Nothing here</h1>
     <p className="text-body-tertiary mb-4" style={{ maxWidth: '28rem' }}>
       That page doesn&apos;t exist - the link may be old, or the address
       mistyped.

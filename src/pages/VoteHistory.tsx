@@ -671,9 +671,9 @@ const VoteHistory = () => {
       <PageBreadcrumb items={breadcrumbItems} />
       <Row className="page-header align-items-start justify-content-between g-3">
         <Col xs="auto">
-          <h3>
+          <h1 className="h3">
             {bucket === undefined ? 'Vote Record' : 'Detailed Vote Record'}
-          </h3>
+          </h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             {bucket === undefined
               ? 'Vote performance relative to optimal inclusion'

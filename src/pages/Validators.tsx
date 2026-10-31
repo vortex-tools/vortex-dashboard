@@ -294,7 +294,7 @@ const Validators = () => {
       <div className="mb-9">
         <Row className="page-header align-items-start justify-content-between g-3">
           <Col xs="auto">
-            <h3>Validators</h3>
+            <h1 className="h3">Validators</h1>
             <p className="text-body-tertiary lh-sm mb-0 mt-1">
               Operational status of every staked validator
             </p>

@@ -470,7 +470,7 @@ const GovernanceProposal = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col">
-          <h3>{proposalName(p)}</h3>
+          <h1 className="h3">{proposalName(p)}</h1>
         </div>
         <div className="col-auto d-flex flex-wrap align-items-center gap-2">
           <PhaseBadge phase={p.phase} />

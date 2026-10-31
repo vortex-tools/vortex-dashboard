@@ -280,7 +280,7 @@ const ClusterVoteStats = () => {
       <div className="mb-9">
         <Row className="align-items-start justify-content-between mt-1 mb-4 g-3">
           <Col xs="auto">
-            <h3>Voting Leaderboard</h3>
+            <h1 className="h3">Voting Leaderboard</h1>
             <p className="text-body-tertiary lh-sm mb-0 mt-1">
               Validators ranked by earned vote credits
               {validatorCount !== undefined && (

@@ -758,12 +758,12 @@ const StakePool = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col">
-          <h3 className="d-flex align-items-center gap-2">
+          <h1 className="h3 d-flex align-items-center gap-2">
             {data.name}
             <span className="fs-10">
               <AdmissionBadge admission={data.info?.admission} />
             </span>
-          </h3>
+          </h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">{data.fullName}</p>
           {/* Curated: who runs it and how it picks validators. */}
           {data.info?.description && (

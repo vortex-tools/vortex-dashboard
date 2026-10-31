@@ -45,7 +45,7 @@ const Governance = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col-auto">
-          <h3>Governance</h3>
+          <h1 className="h3">Governance</h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             Solana governance proposals and how validators voted
           </p>

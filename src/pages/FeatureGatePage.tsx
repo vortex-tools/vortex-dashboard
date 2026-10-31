@@ -154,7 +154,7 @@ const FeatureGatePage = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col">
-          <h3>{featureName(f)}</h3>
+          <h1 className="h3">{featureName(f)}</h1>
           {f.name && f.title && f.name !== f.title && (
             <p className="text-body-tertiary lh-sm mb-0 mt-1">{f.name}</p>
           )}

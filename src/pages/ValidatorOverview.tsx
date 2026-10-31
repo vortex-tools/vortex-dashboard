@@ -315,7 +315,7 @@ const ValidatorOverview = () => {
             size={32}
             className="text-body-tertiary mb-3"
           />
-          <h3 className="mb-2">Validator not found</h3>
+          <h1 className="h3 mb-2">Validator not found</h1>
           <p className="text-body-tertiary mb-1">
             No validator with the address{' '}
             <span className="font-monospace text-break">{address}</span>

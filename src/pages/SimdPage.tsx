@@ -170,10 +170,10 @@ const SimdPage = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col">
-          <h3>
+          <h1 className="h3">
             {simdLabel(s.simd)}
             {title && `: ${title}`}
-          </h3>
+          </h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
             {[
               s.authors.join(', '),
