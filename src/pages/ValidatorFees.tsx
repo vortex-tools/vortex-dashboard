@@ -1,5 +1,4 @@
 import BlockIncomeSection from 'components/validator/BlockIncomeSection';
-import TipsCard from 'components/validator/TipsCard';
 import UntrackedState from 'components/common/UntrackedState';
 import useConsensus from 'hooks/useConsensus';
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
@@ -29,14 +28,7 @@ const ValidatorFees = () => {
         {unavailable ? (
           <UntrackedState>The API is unavailable right now.</UntrackedState>
         ) : (
-          nodeAddress && (
-            <div className="d-flex flex-column gap-3">
-              <BlockIncomeSection nodeAddress={nodeAddress} />
-              {identity?.voteAddress && (
-                <TipsCard voteKey={identity.voteAddress} />
-              )}
-            </div>
-          )
+          nodeAddress && <BlockIncomeSection nodeAddress={nodeAddress} />
         )}
       </div>
     </div>
