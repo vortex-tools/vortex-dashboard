@@ -20,6 +20,7 @@ import {
   BASE58,
   Crumb,
   FeatureFacts,
+  MAINNET_ONLY,
   MISSING,
   MOVED,
   Meta,
@@ -289,16 +290,17 @@ const urlset = (origin: string, paths: string[]) =>
 const SITEMAPS = ['pages', 'validators', 'pools', 'features', 'simds'] as const;
 
 const sitemap = async (env: SeoEnv, origin: string, part: string) => {
+  // Testnet has no stake pool pages.
+  const parts = SITEMAPS.filter(p => !(isTestnet(env) && p === 'pools'));
+  if (!(parts as string[]).includes(part) && part !== 'index') return null;
   if (part === 'index')
-    return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${SITEMAPS.map(
-      s => `<sitemap><loc>${origin}/sitemap-${s}.xml</loc></sitemap>`
-    ).join('\n')}\n</sitemapindex>\n`;
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${parts
+      .map(s => `<sitemap><loc>${origin}/sitemap-${s}.xml</loc></sitemap>`)
+      .join('\n')}\n</sitemapindex>\n`;
   if (part === 'pages')
     return urlset(
       origin,
-      Object.keys(STATIC).filter(
-        p => !(isTestnet(env) && p === '/leaderboards/fees')
-      )
+      Object.keys(STATIC).filter(p => !(isTestnet(env) && MAINNET_ONLY.has(p)))
     );
   if (part === 'validators') {
     const d = await api<{ validators: Array<{ voteAddress: string | null }> }>(
@@ -363,7 +365,7 @@ const llms = (env: SeoEnv, origin: string) => {
   const api = env.API_BASE;
   return `# ${brand(env)}
 
-> ${brand(env)} (${origin}) shows how ${s} validators perform under Alpenglow consensus: vote participation, block production, block income, earnings, stake, decentralization and governance, per validator and per epoch. All of it comes from a free, read-only JSON API at ${api} (no key); its full reference is ${api}/llms.txt.
+> ${brand(env)} (${origin}) shows how ${s} validators perform under Alpenglow consensus: vote participation, block production, fees, earnings, stake, decentralization and governance, per validator and per epoch. All of it comes from a free, read-only JSON API at ${api} (no key); its full reference is ${api}/llms.txt.
 
 ## API
 

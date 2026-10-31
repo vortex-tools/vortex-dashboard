@@ -53,29 +53,38 @@ export interface Meta {
 
 export const HOME: Crumb = { name: 'Home', path: '/' };
 
+/** Pages testnet.vx.tools leaves out of its nav (src/sitemap.tsx
+ *  useNavRoutes: no fees, client-upgrade, governance or pool data there):
+ *  no tags, no sitemap entry and no summary link on testnet. */
+export const MAINNET_ONLY = new Set([
+  '/leaderboards/fees',
+  '/client-versions',
+  '/governance',
+  '/pools'
+]);
+
 /** The main sections, linked from every summary. */
-export const sections = (env: Site): Crumb[] => [
-  { name: 'Consensus leaderboard', path: '/leaderboards/consensus' },
-  ...(isTestnet(env)
-    ? []
-    : [{ name: 'Block income leaderboard', path: '/leaderboards/fees' }]),
-  { name: 'Validators', path: '/validators' },
-  { name: 'Stake pools', path: '/pools' },
-  { name: 'Decentralization', path: '/decentralization' },
-  { name: 'Client versions', path: '/client-versions' },
-  { name: 'Cluster status', path: '/status' },
-  { name: 'Governance', path: '/governance' },
-  { name: 'Feature gates', path: '/features' },
-  { name: 'SIMDs', path: '/simds' },
-  { name: 'Activity', path: '/activity' },
-  { name: 'API and AI usage', path: '/usage' }
-];
+export const sections = (env: Site): Crumb[] =>
+  [
+    { name: 'Consensus leaderboard', path: '/leaderboards/consensus' },
+    { name: 'Fees leaderboard', path: '/leaderboards/fees' },
+    { name: 'Validators', path: '/validators' },
+    { name: 'Stake pools', path: '/pools' },
+    { name: 'Decentralization', path: '/decentralization' },
+    { name: 'Client versions', path: '/client-versions' },
+    { name: 'Cluster status', path: '/status' },
+    { name: 'Governance', path: '/governance' },
+    { name: 'Feature gates', path: '/features' },
+    { name: 'SIMDs', path: '/simds' },
+    { name: 'Activity', path: '/activity' },
+    { name: 'API and AI usage', path: '/usage' }
+  ].filter(c => !(isTestnet(env) && MAINNET_ONLY.has(c.path)));
 
 /** Fixed pages: [title, description, crumb name]. */
 export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
   '/': env => [
     `${solana(env)} validator data under Alpenglow`,
-    `How ${solana(env)} validators perform under Alpenglow consensus: vote participation, block production, block income, earnings, stake, decentralization and governance, per validator and per epoch. Free, no account, with a public API.`,
+    `How ${solana(env)} validators perform under Alpenglow consensus: vote participation, block production, fees, earnings, stake, decentralization and governance, per validator and per epoch. Free, no account, with a public API.`,
     'Home'
   ],
   '/leaderboards/consensus': env => [
@@ -84,9 +93,9 @@ export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
     'Consensus leaderboard'
   ],
   '/leaderboards/fees': env => [
-    `${solana(env)} block income leaderboard: fees and tips per block`,
-    `${solana(env)} validators ranked by block income: base fees, priority fees and tips per block, compared with the blocks other leaders made around them, and what skipped slots cost.`,
-    'Block income leaderboard'
+    `${solana(env)} fees leaderboard: fees and tips per block`,
+    `${solana(env)} validators ranked by the fees their blocks earn: base fees, priority fees and tips per block, compared with the blocks other leaders made around them, and what skipped slots cost.`,
+    'Fees leaderboard'
   ],
   '/leaderboards/voting': env => [
     `${solana(env)} TowerBFT voting leaderboards (historical)`,
@@ -233,7 +242,7 @@ const VALIDATOR_TABS: Array<{
     name: 'Overview',
     title: n => `${n}: Solana validator`,
     about:
-      'Alpenglow voting and block production, block income, earnings and stake history',
+      'Alpenglow voting and block production, fees, earnings and stake history',
     testnet: true
   },
   {
@@ -261,10 +270,10 @@ const VALIDATOR_TABS: Array<{
   },
   {
     seg: 'fees',
-    name: 'Block income',
-    title: n => `${n}: block income, fees and tips`,
+    name: 'Fees',
+    title: n => `${n}: fees and tips per block`,
     about:
-      'its block income: fees and tips per block, capture against nearby leaders, and skipped slots',
+      'the fees and tips its blocks earn, capture against nearby leaders, and skipped slots',
     testnet: false
   },
   {
@@ -664,7 +673,7 @@ export const pageMeta = (
 
   const fixed = STATIC[path];
   if (fixed) {
-    if (path === '/leaderboards/fees' && isTestnet(env)) return PASS;
+    if (isTestnet(env) && MAINNET_ONLY.has(path)) return PASS;
     const [title, description, crumb] = fixed(env);
     // The consensus board's views are different content: keep ?view=.
     const view = new URLSearchParams(search).get('view');
@@ -710,6 +719,7 @@ export const pageMeta = (
       ]
     };
   }
+  if (isTestnet(env) && /^\/(pool|governance)\//.test(path)) return PASS;
   if ((m = path.match(/^\/pool\/([^/]+)$/)))
     return poolMeta(env, decodeURIComponent(m[1]), facts.pool);
   if ((m = path.match(/^\/simd\/([^/]+)$/))) {
