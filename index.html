@@ -8,6 +8,17 @@
     <meta name="description" content="How Solana validators perform under Alpenglow: voting, block production, block income, stake and decentralization." />
     <link rel="manifest" href="/manifest.json" />
     <title>%VITE_APP_TITLE%</title>
+    <!-- The Worker puts a plain summary of the page in #root for crawlers
+         that don't run JavaScript; with JavaScript the app replaces it, so
+         it's hidden until then rather than flashing unstyled. -->
+    <script>
+      document.documentElement.classList.add('js');
+    </script>
+    <style>
+      .js [data-seo-summary] {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
