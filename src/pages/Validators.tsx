@@ -26,7 +26,7 @@ import {
   VortexDataContext
 } from 'providers/VortexDataProvider';
 import { ChangeEvent, useContext, useEffect, useMemo, useState } from 'react';
-import { Col, Form, Row } from 'react-bootstrap';
+import { ButtonGroup, Col, Form, Row, ToggleButton } from 'react-bootstrap';
 
 const breadcrumbItems: Crumb[] = [
   { label: 'Home', url: '/' },
@@ -249,10 +249,15 @@ const Validators = () => {
     [totalStake, showActiveFrom, versionOf]
   );
 
-  const [delinquentOnly, setDelinquentOnly] = useState(false);
+  // All of them, the active ones (delinquent left out), or the
+  // delinquent ones.
+  const [show, setShow] = useState<'all' | 'active' | 'delinquent'>('all');
   const tableData = useMemo(
-    () => rows.filter(r => !delinquentOnly || r.delinquent),
-    [rows, delinquentOnly]
+    () =>
+      rows.filter(r =>
+        show === 'all' ? true : show === 'active' ? !r.delinquent : r.delinquent
+      ),
+    [rows, show]
   );
 
   const table = useAdvanceTable({
@@ -264,7 +269,7 @@ const Validators = () => {
     selection: false,
     getRowId: row => row.identity,
     // Toggling the filter is a new row set; a 30 s refresh is not.
-    resetPageKey: delinquentOnly ? 'd' : '',
+    resetPageKey: show,
     initialState: { sorting: [{ id: 'stake', desc: true }] }
   });
 
@@ -344,14 +349,28 @@ const Validators = () => {
         <Row className="align-items-center justify-content-between mb-3 g-3">
           <SearchBox placeholder="Search" onChange={handleSearch} />
           <Col xs="auto" className="d-flex flex-wrap gap-3">
-            <Form.Check
-              type="switch"
-              id="validators-delinquent-only"
-              label="Delinquent only"
-              checked={delinquentOnly}
-              onChange={e => setDelinquentOnly(e.target.checked)}
-              className="mb-0"
-            />
+            <ButtonGroup size="sm">
+              {(
+                [
+                  ['all', 'All'],
+                  ['active', 'Active'],
+                  ['delinquent', 'Delinquent']
+                ] as const
+              ).map(([k, label]) => (
+                <ToggleButton
+                  key={k}
+                  id={`validators-show-${k}`}
+                  type="radio"
+                  name="validators-show"
+                  variant="soft-secondary"
+                  value={k}
+                  checked={show === k}
+                  onChange={() => setShow(k)}
+                >
+                  {label}
+                </ToggleButton>
+              ))}
+            </ButtonGroup>
           </Col>
         </Row>
 
