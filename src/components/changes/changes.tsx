@@ -26,7 +26,7 @@ export const CHANGE_KIND: Record<
   inflationCommission: { label: 'Inflation commission', bg: 'primary' },
   blockRevenueCommission: { label: 'Block-reward commission', bg: 'primary' },
   inflationCollector: { label: 'Inflation collector', bg: 'secondary' },
-  blockRevenueCollector: { label: 'Block-reward collector', bg: 'secondary' },
+  blockRevenueCollector: { label: 'Fee collector', bg: 'secondary' },
   create: { label: 'Created', bg: 'secondary' },
   // Host changes (where and what it runs).
   // A failover's move back reads Failback (paired on the Activity page).

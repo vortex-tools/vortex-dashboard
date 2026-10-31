@@ -34,6 +34,9 @@ interface AddressLineProps {
   labelWidth?: string;
   /** Muted note after the address, e.g. '(vote account)'. */
   note?: string;
+  /** Muted note under the label instead (keeps the address on one line
+   *  on a phone). */
+  labelNote?: string;
   /** Hover text for the label. */
   labelTitle?: string;
   /** Just the address and its copy button: the label is shown elsewhere
@@ -51,6 +54,7 @@ const AddressLine = ({
   value,
   labelWidth = '3rem',
   note,
+  labelNote,
   labelTitle,
   bare = false,
   href,
@@ -88,6 +92,7 @@ const AddressLine = ({
           title={labelTitle}
         >
           {label}
+          {labelNote && <span className="d-block fs-10">{labelNote}</span>}
         </span>
       )}
       {(compact

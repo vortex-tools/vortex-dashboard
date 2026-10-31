@@ -739,7 +739,7 @@ const PENDING_LABELS: Record<string, string> = {
   inflationRewardsCommissionBps: 'Inflation commission',
   blockRevenueCommissionBps: 'Block-reward commission',
   inflationRewardsCollector: 'Inflation collector',
-  blockRevenueCollector: 'Block-reward collector',
+  blockRevenueCollector: 'Fee collector',
   authorizedVoter: 'Authorized voter',
   nodePubkey: 'Node identity'
 };
@@ -951,11 +951,11 @@ export const ValidatorWithdrawer = ({
       label="Withdrawer"
       value={withdrawer}
       labelWidth={labelWidth}
-      note={
+      labelNote={
         kind === 'identity'
           ? '(the identity)'
           : kind === 'program'
-            ? '(a program address, e.g. a multisig)'
+            ? '(program)'
             : undefined
       }
     />
