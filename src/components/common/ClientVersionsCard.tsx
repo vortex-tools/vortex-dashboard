@@ -25,10 +25,12 @@ import {
   AHEAD_OTHER,
   BEHIND,
   BEHIND_OTHER,
+  CANDIDATE,
   TARGET_MIN,
   cmp,
   isRelease,
-  parse
+  parse,
+  sameRelease
 } from 'helpers/versions';
 
 echarts.use([
@@ -148,7 +150,14 @@ const FamilyPanel = ({
       .map(([v]) => v)
       .sort((a, b) => cmp(b, a));
     const ahead = named.filter(v => cmp(v, target) >= 0);
-    const behind = named.filter(v => cmp(v, target) < 0);
+    // A pre-release of the target's own version (4.4.0-rc.1 under 4.4.0):
+    // the candidate stake was asked to run, light green, not behind.
+    const candidates = named.filter(
+      v => cmp(v, target) < 0 && sameRelease(v, target)
+    );
+    const behind = named.filter(
+      v => cmp(v, target) < 0 && !sameRelease(v, target)
+    );
     const share = (pick: (v: string) => boolean) =>
       per.map(p => {
         if (!p) return null;
@@ -169,6 +178,11 @@ const FamilyPanel = ({
         color: AHEAD_OTHER,
         data: share(x => cmp(x, target) >= 0 && !named.includes(x))
       },
+      ...candidates.map((v, i) => ({
+        name: v,
+        color: CANDIDATE[Math.min(i, CANDIDATE.length - 1)],
+        data: share(x => x === v)
+      })),
       ...behind.map((v, i) => ({
         name: v,
         color: BEHIND[Math.min(i, BEHIND.length - 1)],

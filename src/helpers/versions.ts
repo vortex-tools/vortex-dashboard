@@ -12,6 +12,9 @@ export const TARGET_MIN = 0.05;
 export const AHEAD = ['#1a7f37', '#25b003', '#5cc93a', '#8fd877', '#b9e6a8'];
 export const BEHIND = ['#e5a00b', '#e5780b', '#d9542b', '#c0392b', '#962d22'];
 export const AHEAD_OTHER = '#cfeec4';
+// A pre-release of the target's own version: light greens, between the
+// target's and the behind side's.
+export const CANDIDATE = ['#9fd88a', '#bde4ae'];
 export const BEHIND_OTHER = '#f3c9a6';
 
 type Semver = [number, number, number, string | null];
@@ -55,7 +58,8 @@ export const defaultTarget = (stakeByVersion: Map<string, number>) => {
  *  under 4.4.0 (light green: the candidate it was asked to run); the
  *  newest version below that (amber); or older still (red). */
 export type VersionStanding = 'current' | 'candidate' | 'behind' | 'old';
-const sameRelease = (a: string, b: string) => {
+/** Same version numbers (4.4.0-rc.1 and 4.4.0). */
+export const sameRelease = (a: string, b: string) => {
   const x = parse(a);
   const y = parse(b);
   return !!x && !!y && x[0] === y[0] && x[1] === y[1] && x[2] === y[2];
