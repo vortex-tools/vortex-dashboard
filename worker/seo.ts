@@ -141,7 +141,7 @@ const head = (env: SeoEnv, origin: string, meta: Meta, fullTitle: string) => {
         '@graph': [
           {
             '@type': 'Organization',
-            '@id': 'https://vx.tools/#org',
+            '@id': 'https://vx.tools/#organization',
             name: 'Vortex',
             url: 'https://vx.tools/',
             logo: 'https://vx.tools/vortex-logo.png',
@@ -153,7 +153,7 @@ const head = (env: SeoEnv, origin: string, meta: Meta, fullTitle: string) => {
             name: brand(env),
             url: `${origin}/`,
             description: meta.description,
-            publisher: { '@id': 'https://vx.tools/#org' }
+            publisher: { '@id': 'https://vx.tools/#organization' }
           }
         ]
       })
