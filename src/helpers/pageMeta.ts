@@ -455,6 +455,13 @@ export interface SimdFacts {
   };
 }
 
+/** A /simd/:simd param as the app reads it ("512", "0512", "SIMD-0512"),
+ *  or null when it isn't a SIMD number. */
+export const simdNumber = (param: string) => {
+  const n = Number(param.replace(/^simd-?/i, ''));
+  return param && Number.isInteger(n) && n >= 0 ? n : null;
+};
+
 export const simdLabel = (n: number) => `SIMD-${String(n).padStart(4, '0')}`;
 
 /** "Active on mainnet-beta (epoch 1028) and testnet (epoch 977); #1 in
@@ -629,8 +636,9 @@ export const factsNeeded = (
   if (m && BASE58.test(m[1])) return { validator: m[1] };
   m = pathname.match(/^\/feature\/([^/]+)\/?$/);
   if (m && BASE58.test(m[1])) return { feature: m[1] };
-  m = pathname.match(/^\/simd\/(\d{1,4})\/?$/);
-  if (m) return { simd: Number(m[1]) };
+  m = pathname.match(/^\/simd\/([^/]+)\/?$/);
+  const n = m ? simdNumber(m[1]) : null;
+  if (n != null) return { simd: n };
   m = pathname.match(/^\/pool\/([^/]+)\/?$/);
   if (m) return { pool: decodeURIComponent(m[1]) };
   return {};
@@ -704,10 +712,12 @@ export const pageMeta = (
   }
   if ((m = path.match(/^\/pool\/([^/]+)$/)))
     return poolMeta(env, decodeURIComponent(m[1]), facts.pool);
-  if ((m = path.match(/^\/simd\/(\d{1,4})$/)))
-    return simdMeta(env, Number(m[1]), facts.simd);
-  if ((m = path.match(/^\/feature\/([^/]+)$/)) && BASE58.test(m[1]))
-    return featureMeta(env, m[1], facts.feature);
+  if ((m = path.match(/^\/simd\/([^/]+)$/))) {
+    const n = simdNumber(m[1]);
+    return n == null ? MISSING : simdMeta(env, n, facts.simd);
+  }
+  if ((m = path.match(/^\/feature\/([^/]+)$/)))
+    return BASE58.test(m[1]) ? featureMeta(env, m[1], facts.feature) : MISSING;
   if ((m = path.match(/^\/governance\/([^/]+)$/)) && BASE58.test(m[1])) {
     return {
       title: `${solana(env)} governance proposal ${short(m[1])}`,

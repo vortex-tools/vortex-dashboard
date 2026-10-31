@@ -53,8 +53,8 @@ const esc = (t: string) =>
   );
 
 /** API JSON, cached at the edge so crawls don't fan out to the API:
- *  null when the API answers 404 (it doesn't know the key), undefined when
- *  it can't be read (error, timeout). */
+ *  null when the API says the key can't exist (404 unknown, 400 doesn't
+ *  parse), undefined when it can't be read (5xx, timeout). */
 const api = async <T>(
   env: SeoEnv,
   path: string,
@@ -68,10 +68,10 @@ const api = async <T>(
       // not at all, so a brief API outage doesn't outlive itself.
       cf: {
         cacheEverything: true,
-        cacheTtlByStatus: { '200-299': ttl, '404': ttl, '500-599': 0 }
+        cacheTtlByStatus: { '200-299': ttl, '400-404': ttl, '500-599': 0 }
       }
     });
-    if (res.status === 404) return null;
+    if (res.status === 404 || res.status === 400) return null;
     return res.ok ? ((await res.json()) as T) : undefined;
   } catch {
     return undefined;
@@ -84,6 +84,8 @@ const jsonLd = (o: unknown) =>
   `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
 
 const head = (env: SeoEnv, origin: string, meta: Meta, fullTitle: string) => {
+  // A 404 claims no URL and no card: just keep it out of the index.
+  if (meta.status === 404) return `<meta name="robots" content="noindex" />`;
   const url = `${origin}${meta.canonical}`;
   const tags = [
     `<link rel="canonical" href="${esc(url)}" />`,
@@ -191,13 +193,11 @@ export const metaFor = async (
         )
       : undefined,
     feature: need.feature
-      ? ((
-          await api<{ feature: FeatureFacts }>(
-            env,
-            `/feature?id=${need.feature}`,
-            600
-          )
-        )?.feature ?? (undefined as FeatureFacts | null | undefined))
+      ? await api<{ feature: FeatureFacts }>(
+          env,
+          `/feature?id=${need.feature}`,
+          600
+        ).then(d => (d ? d.feature : d))
       : undefined,
     simd: need.simd
       ? await api<SimdFacts>(env, `/simd?simd=${need.simd}`, 600)
