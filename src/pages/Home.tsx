@@ -51,6 +51,20 @@ const PlaceholderCard = () => (
   </div>
 );
 
+/** The Announcements card's stand-in: a title bar and one post's two
+ *  lines. There's usually a post, so the card is held for one. */
+const PlaceholderAnnouncements = () => (
+  <div className="bg-body-emphasis rounded border border-translucent p-3 mb-3 placeholder-glow">
+    <div className="mb-3">
+      <span className="placeholder col-2 rounded bg-body-secondary" />
+    </div>
+    <div className="mb-1">
+      <span className="placeholder col-3 rounded bg-body-secondary" />
+    </div>
+    <span className="placeholder col-5 rounded bg-body-secondary" />
+  </div>
+);
+
 /**
  * Whether the reads that decide which live cards show, and where, are in:
  * the cluster (testnet has no versions or fees), its client versions, and
@@ -370,7 +384,7 @@ const Home = () => {
         <div className="position-relative">
           {/* Inside the live block, so its arrival adds to the block
               rather than pushing it down. */}
-          {settled && <HomeAnnouncements />}
+          {settled ? <HomeAnnouncements /> : <PlaceholderAnnouncements />}
           {!settled && (
             <Row className="g-3 mb-3">
               {[0, 1, 2, 3].map(i => (
