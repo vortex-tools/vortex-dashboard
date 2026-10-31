@@ -15,12 +15,12 @@ const ago = (secs: number) =>
       : `${(secs / 3600).toFixed(1)}h`;
 
 /**
- * The live page's transport, as one strip in the leaderboards' epoch
- * strip style: where playback is (live / paused, the running slot, the
- * epoch and how far through it), the finality status, and the controls -
- * step back, play / pause, step forward (Play resumes from the live
- * edge) - with the pace; the epoch's progress as a thin bar under it. Keyboard: space, arrows (handled
- * by the page).
+ * The live page's transport, in the leaderboards' epoch strip style:
+ * where playback is (live / paused, the running slot) beside the
+ * controls - play / pause, and while paused step back / forward (Play
+ * resumes from the live edge) - with the pace; the finality status on its
+ * own line; the epoch and how far through it over a thin bar. Keyboard:
+ * space, arrows (handled by the page).
  */
 const PlaybackBar = ({
   slot,
@@ -89,10 +89,10 @@ const PlaybackBar = ({
   );
   return (
     <div className="playback-strip mx-n3 px-3 border-top border-translucent py-2">
-      {/* The status text wraps beside the buttons, which keep the right
-          edge (on a phone they'd otherwise drop to a line of their own). */}
-      <div className="d-flex justify-content-between align-items-center fs-9 text-body-tertiary mb-2 column-gap-3">
-        <div className="d-flex flex-wrap align-items-center column-gap-2 row-gap-1 min-w-0">
+      {/* One fact a line: where playback is (with the controls at the
+          right), the finality status, then the epoch over its bar. */}
+      <div className="d-flex justify-content-between align-items-center fs-9 text-body-tertiary column-gap-3">
+        <div className="d-flex align-items-center column-gap-2 min-w-0">
           <span
             className={`badge badge-soft fs-10 ${badge.cls}`}
             title={
@@ -103,7 +103,7 @@ const PlaybackBar = ({
           >
             {badge.text}
           </span>
-          <span>
+          <span className="text-nowrap">
             Slot{' '}
             <span
               className="font-monospace fw-bold text-body-emphasis d-inline-block"
@@ -111,16 +111,6 @@ const PlaybackBar = ({
             >
               {slot != null ? slot.toLocaleString() : '—'}
             </span>
-          </span>
-          {epoch != null && (
-            <span>
-              {/* Phones wrap the epoch onto its own line: no leading dot. */}
-              <span className="d-none d-md-inline">· </span>Epoch {epoch}
-              {epochPct != null && ` · ${epochPct.toFixed(1)}%`}
-            </span>
-          )}
-          <span className="playback-finality d-inline-flex align-items-center min-w-0 ms-1">
-            {finality}
           </span>
         </div>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
@@ -131,7 +121,9 @@ const PlaybackBar = ({
                 ? 'Held while hovering'
                 : `One slot per ${stepMs} ms`}
           </span>
-          {stepBtn(-1, 'skip-back', 'Previous slot')}
+          {/* Stepping is for a paused view (the arrow keys work either
+              way). */}
+          {!playing && stepBtn(-1, 'skip-back', 'Previous slot')}
           <Button
             variant="primary"
             className="rounded-circle d-flex align-items-center justify-content-center p-0 flex-shrink-0"
@@ -142,12 +134,22 @@ const PlaybackBar = ({
           >
             <FeatherIcon icon={playing ? 'pause' : 'play'} size={14} />
           </Button>
-          {stepBtn(1, 'skip-forward', 'Next slot')}
+          {!playing && stepBtn(1, 'skip-forward', 'Next slot')}
         </div>
       </div>
+      <div className="d-flex align-items-center min-w-0 fs-9 text-body-tertiary mt-1">
+        {finality}
+      </div>
+      {epoch != null && (
+        <div className="fs-10 text-body-tertiary mt-2 mb-1">
+          Epoch {epoch}
+          {epochPct != null && ` · ${epochPct.toFixed(1)}%`}
+        </div>
+      )}
       <ProgressBar
         now={epochPct ?? 0}
         variant="primary"
+        className={epoch == null ? 'mt-2' : undefined}
         style={{
           height: '6px',
           border: '1px solid var(--vx-border-color)'

@@ -533,15 +533,6 @@ th.leaderboard-sticky-col {
   }
 }
 
-// Cluster Status's playback bar on phones: the finality line under the
-// slot and epoch, not squeezed in after them.
-@include media-breakpoint-down(md) {
-  .playback-finality {
-    flex-basis: 100%;
-    margin-left: 0 !important;
-  }
-}
-
 // Cluster Status's Leaders map from xl up: as tall as the Current Leader
 // card beside it (which sets the row), never taller; the map fills the
 // card's body, centered at its own aspect.
