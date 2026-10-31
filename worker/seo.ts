@@ -19,12 +19,14 @@
 import {
   BASE58,
   Crumb,
+  FeatureFacts,
   MISSING,
   MOVED,
   Meta,
   PASS,
   PoolFacts,
   STATIC,
+  SimdFacts,
   Site,
   ValidatorStatus,
   brand,
@@ -50,8 +52,14 @@ const esc = (t: string) =>
       ]!
   );
 
-/** API JSON, cached at the edge so crawls don't fan out to the API. */
-const api = async <T>(env: SeoEnv, path: string, ttl = 300) => {
+/** API JSON, cached at the edge so crawls don't fan out to the API:
+ *  null when the API answers 404 (it doesn't know the key), undefined when
+ *  it can't be read (error, timeout). */
+const api = async <T>(
+  env: SeoEnv,
+  path: string,
+  ttl = 300
+): Promise<T | null | undefined> => {
   try {
     const res = await fetch(`${env.API_BASE}${path}`, {
       headers: { accept: 'application/json' },
@@ -63,9 +71,10 @@ const api = async <T>(env: SeoEnv, path: string, ttl = 300) => {
         cacheTtlByStatus: { '200-299': ttl, '404': ttl, '500-599': 0 }
       }
     });
-    return res.ok ? ((await res.json()) as T) : null;
+    if (res.status === 404) return null;
+    return res.ok ? ((await res.json()) as T) : undefined;
   } catch {
-    return null;
+    return undefined;
   }
 };
 
@@ -154,7 +163,7 @@ const body = (env: SeoEnv, meta: Meta, h1: string) => {
       ? `<h2 class="fs-8">${esc(title)}</h2><ul>${items.map(c => `<li>${a(c)}</li>`).join('')}</ul>`
       : '';
   return `<main class="container py-5" data-seo-summary>${crumbs}<h1>${esc(h1)}</h1>${facts}${list(
-    'On this validator',
+    meta.linksTitle ?? 'On this validator',
     meta.links ?? []
   )}${list(brand(env), sections(env))}</main>`;
 };
@@ -180,6 +189,18 @@ export const metaFor = async (
           `/pool?name=${encodeURIComponent(need.pool)}&limit=1`,
           600
         )
+      : undefined,
+    feature: need.feature
+      ? ((
+          await api<{ feature: FeatureFacts }>(
+            env,
+            `/feature?id=${need.feature}`,
+            600
+          )
+        )?.feature ?? (undefined as FeatureFacts | null | undefined))
+      : undefined,
+    simd: need.simd
+      ? await api<SimdFacts>(env, `/simd?simd=${need.simd}`, 600)
       : undefined
   });
 };
@@ -265,7 +286,7 @@ const urlset = (origin: string, paths: string[]) =>
     .map(p => `<url><loc>${esc(origin + p)}</loc></url>`)
     .join('\n')}\n</urlset>\n`;
 
-const SITEMAPS = ['pages', 'validators', 'pools'] as const;
+const SITEMAPS = ['pages', 'validators', 'pools', 'features', 'simds'] as const;
 
 const sitemap = async (env: SeoEnv, origin: string, part: string) => {
   if (part === 'index')
@@ -296,6 +317,30 @@ const sitemap = async (env: SeoEnv, origin: string, part: string) => {
     return urlset(
       origin,
       votes.map(v => `/validator/${v}`)
+    );
+  }
+  if (part === 'features') {
+    const d = await api<{ features: Array<{ id: string }> }>(
+      env,
+      '/features',
+      3600
+    );
+    if (!d) return null;
+    return urlset(
+      origin,
+      d.features.filter(f => BASE58.test(f.id)).map(f => `/feature/${f.id}`)
+    );
+  }
+  if (part === 'simds') {
+    const d = await api<{ simds: Array<{ simd: number }> }>(
+      env,
+      '/simds',
+      3600
+    );
+    if (!d) return null;
+    return urlset(
+      origin,
+      d.simds.map(x => `/simd/${x.simd}`)
     );
   }
   if (part === 'pools') {

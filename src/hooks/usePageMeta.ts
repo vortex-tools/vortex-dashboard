@@ -43,8 +43,11 @@ const usePageMeta = () => {
             stake: null
           }
         : null,
-      // The app doesn't hold the pool's full name and stake: its short name.
-      pool: null
+      // The app doesn't hold a pool's full name, a feature's or a SIMD's
+      // title: their short labels.
+      pool: null,
+      feature: undefined,
+      simd: undefined
     });
     if (verdict === 'pass') {
       document.title = import.meta.env.VITE_APP_TITLE;

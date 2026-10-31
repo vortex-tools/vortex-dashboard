@@ -43,6 +43,8 @@ export interface Meta {
   crumbs?: Crumb[];
   /** Extra links for the summary (a validator's tabs, say). */
   links?: Crumb[];
+  /** Their heading in the summary. */
+  linksTitle?: string;
   /** Extra summary paragraphs (plain text). */
   facts?: string[];
   noindex?: boolean;
@@ -291,8 +293,11 @@ const validatorMeta = (
   env: Site,
   address: string,
   rest: string,
-  s: ValidatorStatus | null
+  // undefined: the API couldn't be read - the page keeps its default tags
+  // (never a noindex an outage put there).
+  s: ValidatorStatus | null | undefined
 ): Verdict => {
+  if (s === undefined) return PASS;
   const parts = rest.split('/').filter(Boolean);
   const seg = parts[0] ?? '';
   // The record's old URLs (/consensus[...]) redirect in the app.
@@ -363,7 +368,12 @@ export interface PoolFacts {
   info: { description: string | null } | null;
 }
 
-const poolMeta = (env: Site, name: string, p: PoolFacts | null): Meta => {
+const poolMeta = (
+  env: Site,
+  name: string,
+  p: PoolFacts | null | undefined
+): Verdict => {
+  if (p === undefined) return PASS;
   const label =
     p?.fullName && p.fullName !== p.name
       ? `${p.fullName} (${p.name})`
@@ -390,14 +400,237 @@ const poolMeta = (env: Site, name: string, p: PoolFacts | null): Meta => {
   };
 };
 
+// --------------------------------------------------- SIMDs and features
+
+type ClusterName = 'mainnet-beta' | 'testnet' | 'devnet';
+const CLUSTERS: ClusterName[] = ['mainnet-beta', 'testnet', 'devnet'];
+
+/** The /feature `feature` fields the tags use. */
+export interface FeatureFacts {
+  id: string;
+  name: string | null;
+  title: string | null;
+  simds: number[];
+  minVersions: Record<string, string[]> | null;
+  clusters: Partial<
+    Record<
+      ClusterName,
+      {
+        status: 'active' | 'queued' | 'inactive' | 'skipped';
+        epoch: number | null;
+        queuePosition: number | null;
+      }
+    >
+  >;
+  requires?: Array<{ id: string; name: string | null }>;
+  links?: { introducedIn?: { repo: string; pr: number } | null } | null;
+}
+
+/** The /simd fields the tags use. */
+export interface SimdFacts {
+  simd: {
+    simd: number;
+    title: string | null;
+    inRepo: boolean;
+    repoStatus: string | null;
+    status: string | null;
+    authors: string[] | null;
+    kind: string | null;
+    category: string | null;
+    gates: Array<{ id: string; name: string | null; role: string }>;
+    rollup: Partial<
+      Record<
+        ClusterName,
+        {
+          stage: 'noGate' | 'pending' | 'partial' | 'active';
+          gates: number;
+          active: number;
+          queued: number;
+          nextQueuePosition: number | null;
+          firstActivationEpoch: number | null;
+          lastActivationEpoch: number | null;
+        }
+      >
+    >;
+  };
+}
+
+export const simdLabel = (n: number) => `SIMD-${String(n).padStart(4, '0')}`;
+
+/** "Active on mainnet-beta (epoch 1028) and testnet (epoch 977); #1 in
+ *  devnet's activation queue." from a feature's per-cluster state. */
+const featureStatus = (f: FeatureFacts) => {
+  const active: string[] = [];
+  const rest: string[] = [];
+  for (const c of CLUSTERS) {
+    const st = f.clusters[c];
+    if (!st) continue;
+    if (st.status === 'active')
+      active.push(st.epoch != null ? `${c} (epoch ${st.epoch})` : c);
+    else if (st.status === 'queued')
+      rest.push(`queued on ${c}, activating at the next epoch boundary`);
+    else if (st.status === 'inactive' && st.queuePosition != null)
+      rest.push(`#${st.queuePosition} in ${c}'s activation queue`);
+    else if (st.status === 'inactive') rest.push(`not active on ${c}`);
+    else rest.push(`not planned for ${c}`);
+  }
+  const join = (xs: string[]) =>
+    xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0];
+  const parts = [
+    ...(active.length ? [`active on ${join(active)}`] : []),
+    ...rest
+  ];
+  if (!parts.length) return '';
+  const t = parts.join('; ');
+  return `${t[0].toUpperCase()}${t.slice(1)}.`;
+};
+
+const CLIENT_NAMES: Record<string, string> = {
+  agave: 'Agave',
+  firedancer: 'Firedancer',
+  frankendancer: 'Frankendancer',
+  jito: 'Jito-Solana'
+};
+
+/** `f`: null when the API doesn't know the id (404: the page 404s),
+ *  undefined when it couldn't be read (default tags). */
+const featureMeta = (
+  env: Site,
+  id: string,
+  f: FeatureFacts | null | undefined
+): Verdict => {
+  if (f === null) return MISSING;
+  if (f === undefined) return PASS;
+  const path = `/feature/${id}`;
+  const label = f?.title?.trim() || f?.name?.trim() || short(id);
+  const facts: string[] = [];
+  if (f) {
+    const status = featureStatus(f);
+    if (status) facts.push(status);
+    const mins = Object.entries(f.minVersions ?? {})
+      .filter(([, v]) => v.length)
+      .map(([c, v]) => `${CLIENT_NAMES[c] ?? c} ${v.join(' / ')}`);
+    if (mins.length) facts.push(`Minimum versions: ${mins.join(', ')}.`);
+    const pr = f.links?.introducedIn;
+    if (pr) facts.push(`Introduced in ${pr.repo} PR #${pr.pr}.`);
+  }
+  facts.push(`Feature id ${id}.`);
+  return {
+    title: `${label}: Solana feature gate`,
+    description: `Solana feature gate ${label}. ${facts.join(' ')}`,
+    canonical: path,
+    h1: label,
+    facts,
+    crumbs: [
+      HOME,
+      { name: 'Feature gates', path: '/features' },
+      { name: label, path }
+    ],
+    links: f
+      ? [
+          ...f.simds.map(n => ({ name: simdLabel(n), path: `/simd/${n}` })),
+          ...(f.requires ?? []).map(r => ({
+            name: `Requires: ${r.name ?? short(r.id)}`,
+            path: `/feature/${r.id}`
+          }))
+        ]
+      : undefined,
+    linksTitle: 'Related'
+  };
+};
+
+/** One sentence over every cluster, clusters in the same state named
+ *  together: "2 of 5 gates active on mainnet-beta, testnet and devnet." */
+const simdRollup = (s: SimdFacts['simd']) => {
+  const groups = new Map<string, string[]>();
+  for (const c of CLUSTERS) {
+    const r = s.rollup[c];
+    if (!r || r.stage === 'noGate') continue;
+    const gates =
+      r.gates === 1 ? 'its feature gate is' : `its ${r.gates} gates are`;
+    const phrase =
+      r.stage === 'active'
+        ? `active on {c}${r.lastActivationEpoch != null ? ` since epoch ${r.lastActivationEpoch}` : ''}`
+        : r.stage === 'partial'
+          ? `${r.active} of ${r.gates} gates active on {c}`
+          : r.queued
+            ? 'queued on {c}, activating at the next epoch boundary'
+            : r.nextQueuePosition != null
+              ? `${gates} not active on {c} yet (#${r.nextQueuePosition} in the queue)`
+              : `${gates} not active on {c} yet`;
+    groups.set(phrase, [...(groups.get(phrase) ?? []), c]);
+  }
+  if (!groups.size) return 'No feature gate implements it.';
+  const join = (xs: string[]) =>
+    xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0];
+  const t = [...groups]
+    .map(([phrase, cs]) => phrase.replace('{c}', join(cs)))
+    .join('; ');
+  return `${t[0].toUpperCase()}${t.slice(1)}.`;
+};
+
+/** `d`: null for a number no proposal, PR or gate has (the API's 404: the
+ *  page 404s), undefined when it couldn't be read (default tags). */
+const simdMeta = (
+  env: Site,
+  n: number,
+  d: SimdFacts | null | undefined
+): Verdict => {
+  if (d === null) return MISSING;
+  if (d === undefined) return PASS;
+  const path = `/simd/${n}`;
+  const s = d?.simd;
+  // A PR-only SIMD's title is its PR's, which often repeats the number.
+  const title = s?.title?.replace(/^SIMD[-\s]?\d+\s*[:\-–]\s*/i, '').trim();
+  const label = title ? `${simdLabel(n)}: ${title}` : simdLabel(n);
+  const facts: string[] = [];
+  if (s) {
+    const what = [s.kind, s.category].filter(Boolean).join(' ');
+    const by = s.authors?.length ? ` by ${s.authors.join(', ')}` : '';
+    const status =
+      s.status === 'superseded' || s.status === 'closed'
+        ? `; its proposal was ${s.status === 'superseded' ? 'superseded' : 'closed unmerged'}`
+        : s.repoStatus
+          ? `; proposal status ${s.repoStatus}`
+          : !s.inRepo
+            ? '; proposed in an open pull request'
+            : '';
+    facts.push(
+      `${simdLabel(n)}${title ? ` (${title})` : ''} is a ${what ? `${what} ` : ''}Solana Improvement Document${by}${status}.`
+    );
+    facts.push(simdRollup(s));
+  }
+  return {
+    title: `${label}: status and activation`,
+    description: `${facts.join(' ') || `${simdLabel(n)}: Solana Improvement Document.`} Its feature gates on mainnet-beta, testnet and devnet, and its history.`,
+    canonical: path,
+    h1: label,
+    facts: facts.length ? facts : undefined,
+    crumbs: [
+      HOME,
+      { name: 'SIMDs', path: '/simds' },
+      { name: simdLabel(n), path }
+    ],
+    links: s?.gates.map(g => ({
+      name: `${g.role === 'simd' ? 'Feature gate' : 'Related gate'}: ${g.name ?? short(g.id)}`,
+      path: `/feature/${g.id}`
+    })),
+    linksTitle: 'Feature gates'
+  };
+};
+
 // ----------------------------------------------------------------- meta
 
 /** What a page needs fetched before its tags can be built. */
 export const factsNeeded = (
   pathname: string
-): { validator?: string; pool?: string } => {
+): { validator?: string; pool?: string; feature?: string; simd?: number } => {
   let m = pathname.match(/^\/validator\/([^/]+)/);
   if (m && BASE58.test(m[1])) return { validator: m[1] };
+  m = pathname.match(/^\/feature\/([^/]+)\/?$/);
+  if (m && BASE58.test(m[1])) return { feature: m[1] };
+  m = pathname.match(/^\/simd\/(\d{1,4})\/?$/);
+  if (m) return { simd: Number(m[1]) };
   m = pathname.match(/^\/pool\/([^/]+)\/?$/);
   if (m) return { pool: decodeURIComponent(m[1]) };
   return {};
@@ -410,7 +643,12 @@ export const pageMeta = (
   env: Site,
   pathname: string,
   search: string,
-  facts: { validator?: ValidatorStatus | null; pool?: PoolFacts | null }
+  facts: {
+    validator?: ValidatorStatus | null;
+    pool?: PoolFacts | null;
+    feature?: FeatureFacts | null;
+    simd?: SimdFacts | null;
+  }
 ): Verdict => {
   const path = pathname.replace(/\/+$/, '') || '/';
   const seg = path.split('/');
@@ -437,7 +675,7 @@ export const pageMeta = (
   let m: RegExpMatchArray | null;
   if ((m = path.match(/^\/validator\/([^/]+)(\/.*)?$/))) {
     if (!BASE58.test(m[1])) return MISSING;
-    return validatorMeta(env, m[1], m[2] ?? '', facts.validator ?? null);
+    return validatorMeta(env, m[1], m[2] ?? '', facts.validator);
   }
   if ((m = path.match(/^\/leaderboards\/consensus\/epoch\/(\d+)$/))) {
     const [t, d, c] = STATIC['/leaderboards/consensus'](env);
@@ -465,32 +703,11 @@ export const pageMeta = (
     };
   }
   if ((m = path.match(/^\/pool\/([^/]+)$/)))
-    return poolMeta(env, decodeURIComponent(m[1]), facts.pool ?? null);
-  if ((m = path.match(/^\/simd\/(\d+)$/))) {
-    const n = m[1].padStart(4, '0');
-    return {
-      title: `SIMD-${n}: status, feature gate and governance`,
-      description: `SIMD-${n}: its status, the ${solana(env)} feature gates that implement it, and any governance vote on it.`,
-      canonical: path,
-      crumbs: [
-        HOME,
-        { name: 'SIMDs', path: '/simds' },
-        { name: `SIMD-${n}`, path }
-      ]
-    };
-  }
-  if ((m = path.match(/^\/feature\/([^/]+)$/)) && BASE58.test(m[1])) {
-    return {
-      title: `${solana(env)} feature gate ${short(m[1])}`,
-      description: `${solana(env)} feature gate ${m[1]}: what it changes, its SIMD, and when it was scheduled and activated.`,
-      canonical: path,
-      crumbs: [
-        HOME,
-        { name: 'Feature gates', path: '/features' },
-        { name: short(m[1]), path }
-      ]
-    };
-  }
+    return poolMeta(env, decodeURIComponent(m[1]), facts.pool);
+  if ((m = path.match(/^\/simd\/(\d{1,4})$/)))
+    return simdMeta(env, Number(m[1]), facts.simd);
+  if ((m = path.match(/^\/feature\/([^/]+)$/)) && BASE58.test(m[1]))
+    return featureMeta(env, m[1], facts.feature);
   if ((m = path.match(/^\/governance\/([^/]+)$/)) && BASE58.test(m[1])) {
     return {
       title: `${solana(env)} governance proposal ${short(m[1])}`,
