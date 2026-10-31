@@ -287,11 +287,8 @@ export const withdrawalSol = (e: ActivityEvent) =>
   e.kind === 'identityWithdraw' && !e.token && e.lamports != null
     ? e.lamports / 1e9
     : null;
-/** At least this many SOL: a withdrawal shown prominently. */
-const LARGE_SOL = 10;
-
 /** "◎0.0072" or "1,250 EPjF…Dt1v": the SOL, or the token amount and its
- *  mint; large SOL withdrawals in bold amber. */
+ *  mint. */
 const WithdrawalAmount = ({ e }: { e: ActivityEvent }) => {
   if (e.token) {
     const raw = e.token.amount;
@@ -312,9 +309,7 @@ const WithdrawalAmount = ({ e }: { e: ActivityEvent }) => {
   const sol = withdrawalSol(e);
   if (sol == null) return null;
   return (
-    <span
-      className={`font-monospace${sol >= LARGE_SOL ? ' fw-bold text-warning-emphasis' : ''}`}
-    >
+    <span className="font-monospace">
       {formatLamports(e.lamports!, sol >= 1 ? 2 : 4)}
     </span>
   );
