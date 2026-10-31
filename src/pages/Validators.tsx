@@ -301,37 +301,45 @@ const Validators = () => {
           </Col>
         </Row>
 
-        {kpis && (
-          <Row className="g-3 mb-3">
-            <Col xs={6} md={4}>
-              <StatCard
-                label="Validators"
-                value={kpis.validators.toLocaleString()}
-                sublabel={
-                  summary
-                    ? `epoch ${summary.epoch} · as of ${new Date(summary.asOf * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                    : undefined
-                }
-              />
-            </Col>
-            <Col xs={6} md={4}>
-              <StatCard
-                label="Total Stake"
-                // Millions, so it fits a half-width card on phones; the
-                // exact figure beneath.
-                value={`◎${(kpis.stake / 1e15).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`}
-                sublabel={formatLamports(kpis.stake, 0)}
-              />
-            </Col>
-            <Col xs={6} md={4}>
-              <StatCard
-                label="Delinquent Stake"
-                value={`${kpis.delinquentStakePct.toFixed(2)}%`}
-                sublabel={`${kpis.delinquent.toLocaleString()} validators`}
-              />
-            </Col>
-          </Row>
-        )}
+        {/* There from the start ('—' while loading): nothing moves the
+            table down when the numbers arrive. */}
+        <Row className="g-3 mb-3">
+          <Col xs={6} md={4}>
+            <StatCard
+              label="Validators"
+              value={kpis ? kpis.validators.toLocaleString() : '—'}
+              sublabel={
+                summary
+                  ? `epoch ${summary.epoch} · as of ${new Date(summary.asOf * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                  : '\u00a0'
+              }
+            />
+          </Col>
+          <Col xs={6} md={4}>
+            <StatCard
+              label="Total Stake"
+              // Millions, so it fits a half-width card on phones; the
+              // exact figure beneath.
+              value={
+                kpis
+                  ? `◎${(kpis.stake / 1e15).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`
+                  : '—'
+              }
+              sublabel={kpis ? formatLamports(kpis.stake, 0) : '\u00a0'}
+            />
+          </Col>
+          <Col xs={6} md={4}>
+            <StatCard
+              label="Delinquent Stake"
+              value={kpis ? `${kpis.delinquentStakePct.toFixed(2)}%` : '—'}
+              sublabel={
+                kpis
+                  ? `${kpis.delinquent.toLocaleString()} validators`
+                  : '\u00a0'
+              }
+            />
+          </Col>
+        </Row>
 
         <Row className="align-items-center justify-content-between mb-3 g-3">
           <SearchBox placeholder="Search" onChange={handleSearch} />
@@ -353,7 +361,10 @@ const Validators = () => {
               Validator status isn't available right now.
             </p>
           ) : !summary || !producersReady ? (
-            <DelayedSpinner loading label="Loading validators…" />
+            // A screen's height held: the footer stays below the fold.
+            <div style={{ minHeight: '100vh' }}>
+              <DelayedSpinner loading label="Loading validators…" />
+            </div>
           ) : (
             <AdvanceTableProvider {...table}>
               <ValidatorsStatusTable />

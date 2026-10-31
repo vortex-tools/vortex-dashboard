@@ -365,10 +365,12 @@ const Home = () => {
           </Col>
         </Row>
 
-        {settled && <HomeAnnouncements />}
         {/* Until settled the live cards load unseen, at full width (so
             their charts size right), under stand-ins of the same grid. */}
         <div className="position-relative">
+          {/* Inside the live block, so its arrival adds to the block
+              rather than pushing it down. */}
+          {settled && <HomeAnnouncements />}
           {!settled && (
             <Row className="g-3 mb-3">
               {[0, 1, 2, 3].map(i => (

@@ -32,6 +32,9 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Col, Row, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
+/** Longest the cards under the strip wait for the announcements. */
+const ANNOUNCEMENTS_MAX_MS = 1_500;
+
 const breadcrumbItems: Crumb[] = [
   { label: 'Home', url: '/' },
   { label: 'Cluster Status', active: true }
@@ -150,6 +153,18 @@ const LiveConsensus = () => {
   const halt = clusterHaltOf(live, now);
   const restartPost = useRestartAnnouncement(halt);
   const announcements = useAnnouncements();
+  // The cards under the strip wait (a screen held) until the posts are
+  // in - or ANNOUNCEMENTS_MAX_MS - so Announcements doesn't land on top
+  // of them and push them down.
+  const [annTimedOut, setAnnTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setAnnTimedOut(true), ANNOUNCEMENTS_MAX_MS);
+    return () => clearTimeout(t);
+  }, []);
+  const annSettled =
+    announcements !== undefined ||
+    !!context?.announcementsState.error ||
+    annTimedOut;
   // A restart the cluster has finished is history, and so is an upgrade
   // a later post for the same client replaced: not listed here.
   const current = (announcements ?? []).filter(
@@ -620,7 +635,8 @@ const LiveConsensus = () => {
           </div>
         )}
 
-        {current.length > 0 && (
+        {!annSettled && <div style={{ minHeight: '100vh' }} />}
+        {annSettled && current.length > 0 && (
           <SectionCard
             title="Announcements"
             icon="volume-2"
@@ -635,7 +651,7 @@ const LiveConsensus = () => {
 
         {/* Live views: nothing to show while halted (the halt cards above
             take their place). */}
-        {!halt && (
+        {!halt && annSettled && (
           <>
             <Row className="g-3">
               <Col xs={6} md>
