@@ -12,6 +12,7 @@ interface Directed {
     protocol?: number | null;
     protocolTicket?: number | null;
     matching?: number | null;
+    bought?: number | null;
   } | null;
   stewardSelected?: number | null;
 }
@@ -30,25 +31,36 @@ const chooser = (x: DirectedSource) =>
         ? 'pool'
         : x.kind === 'matching'
           ? 'matching'
-          : 'other';
+          : x.kind === 'bought'
+            ? 'bought'
+            : 'other';
 const amountOf = (x: DirectedSource) => x.lamports ?? x.target ?? 0;
 
 /** Who can choose a pool's stake beyond its own selection, in the order
  *  shown. */
-export const CHOOSERS = ['holders', 'protocol', 'pool', 'matching'] as const;
+export const CHOOSERS = [
+  'holders',
+  'protocol',
+  'pool',
+  'matching',
+  'bought'
+] as const;
 export type Chooser = (typeof CHOOSERS)[number];
 const CHOOSER_LABEL: Record<Chooser, string> = {
   holders: 'holders',
   protocol: 'protocols',
   pool: 'the pool',
-  matching: 'matching'
+  matching: 'matching',
+  // Validators' bids (Marinade's auction; bSOL votes bought on Votex).
+  bought: 'bought'
 };
 export type ByChooser = Record<Chooser, number>;
 const none = (): ByChooser => ({
   holders: 0,
   protocol: 0,
   pool: 0,
-  matching: 0
+  matching: 0,
+  bought: 0
 });
 
 /** Its directed stake by who chose it: from the sources where the API
@@ -68,6 +80,7 @@ export const directedBy = (v: Directed): ByChooser => {
     out.protocol = b.protocolTicket ?? 0;
     out.pool = b.protocol ?? 0;
     out.matching = b.matching ?? 0;
+    out.bought = b.bought ?? 0;
     return out;
   }
   out.holders = v.directedStake ?? 0;
@@ -88,12 +101,14 @@ export const poolDirectedBy = (p: {
     protocolTicket?: number | null;
     protocol?: number | null;
     matching?: number | null;
+    bought?: number | null;
   } | null;
 }): ByChooser => ({
   holders: p.directed?.stake ?? 0,
   protocol: p.directed?.protocolTicket ?? 0,
   pool: p.directed?.protocol ?? 0,
-  matching: p.directed?.matching ?? 0
+  matching: p.directed?.matching ?? 0,
+  bought: p.directed?.bought ?? 0
 });
 
 /** Several validators' (or a pool's) parts added up. */
@@ -127,7 +142,8 @@ const KIND_LABEL: Record<string, string> = {
   poolOwn: "The pool's own validator",
   user: 'Holders',
   gauge: 'Gauge vote',
-  matching: 'Matching'
+  matching: 'Matching',
+  bought: 'Bought'
 };
 const ATTRIBUTION: Record<string, string> = {
   onchain: 'on-chain',

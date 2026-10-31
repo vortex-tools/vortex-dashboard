@@ -2950,6 +2950,8 @@ export const poolSummarySchema = z.object({
       protocolTicket: z.number().nullable().optional().catch(null),
       protocol: z.number().nullable().catch(null),
       matching: z.number().nullable().catch(null),
+      // Stake validators bought (Marinade's auction bids, bSOL's Votex).
+      bought: z.number().nullable().optional().catch(null),
       source: z.string().nullable().catch(null),
       basis: z.string().nullable().catch(null),
       asOfEpoch: z.number().nullable().catch(null)
@@ -3008,6 +3010,8 @@ export const poolDetailSchema = z.object({
       protocolTicket: z.number().nullable().optional().catch(null),
       protocol: z.number().nullable().catch(null),
       matching: z.number().nullable().catch(null),
+      // Stake validators bought (Marinade's auction bids, bSOL's Votex).
+      bought: z.number().nullable().optional().catch(null),
       source: z.string().nullable().catch(null),
       basis: z.string().nullable().catch(null),
       asOfEpoch: z.number().nullable().catch(null)
@@ -3056,7 +3060,8 @@ export const poolDetailSchema = z.object({
             protocol: z.number().nullable().catch(null),
             // A protocol-held ticket's stake.
             protocolTicket: z.number().nullable().optional().catch(null),
-            matching: z.number().nullable().catch(null)
+            matching: z.number().nullable().catch(null),
+            bought: z.number().nullable().optional().catch(null)
           })
           .nullable()
           .optional()
