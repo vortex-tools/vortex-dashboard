@@ -1,6 +1,6 @@
+import { ReactNode } from 'react';
 import FeatherIcon from 'feather-icons-react';
 import Button from 'components/base/Button';
-import { ReactNode } from 'react';
 import { ProgressBar } from 'react-bootstrap';
 
 // Data trailing the chain by more than this is shown as delayed.
@@ -16,11 +16,11 @@ const ago = (secs: number) =>
 
 /**
  * The live page's transport, in the leaderboards' epoch strip style:
- * where playback is (live / paused, the running slot) beside the
- * controls - play / pause, and while paused step back / forward (Play
- * resumes from the live edge) - with the pace; the finality status on its
- * own line; the epoch and how far through it over a thin bar. Keyboard:
- * space, arrows (handled by the page).
+ * where playback is (live / paused, the running slot, the epoch and how
+ * far through it) beside the controls - play / pause, and while paused
+ * step back / forward (Play resumes from the live edge) - with the pace;
+ * the epoch's progress as a thin bar under it. Finality trouble has its
+ * own card on the page. Keyboard: space, arrows (handled by the page).
  */
 const PlaybackBar = ({
   slot,
@@ -32,7 +32,7 @@ const PlaybackBar = ({
   stuck,
   stuckSecs,
   stepMs,
-  finality,
+  alert,
   onToggle,
   onStep
 }: {
@@ -49,8 +49,9 @@ const PlaybackBar = ({
   stuck?: 'offline' | 'chain' | 'data' | null;
   stuckSecs?: number | null;
   stepMs: number;
-  /** The finality status line. */
-  finality: ReactNode;
+  /** A status the page has no card for (live data not coming in): after
+   *  the epoch, only while it applies. */
+  alert?: ReactNode;
   onToggle: () => void;
   onStep: (delta: number) => void;
 }) => {
@@ -89,10 +90,10 @@ const PlaybackBar = ({
   );
   return (
     <div className="playback-strip mx-n3 px-3 border-top border-translucent py-2">
-      {/* One fact a line: where playback is (with the controls at the
-          right), the finality status, then the epoch over its bar. */}
-      <div className="d-flex justify-content-between align-items-center fs-9 text-body-tertiary column-gap-3">
-        <div className="d-flex align-items-center column-gap-2 min-w-0">
+      {/* One line: where playback is, the epoch, the controls at the
+          right (a paused phone wraps the epoch under the slot). */}
+      <div className="d-flex justify-content-between align-items-center fs-9 text-body-tertiary column-gap-3 mb-2">
+        <div className="d-flex flex-wrap align-items-center column-gap-2 row-gap-1 min-w-0">
           <span
             className={`badge badge-soft fs-10 ${badge.cls}`}
             title={
@@ -104,7 +105,7 @@ const PlaybackBar = ({
             {badge.text}
           </span>
           <span className="text-nowrap">
-            Slot{' '}
+            <span className="d-none d-sm-inline">Slot </span>
             <span
               className="font-monospace fw-bold text-body-emphasis d-inline-block"
               style={{ minWidth: '11ch' }}
@@ -112,6 +113,13 @@ const PlaybackBar = ({
               {slot != null ? slot.toLocaleString() : '—'}
             </span>
           </span>
+          {epoch != null && (
+            <span className="text-nowrap">
+              <span className="d-none d-sm-inline">· </span>Epoch {epoch}
+              {epochPct != null && ` · ${epochPct.toFixed(1)}%`}
+            </span>
+          )}
+          {alert}
         </div>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <span className="d-none d-sm-inline">
@@ -137,19 +145,9 @@ const PlaybackBar = ({
           {!playing && stepBtn(1, 'skip-forward', 'Next slot')}
         </div>
       </div>
-      <div className="d-flex align-items-center min-w-0 fs-9 text-body-tertiary mt-1">
-        {finality}
-      </div>
-      {epoch != null && (
-        <div className="fs-10 text-body-tertiary mt-2 mb-1">
-          Epoch {epoch}
-          {epochPct != null && ` · ${epochPct.toFixed(1)}%`}
-        </div>
-      )}
       <ProgressBar
         now={epochPct ?? 0}
         variant="primary"
-        className={epoch == null ? 'mt-2' : undefined}
         style={{
           height: '6px',
           border: '1px solid var(--vx-border-color)'

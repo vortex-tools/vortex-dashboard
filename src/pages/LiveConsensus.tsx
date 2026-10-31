@@ -577,7 +577,7 @@ const LiveConsensus = () => {
           playing={playing}
           held={held}
           stepMs={stepMs}
-          finality={
+          alert={
             <ConsensusHealth
               pool={pool}
               nameOf={nameOf}

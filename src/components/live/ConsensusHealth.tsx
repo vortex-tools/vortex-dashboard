@@ -42,8 +42,8 @@ const ConsensusHealth = ({
   nameOf: (node: string | null | undefined) => string;
   /** Renders the in-flight slots table. */
   table: (slots: LiveSlot[], stale: boolean) => ReactNode;
-  /** 'line': just the status, inline (for the playback strip; the
-   *  source on hover); 'detail': the
+  /** 'line': the status inline in the playback strip, only while live
+   *  data isn't coming in (the source on hover); 'detail': the
    *  in-flight card, only while something's wrong. */
   mode: 'line' | 'detail';
   /** The cluster has halted (useClusterHalt): no slots, so no live view. */
@@ -136,8 +136,10 @@ const ConsensusHealth = ({
     </div>
   );
 
+  // The strip's line: only while live data isn't coming in (the card
+  // below covers the rest of the trouble; normal says nothing).
   if (mode === 'line')
-    return (
+    return !pool?.available || !pool.blind ? null : (
       <span
         className="d-inline-flex align-items-center gap-2 min-w-0"
         title={source ? `Source: ${source}` : undefined}
