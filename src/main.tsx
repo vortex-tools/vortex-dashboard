@@ -5,6 +5,14 @@ import { RouterProvider } from 'react-router';
 import { router } from 'Routes';
 import { VortexDataProvider } from 'providers/VortexDataProvider';
 import { IS_MOCK_API } from 'helpers/apiEndpoint';
+// Nunito Sans, self-hosted (was Google Fonts): no third-party round trips
+// before text can render, and font-display: swap.
+import '@fontsource/nunito-sans/300.css';
+import '@fontsource/nunito-sans/400.css';
+import '@fontsource/nunito-sans/600.css';
+import '@fontsource/nunito-sans/700.css';
+import '@fontsource/nunito-sans/800.css';
+import '@fontsource/nunito-sans/900.css';
 import 'assets/scss/theme.scss';
 import 'assets/scss/user.scss';
 
