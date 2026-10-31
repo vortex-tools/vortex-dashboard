@@ -428,7 +428,7 @@ const ValidatorOverview = () => {
           'Current epoch'
         )
       }
-      linkTo={validatorTabPath(nodeAddress, 'production')}
+      linkTo={validatorTabPath(voteAddress || nodeAddress, 'production')}
     />,
     <StatCard
       key="median-income"

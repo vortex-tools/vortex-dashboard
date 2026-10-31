@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import ValidatorLink from 'components/common/ValidatorLink';
 import InfoTip from 'components/common/InfoTip';
 import SectionCard from 'components/common/SectionCard';
 import { footerUrl } from 'helpers/slotContext';
@@ -236,9 +237,9 @@ export const OverviewTable = ({
           icon: 'user',
           value: page.leader ? (
             <>
-              <Link to={`/validator/${page.leader}`} title={page.leader}>
+              <ValidatorLink address={page.leader} title={page.leader}>
                 {nodeName(page.leader)}
-              </Link>
+              </ValidatorLink>
               {leaderCohort && <Aside>{leaderCohort}</Aside>}
             </>
           ) : (

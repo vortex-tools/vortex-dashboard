@@ -1,4 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
+import ValidatorLink from 'components/common/ValidatorLink';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import AmountWithDelta from 'components/common/AmountWithDelta';
@@ -7,7 +8,6 @@ import {
   EpochIncomeLeaderboardRecord,
   IDEAL_RECORD_KEY
 } from 'providers/VortexDataProvider';
-import { Link } from 'react-router';
 
 type IncomeKey = 'baseFees' | 'priorityFees' | 'mevTips';
 
@@ -178,9 +178,9 @@ export const createIncomeLeaderboardTableColumns = (
               return <span className="fw-semibold">Cluster</span>;
             }
             return (
-              <Link to={`/validator/${row.original.nodeAddress}/fees`}>
+              <ValidatorLink address={row.original.nodeAddress} rest="/fees">
                 {row.original.nodeName || row.original.nodeAddress}
-              </Link>
+              </ValidatorLink>
             );
           },
           meta: { cellProps: { className: 'text-body' } }
@@ -396,9 +396,9 @@ export const createIncomeLeaderboardTableColumns = (
               return <span className="fw-semibold">Cluster</span>;
             }
             return (
-              <Link to={`/validator/${row.original.nodeAddress}/fees`}>
+              <ValidatorLink address={row.original.nodeAddress} rest="/fees">
                 {row.original.nodeName || row.original.nodeAddress}
-              </Link>
+              </ValidatorLink>
             );
           },
           meta: { cellProps: { className: 'text-body' } }

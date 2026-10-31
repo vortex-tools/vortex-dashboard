@@ -1,4 +1,5 @@
 import Pager from 'components/common/Pager';
+import ValidatorLink from 'components/common/ValidatorLink';
 import UntrackedState from 'components/common/UntrackedState';
 import { Divergence, OFFLINE_RUN_SLOTS } from 'helpers/participation';
 import { HoverPath } from 'components/validator/PathPreview';
@@ -381,13 +382,13 @@ const DivergentSlotsTable = ({
                       to reach this voter, be replayed and voted on. */}
                   {leader ? (
                     <>
-                      <Link
-                        to={`/validator/${leader}`}
+                      <ValidatorLink
+                        address={leader}
                         className="d-inline-block text-truncate align-bottom"
                         style={{ maxWidth: 180 }}
                       >
                         {nameOf(leader)}
-                      </Link>
+                      </ValidatorLink>
                       {kind === 'missed-skip' && (
                         <span
                           className="badge badge-soft badge-soft-secondary ms-2"
@@ -414,8 +415,8 @@ const DivergentSlotsTable = ({
                 <td className="text-nowrap">
                   {payer ? (
                     <>
-                      <Link
-                        to={`/validator/${payer}`}
+                      <ValidatorLink
+                        address={payer}
                         className={`d-inline-block text-truncate align-bottom${
                           kind.startsWith('missed') &&
                           causeOf?.(slot) === 'thin'
@@ -425,7 +426,7 @@ const DivergentSlotsTable = ({
                         style={{ maxWidth: 180 }}
                       >
                         {nameOf(payer)}
-                      </Link>
+                      </ValidatorLink>
                       {payer === selfNode && (
                         <span className="text-body-tertiary"> (self)</span>
                       )}

@@ -1,4 +1,5 @@
 import TowerHistoricalNote from 'components/common/TowerHistoricalNote';
+import ValidatorLink from 'components/common/ValidatorLink';
 import useConsensus from 'hooks/useConsensus';
 import Button from 'components/base/Button';
 import CompareValidatorsCta from 'components/common/CompareValidatorsCta';
@@ -129,14 +130,14 @@ const VotingLeaderboard = () => {
                   ) => (
                     <td className={paddingClass}>
                       {v ? (
-                        <Link
-                          to={`/validator/${v.nodeAddress}`}
+                        <ValidatorLink
+                          address={v.nodeAddress}
                           className="text-primary text-decoration-none text-truncate d-inline-block align-middle"
                           style={{ maxWidth: '12rem' }}
                           title={v.nodeName ?? v.nodeAddress}
                         >
                           {v.nodeName || truncateAddress(v.nodeAddress)}
-                        </Link>
+                        </ValidatorLink>
                       ) : (
                         <span className="text-body-tertiary">—</span>
                       )}

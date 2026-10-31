@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import CanonicalValidatorLink from 'components/common/ValidatorLink';
 import BackLink from 'components/common/BackLink';
 import { poolPath } from 'components/pools/pools';
 import { ColumnDef } from '@tanstack/react-table';
@@ -72,7 +73,9 @@ const ValidatorLink = ({
   name: string | null;
 }) =>
   identity ? (
-    <Link to={`/validator/${identity}`}>{name ?? short(identity)}</Link>
+    <CanonicalValidatorLink address={identity}>
+      {name ?? short(identity)}
+    </CanonicalValidatorLink>
   ) : (
     <span>{name ?? '—'}</span>
   );

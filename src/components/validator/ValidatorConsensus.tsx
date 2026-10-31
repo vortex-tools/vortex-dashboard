@@ -101,7 +101,11 @@ const ParticipationTable = ({
             <tr key={r.epoch}>
               <td className="text-nowrap">
                 <Link
-                  to={recordPath(linkAddress ?? voteAddress, r.epoch, 'votes')}
+                  to={recordPath(
+                    voteAddress || linkAddress || '',
+                    r.epoch,
+                    'votes'
+                  )}
                 >
                   {r.epoch}
                 </Link>
@@ -247,7 +251,7 @@ const ValidatorConsensus = ({
     <SectionCard
       title="Voting"
       icon="activity"
-      linkTo={recordPath(linkAddress ?? voteAddress, null, 'votes')}
+      linkTo={recordPath(voteAddress || linkAddress || '', null, 'votes')}
       linkLabel="Voting record"
     >
       {unavailable ? (
@@ -305,7 +309,7 @@ export const ParticipationTile = ({
       label="Votes Landed"
       value={value}
       sublabel="Current epoch"
-      linkTo={recordPath(linkAddress ?? voteAddress, null, 'votes')}
+      linkTo={recordPath(voteAddress || linkAddress || '', null, 'votes')}
     />
   );
 };

@@ -60,7 +60,7 @@ const ValidatorSearch = ({
     if (onSelect) {
       onSelect(validator);
     } else {
-      navigate(`/validator/${validator.nodeAddress}`);
+      navigate(`/validator/${validator.voteAddress ?? validator.nodeAddress}`);
     }
     if (clearOnSelect) setQuery('');
     setFocused(false);

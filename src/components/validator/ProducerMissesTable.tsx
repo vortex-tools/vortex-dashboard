@@ -1,8 +1,8 @@
 import Pager from 'components/common/Pager';
+import ValidatorLink from 'components/common/ValidatorLink';
 import { MissCauses, ParticipationMisses } from 'providers/vortex-schemas';
 import { useEffect, useState } from 'react';
 import { Table } from 'react-bootstrap';
-import { Link } from 'react-router';
 import { neverReaches } from './Unreachable';
 
 type Producer = ParticipationMisses['producers'][number];
@@ -133,9 +133,9 @@ const ProducerMissesTable = ({
             {top.map(p => (
               <tr key={p.nodeAddress}>
                 <td className="text-nowrap">
-                  <Link to={`/validator/${p.nodeAddress}`}>
+                  <ValidatorLink address={p.nodeAddress}>
                     {p.nodeName ?? short(p.nodeAddress)}
-                  </Link>
+                  </ValidatorLink>
                   {p.nodeAddress === selfNode && (
                     <span className="text-body-tertiary"> (self)</span>
                   )}

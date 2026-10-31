@@ -151,8 +151,8 @@ export const createOverallLeaderboardColumns = (
         <Link
           to={
             epoch != null
-              ? recordPath(r.nodeAddress ?? r.voteAddress, epoch, 'votes')
-              : `/validator/${known ? r.nodeAddress : r.voteAddress}`
+              ? recordPath(r.voteAddress || r.nodeAddress, epoch, 'votes')
+              : `/validator/${r.voteAddress || r.nodeAddress}`
           }
           title={r.admitted ? undefined : 'Not admitted this epoch'}
         >

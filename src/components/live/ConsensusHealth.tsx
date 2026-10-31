@@ -185,7 +185,7 @@ const ConsensusHealth = ({
             <span key={v.voteAddress}>
               {i > 0 && ', '}
               <Link
-                to={recordPath(v.nodeAddress ?? v.voteAddress, null, 'votes')}
+                to={recordPath(v.voteAddress ?? v.nodeAddress, null, 'votes')}
                 title="Its voting record (with its live votes)"
               >
                 {nameOf(v.nodeAddress)}

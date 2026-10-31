@@ -1,4 +1,5 @@
 import { SlotInfo } from 'providers/VortexDataProvider';
+import ValidatorLink from 'components/common/ValidatorLink';
 import { ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
@@ -105,13 +106,13 @@ const SlotStrip = ({
                   style={{ maxWidth: 0, width: '38%' }}
                 >
                   {leader ? (
-                    <Link
-                      to={`/validator/${leader}`}
+                    <ValidatorLink
+                      address={leader}
                       className={own ? 'fw-bold' : undefined}
                       title={`Leader: ${nameOf(leader)}`}
                     >
                       {nameOf(leader)}
-                    </Link>
+                    </ValidatorLink>
                   ) : (
                     <span className="text-body-tertiary">—</span>
                   )}

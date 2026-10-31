@@ -1,4 +1,5 @@
 import SectionCard from 'components/common/SectionCard';
+import ValidatorLink from 'components/common/ValidatorLink';
 import UntrackedState from 'components/common/UntrackedState';
 import { clientBase, clientFork } from 'helpers/clients';
 import { parseUserAgent } from 'helpers/userAgent';
@@ -145,9 +146,9 @@ const HaltRunUpCard = ({
                 </td>
                 <td className="text-truncate" style={{ maxWidth: '14rem' }}>
                   {s.leader ? (
-                    <Link to={`/validator/${s.leader}`}>
+                    <ValidatorLink address={s.leader}>
                       {nameOf(s.leader)}
-                    </Link>
+                    </ValidatorLink>
                   ) : (
                     '—'
                   )}

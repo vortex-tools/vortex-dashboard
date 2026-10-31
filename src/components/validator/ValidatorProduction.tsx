@@ -88,7 +88,7 @@ const ValidatorProduction = ({
     <SectionCard
       title="Production"
       icon="box"
-      linkTo={recordPath(nodeAddress || voteAddress, null, 'blocks')}
+      linkTo={recordPath(voteAddress || nodeAddress, null, 'blocks')}
       linkLabel="Production record"
     >
       {historyFailed ? (
@@ -142,7 +142,7 @@ const ValidatorProduction = ({
               <tr key={epoch}>
                 <td className="text-nowrap">
                   <Link
-                    to={recordPath(nodeAddress || voteAddress, epoch, 'blocks')}
+                    to={recordPath(voteAddress || nodeAddress, epoch, 'blocks')}
                   >
                     {epoch}
                   </Link>

@@ -1,4 +1,5 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import ValidatorLink from 'components/common/ValidatorLink';
 import { BarChart, LineChart } from 'echarts/charts';
 import {
   GridComponent,
@@ -19,7 +20,6 @@ import useConsensus from 'hooks/useConsensus';
 import { ClusterVersions, VersionsTimeline } from 'providers/vortex-schemas';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { Col, Form, Row, Table } from 'react-bootstrap';
-import { Link } from 'react-router';
 import {
   AHEAD,
   AHEAD_OTHER,
@@ -454,10 +454,10 @@ const FamilyPanel = ({
                     className="text-nowrap text-truncate"
                     style={{ maxWidth: '14rem' }}
                   >
-                    <Link to={`/validator/${r.identity}`}>
+                    <ValidatorLink address={r.identity}>
                       {r.name ??
                         `${r.identity.slice(0, 6)}…${r.identity.slice(-6)}`}
-                    </Link>
+                    </ValidatorLink>
                   </td>
                   <td className="font-monospace text-body-secondary">
                     {r.version}
@@ -659,10 +659,10 @@ const ClientVersionsCard = () => {
               {changes.map(c => (
                 <tr key={`${c.identity}-${c.kind}`}>
                   <td className="text-nowrap">
-                    <Link to={`/validator/${c.identity}`}>
+                    <ValidatorLink address={c.identity}>
                       {c.name ??
                         `${c.identity.slice(0, 6)}…${c.identity.slice(-6)}`}
-                    </Link>
+                    </ValidatorLink>
                   </td>
                   <td className="text-nowrap">
                     <span

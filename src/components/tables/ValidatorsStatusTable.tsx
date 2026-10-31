@@ -1,4 +1,5 @@
 import { VersionStanding } from 'helpers/versions';
+import ValidatorLink from 'components/common/ValidatorLink';
 import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
@@ -9,7 +10,6 @@ import {
   ValidatorStatusCheck,
   ValidatorStatusSummaryRow
 } from 'providers/VortexDataProvider';
-import { Link } from 'react-router';
 
 /**
  * A summary row plus fields the summary doesn't carry, joined from the
@@ -220,12 +220,12 @@ const allColumns = (
     accessorFn: row => row.name ?? row.identity,
     header: 'Validator',
     cell: ({ row }) => (
-      <Link
-        to={`/validator/${row.original.identity}`}
+      <ValidatorLink
+        address={row.original.identity}
         title={row.original.identity}
       >
         {row.original.name || truncateAddress(row.original.identity)}
-      </Link>
+      </ValidatorLink>
     ),
     meta: {
       cellProps: {

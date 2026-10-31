@@ -121,8 +121,8 @@ export const createProducerLeaderboardColumns = (
         <Link
           to={
             epoch != null && r.voteAddress
-              ? recordPath(r.nodeAddress ?? r.voteAddress, epoch, 'blocks')
-              : `/validator/${r.nodeAddress}`
+              ? recordPath(r.voteAddress || r.nodeAddress, epoch, 'blocks')
+              : `/validator/${r.voteAddress || r.nodeAddress}`
           }
         >
           {r.nodeName || truncateAddress(r.nodeAddress)}

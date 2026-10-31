@@ -1,4 +1,5 @@
 import TowerHistoricalNote from 'components/common/TowerHistoricalNote';
+import ValidatorLink from 'components/common/ValidatorLink';
 import ChartSkeleton from 'components/common/ChartSkeleton';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import ValidatorSearch from 'components/common/ValidatorSearch';
@@ -138,12 +139,12 @@ const ValidatorSlot = ({
       <p className="text-body-tertiary fs-10 mb-1 mt-0">{slotLabel}</p>
       <div className="d-flex justify-content-between align-items-start gap-2">
         <div className="min-w-0">
-          <Link
-            to={`/validator/${validator.nodeAddress}`}
+          <ValidatorLink
+            address={validator.nodeAddress}
             className="text-body text-decoration-none fw-bolder fs-7 d-block text-truncate"
           >
             {displayName}
-          </Link>
+          </ValidatorLink>
           <span className="text-body-tertiary font-monospace fs-10">
             {truncateAddress(validator.nodeAddress)}
           </span>

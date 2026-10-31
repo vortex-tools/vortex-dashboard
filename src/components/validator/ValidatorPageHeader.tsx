@@ -104,10 +104,14 @@ const ValidatorPageHeader = ({
               onSelect={v =>
                 navigate(
                   tab === 'overview'
-                    ? validatorTabPath(v.nodeAddress)
+                    ? validatorTabPath(v.voteAddress ?? v.nodeAddress)
                     : !alpenglowActive && tab === 'voting'
-                      ? `/validator/${v.nodeAddress}/votes`
-                      : validatorTabPath(v.nodeAddress, tab, epoch)
+                      ? `/validator/${v.voteAddress ?? v.nodeAddress}/votes`
+                      : validatorTabPath(
+                          v.voteAddress ?? v.nodeAddress,
+                          tab,
+                          epoch
+                        )
                 )
               }
             />

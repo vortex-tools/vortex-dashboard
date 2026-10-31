@@ -429,7 +429,13 @@ const useStatusTiles = (nodeAddress: string) => {
         : [{ label: 'Stake', value: '—', mono: false }]
   ).map(t =>
     t.label === 'Stake' && !isTestnet
-      ? { ...t, linkTo: validatorTabPath(nodeAddress, 'staking') }
+      ? {
+          ...t,
+          linkTo: validatorTabPath(
+            status?.voteAccount ?? nodeAddress,
+            'staking'
+          )
+        }
       : t
   );
   return { tiles, needsSummary, unavailable };

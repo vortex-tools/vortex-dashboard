@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import ValidatorLink from 'components/common/ValidatorLink';
 import useConsensus from 'hooks/useConsensus';
 import Button from 'components/base/Button';
 import DelayedSpinner from 'components/common/DelayedSpinner';
@@ -526,7 +527,7 @@ const LeaderCallout = ({
           )}
         </span>
         {page.leader && (
-          <Link to={`/validator/${page.leader}`}>Validator page →</Link>
+          <ValidatorLink address={page.leader}>Validator page →</ValidatorLink>
         )}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import DelayedSpinner from 'components/common/DelayedSpinner';
+import ValidatorLink from 'components/common/ValidatorLink';
 import SectionCard from 'components/common/SectionCard';
 import StakeRace, { RaceFrame } from 'components/common/StakeRace';
 import { raceEntries } from 'components/charts/e-charts/StakeRaceChart';
@@ -12,7 +13,6 @@ import {
 } from 'providers/VortexDataProvider';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Col, Row, ToggleButton } from 'react-bootstrap';
-import { Link } from 'react-router';
 
 /** History the Past views load: recent epochs first (on the first
  *  Past click), everything on request. */
@@ -554,9 +554,9 @@ const Decentralization = () => {
     const validators: Group[] = (summary?.validators ?? []).map(v => ({
       key: v.identity,
       label: (
-        <Link to={`/validator/${v.identity}`}>
+        <ValidatorLink address={v.identity}>
           {v.name ?? `${v.identity.slice(0, 6)}…${v.identity.slice(-6)}`}
-        </Link>
+        </ValidatorLink>
       ),
       validators: 1,
       stake: v.activatedStake

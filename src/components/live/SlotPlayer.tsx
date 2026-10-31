@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import ValidatorLink from 'components/common/ValidatorLink';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import Badge from 'components/base/Badge';
 import SectionCard from 'components/common/SectionCard';
@@ -65,7 +66,7 @@ const SlotPlayer = ({
         leader ? (
           <>
             Current Leader ·{' '}
-            <Link to={`/validator/${leader}`}>{nameOf(leader)}</Link>
+            <ValidatorLink address={leader}>{nameOf(leader)}</ValidatorLink>
           </>
         ) : (
           'Current Leader'

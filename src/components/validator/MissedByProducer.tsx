@@ -1,8 +1,8 @@
 import { OFFLINE_RUN_SLOTS, OUTCOME } from 'helpers/participation';
+import ValidatorLink from 'components/common/ValidatorLink';
 import { ProducerLeaderboardRecord } from 'providers/vortex-schemas';
 import { useMemo } from 'react';
 import { Table } from 'react-bootstrap';
-import { Link } from 'react-router';
 import {
   NeverReachesBadge,
   UnreachableSummary,
@@ -166,7 +166,7 @@ const MissedByProducer = ({
             return (
               <tr key={node}>
                 <td className="text-nowrap">
-                  <Link to={`/validator/${node}`}>{nameOf(node)}</Link>
+                  <ValidatorLink address={node}>{nameOf(node)}</ValidatorLink>
                   {node === selfNode && (
                     <span className="text-body-tertiary"> (self)</span>
                   )}

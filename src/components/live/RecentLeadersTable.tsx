@@ -1,4 +1,5 @@
 import { placeOf } from 'hooks/useValidatorGeo';
+import ValidatorLink from 'components/common/ValidatorLink';
 import { SlotInfo, ValidatorGeo } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
@@ -97,9 +98,9 @@ const RecentLeadersTable = ({
               </td>
               <td className="text-truncate">
                 {leader ? (
-                  <Link to={`/validator/${leader}`} title={nameOf(leader)}>
+                  <ValidatorLink address={leader} title={nameOf(leader)}>
                     {nameOf(leader)}
-                  </Link>
+                  </ValidatorLink>
                 ) : (
                   '—'
                 )}

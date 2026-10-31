@@ -148,7 +148,7 @@ const columns = (
     cell: ({ row: { original: e } }) =>
       e.voteKey ? (
         <Link
-          to={`/validator/${e.identity ?? e.voteKey}`}
+          to={`/validator/${e.voteKey ?? e.identity}`}
           title={e.voteKey}
           className="d-inline-block text-truncate align-bottom"
           style={{ maxWidth: '14rem' }}

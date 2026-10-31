@@ -1,4 +1,5 @@
 import FeatherIcon from 'feather-icons-react';
+import ValidatorLink from 'components/common/ValidatorLink';
 import {
   createContext,
   CSSProperties,
@@ -140,13 +141,13 @@ const SlotCard = ({
     <div className="d-flex align-items-baseline justify-content-between gap-2 min-w-0">
       <span className="fs-10 text-body-tertiary flex-shrink-0">Leader</span>
       {leaderNode ? (
-        <Link
-          to={`/validator/${leaderNode}`}
+        <ValidatorLink
+          address={leaderNode}
           className="fs-9 fw-semibold text-body text-truncate"
           title={leaderName ?? undefined}
         >
           {leaderName}
-        </Link>
+        </ValidatorLink>
       ) : (
         <span className="fs-9 text-body-quaternary">—</span>
       )}
