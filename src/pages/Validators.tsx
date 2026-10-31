@@ -11,6 +11,9 @@ import ValidatorsStatusTable, {
 } from 'components/tables/ValidatorsStatusTable';
 import { defaultTarget, versionStandings } from 'helpers/versions';
 
+/** Client families no longer supported: every version is red. */
+const UNSUPPORTED = new Set(['frankendancer']);
+
 /** Client families as the Versions page names them. */
 const FAMILY_LABEL: Record<string, string> = {
   agave: 'Agave',
@@ -232,6 +235,15 @@ const Validators = () => {
     return row => {
       const f = row.software?.family;
       const v = row.software?.version;
+      // A client no longer supported (Frankendancer, end of life with
+      // Alpenglow): red whatever its version.
+      if (f && v && UNSUPPORTED.has(f))
+        return {
+          standing: 'old',
+          target: v,
+          client: FAMILY_LABEL[f] ?? f,
+          unsupported: true
+        };
       const c = f && v ? colors.get(f) : undefined;
       const hit = c && v ? c.of.get(v) : undefined;
       return c && hit
