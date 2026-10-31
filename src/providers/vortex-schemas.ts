@@ -1998,7 +1998,10 @@ export const directedSourceSchema = z.object({
   label: z.string().nullable().catch(null),
   note: z.string().nullable().catch(null),
   attribution: z.string().nullable().catch(null),
-  sourceUrl: z.string().nullable().catch(null)
+  sourceUrl: z.string().nullable().catch(null),
+  // The source's figure when it exceeded the pool's epoch-end holding and
+  // lamports was scaled down to it (null otherwise).
+  sourceLamports: z.number().nullable().optional().catch(null)
 });
 export type DirectedSource = z.infer<typeof directedSourceSchema>;
 

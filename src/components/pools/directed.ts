@@ -174,6 +174,10 @@ export const directedDetail = (v: Directed) => {
           (x.kind === 'adminTarget' ? 'unattributed admin allocation' : null);
         return `${what}${who ? ` (${who})` : ''}: ${compactSol(amountOf(x))}${
           x.basis === 'target' ? ' target' : ''
+        }${
+          x.sourceLamports != null
+            ? ` (source says ${compactSol(x.sourceLamports)}; scaled to the pool's epoch-end holding)`
+            : ''
         }${x.attribution ? ` · ${ATTRIBUTION[x.attribution] ?? x.attribution}` : ''}${
           x.note ? `\n  ${x.note}` : ''
         }`;
