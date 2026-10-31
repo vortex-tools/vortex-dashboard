@@ -600,6 +600,24 @@ export const seo = async (
     if (m) return Response.redirect(`${origin}${to(m)}${url.search}`, 301);
   }
 
+  // A validator page addressed by its identity moves to its vote account
+  // (the canonical: identities rotate, the vote account stays). In-app
+  // navigation never reaches the Worker; crawlers and opened links do.
+  // A key the live directory doesn't know stays where it is.
+  const v = path.match(/^\/validator\/([^/]+)(\/.*)?$/);
+  if (v && BASE58.test(v[1])) {
+    const s = await api<ValidatorStatus>(
+      env,
+      `/validators/status?voteKey=${encodeURIComponent(v[1])}`,
+      120
+    );
+    if (s?.voteAccount && s.voteAccount !== v[1])
+      return Response.redirect(
+        `${origin}/validator/${s.voteAccount}${v[2] ?? ''}${url.search}`,
+        301
+      );
+  }
+
   // A file that doesn't exist: the SPA fallback would answer 200 with the
   // app shell (a soft 404).
   if (/^\/[^/]+\.[a-z0-9]+$/i.test(path) && path !== '/index.html') {
