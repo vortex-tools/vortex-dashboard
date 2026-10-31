@@ -3259,3 +3259,80 @@ export const clusterActivitySchema = z.object({
   events: z.array(activityEventSchema).catch([])
 });
 export type ClusterActivity = z.infer<typeof clusterActivitySchema>;
+
+// ---- Tips (/validators/tips, /validators/tips/blocks) ---------------------
+// One validator's tip income per epoch by tip path (lamports; null where a
+// figure doesn't apply or isn't known yet), and an epoch's blocks with
+// their tips.
+const n = z.number().nullable().optional().catch(null);
+const tipPathSchema = z.object({
+  path: z.string(),
+  basis: z.string(),
+  gross: n,
+  builderFee: n,
+  distributed: n,
+  protocolFee: n,
+  protocolFeeBps: n,
+  validatorCut: n,
+  stakers: n,
+  commissionBps: n,
+  builder: z.string().nullable().optional().catch(null),
+  source: z.string().nullable().optional().catch(null)
+});
+export type TipPath = z.infer<typeof tipPathSchema>;
+export const validatorTipsSchema = z.object({
+  voteKey: z.string(),
+  identity: z.string(),
+  epochs: z
+    .array(
+      z.object({
+        epoch: z.number(),
+        complete: z.boolean().catch(false),
+        identity: z.string().nullable().optional().catch(null),
+        leaderSlots: n,
+        blocks: n,
+        skippedSlots: n,
+        blocksComplete: z.boolean().nullable().optional().catch(null),
+        client: z.string().nullable().optional().catch(null),
+        bam: z.boolean().nullable().optional().catch(null),
+        builder: z.string().nullable().optional().catch(null),
+        builderName: z.string().nullable().optional().catch(null),
+        paths: z.array(tipPathSchema).catch([]),
+        total: z
+          .object({
+            gross: n,
+            builderFee: n,
+            protocolFee: n,
+            validatorCut: n,
+            stakers: n
+          })
+          .nullable()
+          .optional()
+          .catch(null)
+      })
+    )
+    .catch([])
+});
+export type ValidatorTips = z.infer<typeof validatorTipsSchema>;
+export const validatorTipBlocksSchema = z.object({
+  voteKey: z.string(),
+  epoch: z.number(),
+  complete: z.boolean().catch(false),
+  builderName: z.string().nullable().optional().catch(null),
+  builderTips: z.string().nullable().optional().catch(null),
+  leaderSlots: n,
+  skippedSlots: n,
+  pendingSlots: n,
+  blocks: z
+    .array(
+      z.object({
+        slot: z.number(),
+        time: z.number().nullable().catch(null),
+        baseFees: z.number().catch(0),
+        priorityFees: z.number().catch(0),
+        mevTips: z.number().catch(0)
+      })
+    )
+    .catch([])
+});
+export type ValidatorTipBlocks = z.infer<typeof validatorTipBlocksSchema>;

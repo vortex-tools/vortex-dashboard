@@ -98,6 +98,10 @@ import {
   poolDetailSchema,
   validatorVoteAccountChangesSchema,
   ValidatorVoteAccountChanges,
+  validatorTipsSchema,
+  ValidatorTips,
+  validatorTipBlocksSchema,
+  ValidatorTipBlocks,
   clusterActivitySchema,
   ClusterActivity,
   PoolDetail,
@@ -838,6 +842,25 @@ const validatorVoteAccountChangesRequest = (identity: string) => ({
   schema: validatorVoteAccountChangesSchema,
   timeout: 20_000
 });
+// One validator's tip income by path, its last TIP_EPOCHS epochs (by vote
+// account).
+export const TIP_EPOCHS = 10;
+const validatorTipsRequest = (voteKey: string) => ({
+  path: '/validators/tips',
+  params: { voteKey, limit: TIP_EPOCHS },
+  schema: validatorTipsSchema,
+  timeout: 20_000
+});
+// One epoch's blocks with their tips; the key is `${voteKey}:${epoch}`.
+const validatorTipBlocksRequest = (key: string) => {
+  const [voteKey, epoch] = key.split(':');
+  return {
+    path: '/validators/tips/blocks',
+    params: { voteKey, epoch: Number(epoch) },
+    schema: validatorTipBlocksSchema,
+    timeout: 30_000
+  };
+};
 // Announcements by cluster ('' = both).
 const announcementsRequest = (cluster: string) => ({
   path: '/announcements',
@@ -1427,6 +1450,8 @@ interface VortexDataState {
     string,
     ValidatorVoteAccountChanges
   >;
+  validatorTipsState: KeyedSlice<string, ValidatorTips>;
+  validatorTipBlocksState: KeyedSlice<string, ValidatorTipBlocks>;
   clusterActivityState: KeyedSlice<number, ClusterActivity>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
   validatorGovernanceState: KeyedSlice<string, ValidatorGovernance>;
@@ -1563,6 +1588,14 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: validatorVoteAccountChangesRequest,
     toEntries: keyed<string, ValidatorVoteAccountChanges>()
   });
+  const validatorTipsState = useKeyedSlice({
+    request: validatorTipsRequest,
+    toEntries: keyed<string, ValidatorTips>()
+  });
+  const validatorTipBlocksState = useKeyedSlice({
+    request: validatorTipBlocksRequest,
+    toEntries: keyed<string, ValidatorTipBlocks>()
+  });
   const announcementsState = useKeyedSlice({
     request: announcementsRequest,
     toEntries: keyed<string, Announcements>()
@@ -1681,6 +1714,8 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       poolsState,
       poolState,
       validatorVoteAccountChangesState,
+      validatorTipsState,
+      validatorTipBlocksState,
       clusterActivityState,
       governanceProposalState,
       validatorGovernanceState,
@@ -1731,6 +1766,8 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       poolsState,
       poolState,
       validatorVoteAccountChangesState,
+      validatorTipsState,
+      validatorTipBlocksState,
       clusterActivityState,
       governanceProposalState,
       validatorGovernanceState,
