@@ -336,17 +336,19 @@ const allColumns = (
       return c ? (
         <span
           className={`badge badge-soft font-monospace fs-10 badge-soft-${
-            c.standing === 'current'
+            c.standing === 'current' || c.standing === 'candidate'
               ? 'success'
               : c.standing === 'behind'
                 ? 'warning'
                 : 'danger'
-          }`}
+          }${c.standing === 'candidate' ? ' badge-soft-faint' : ''}`}
           style={{ textTransform: 'none' }}
           title={
             c.standing === 'current'
               ? `On ${c.target} or newer (the newest ${c.client} version on 5%+ of its stake)`
-              : `Behind ${c.target}, the newest ${c.client} version on 5%+ of its stake${c.standing === 'old' ? ' (and older than the version before it)' : ''}`
+              : c.standing === 'candidate'
+                ? `A release candidate of ${c.target}, the newest ${c.client} version on 5%+ of its stake`
+                : `Behind ${c.target}, the newest ${c.client} version on 5%+ of its stake${c.standing === 'old' ? ' (and older than the version before it)' : ''}`
           }
         >
           {v}

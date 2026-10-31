@@ -50,20 +50,32 @@ export const defaultTarget = (stakeByVersion: Map<string, number>) => {
   );
 };
 
-/** How far a version is from its client's target, in the Versions
- *  chart's terms: at or above it (green), the newest version below it
- *  (amber), or older still (red). */
-export type VersionStanding = 'current' | 'behind' | 'old';
+/** How far a version is from its client's target: at or above it
+ *  (green); a pre-release of the target's own version, e.g. 4.4.0-rc.1
+ *  under 4.4.0 (light green: the candidate it was asked to run); the
+ *  newest version below that (amber); or older still (red). */
+export type VersionStanding = 'current' | 'candidate' | 'behind' | 'old';
+const sameRelease = (a: string, b: string) => {
+  const x = parse(a);
+  const y = parse(b);
+  return !!x && !!y && x[0] === y[0] && x[1] === y[1] && x[2] === y[2];
+};
 export const versionStandings = (versions: string[], target: string) => {
   const behind = [...new Set(versions)]
-    .filter(v => parse(v) && cmp(v, target) < 0)
+    .filter(v => parse(v) && cmp(v, target) < 0 && !sameRelease(v, target))
     .sort((a, b) => cmp(b, a));
   const out = new Map<string, VersionStanding>();
   for (const v of versions)
     if (parse(v))
       out.set(
         v,
-        cmp(v, target) >= 0 ? 'current' : v === behind[0] ? 'behind' : 'old'
+        cmp(v, target) >= 0
+          ? 'current'
+          : sameRelease(v, target)
+            ? 'candidate'
+            : v === behind[0]
+              ? 'behind'
+              : 'old'
       );
   return out;
 };

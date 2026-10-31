@@ -577,3 +577,25 @@ th.leaderboard-sticky-col {
     var(--vx-info-border-subtle)
   );
 }
+
+// A soft badge paler than its kind (a release candidate of the target
+// version beside the target's green): mixed toward the page background,
+// so dark mode follows.
+.badge-soft.badge-soft-faint {
+  --vx-badge-color: color-mix(
+    in srgb,
+    var(--vx-success-text-emphasis) 88%,
+    var(--vx-body-bg)
+  );
+  --vx-badge-bg: color-mix(
+    in srgb,
+    var(--vx-success-bg-subtle) 45%,
+    var(--vx-body-bg)
+  );
+  --vx-badge-border: color-mix(
+    in srgb,
+    var(--vx-success-border-subtle) 80%,
+    var(--vx-body-bg)
+  );
+  border-style: dashed;
+}
