@@ -955,7 +955,7 @@ export const ValidatorWithdrawer = ({
         kind === 'identity'
           ? '(the identity)'
           : kind === 'program'
-            ? '(program)'
+            ? '(program-controlled)'
             : undefined
       }
     />
