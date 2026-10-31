@@ -4,13 +4,19 @@ import useConsensus from 'hooks/useConsensus';
 import FeatherIcon from 'feather-icons-react';
 import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
-import ClientDiversityCard from 'components/home/ClientDiversityCard';
-import ThroughputCard from 'components/home/ThroughputCard';
 import HomeAnnouncements from 'components/home/HomeAnnouncements';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import { formatDuration } from 'helpers/utils';
 import { useEpochLive, useClusterHalt } from 'hooks/useIngestion';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  lazy,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 import { Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router';
 import { EpochProgress } from 'providers/vortex-schemas';
@@ -23,6 +29,13 @@ import {
 } from 'providers/VortexDataProvider';
 import ChartSkeleton from 'components/common/ChartSkeleton';
 import { ALL_ANNOUNCEMENTS } from 'hooks/useAnnouncements';
+
+// The chart cards (and ECharts with them) load after the first paint:
+// the page shows stand-ins there until its layout settles anyway.
+const ClientDiversityCard = lazy(
+  () => import('components/home/ClientDiversityCard')
+);
+const ThroughputCard = lazy(() => import('components/home/ThroughputCard'));
 
 /** Longest the live cards wait for the reads that decide the layout. */
 const SETTLE_MAX_MS = 3_000;
@@ -387,14 +400,20 @@ const Home = () => {
               <SlotStrip />
             </Col>
             <Col xs={12} lg={6} className={hasDiversity ? undefined : 'd-none'}>
-              <ClientDiversityCard compact />
+              <Suspense fallback={<PlaceholderCard />}>
+                <ClientDiversityCard compact />
+              </Suspense>
             </Col>
             <Col xs={12} lg={blockIncomeTracked ? 6 : 12}>
-              <ThroughputCard metrics={['tps', 'cu']} compact />
+              <Suspense fallback={<PlaceholderCard />}>
+                <ThroughputCard metrics={['tps', 'cu']} compact />
+              </Suspense>
             </Col>
             {blockIncomeTracked && (
               <Col xs={12} lg={6}>
-                <ThroughputCard metrics={['income']} compact />
+                <Suspense fallback={<PlaceholderCard />}>
+                  <ThroughputCard metrics={['income']} compact />
+                </Suspense>
               </Col>
             )}
           </Row>

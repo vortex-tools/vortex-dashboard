@@ -1,3 +1,4 @@
+import { lazy } from 'react';
 import RouteError from 'pages/error/RouteError';
 import MainLayout from 'layouts/MainLayout';
 import {
@@ -8,38 +9,48 @@ import {
   useParams
 } from 'react-router';
 import Error404 from 'pages/error/Error404';
-import ValidatorEarningsTab from 'pages/ValidatorEarningsTab';
-import ValidatorFees from 'pages/ValidatorFees';
-import ValidatorStaking from 'pages/ValidatorStaking';
 import App from 'App';
-import VoteHistory from 'pages/VoteHistory';
-import ClusterVoteStats from 'pages/ClusterVoteStats';
 import TowerGate from 'components/common/TowerGate';
-import IncomeLeaderboard from 'pages/IncomeLeaderboard';
 import Home from 'pages/Home';
-import CompareVoting from 'pages/CompareVoting';
-import VotingLeaderboard from 'pages/VotingLeaderboard';
-import ValidatorOverview from 'pages/ValidatorOverview';
-import VoteStats from 'pages/VoteStats';
-import Usage from 'pages/Usage';
-import ConsensusLeaderboard from 'pages/ConsensusLeaderboard';
-import LiveConsensus from 'pages/LiveConsensus';
-import ConsensusRecordRedirect from 'pages/ConsensusRecordRedirect';
-import ValidatorDivergentVotes from 'pages/ValidatorDivergentVotes';
-import ValidatorProducedBlocks from 'pages/ValidatorProducedBlocks';
-import SlotPage from 'pages/SlotPage';
-import Validators from 'pages/Validators';
-import ClientVersions from 'pages/ClientVersions';
-import FeatureGatePage from 'pages/FeatureGatePage';
-import FeatureGates from 'pages/FeatureGates';
-import SimdPage from 'pages/SimdPage';
-import StakePool from 'pages/StakePool';
-import StakePools from 'pages/StakePools';
-import Activity from 'pages/Activity';
-import Simds from 'pages/Simds';
-import Governance from 'pages/Governance';
-import GovernanceProposal from 'pages/GovernanceProposal';
-import Decentralization from 'pages/Decentralization';
+
+// Every page but Home loads on first visit (its own chunk): Home is the
+// usual landing and stays in the main bundle. MainLayout's Suspense
+// shows while one loads.
+const ValidatorEarningsTab = lazy(() => import('pages/ValidatorEarningsTab'));
+const ValidatorFees = lazy(() => import('pages/ValidatorFees'));
+const ValidatorStaking = lazy(() => import('pages/ValidatorStaking'));
+const VoteHistory = lazy(() => import('pages/VoteHistory'));
+const ClusterVoteStats = lazy(() => import('pages/ClusterVoteStats'));
+const IncomeLeaderboard = lazy(() => import('pages/IncomeLeaderboard'));
+const CompareVoting = lazy(() => import('pages/CompareVoting'));
+const VotingLeaderboard = lazy(() => import('pages/VotingLeaderboard'));
+const ValidatorOverview = lazy(() => import('pages/ValidatorOverview'));
+const VoteStats = lazy(() => import('pages/VoteStats'));
+const Usage = lazy(() => import('pages/Usage'));
+const ConsensusLeaderboard = lazy(() => import('pages/ConsensusLeaderboard'));
+const LiveConsensus = lazy(() => import('pages/LiveConsensus'));
+const ConsensusRecordRedirect = lazy(
+  () => import('pages/ConsensusRecordRedirect')
+);
+const ValidatorDivergentVotes = lazy(
+  () => import('pages/ValidatorDivergentVotes')
+);
+const ValidatorProducedBlocks = lazy(
+  () => import('pages/ValidatorProducedBlocks')
+);
+const SlotPage = lazy(() => import('pages/SlotPage'));
+const Validators = lazy(() => import('pages/Validators'));
+const ClientVersions = lazy(() => import('pages/ClientVersions'));
+const FeatureGatePage = lazy(() => import('pages/FeatureGatePage'));
+const FeatureGates = lazy(() => import('pages/FeatureGates'));
+const SimdPage = lazy(() => import('pages/SimdPage'));
+const StakePool = lazy(() => import('pages/StakePool'));
+const StakePools = lazy(() => import('pages/StakePools'));
+const Activity = lazy(() => import('pages/Activity'));
+const Simds = lazy(() => import('pages/Simds'));
+const Governance = lazy(() => import('pages/Governance'));
+const GovernanceProposal = lazy(() => import('pages/GovernanceProposal'));
+const Decentralization = lazy(() => import('pages/Decentralization'));
 
 // Inlined at build time. Staging-only pages are absent from the production
 // route table (and tree-shaken out of its bundle).

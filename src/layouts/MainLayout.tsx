@@ -4,6 +4,8 @@ import Footer from 'components/layout/Footer';
 import Sidebar from 'components/layout/Sidebar';
 import TopBar from 'components/layout/TopBar';
 import { useAppContext } from 'providers/AppProvider';
+import DelayedSpinner from 'components/common/DelayedSpinner';
+import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 
 /** The app shell around every dashboard page. */
@@ -16,7 +18,17 @@ const MainLayout = () => {
       <main className="content">
         <ApiStatusBanner />
         <ClusterHaltBanner />
-        <Outlet />
+        {/* A page's chunk on its first visit: the page's room held (so
+            the footer doesn't jump up and back), a spinner if it's slow. */}
+        <Suspense
+          fallback={
+            <div style={{ minHeight: '70vh' }} className="pt-4">
+              <DelayedSpinner loading label="Loading…" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
         <Footer />
       </main>
     </div>
