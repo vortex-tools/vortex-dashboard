@@ -18,6 +18,8 @@ import { Link } from 'react-router';
 const REFRESH_MS = 60_000;
 /** Epochs listed on the Overview. */
 const ROWS = 10;
+/** About the height of its ROWS-row table, held while loading. */
+export const SUMMARY_TABLE_HEIGHT = 300;
 
 const pct = (v: number | null | undefined) =>
   v == null ? '—' : `${(v * 100).toFixed(2)}%`;
@@ -94,7 +96,10 @@ const ValidatorProduction = ({
           Production isn&apos;t available right now.
         </UntrackedState>
       ) : !anyLoaded ? (
-        <DelayedSpinner loading label="Loading production…" />
+        // The table's height held while it loads.
+        <div style={{ minHeight: SUMMARY_TABLE_HEIGHT }}>
+          <DelayedSpinner loading label="Loading production…" />
+        </div>
       ) : (
         <Table responsive size="sm" className="data-table fs-9 mb-0">
           <thead className="text-nowrap">

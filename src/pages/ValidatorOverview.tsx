@@ -62,6 +62,32 @@ const EpochLabel = ({ epoch }: { epoch: number }) => (
   </>
 );
 
+/** Gray stand-ins for detail lines still loading, at their height. */
+const PlaceholderLines = ({
+  count,
+  labelWidth
+}: {
+  count: number;
+  labelWidth: string;
+}) => (
+  <>
+    {Array.from({ length: count }, (_, i) => (
+      <div
+        key={i}
+        className="d-flex align-items-baseline gap-2 placeholder-glow"
+        aria-hidden
+      >
+        <span className="fs-9 flex-shrink-0" style={{ minWidth: labelWidth }}>
+          <span className="placeholder rounded col-8 bg-body-secondary" />
+        </span>
+        <span className="fs-9 flex-grow-1">
+          <span className="placeholder rounded col-6 bg-body-secondary" />
+        </span>
+      </div>
+    ))}
+  </>
+);
+
 const ValidatorOverview = () => {
   const { alpenglowActive, known: consensusKnown } = useConsensus();
   // Tower vote data is only fetched while Tower is the current consensus:
@@ -258,8 +284,16 @@ const ValidatorOverview = () => {
   if (isLoadingRaw) {
     return (
       <div>
-        <PageBreadcrumb items={validatorBreadcrumbPlaceholder} />
-        <div className="mb-9">
+        {/* The header already (the address as its name until the
+            directory names it), so nothing moves when the page is in. */}
+        <ValidatorPageHeader
+          address={address ?? ''}
+          name={address ? `${address.slice(0, 4)}…${address.slice(-4)}` : '…'}
+          tab="overview"
+        />
+        {/* A screen's height held, as while the page's chunk loads: the
+            footer stays below the fold until the page is in. */}
+        <div className="mb-9" style={{ minHeight: '100vh' }}>
           <DelayedSpinner loading={isLoadingRaw} label="Loading validator…" />
         </div>
       </div>
@@ -587,6 +621,10 @@ const ValidatorOverview = () => {
     />
   );
 
+  // The status (node facts, keys) not in yet: its lines are held.
+  const statusPending =
+    !!nodeAddress && !statusSlice.data.has(nodeAddress) && !statusSlice.error;
+
   return (
     <div>
       <ValidatorPageHeader
@@ -630,6 +668,10 @@ const ValidatorOverview = () => {
                       nodeAddress={nodeAddress}
                       labelWidth={factLabelWidth}
                     />
+                    {/* Site to Operating, held while the status loads. */}
+                    {statusPending && (
+                      <PlaceholderLines count={7} labelWidth={factLabelWidth} />
+                    )}
                   </div>
                 </SectionCard>
               </Col>
@@ -656,6 +698,10 @@ const ValidatorOverview = () => {
                       voteAddress={voteAddress}
                       labelWidth={keyLabelWidth}
                     />
+                    {/* Withdrawer, voter and collectors, held likewise. */}
+                    {statusPending && (
+                      <PlaceholderLines count={4} labelWidth={keyLabelWidth} />
+                    )}
                   </div>
                 </SectionCard>
               </Col>

@@ -1,3 +1,4 @@
+import { SUMMARY_TABLE_HEIGHT } from 'components/validator/ValidatorProduction';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import {
   NOT_ADMITTED_REASONS,
@@ -254,7 +255,9 @@ const ValidatorConsensus = ({
           Participation isn't available for this validator right now.
         </p>
       ) : !rows ? (
-        <DelayedSpinner loading label="Loading participation…" />
+        <div style={{ minHeight: SUMMARY_TABLE_HEIGHT }}>
+          <DelayedSpinner loading label="Loading participation…" />
+        </div>
       ) : (
         <>
           {/* The newest ROWS epochs; the Voting record has every one. */}

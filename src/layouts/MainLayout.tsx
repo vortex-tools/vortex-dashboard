@@ -18,11 +18,12 @@ const MainLayout = () => {
       <main className="content">
         <ApiStatusBanner />
         <ClusterHaltBanner />
-        {/* A page's chunk on its first visit: the page's room held (so
-            the footer doesn't jump up and back), a spinner if it's slow. */}
+        {/* A page's chunk on its first visit: a screen's height held, so
+            the footer starts below the fold and doesn't jump when the page
+            arrives (a spinner if it's slow). */}
         <Suspense
           fallback={
-            <div style={{ minHeight: '70vh' }} className="pt-4">
+            <div style={{ minHeight: '100vh' }} className="pt-4">
               <DelayedSpinner loading label="Loading…" />
             </div>
           }

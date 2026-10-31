@@ -420,8 +420,13 @@ const useStatusTiles = (nodeAddress: string) => {
   const mevBps = noTipAccount ? null : (mevRates?.mevCommissionBps ?? null);
   const { isTestnet } = useCluster();
   // Stake links to the Staking tab (not on testnet, which has none).
+  // Loading: the Stake tile already, empty, so the grid has its shape.
   const tiles = (
-    status ? nodeTiles(status, stake, shareOfTotal, mevBps, noTipAccount) : []
+    status
+      ? nodeTiles(status, stake, shareOfTotal, mevBps, noTipAccount)
+      : unavailable
+        ? []
+        : [{ label: 'Stake', value: '—', mono: false }]
   ).map(t =>
     t.label === 'Stake' && !isTestnet
       ? { ...t, linkTo: validatorTabPath(nodeAddress, 'staking') }

@@ -140,7 +140,7 @@ export const ValidatorKeyLines = ({
         </Line>
       )}
       {vs.blockRevenueCollector && (
-        <Line label="Block collector" labelWidth={labelWidth}>
+        <Line label="Fee collector" labelWidth={labelWidth}>
           <Key value={vs.blockRevenueCollector} />
         </Line>
       )}

@@ -91,7 +91,7 @@ const ValidatorPageHeader = ({
       <PageBreadcrumb items={crumbs} />
       <div className="validator-title d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
         <div className="d-flex flex-wrap align-items-center gap-3 min-w-0">
-          <h3 className="mb-0 text-truncate">{name}</h3>
+          <h1 className="h3 mb-0 text-truncate">{name}</h1>
         </div>
         <div
           className="d-flex align-items-stretch gap-2"
