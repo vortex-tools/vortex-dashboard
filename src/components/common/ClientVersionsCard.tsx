@@ -20,6 +20,16 @@ import { ClusterVersions, VersionsTimeline } from 'providers/vortex-schemas';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { Col, Form, Row, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
+import {
+  AHEAD,
+  AHEAD_OTHER,
+  BEHIND,
+  BEHIND_OTHER,
+  TARGET_MIN,
+  cmp,
+  isRelease,
+  parse
+} from 'helpers/versions';
 
 echarts.use([
   BarChart,
@@ -38,9 +48,6 @@ const TIMELINE_EPOCHS = 3;
 const NAMED = 6;
 /** A version is named once it held this share of its client's stake. */
 const NAMED_MIN = 0.02;
-/** The default target: the newest version (a release, or a candidate
- *  being rolled out) holding at least this share. */
-const TARGET_MIN = 0.05;
 const BEHIND_FIRST = 8;
 
 /** Frankendancer reached end of life with Alpenglow; it's left out. */
@@ -48,32 +55,6 @@ const FAMILIES = [
   { key: 'agave', label: 'Agave' },
   { key: 'firedancer', label: 'Firedancer' }
 ] as const;
-
-// At or above the target: greens, newest darkest. Below: amber to red,
-// oldest reddest.
-const AHEAD = ['#1a7f37', '#25b003', '#5cc93a', '#8fd877', '#b9e6a8'];
-const BEHIND = ['#e5a00b', '#e5780b', '#d9542b', '#c0392b', '#962d22'];
-const AHEAD_OTHER = '#cfeec4';
-const BEHIND_OTHER = '#f3c9a6';
-
-type Semver = [number, number, number, string | null];
-const parse = (v: string): Semver | null => {
-  const m = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/.exec(v);
-  return m ? [+m[1], +m[2], +m[3], m[4] ?? null] : null;
-};
-/** Version order: a pre-release (4.4.0-rc.0) comes before its release;
- *  an unparseable version first of all. */
-const cmp = (a: string, b: string) => {
-  const x = parse(a);
-  const y = parse(b);
-  if (!x || !y) return (x ? 1 : 0) - (y ? 1 : 0) || a.localeCompare(b);
-  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return +x[i]! - +y[i]!;
-  if (x[3] === y[3]) return 0;
-  if (x[3] == null) return 1;
-  if (y[3] == null) return -1;
-  return x[3].localeCompare(y[3], undefined, { numeric: true });
-};
-const isRelease = (v: string) => parse(v)?.[3] === null;
 
 const pct = (share: number) =>
   share > 0 && share < 0.001 ? '<0.1%' : `${(share * 100).toFixed(1)}%`;

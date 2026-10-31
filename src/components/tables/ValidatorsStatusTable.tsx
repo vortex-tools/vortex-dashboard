@@ -1,3 +1,4 @@
+import { VersionStanding } from 'helpers/versions';
 import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
@@ -200,9 +201,17 @@ const activeFromColumn: ColumnDef<ValidatorsTableRow> = {
   }
 };
 
+/** A row's version against its client's target (see helpers/versions). */
+export type VersionOf = (row: ValidatorsTableRow) => {
+  standing: VersionStanding;
+  target: string;
+  client: string;
+} | null;
+
 const allColumns = (
   totalStake: number | null,
-  showActiveFrom: boolean
+  showActiveFrom: boolean,
+  versionOf: VersionOf | undefined
 ): ColumnDef<ValidatorsTableRow>[] => [
   {
     id: 'validator',
@@ -319,12 +328,31 @@ const allColumns = (
     // Dotted versions sort numerically segment by segment (4.10 > 4.9).
     sortingFn: 'alphanumeric',
     header: 'Version',
-    cell: ({ getValue }) => {
+    cell: ({ row, getValue }) => {
       const v = getValue<string | undefined>();
-      return v ? (
-        <span className="font-monospace">{v}</span>
+      if (!v) return <span className="opacity-50">—</span>;
+      // Colored as the Versions page draws it against its client's target.
+      const c = versionOf?.(row.original);
+      return c ? (
+        <span
+          className={`badge badge-soft font-monospace fs-10 badge-soft-${
+            c.standing === 'current'
+              ? 'success'
+              : c.standing === 'behind'
+                ? 'warning'
+                : 'danger'
+          }`}
+          style={{ textTransform: 'none' }}
+          title={
+            c.standing === 'current'
+              ? `On ${c.target} or newer (the newest ${c.client} version on 5%+ of its stake)`
+              : `Behind ${c.target}, the newest ${c.client} version on 5%+ of its stake${c.standing === 'old' ? ' (and older than the version before it)' : ''}`
+          }
+        >
+          {v}
+        </span>
       ) : (
-        <span className="opacity-50">—</span>
+        <span className="font-monospace">{v}</span>
       );
     },
     meta: { cellProps: { className: 'text-body text-nowrap' } }
@@ -402,14 +430,16 @@ const allColumns = (
  */
 export const createValidatorsStatusColumns = ({
   totalStake = null,
-  showActiveFrom = false
+  showActiveFrom = false,
+  versionOf
 }: {
   /** Stake column's share denominator: every staked validator's stake. */
   totalStake?: number | null;
   /** Once the API serves firstEpoch. */
   showActiveFrom?: boolean;
+  versionOf?: VersionOf;
 } = {}): ColumnDef<ValidatorsTableRow>[] =>
-  allColumns(totalStake, showActiveFrom);
+  allColumns(totalStake, showActiveFrom, versionOf);
 
 const ValidatorsStatusTable = () => (
   <div>

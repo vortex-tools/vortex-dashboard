@@ -6,8 +6,17 @@ import SearchBox from 'components/common/SearchBox';
 import StatCard from 'components/common/StatCard';
 import ValidatorsStatusTable, {
   ValidatorsTableRow,
+  VersionOf,
   createValidatorsStatusColumns
 } from 'components/tables/ValidatorsStatusTable';
+import { defaultTarget, versionStandings } from 'helpers/versions';
+
+/** Client families as the Versions page names them. */
+const FAMILY_LABEL: Record<string, string> = {
+  agave: 'Agave',
+  firedancer: 'Firedancer',
+  frankendancer: 'Frankendancer'
+};
 import { formatLamports } from 'helpers/utils';
 import useAdvanceTable from 'hooks/useAdvanceTable';
 import useLiveRefresh from 'hooks/useLiveRefresh';
@@ -199,13 +208,45 @@ const Validators = () => {
     [rows]
   );
   const showActiveFrom = rows.some(r => r.firstEpoch != null);
+  // Each client's target (the Versions page's default, from these rows'
+  // stake) and where every version stands against it.
+  const versionOf = useMemo<VersionOf>(() => {
+    const byFamily = new Map<string, Map<string, number>>();
+    for (const r of rows) {
+      const f = r.software?.family;
+      const v = r.software?.version;
+      if (!f || !v) continue;
+      const m = byFamily.get(f) ?? new Map<string, number>();
+      m.set(v, (m.get(v) ?? 0) + r.activatedStake);
+      byFamily.set(f, m);
+    }
+    const colors = new Map<
+      string,
+      { target: string; of: ReturnType<typeof versionStandings> }
+    >();
+    for (const [f, m] of byFamily) {
+      const target = defaultTarget(m);
+      if (target)
+        colors.set(f, { target, of: versionStandings([...m.keys()], target) });
+    }
+    return row => {
+      const f = row.software?.family;
+      const v = row.software?.version;
+      const c = f && v ? colors.get(f) : undefined;
+      const hit = c && v ? c.of.get(v) : undefined;
+      return c && hit
+        ? { standing: hit, target: c.target, client: FAMILY_LABEL[f!] ?? f! }
+        : null;
+    };
+  }, [rows]);
   const columns = useMemo(
     () =>
       createValidatorsStatusColumns({
         totalStake,
-        showActiveFrom
+        showActiveFrom,
+        versionOf
       }),
-    [totalStake, showActiveFrom]
+    [totalStake, showActiveFrom, versionOf]
   );
 
   const [delinquentOnly, setDelinquentOnly] = useState(false);
