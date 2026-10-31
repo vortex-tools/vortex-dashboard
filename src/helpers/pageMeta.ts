@@ -45,6 +45,12 @@ export interface Meta {
   links?: Crumb[];
   /** Their heading in the summary. */
   linksTitle?: string;
+  /** What an index page lists (the Worker reads them from the API): each
+   *  a heading over linked items with an optional note. */
+  lists?: Array<{
+    title: string;
+    items: Array<Crumb & { note?: string }>;
+  }>;
   /** Extra summary paragraphs (plain text). */
   facts?: string[];
   noindex?: boolean;
@@ -334,7 +340,9 @@ const validatorMeta = (
   if (parts.length > (bucket ? 5 : epoch ? 3 : 1)) return MISSING;
 
   const vote = s?.voteAccount ?? address;
-  const name = s?.info?.name?.trim() || short(vote);
+  // A validator that publishes no on-chain name: "Validator AbCd…wxyz".
+  const named = !!s?.info?.name?.trim();
+  const name = named ? s!.info!.name!.trim() : `Validator ${short(vote)}`;
   const base = `/validator/${vote}`;
   const tabPath = tab.seg ? `${base}/${tab.seg}` : base;
   const facts: string[] = [];
@@ -349,13 +357,18 @@ const validatorMeta = (
     const where = s.geo?.country
       ? ` in ${s.geo.city ? `${s.geo.city}, ` : ''}${s.geo.country}`
       : '';
+    const subject = named
+      ? `${name} is a ${solana(env)} validator with`
+      : `This ${solana(env)} validator publishes no name. It has`;
     facts.push(
-      `${name} is a ${solana(env)} validator with ${sol(s.stake.activatedStake)} SOL staked${share}${client}${where}.${s.stake.delinquent ? ' It is currently delinquent.' : ''}`
+      `${subject} ${sol(s.stake.activatedStake)} SOL staked${share}${client}${where}.${s.stake.delinquent ? ' It is currently delinquent.' : ''}`
     );
   }
   facts.push(`Identity ${s?.identity ?? 'unknown'}, vote account ${vote}.`);
   const title =
-    tab.title(name) +
+    (named || tab.seg
+      ? tab.title(name)
+      : `${solana(env)} validator ${short(vote)}`) +
     (epoch ? ` (epoch ${epoch}${bucket ? `, bucket ${bucket}` : ''})` : '');
   const description = `${facts[0] ?? `${name} is a ${solana(env)} validator.`} On Vortex: ${tab.about}${epoch ? ` in epoch ${epoch}` : ''}.`;
   return {
@@ -396,16 +409,24 @@ export interface PoolFacts {
   info: { description: string | null } | null;
 }
 
+/** "Jito Staked SOL (JitoSOL)", "JitoSOL", or for a pool known only by
+ *  its address, "Stake pool 6K1A…wxyz". */
+export const poolLabel = (name: string, fullName: string | null) =>
+  fullName && fullName !== name
+    ? `${fullName} (${name})`
+    : BASE58.test(name)
+      ? `Stake pool ${short(name)}`
+      : name;
+
 const poolMeta = (
   env: Site,
   name: string,
   p: PoolFacts | null | undefined
 ): Verdict => {
   if (p === undefined) return PASS;
-  const label =
-    p?.fullName && p.fullName !== p.name
-      ? `${p.fullName} (${p.name})`
-      : (p?.name ?? name);
+  const label = poolLabel(p?.name ?? name, p?.fullName ?? null);
+  // A pool known only by its address reads as one, not as a name.
+  const byAddress = BASE58.test(p?.name ?? name);
   const path = `/pool/${encodeURIComponent(p?.name ?? name)}`;
   const facts = p
     ? [
@@ -414,7 +435,9 @@ const poolMeta = (
       ]
     : [];
   return {
-    title: `${label}: ${solana(env)} stake pool validators and stake`,
+    title: byAddress
+      ? `${solana(env)} stake pool ${short(p?.name ?? name)}: validators and stake`
+      : `${label}: ${solana(env)} stake pool validators and stake`,
     description: `${facts[0] ?? `${label} on ${solana(env)}.`} Every validator it stakes to, and which it added, dropped or moved stake on, per epoch.`,
     canonical: path,
     h1: label,
@@ -430,8 +453,8 @@ const poolMeta = (
 
 // --------------------------------------------------- SIMDs and features
 
-type ClusterName = 'mainnet-beta' | 'testnet' | 'devnet';
-const CLUSTERS: ClusterName[] = ['mainnet-beta', 'testnet', 'devnet'];
+export type ClusterName = 'mainnet-beta' | 'testnet' | 'devnet';
+export const CLUSTERS: ClusterName[] = ['mainnet-beta', 'testnet', 'devnet'];
 
 /** The /feature `feature` fields the tags use. */
 export interface FeatureFacts {
@@ -489,6 +512,11 @@ export const simdNumber = (param: string) => {
   const n = Number(param.replace(/^simd-?/i, ''));
   return param && Number.isInteger(n) && n >= 0 ? n : null;
 };
+
+/** A SIMD's title without a leading "SIMD-0082:" (a PR-only SIMD's title
+ *  is its PR's, which often repeats the number). */
+export const cleanSimdTitle = (t: string | null | undefined) =>
+  t?.replace(/^SIMD[-\s]?\d+\s*[:\-–]\s*/i, '').trim() || null;
 
 export const simdLabel = (n: number) => `SIMD-${String(n).padStart(4, '0')}`;
 
@@ -615,8 +643,7 @@ const simdMeta = (
   if (d === undefined) return PASS;
   const path = `/simd/${n}`;
   const s = d?.simd;
-  // A PR-only SIMD's title is its PR's, which often repeats the number.
-  const title = s?.title?.replace(/^SIMD[-\s]?\d+\s*[:\-–]\s*/i, '').trim();
+  const title = cleanSimdTitle(s?.title);
   const label = title ? `${simdLabel(n)}: ${title}` : simdLabel(n);
   const facts: string[] = [];
   if (s) {

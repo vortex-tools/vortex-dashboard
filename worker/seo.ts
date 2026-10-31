@@ -19,6 +19,13 @@
 import {
   ARCHIVE,
   BASE58,
+  CLUSTERS,
+  ClusterName,
+  cleanSimdTitle,
+  poolLabel,
+  simdLabel,
+  sol,
+  short,
   Crumb,
   FeatureFacts,
   MAINNET_ONLY,
@@ -164,15 +171,181 @@ const body = (env: SeoEnv, meta: Meta, h1: string) => {
   const facts = (meta.facts ?? [meta.description])
     .map(f => `<p>${esc(f)}</p>`)
     .join('');
-  const list = (title: string, items: Crumb[]) =>
+  const list = (title: string, items: Array<Crumb & { note?: string }>) =>
     items.length
-      ? `<h2 class="fs-8">${esc(title)}</h2><ul>${items.map(c => `<li>${a(c)}</li>`).join('')}</ul>`
+      ? `<h2 class="fs-8">${esc(title)}</h2><ul>${items
+          .map(c => `<li>${a(c)}${c.note ? `: ${esc(c.note)}` : ''}</li>`)
+          .join('')}</ul>`
       : '';
-  return `<main class="container py-5" data-seo-summary>${crumbs}<h1>${esc(h1)}</h1>${facts}${list(
+  const lists = (meta.lists ?? []).map(l => list(l.title, l.items)).join('');
+  return `<main class="container py-5" data-seo-summary>${crumbs}<h1>${esc(h1)}</h1>${facts}${lists}${list(
     meta.linksTitle ?? 'On this validator',
     meta.links ?? []
   )}${list(brand(env), sections(env))}</main>`;
 };
+
+// ----------------------------------------------------- index page lists
+
+type List = NonNullable<Meta['lists']>[number];
+
+/** The cluster this deploy shows. */
+const served = (env: SeoEnv): ClusterName =>
+  isTestnet(env) ? 'testnet' : 'mainnet-beta';
+
+interface UpcomingFeature {
+  id: string;
+  name: string | null;
+  title: string | null;
+  clusters: Partial<
+    Record<ClusterName, { status: string; queuePosition: number | null }>
+  >;
+}
+
+/** What /features, /simds, /validators and /pools list, from the API -
+ *  undefined for other pages or when the API can't be read. */
+const listsFor = async (
+  env: SeoEnv,
+  path: string
+): Promise<List[] | undefined> => {
+  if (path === '/features') {
+    // What activates next on each cluster, in queue order.
+    const queues = await Promise.all(
+      CLUSTERS.map(c =>
+        api<{ features: UpcomingFeature[] }>(
+          env,
+          `/features/upcoming?cluster=${c}`,
+          600
+        )
+      )
+    );
+    if (queues.some(q => !q)) return undefined;
+    return CLUSTERS.map((c, i) => ({
+      title: `Next to activate on ${c}`,
+      items: queues[i]!.features.map(f => {
+        const st = f.clusters[c];
+        return {
+          name: f.title?.trim() || f.name?.trim() || short(f.id),
+          path: `/feature/${f.id}`,
+          note:
+            st?.status === 'queued'
+              ? 'queued, activates at the next epoch boundary'
+              : st?.queuePosition != null
+                ? `#${st.queuePosition} in the queue`
+                : undefined
+        };
+      })
+    })).map(l =>
+      l.items.length
+        ? l
+        : { ...l, items: [{ name: 'Nothing queued', path: '/features' }] }
+    );
+  }
+  if (path === '/simds') {
+    const d = await api<{
+      simds: Array<{
+        simd: number;
+        title: string | null;
+        repoStatus: string | null;
+        status: string | null;
+        rollup: Partial<Record<ClusterName, { stage: string }>>;
+      }>;
+    }>(env, '/simds', 600);
+    if (!d) return undefined;
+    const c = served(env);
+    const groups: Array<[string, string]> = [
+      ['active', `Active on ${c}`],
+      ['partial', `Partly active on ${c}`],
+      ['pending', `Waiting to activate on ${c}`],
+      ['noGate', 'No feature gate']
+    ];
+    return groups
+      .map(([stage, title]) => ({
+        title,
+        items: d.simds
+          .filter(x => (x.rollup[c]?.stage ?? 'noGate') === stage)
+          .map(x => {
+            const t = cleanSimdTitle(x.title);
+            return {
+              name: t ? `${simdLabel(x.simd)}: ${t}` : simdLabel(x.simd),
+              path: `/simd/${x.simd}`,
+              note:
+                x.status === 'superseded' || x.status === 'closed'
+                  ? x.status
+                  : (x.repoStatus ?? undefined)
+            };
+          })
+      }))
+      .filter(l => l.items.length);
+  }
+  if (path === '/validators') {
+    const d = await api<{
+      validators: Array<{ voteAddress: string | null; name: string | null }>;
+    }>(env, '/validators', 600);
+    if (!d) return undefined;
+    const items = d.validators
+      .filter(v => v.voteAddress && BASE58.test(v.voteAddress))
+      .map(v => ({
+        named: !!v.name?.trim(),
+        name: v.name?.trim() || `Validator ${short(v.voteAddress!)}`,
+        path: `/validator/${v.voteAddress}`
+      }))
+      // Named validators A-Z, then the unnamed.
+      .sort((a, b) =>
+        a.named !== b.named
+          ? a.named
+            ? -1
+            : 1
+          : a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+      )
+      .map(({ name, path }) => ({ name, path }));
+    return [{ title: `All validators (${items.length})`, items }];
+  }
+  if (path === '/pools' && !isTestnet(env)) {
+    const d = await api<{
+      epoch: number;
+      pools: Array<{
+        name: string;
+        fullName: string | null;
+        stake: number;
+        validators: number;
+      }>;
+    }>(env, '/pools', 600);
+    if (!d) return undefined;
+    return [
+      {
+        title: `Stake pools by stake, end of epoch ${d.epoch}`,
+        items: d.pools.map(p => ({
+          name: poolLabel(p.name, p.fullName),
+          path: `/pool/${encodeURIComponent(p.name)}`,
+          note: `${sol(p.stake)} SOL on ${p.validators.toLocaleString('en-US')} validator${p.validators === 1 ? '' : 's'}`
+        }))
+      }
+    ];
+  }
+  return undefined;
+};
+
+/** listsFor, kept at the edge for 10 minutes: the big index responses are
+ *  parsed once per colo per 10 minutes, not per page view. */
+const cachedLists = async (env: SeoEnv, origin: string, path: string) => {
+  const key = new Request(`${origin}/__seo-lists${path}`);
+  const hit = await caches.default.match(key);
+  if (hit) return (await hit.json()) as List[];
+  const lists = await listsFor(env, path);
+  if (lists)
+    await caches.default.put(
+      key,
+      new Response(JSON.stringify(lists), {
+        headers: {
+          'content-type': 'application/json',
+          'cache-control': 'public, max-age=600'
+        }
+      })
+    );
+  return lists;
+};
+
+const LIST_PAGES = new Set(['/features', '/simds', '/validators', '/pools']);
 
 /** A page's tags, with the facts it needs read from the API. */
 export const metaFor = async (
@@ -237,6 +410,10 @@ const renderPage = async (
           status: 404
         }
       : verdict;
+  // Index pages list their items in the summary.
+  const path = url.pathname.replace(/\/+$/, '') || '/';
+  if (meta.status !== 404 && LIST_PAGES.has(path))
+    meta.lists = await cachedLists(env, url.origin, path);
 
   const fullTitle = `${meta.title} | ${brand(env)}`;
   const h1 = meta.h1 ?? meta.title;
