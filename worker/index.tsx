@@ -85,7 +85,11 @@ const fetchIcon = async (url: string | null | undefined) => {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(2500),
-      cf: { cacheTtl: 86400, cacheEverything: true }
+      // A day for logos (and their 404s); a failing host isn't cached.
+      cf: {
+        cacheEverything: true,
+        cacheTtlByStatus: { '200-299': 86400, '404': 86400, '500-599': 0 }
+      }
     });
     if (!res.ok) return null;
     const buf = new Uint8Array(await res.arrayBuffer());

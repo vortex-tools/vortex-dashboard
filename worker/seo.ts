@@ -56,7 +56,12 @@ const api = async <T>(env: SeoEnv, path: string, ttl = 300) => {
     const res = await fetch(`${env.API_BASE}${path}`, {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(3000),
-      cf: { cacheTtl: ttl, cacheEverything: true }
+      // Answers (and 404s: a key the API doesn't know) for `ttl`; failures
+      // not at all, so a brief API outage doesn't outlive itself.
+      cf: {
+        cacheEverything: true,
+        cacheTtlByStatus: { '200-299': ttl, '404': ttl, '500-599': 0 }
+      }
     });
     return res.ok ? ((await res.json()) as T) : null;
   } catch {
