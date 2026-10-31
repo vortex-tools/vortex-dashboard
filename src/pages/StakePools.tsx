@@ -10,6 +10,7 @@ import UntrackedState from 'components/common/UntrackedState';
 import {
   Delta,
   KIND,
+  AdmissionBadge,
   KindBadge,
   kindOf,
   compactSol,
@@ -99,6 +100,16 @@ const columns = (
     accessorFn: p => p.kind ?? '',
     cell: ({ row: { original: p } }) => (
       <KindBadge kind={p.kind} name={p.name} />
+    ),
+    meta: NOWRAP
+  },
+  // Who can get in (curated; blank where not).
+  {
+    id: 'admission',
+    header: 'Admission',
+    accessorFn: p => p.info?.admission?.kind ?? '',
+    cell: ({ row: { original: p } }) => (
+      <AdmissionBadge admission={p.info?.admission} />
     ),
     meta: NOWRAP
   },

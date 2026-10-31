@@ -16,6 +16,8 @@ import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import {
+  AdmissionBadge,
+  admissionText,
   Delta,
   poolPath,
   bpsPct,
@@ -756,12 +758,35 @@ const StakePool = () => {
     <div className="mb-9">
       <div className="page-header row g-3 align-items-start justify-content-between">
         <div className="col">
-          <h3>{data.name}</h3>
+          <h3 className="d-flex align-items-center gap-2">
+            {data.name}
+            <span className="fs-10">
+              <AdmissionBadge admission={data.info?.admission} />
+            </span>
+          </h3>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">{data.fullName}</p>
           {/* Curated: who runs it and how it picks validators. */}
           {data.info?.description && (
             <p className="fs-9 text-body-secondary lh-sm mb-0 mt-1 w-100">
               {data.info.description}
+            </p>
+          )}
+          {/* Who can get in, and where the pool says so. */}
+          {data.info?.admission && (
+            <p className="fs-10 text-body-tertiary lh-sm mb-0 mt-1 w-100">
+              {admissionText(data.info.admission)}
+              {data.info.admission.sourceUrl && (
+                <>
+                  {' '}
+                  <a
+                    href={data.info.admission.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    source ↗
+                  </a>
+                </>
+              )}
             </p>
           )}
         </div>

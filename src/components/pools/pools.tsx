@@ -39,6 +39,49 @@ export const KindBadge = ({
   ) : null;
 };
 
+/** Who can get into a pool: open (published criteria anyone meeting
+ *  them gets) or gated (someone admits you). Names are provisional. */
+const ADMISSION: Record<string, { label: string; bg: BadgeBg }> = {
+  open: { label: 'Open', bg: 'success' },
+  gated: { label: 'Gated', bg: 'warning' }
+};
+const REASON: Record<string, string> = {
+  criteria: 'published criteria',
+  network: 'joining a network',
+  application: 'by application',
+  invite: 'by invite',
+  board: 'by board vote'
+};
+export interface Admission {
+  kind: string;
+  reason: string | null;
+  sourceUrl: string | null;
+  note: string | null;
+}
+/** "Open: published criteria" / "Gated: by application", and the note. */
+export const admissionText = (a: Admission) =>
+  [
+    `${ADMISSION[a.kind]?.label ?? a.kind}${
+      a.reason ? `: ${REASON[a.reason] ?? a.reason}` : ''
+    }`,
+    a.note
+  ]
+    .filter(Boolean)
+    .join('. ');
+
+export const AdmissionBadge = ({
+  admission
+}: {
+  admission: Admission | null | undefined;
+}) => {
+  const k = admission ? ADMISSION[admission.kind] : null;
+  return admission && k ? (
+    <Badge bg={k.bg} className="text-nowrap" title={admissionText(admission)}>
+      {k.label}
+    </Badge>
+  ) : null;
+};
+
 /** "◎1.23M", "◎45.6K", "◎789". */
 export const compactSol = (lamports: number) => {
   const sol = lamports / 1e9;

@@ -2879,6 +2879,20 @@ export type PoolFees = z.infer<typeof poolFeesSchema>;
 // Who stake pools, Marinade and SFDP delegate to, per completed epoch,
 // from Jito's stake-meta file (pools by name, Marinade's two authorities
 // merged; SFDP by its stake authority). Effective stake, lamports.
+// Who can get into a pool (curated, from the pool's own docs): open =
+// any validator meeting published, mechanical criteria; gated = someone
+// admits it (reason: application, invite, board, ...). null: not curated.
+const poolAdmissionSchema = z
+  .object({
+    kind: z.string(),
+    reason: z.string().nullable().catch(null),
+    sourceUrl: z.string().nullable().catch(null),
+    note: z.string().nullable().catch(null)
+  })
+  .nullable()
+  .optional()
+  .catch(null);
+
 export const poolSummarySchema = z.object({
   name: z.string(),
   // 'stake-pool' | 'marinade' | 'sfdp'
@@ -2948,7 +2962,8 @@ export const poolSummarySchema = z.object({
       description: z.string().nullable().catch(null),
       website: z.string().nullable().catch(null),
       docsUrl: z.string().nullable().optional().catch(null),
-      updatedAt: z.number().nullable().optional().catch(null)
+      updatedAt: z.number().nullable().optional().catch(null),
+      admission: poolAdmissionSchema
     })
     .nullable()
     .optional()
@@ -3005,7 +3020,8 @@ export const poolDetailSchema = z.object({
       description: z.string().nullable().catch(null),
       website: z.string().nullable().catch(null),
       docsUrl: z.string().nullable().optional().catch(null),
-      updatedAt: z.number().nullable().optional().catch(null)
+      updatedAt: z.number().nullable().optional().catch(null),
+      admission: poolAdmissionSchema
     })
     .nullable()
     .optional()
