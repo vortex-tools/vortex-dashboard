@@ -328,6 +328,9 @@ export const validatorStatusSchema = z.object({
       lamports: z.number(),
       nodePubkey: z.string(),
       authorizedWithdrawer: z.string(),
+      // What the withdrawer is: the node identity, a program address
+      // (off-curve, e.g. a multisig vault) or an ordinary key.
+      withdrawerKind: z.string().nullable().optional().catch(null),
       authorizedVoter: z.string().nullable(),
       nextAuthorizedVoter: z.string().nullable(),
       inflationRewardsCommissionBps: z.number(),

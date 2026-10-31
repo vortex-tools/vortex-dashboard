@@ -935,16 +935,29 @@ export const ValidatorWithdrawer = ({
   nodeAddress,
   labelWidth = '3rem'
 }: Props & { labelWidth?: string }) => {
-  const withdrawer =
-    useContext(VortexDataContext)?.validatorStatusState.data.get(nodeAddress)
-      ?.voteState?.authorizedWithdrawer;
+  const vs =
+    useContext(VortexDataContext)?.validatorStatusState.data.get(
+      nodeAddress
+    )?.voteState;
+  const withdrawer = vs?.authorizedWithdrawer;
   if (!withdrawer) return null;
+  // What kind of address it is (the API's withdrawerKind; else the
+  // identity by comparison). Program-owned is said; a plain key isn't
+  // characterized.
+  const kind =
+    vs?.withdrawerKind ?? (withdrawer === nodeAddress ? 'identity' : null);
   return (
     <AddressLine
       label="Withdrawer"
       value={withdrawer}
       labelWidth={labelWidth}
-      note={withdrawer === nodeAddress ? '(the identity)' : undefined}
+      note={
+        kind === 'identity'
+          ? '(the identity)'
+          : kind === 'program'
+            ? '(a program address, e.g. a multisig)'
+            : undefined
+      }
     />
   );
 };
