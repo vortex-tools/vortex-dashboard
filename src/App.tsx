@@ -1,9 +1,11 @@
+import usePageMeta from 'hooks/usePageMeta';
 import useToggleStyle from 'hooks/useToggleStyle';
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router';
 
 const App = () => {
   useToggleStyle();
+  usePageMeta();
   const { pathname } = useLocation();
 
   // Scroll to top whenever the route changes - except stepping from slot

@@ -7,13 +7,16 @@
   // makes react-router deep links (/validator/<addr>/votes/epoch/1034) work
   // on refresh.
   //
-  // The Worker (worker/index.tsx) renders the shareable "Ready for
-  // Alpenglow" X cards. `run_worker_first` limits it to /share/*: every
-  // other request is a static asset and never invokes it.
+  // The Worker (worker/index.tsx) serves pages with their own tags for
+  // crawlers (worker/seo.ts: titles, canonicals, a summary in #root, real
+  // 404s, robots.txt, sitemaps, llms.txt) and renders the shareable
+  // "Ready for Alpenglow" X cards. `run_worker_first` sends it every page
+  // request; static files (/assets/*, icons, the manifest) skip it.
   //
   // Cost note: static asset requests are free and unmetered on every plan,
-  // including Free, and Cloudflare charges no egress. Only /share/* requests
-  // count as Worker invocations (Free: 100k a day).
+  // including Free, and Cloudflare charges no egress. Page loads (not their
+  // JS/CSS) count as Worker invocations (Free: 100k a day; Paid: 10M a
+  // month included).
   //
   // `assets` is repeated under each env on purpose — per Wrangler docs,
   // bindings are NOT inherited by environments and must be declared explicitly.
@@ -27,10 +30,21 @@
     "directory": "./build/",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/share/*"]
+    "run_worker_first": [
+        "/*",
+        "!/assets/*",
+        "!/favicon.ico",
+        "!/favicon-staging.ico",
+        "!/favicon-testnet.ico",
+        "!/manifest.json"
+      ]
   },
   // The API the share cards read (vars aren't inherited: set per env).
-  "vars": { "API_BASE": "https://api.vx.tools", "CLUSTER": "mainnet" },
+  "vars": {
+    "API_BASE": "https://api.vx.tools",
+    "CLUSTER": "mainnet",
+    "SITE": "production"
+  },
 
   // PRODUCTION — app.vx.tools. Deployed from the `mainnet` branch.
   // custom_domain: Cloudflare owns this hostname's DNS record and certificate.
@@ -46,9 +60,20 @@
         "directory": "./build/",
         "binding": "ASSETS",
         "not_found_handling": "single-page-application",
-        "run_worker_first": ["/share/*"]
+        "run_worker_first": [
+        "/*",
+        "!/assets/*",
+        "!/favicon.ico",
+        "!/favicon-staging.ico",
+        "!/favicon-testnet.ico",
+        "!/manifest.json"
+      ]
       },
-      "vars": { "API_BASE": "https://api.staging.vx.tools", "CLUSTER": "mainnet" },
+      "vars": {
+        "API_BASE": "https://api.staging.vx.tools",
+        "CLUSTER": "mainnet",
+        "SITE": "staging"
+      },
       "routes": [{ "pattern": "staging.vx.tools", "custom_domain": true }]
     },
     // TESTNET - testnet.vx.tools. Built against the testnet API (npm run
@@ -61,9 +86,20 @@
         "directory": "./build/",
         "binding": "ASSETS",
         "not_found_handling": "single-page-application",
-        "run_worker_first": ["/share/*"]
+        "run_worker_first": [
+        "/*",
+        "!/assets/*",
+        "!/favicon.ico",
+        "!/favicon-staging.ico",
+        "!/favicon-testnet.ico",
+        "!/manifest.json"
+      ]
       },
-      "vars": { "API_BASE": "https://api.testnet.vx.tools", "CLUSTER": "testnet" },
+      "vars": {
+        "API_BASE": "https://api.testnet.vx.tools",
+        "CLUSTER": "testnet",
+        "SITE": "testnet"
+      },
       "routes": [{ "pattern": "testnet.vx.tools", "custom_domain": true }]
     }
   }

@@ -1,7 +1,11 @@
 /**
- * The dashboard's only server code: shareable "Ready for Alpenglow" X cards.
- * Everything else is static assets (wrangler.jsonc: run_worker_first covers
- * /share/* only, so other requests never reach this Worker).
+ * The dashboard's only server code:
+ *
+ *   - page tags, robots.txt, sitemaps and llms.txt for crawlers (./seo.ts);
+ *   - shareable "Ready for Alpenglow" X cards (below).
+ *
+ * Static files (/assets/*, icons, the manifest) never reach this Worker
+ * (wrangler.jsonc run_worker_first).
  *
  *   /share/alpenglow/<identity>           X card tags; people are sent on to
  *                                         /alpenglow/share?v=<identity>
@@ -17,6 +21,7 @@ import {
   cardVersion,
   readinessView
 } from '../src/helpers/alpenglowClient';
+import { seo } from './seo';
 
 interface Env {
   ASSETS: { fetch: (req: Request) => Promise<Response> };
@@ -24,6 +29,8 @@ interface Env {
   API_BASE: string;
   /** The cluster it serves, for the card's footer. */
   CLUSTER: string;
+  /** "production" | "staging" | "testnet": staging is kept out of search. */
+  SITE?: string;
 }
 
 interface Status extends ReadinessStatus {
@@ -315,6 +322,15 @@ const page = (origin: string, identity: string, s: Status | null) => {
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext) {
+    if (!new URL(req.url).pathname.startsWith('/share/')) {
+      try {
+        return (await seo(req, env)) ?? (await env.ASSETS.fetch(req));
+      } catch (e) {
+        // Tags are a bonus: on any failure serve the page as it is.
+        console.error('seo: failed', String(e), (e as Error)?.stack);
+        return env.ASSETS.fetch(req);
+      }
+    }
     try {
       return await handle(req, env, ctx);
     } catch (e) {

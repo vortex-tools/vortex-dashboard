@@ -52,8 +52,11 @@ staging.vx.tools and testnet.vx.tools builds.
 - Charts with ECharts, tables with TanStack Table.
 - All data comes through `src/providers/VortexDataProvider.tsx`; every API
   response is validated with Zod (`src/providers/vortex-schemas.ts`).
-- A small Cloudflare Worker (`worker/`) renders share cards; everything
-  else is static assets.
+- A small Cloudflare Worker (`worker/`) serves each page with its own title,
+  description, canonical URL and a short summary for crawlers
+  (`worker/seo.ts`, sharing `src/helpers/pageMeta.ts` with the app), plus
+  robots.txt, sitemaps and llms.txt, and renders share cards; JS, CSS and
+  icons are static assets.
 - Pushes to `staging` deploy staging.vx.tools; `mainnet` and `testnet` deploy
   app.vx.tools and testnet.vx.tools (`.github/workflows/deploy.yml`).
 
