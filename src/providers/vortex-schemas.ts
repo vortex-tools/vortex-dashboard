@@ -3231,7 +3231,23 @@ export const activityEventSchema = voteAccountChangeSchema.extend({
   versionChanged: z.boolean().nullable().optional().catch(null),
   clientChanged: z.boolean().nullable().optional().catch(null),
   before: hostStateSchema.nullable().optional().catch(null),
-  after: hostStateSchema.nullable().optional().catch(null)
+  after: hostStateSchema.nullable().optional().catch(null),
+  // identityWithdraw: SOL (lamports) or tokens (token) sent from the
+  // identity, and to whom; newRecipient: never paid before in its
+  // recorded history (null: can't tell, or not served yet).
+  token: z
+    .object({
+      mint: z.string(),
+      amount: z.string(),
+      decimals: z.number(),
+      tokenAccount: z.string().nullable().optional().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  recipient: z.string().nullable().optional().catch(null),
+  recipientOwner: z.string().nullable().optional().catch(null),
+  newRecipient: z.boolean().nullable().optional().catch(null)
 });
 export type ActivityEvent = z.infer<typeof activityEventSchema>;
 export const clusterActivitySchema = z.object({

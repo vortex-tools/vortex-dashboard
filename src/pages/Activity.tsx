@@ -10,6 +10,7 @@ import {
   changeValue,
   eventTime,
   isBlsChange,
+  withdrawalSol,
   isNoopChange,
   softwareLabel,
   voterLabel,
@@ -317,6 +318,15 @@ const matchesKind = (e: ActivityEvent, kind: string) =>
         ? isBlsChange(e)
         : e.kind === kind);
 
+/** Identity withdrawals under this many SOL are routine payments, hidden
+ *  by default. */
+const SMALL_SOL = 1;
+
+const isSmall = (e: ActivityEvent) => {
+  const sol = withdrawalSol(e);
+  return sol != null && sol < SMALL_SOL;
+};
+
 /** A kind's name in the change filter. */
 const kindLabel = (k: string) =>
   k === BLS_FILTER ? 'BLS key' : (CHANGE_KIND[k]?.label ?? k);
@@ -363,15 +373,24 @@ const Activity = () => {
   const keyList = picked
     ? [validator, picked.voteAddress, picked.nodeAddress].join(' ')
     : '';
-  const events = useMemo(() => {
+  // Identity withdrawals under SMALL_SOL (routine operator payments) are
+  // left out unless asked for (?small=1); counted when they are.
+  const showSmall = params.get('small') === '1';
+  const { events, smallHidden } = useMemo(() => {
     const keys = keyList ? new Set(keyList.split(' ')) : null;
-    return (data?.events ?? []).filter(
+    const shown = (data?.events ?? []).filter(
       e =>
         !isNoopChange(e) &&
         matchesKind(e, kind) &&
         (!keys || keys.has(e.voteKey ?? '') || keys.has(e.identity ?? ''))
     );
-  }, [data, kind, keyList]);
+    const small = shown.filter(isSmall);
+    return {
+      events: showSmall ? shown : shown.filter(e => !small.includes(e)),
+      smallHidden: showSmall ? 0 : small.length
+    };
+  }, [data, kind, keyList, showSmall]);
+  const anySmall = (data?.events ?? []).some(isSmall);
   // Kinds present in the range, for the filter (in the order defined).
   const kinds = useMemo(() => {
     const seen = new Set((data?.events ?? []).map(e => e.kind));
@@ -497,6 +516,16 @@ const Activity = () => {
               </option>
             ))}
           </Form.Select>
+          {anySmall && (
+            <Form.Check
+              type="switch"
+              id="activity-small-withdrawals"
+              className="mb-0 fs-9"
+              label={`Withdrawals under ◎${SMALL_SOL}${smallHidden ? ` (${smallHidden.toLocaleString()} hidden)` : ''}`}
+              checked={showSmall}
+              onChange={e => set('small', e.target.checked ? '1' : '')}
+            />
+          )}
           {data?.startEpoch != null && data.endEpoch != null && (
             <span className="fs-10 text-body-tertiary ms-auto">
               Epochs {data.startEpoch.toLocaleString()}–

@@ -18,6 +18,9 @@ export const CHANGE_KIND: Record<
   // Gray, unlike the withdrawer change (amber): a withdrawal is routine
   // (commission taken out), a new withdrawer is the key that matters.
   withdraw: { label: 'Withdrawal', bg: 'secondary' },
+  // SOL or tokens sent from the identity account: mostly routine
+  // payments; a large one, or one to a new recipient, stands out.
+  identityWithdraw: { label: 'Identity withdrawal', bg: 'secondary' },
   voter: { label: 'Voter', bg: 'info' },
   identity: { label: 'Identity', bg: 'info' },
   inflationCommission: { label: 'Inflation commission', bg: 'primary' },
@@ -98,7 +101,12 @@ export const BLS_FILTER = 'bls';
 export const isNoopChange = (e: ActivityEvent) => {
   if (e.kind === 'voter')
     return e.voterChanged === false && e.blsKeyChanged === false;
-  if (HOST_KINDS.has(e.kind) || e.kind === 'withdraw' || e.kind === 'create')
+  if (
+    HOST_KINDS.has(e.kind) ||
+    e.kind === 'withdraw' ||
+    e.kind === 'create' ||
+    e.kind === 'identityWithdraw'
+  )
     return false;
   return e.oldValue != null && e.oldValue === e.newValue;
 };
@@ -198,6 +206,26 @@ export const changeValue = (
       which === 'new' ? e.before : e.after,
       e.kind === 'software'
     );
+  if (e.kind === 'identityWithdraw') {
+    if (which === 'old') return null;
+    const to = e.recipientOwner ?? e.recipient;
+    return (
+      <>
+        <WithdrawalAmount e={e} />
+        {to && (
+          <>
+            {' to '}
+            <ShortAddress address={to} isTestnet={isTestnet} />
+          </>
+        )}
+        {e.newRecipient && (
+          <Badge bg="danger" className="ms-2 text-nowrap">
+            New recipient
+          </Badge>
+        )}
+      </>
+    );
+  }
   const v = which === 'new' ? e.newValue : e.oldValue;
   if (e.kind === 'inflationCommission' || e.kind === 'blockRevenueCommission')
     return bpsPct(v);
@@ -251,6 +279,44 @@ export const changeValue = (
         </span>
       )}
     </>
+  );
+};
+
+/** An identity withdrawal's size in SOL (tokens: null). */
+export const withdrawalSol = (e: ActivityEvent) =>
+  e.kind === 'identityWithdraw' && !e.token && e.lamports != null
+    ? e.lamports / 1e9
+    : null;
+/** At least this many SOL: a withdrawal shown prominently. */
+const LARGE_SOL = 10;
+
+/** "◎0.0072" or "1,250 EPjF…Dt1v": the SOL, or the token amount and its
+ *  mint; large SOL withdrawals in bold amber. */
+const WithdrawalAmount = ({ e }: { e: ActivityEvent }) => {
+  if (e.token) {
+    const raw = e.token.amount;
+    const d = e.token.decimals;
+    const whole = raw.length > d ? raw.slice(0, raw.length - d) : '0';
+    const frac = raw
+      .padStart(d + 1, '0')
+      .slice(-d)
+      .replace(/0+$/, '');
+    const amount = `${BigInt(whole).toLocaleString('en-US')}${frac ? `.${frac.slice(0, 4)}` : ''}`;
+    return (
+      <span className="font-monospace" title={`Token ${e.token.mint}`}>
+        {amount}{' '}
+        <span className="text-body-tertiary">{short(e.token.mint)}</span>
+      </span>
+    );
+  }
+  const sol = withdrawalSol(e);
+  if (sol == null) return null;
+  return (
+    <span
+      className={`font-monospace${sol >= LARGE_SOL ? ' fw-bold text-warning-emphasis' : ''}`}
+    >
+      {formatLamports(e.lamports!, sol >= 1 ? 2 : 4)}
+    </span>
   );
 };
 
