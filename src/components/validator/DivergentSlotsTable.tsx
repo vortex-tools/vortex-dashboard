@@ -9,7 +9,8 @@ import useValidatorGeo, { placeOf } from 'hooks/useValidatorGeo';
 import { SlotInfo, VortexDataContext } from 'providers/VortexDataProvider';
 import { ValidatorGeo } from 'providers/vortex-schemas';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { Table } from 'react-bootstrap';
+import { ButtonGroup, Table, ToggleButton } from 'react-bootstrap';
+import SectionCard from 'components/common/SectionCard';
 import { Link } from 'react-router';
 
 /** Leader windows a page. */
@@ -195,8 +196,12 @@ const DivergentSlotsTable = ({
   causeOf,
   onHover,
   geo: geoProp,
-  geoAsOf = 'as of now'
+  geoAsOf = 'as of now',
+  card
 }: {
+  /** Draw the card around it, the filters in its header (else the
+   *  filters above the table). */
+  card?: { title: string; icon: string; info?: string; before?: ReactNode };
   /** Producer locations (the epoch's, from the page), and when from. */
   geo?: Map<string, ValidatorGeo> | null;
   geoAsOf?: string;
@@ -210,6 +215,24 @@ const DivergentSlotsTable = ({
   selfNode: string | null;
 }) => {
   const context = useContext(VortexDataContext);
+  // In its card (filters in the header), or bare (filters above).
+  const wrap = (body: ReactNode, filters?: ReactNode) =>
+    card ? (
+      <SectionCard
+        title={card.title}
+        icon={card.icon}
+        info={card.info}
+        aside={filters}
+      >
+        {card.before}
+        {body}
+      </SectionCard>
+    ) : (
+      <>
+        {filters && <div className="mb-2">{filters}</div>}
+        {body}
+      </>
+    );
   const [filter, setFilter] = useState<Filter>('all');
   const [page, setPage] = useState(0);
   // Notarized-skipped slots (it notarized a block the cluster skipped -
@@ -298,7 +321,7 @@ const DivergentSlotsTable = ({
   const geo = geoProp !== undefined ? geoProp : geoNow;
 
   if (!listed.length)
-    return (
+    return wrap(
       <UntrackedState>
         No divergent slots this epoch so far: every vote agreed with the chain.
       </UntrackedState>
@@ -336,39 +359,47 @@ const DivergentSlotsTable = ({
     context?.validatorDirectoryState.byNodeAddress?.get(node)?.name ??
     `${node.slice(0, 6)}…${node.slice(-6)}`;
 
-  return (
+  // The filters: every divergent vote, misses by cause, skipped blocks -
+  // as the card header's toggle (with each one's count).
+  const filters = (
+    <ButtonGroup size="sm" className="flex-wrap">
+      {tabs
+        .filter(
+          ([k]) => k === 'all' || k === filter || (counts.get(k) ?? 0) > 0
+        )
+        .map(([k, label]) => (
+          <ToggleButton
+            key={k}
+            id={`divergent-${k}`}
+            type="radio"
+            name="divergent-filter"
+            variant="soft-secondary"
+            value={k}
+            checked={filter === k}
+            onChange={() => {
+              setFilter(k);
+              setPage(0);
+            }}
+          >
+            {label}
+            <span className="ms-1 text-body-tertiary">
+              {(k === 'all'
+                ? listed.length
+                : (counts.get(k) ?? 0)
+              ).toLocaleString()}
+            </span>
+          </ToggleButton>
+        ))}
+    </ButtonGroup>
+  );
+
+  return wrap(
     <>
-      <ul className="nav nav-underline fs-9 mb-2 flex-nowrap overflow-auto">
-        {tabs
-          .filter(
-            ([k]) => k === 'all' || k === filter || (counts.get(k) ?? 0) > 0
-          )
-          .map(([k, label, tone]) => (
-            <li key={k} className="nav-item">
-              <button
-                type="button"
-                className={`nav-link text-nowrap${filter === k ? ' active' : ''}`}
-                onClick={() => {
-                  setFilter(k);
-                  setPage(0);
-                }}
-              >
-                {label}
-                <span className={`badge badge-soft badge-soft-${tone} ms-2`}>
-                  {(k === 'all'
-                    ? listed.length
-                    : (counts.get(k) ?? 0)
-                  ).toLocaleString()}
-                </span>
-              </button>
-            </li>
-          ))}
-      </ul>
       {/* Fixed widths, so the columns stay put whatever the tab shows. */}
       <Table
         responsive
         size="sm"
-        className="data-table fs-9 mb-0 border"
+        className="data-table fs-9 mb-0"
         style={{ tableLayout: 'fixed', minWidth: 980 }}
       >
         <colgroup>
@@ -448,14 +479,7 @@ const DivergentSlotsTable = ({
                     <>
                       <ValidatorLink
                         address={payer}
-                        className={`d-inline-block text-truncate align-bottom${
-                          [...slots].some(
-                            ([sl, k]) =>
-                              k.startsWith('missed') && causeOf?.(sl) === 'thin'
-                          )
-                            ? ' text-warning'
-                            : ''
-                        }`}
+                        className="d-inline-block text-truncate align-bottom"
                         style={{ maxWidth: 170 }}
                       >
                         {nameOf(payer)}
@@ -514,7 +538,8 @@ const DivergentSlotsTable = ({
           onPage={setPage}
         />
       )}
-    </>
+    </>,
+    filters
   );
 };
 

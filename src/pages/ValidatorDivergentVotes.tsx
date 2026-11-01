@@ -209,28 +209,27 @@ const ValidatorDivergentVotes = () => {
               (() => {
                 // Divergent Votes, then the misses by payer below it.
                 const divergentCard = (
-                  <SectionCard
-                    title="Divergent Votes"
-                    icon="git-branch"
-                    info="Every slot where its vote differs from what the chain did, or is missing from the reward certificates (of its reward block, slot + 8)."
-                  >
-                    {!timeline.clusterKnown && (
-                      <UntrackedState className="mb-2">
-                        The chain&apos;s per-slot outcome isn&apos;t available
-                        from this API yet, so only missed votes are listed
-                        (skipped blocks need it).
-                      </UntrackedState>
-                    )}
-                    <DivergentSlotsTable
-                      rows={timeline.divergent}
-                      leaderOf={leaderOf}
-                      selfNode={identity?.nodeAddress ?? null}
-                      causeOf={causeOf}
-                      onHover={setHoverPath}
-                      geo={geo}
-                      geoAsOf={asOf}
-                    />
-                  </SectionCard>
+                  <DivergentSlotsTable
+                    card={{
+                      title: 'Divergent Votes',
+                      icon: 'git-branch',
+                      info: 'Every slot where its vote differs from what the chain did, or is missing from the reward certificates (of its reward block, slot + 8).',
+                      before: !timeline.clusterKnown ? (
+                        <UntrackedState className="mb-2">
+                          The chain&apos;s per-slot outcome isn&apos;t available
+                          from this API yet, so only missed votes are listed
+                          (skipped blocks need it).
+                        </UntrackedState>
+                      ) : undefined
+                    }}
+                    rows={timeline.divergent}
+                    leaderOf={leaderOf}
+                    selfNode={identity?.nodeAddress ?? null}
+                    causeOf={causeOf}
+                    onHover={setHoverPath}
+                    geo={geo}
+                    geoAsOf={asOf}
+                  />
                 );
                 return misses ? (
                   <div className="d-flex flex-column gap-3">
