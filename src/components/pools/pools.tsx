@@ -3,13 +3,30 @@ import Badge, { BadgeBg } from 'components/base/Badge';
 /** A pool's page (its name, as the labels give it). */
 export const poolPath = (name: string) => `/pool/${encodeURIComponent(name)}`;
 
-/** How a staker delegates: a stake pool (a liquid staking token -
- *  Marinade's mSOL too), direct delegation (Marinade Native / Select,
- *  staking from users' own accounts), or a delegation program (SFDP). */
-const KIND_STYLE: Record<string, { label: string; bg: BadgeBg }> = {
-  pool: { label: 'Stake pool', bg: 'primary' },
-  direct: { label: 'Direct delegation', bg: 'info' },
-  program: { label: 'Delegation program', bg: 'success' }
+/** How a staker's SOL is held: an LST (a stake pool: you hold its liquid
+ *  staking token - Marinade's mSOL too), native (your own stake accounts,
+ *  the provider holding only their stake authority - Marinade Native's
+ *  Max Yield and Select), or a foundation's own stake (SFDP). */
+const KIND_STYLE: Record<
+  string,
+  { label: string; bg: BadgeBg; title: string }
+> = {
+  pool: {
+    label: 'LST',
+    bg: 'primary',
+    title: "Liquid staking token: you hold the pool's token as your share"
+  },
+  direct: {
+    label: 'Native',
+    bg: 'info',
+    title:
+      'Native staking: you keep your own stake accounts; the provider holds only their stake authority and picks the validators'
+  },
+  program: {
+    label: 'Foundation',
+    bg: 'secondary',
+    title: "A foundation's own stake, delegated to validators that qualify"
+  }
 };
 export const kindOf = (kind: string | null, name?: string) =>
   kind === 'sfdp'
@@ -33,7 +50,7 @@ export const KindBadge = ({
 }) => {
   const k = kindOf(kind, name);
   return k ? (
-    <Badge bg={k.bg} className="text-nowrap">
+    <Badge bg={k.bg} className="text-nowrap" title={k.title}>
       {k.label}
     </Badge>
   ) : null;
