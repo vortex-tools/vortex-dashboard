@@ -18,10 +18,12 @@ const breadcrumbItems: Crumb[] = [
   { label: 'Usage', active: true }
 ];
 
+// Alpenglow-era metrics (participation, skip rate and its causes, fees):
+// Tower's vote credits and accuracy are gone since epoch 1064.
 const EXAMPLE_PROMPTS = [
-  'Which validators had the highest vote accuracy in the most recent epoch?',
-  'Compare the fees of two validators over the last 10 epochs.',
-  'Show me the worst-performing validators by missed credits this epoch.'
+  'Which validators had the highest vote participation in the last completed epoch?',
+  'Compare the fees and tips of two validators over the last 10 epochs.',
+  'Which block producers skipped the most leader slots this epoch, and why?'
 ];
 
 const Usage = () => {
