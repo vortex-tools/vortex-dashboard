@@ -457,9 +457,18 @@ const columns = (
     : [])
 ];
 
+type DistView = 'all' | 'undirected' | 'directed';
+
 /** Who a pool stakes to, ranked: each validator's share of the pool as a
  *  bar, and the running total as a line (how few hold most of it). */
-const DistributionChart = ({ validators }: { validators: Validator[] }) => {
+const DistributionChart = ({
+  validators,
+  of = 'the pool'
+}: {
+  validators: Validator[];
+  /** What the shares are of, for the tooltip. */
+  of?: string;
+}) => {
   const { getThemeColor } = useAppContext();
   // Every validator, so the running total reaches the whole pool.
   const top = validators;
@@ -479,7 +488,7 @@ const DistributionChart = ({ validators }: { validators: Validator[] }) => {
         const i = ps[0]?.dataIndex ?? 0;
         const v = top[i];
         return v
-          ? `#${i + 1} ${v.name ?? short(v.voteKey)}<br/>${pct(v.shareOfPool, 2)} of the pool · top ${i + 1}: ${pct(cumulative[i])}`
+          ? `#${i + 1} ${v.name ?? short(v.voteKey)}<br/>${pct(v.shareOfPool, 2)} of ${of} · top ${i + 1}: ${pct(cumulative[i])}`
           : '';
       }
     },
@@ -801,6 +810,37 @@ const StakePool = () => {
     () => [...(data?.validators ?? [])].sort((a, b) => b.stake - a.stake),
     [data]
   );
+  // The Distribution card's view: all its stake, only what it chose itself
+  // (less every directed source, the pool's own targets too), or only the
+  // directed. Each re-ranked, with shares of that part.
+  const [distView, setDistView] = useState<DistView>('all');
+  const distParts = useMemo(() => {
+    const part = (amount: (v: Validator) => number) => {
+      const rows = validators
+        .map(v => ({ v, stake: Math.max(0, amount(v)) }))
+        .filter(r => r.stake > 0)
+        .sort((a, b) => b.stake - a.stake);
+      const total = rows.reduce((a, r) => a + r.stake, 0);
+      return {
+        total,
+        validators: rows.map(r => ({
+          ...r.v,
+          stake: r.stake,
+          shareOfPool: total ? r.stake / total : 0
+        }))
+      };
+    };
+    return {
+      // A remainder under 1% of its stake is the directed figure's
+      // rounding (bought or targeted vs what's actually delegated), not
+      // stake the pool chose.
+      undirected: part(v => {
+        const rest = v.stake - directedTotal(v);
+        return rest < v.stake * 0.01 ? 0 : rest;
+      }),
+      directed: part(v => Math.min(v.stake, directedTotal(v)))
+    };
+  }, [validators]);
   // The Validators card's view: all of them, or the latest epoch's adds
   // (a filter of the table) or drops (no longer in it: their own list).
   const [view, setView] = useState<'all' | 'directed' | 'changes'>('all');
@@ -1118,13 +1158,75 @@ const StakePool = () => {
             <SectionCard
               title="Distribution"
               icon="bar-chart-2"
-              info="The validators it stakes to, largest first: each one's share of the pool as a bar, and the running total as a line - how few validators hold most of the pool."
+              info="The validators it stakes to, largest first: each one's share of the pool as a bar, and the running total as a line - how few validators hold most of the pool. Undirected: only the stake it chose itself, every directed source taken out (holders', protocols', bought, matching and its own set targets). Directed: only those."
+              aside={
+                showDirected ? (
+                  <ButtonGroup size="sm">
+                    {(
+                      [
+                        ['all', 'All'],
+                        ['undirected', 'Undirected'],
+                        ['directed', 'Directed']
+                      ] as Array<[DistView, string]>
+                    ).map(([k, label]) => (
+                      <ToggleButton
+                        key={k}
+                        id={`pool-dist-${k}`}
+                        type="radio"
+                        name="pool-dist"
+                        variant="soft-secondary"
+                        value={k}
+                        checked={distView === k}
+                        onChange={() => setDistView(k)}
+                      >
+                        {label}
+                      </ToggleButton>
+                    ))}
+                  </ButtonGroup>
+                ) : undefined
+              }
             >
-              {validators.length ? (
-                <DistributionChart validators={validators} />
-              ) : (
-                <UntrackedState>No validators this epoch.</UntrackedState>
-              )}
+              {(() => {
+                const view = showDirected ? distView : 'all';
+                const part = view === 'all' ? null : distParts[view];
+                const shown = part ? part.validators : validators;
+                const whole = part
+                  ? distParts.undirected.total + distParts.directed.total
+                  : 0;
+                if (!shown.length)
+                  return (
+                    <UntrackedState>
+                      {view === 'undirected'
+                        ? 'All of its stake is directed.'
+                        : view === 'directed'
+                          ? 'None of its stake is directed.'
+                          : 'No validators this epoch.'}
+                    </UntrackedState>
+                  );
+                const top10 = shown
+                  .slice(0, 10)
+                  .reduce((a, v) => a + (v.shareOfPool ?? 0), 0);
+                return (
+                  <>
+                    <DistributionChart
+                      validators={shown}
+                      of={view === 'all' ? 'the pool' : `its ${view} stake`}
+                    />
+                    {part && (
+                      <p className="fs-10 text-body-tertiary mt-2 mb-0">
+                        {pct(whole ? part.total / whole : 0)} of the pool (
+                        {compactSol(part.total)}) is{' '}
+                        {view === 'directed' ? 'directed' : 'undirected'}, on{' '}
+                        {shown.length.toLocaleString()} validator
+                        {shown.length === 1 ? '' : 's'}
+                        {shown.length > 10 &&
+                          `; the top 10 hold ${pct(top10)} of it`}
+                        .
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </SectionCard>
           </Col>
           <Col xs={12} lg={6}>
