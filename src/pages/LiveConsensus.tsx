@@ -210,14 +210,18 @@ const LiveConsensus = () => {
     // timer that starts when the page opens.
     if (halt)
       return { kind: 'chain', secs: Math.round(now / 1000 - halt.since) };
-    const chainStill = (now - moved.current.chainAt) / 1000;
+    // Measured from the later of the last move and the page being shown
+    // again: a hidden tab doesn't poll, so time hidden isn't a stall.
+    const chainStill =
+      (now - Math.max(moved.current.chainAt, pageStart.current)) / 1000;
     // Halted only if the API's reading is fresh (it re-reads the chain
     // every few seconds) - a stale reading isn't the chain's fault.
     const readingFresh =
       p?.readAt != null && now / 1000 - p.readAt < STALL_SECS / 2;
     if (chainSlot != null && readingFresh && chainStill > STALL_SECS)
       return { kind: 'chain', secs: Math.round(chainStill) };
-    const dataStill = (now - moved.current.dataAt) / 1000;
+    const dataStill =
+      (now - Math.max(moved.current.dataAt, pageStart.current)) / 1000;
     if (ingested != null && dataStill > STALL_SECS)
       return { kind: 'data', secs: Math.round(dataStill) };
     return null;
