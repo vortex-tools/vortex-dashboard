@@ -57,10 +57,20 @@ const CHECK_LABELS: Record<string, string> = {
 };
 
 /** Checks the dashboard no longer shows: identity balance covered vote
- *  fees (Alpenglow votes are free), and the VAT check was migration
+ *  fees (Alpenglow votes are free), the VAT check was migration
  *  readiness (Alpenglow is live; the vote balance tile keeps the VAT
- *  runway). */
-const RETIRED_CHECKS = new Set(['identity_balance', 'vat']);
+ *  runway), and a block-fee collector other than the identity is a
+ *  normal choice since SIMD-0232 (what matters is whether anything pays
+ *  into the vote account: the VAT notice). */
+const RETIRED_CHECKS = new Set([
+  'identity_balance',
+  'vat',
+  'block_revenue_collector'
+]);
+
+/** VAT runway (epochs) under which a vote account nothing pays into gets
+ *  a notice. */
+const VAT_NOTICE_EPOCHS = 10;
 
 /** Jito's CLI for claiming BAM Boost (signed by the identity). */
 const BAM_BOOST_CLI = 'https://github.com/jito-foundation/jito-bam-boost-cli';
@@ -181,39 +191,6 @@ const shortReason = (
           `its data center hosts ${pct(c.dataCenterStakeShare)} of stake, over SFDP's 15%`
         );
       return over.length ? over.join(' · ') : null;
-    }
-    case 'block_revenue_collector': {
-      const to = customCollectors(
-        s.voteState,
-        s.identity,
-        s.voteAccount
-      ).blocks;
-      return to ? `block fees go to ${shortKey(to)}, not its identity` : null;
-    }
-    case 'vote_authority': {
-      const vs = s.voteState;
-      if (!vs) return null;
-      if (vs.nodePubkey !== s.identity)
-        return 'vote account points at another node';
-      if (!vs.authorizedVoter) return 'no authorized voter';
-      if (vs.authorizedVoter !== s.identity) return 'separate voter key';
-      return vs.nextAuthorizedVoter !== s.identity
-        ? 'voter key rotates next epoch'
-        : null;
-    }
-    case 'bam_boost': {
-      const b = s.bamBoost;
-      if (!b?.claimableAmount) return null;
-      // latestEpoch: Jito's newest distribution, made early in the
-      // current epoch.
-      const end = b.nextClaimEndEpoch;
-      return `${jitoSol(b.claimableAmount)} unclaimed${
-        end == null
-          ? ''
-          : b.latestEpoch != null && end <= b.latestEpoch
-            ? ', the oldest expires this epoch'
-            : `, claimable until epoch ${end}`
-      }`;
     }
     default:
       return null;
@@ -1192,8 +1169,6 @@ export const useValidatorNotices = (
 
   // Longer words for a few checks than the API's summary.
   const detailOf = (c: ValidatorStatusCheck) => {
-    if (c.id === 'block_revenue_collector')
-      return "Since SIMD-0232 the vote account names who collects block fees, and changing the validator's identity doesn't change it. If this is a former identity rather than a deliberate choice, update the vote account's block revenue collector.";
     if (c.id === 'concentration')
       return "Concentration has no cluster-wide limit. These are the Solana Foundation Delegation Program's: it doesn't add stake to validators on a network (ASN) hosting over 25% of stake, or in a data center hosting over 15%.";
     return c.summary;
@@ -1301,64 +1276,51 @@ export const useValidatorNotices = (
     voteAddress,
     currentEpoch
   ))
-    // A failing block_revenue_collector check already says where fees go
-    // and when the new collector takes over.
-    if (
-      !(
-        it.key === 'blockRevenueCollector' &&
-        status.checks.some(
-          c => c.id === 'block_revenue_collector' && c.status !== 'ok'
-        )
-      )
-    )
-      notices.push({
-        id: `pending-${it.key}`,
-        severity: it.increase ? 'warn' : 'info',
-        source: 'Vote account',
-        title: `${it.label} changing`,
-        message: (
-          <>
-            <span className="font-monospace">{it.from}</span> →{' '}
-            <span className="font-monospace fw-semibold">{it.to}</span>
-            {`, ${it.when}${it.later ? `, ${it.later}` : ''}`}
-            {it.tentative && ' (not locked in yet)'}
-          </>
-        ),
-        detail: it.tentative
-          ? `This is the vote account's setting right now. The runtime locks it in when epoch ${currentEpoch ?? 'this epoch'} ends, so it can still change or be reverted before then.`
-          : undefined
-      });
-
-  // SIMD-0232: changing the identity doesn't move the block-revenue
-  // collector, so after an identity change block fees keep going to the old
-  // one until the vote account is updated. Often unintended; say so.
-  const blocksTo = customCollectors(
-    status.voteState,
-    nodeAddress,
-    voteAddress
-  ).blocks;
-  // A pending change of the collector is its own notice above; APIs with
-  // the block_revenue_collector check report this as a check instead.
-  if (
-    blocksTo &&
-    !status.voteState?.pending?.blockRevenueCollector &&
-    !status.checks.some(c => c.id === 'block_revenue_collector')
-  )
     notices.push({
-      id: 'block-collector',
-      severity: 'info',
+      id: `pending-${it.key}`,
+      severity: it.increase ? 'warn' : 'info',
       source: 'Vote account',
-      title: 'Block rewards collector',
+      title: `${it.label} changing`,
       message: (
         <>
-          block fees go to{' '}
-          <span className="font-monospace">{shortKey(blocksTo)}</span>, not the
-          identity
+          <span className="font-monospace">{it.from}</span> →{' '}
+          <span className="font-monospace fw-semibold">{it.to}</span>
+          {`, ${it.when}${it.later ? `, ${it.later}` : ''}`}
+          {it.tentative && ' (not locked in yet)'}
         </>
       ),
-      detail:
-        "Since SIMD-0232 an identity change doesn't move the block-revenue collector, so it can still point at a former identity. If that isn't intended, update the vote account's block revenue collector."
+      detail: it.tentative
+        ? `This is the vote account's setting right now. The runtime locks it in when epoch ${currentEpoch ?? 'this epoch'} ends, so it can still change or be reverted before then.`
+        : undefined
     });
+
+  // VAT is paid from the vote account every epoch. Nothing refills it
+  // when its inflation commission is 0% (or goes elsewhere) and its block
+  // fees don't go to it: then the runway is all there is.
+  const vs = status.voteState;
+  const funded = status.vat?.epochsFunded;
+  if (vs && funded != null && funded <= VAT_NOTICE_EPOCHS) {
+    const to = customCollectors(vs, nodeAddress, voteAddress);
+    const inflationIn =
+      vs.inflationRewardsCommissionBps > 0 && to.inflation == null;
+    const blocksIn = to.blocks === voteAddress;
+    if (!inflationIn && !blocksIn) {
+      const why = [
+        vs.inflationRewardsCommissionBps === 0
+          ? 'its inflation commission is 0%'
+          : `its inflation commission goes to ${shortKey(to.inflation!)}`,
+        `its block fees go to ${to.blocks ? shortKey(to.blocks) : 'the identity'}`
+      ].join(' and ');
+      notices.push({
+        id: 'vat-unfunded',
+        severity: funded <= 2 ? 'warn' : 'info',
+        source: 'Vote account',
+        title: 'VAT runway',
+        message: `${plural(funded, 'epoch')} of VAT left in the vote account, and nothing pays into it`,
+        detail: `Each epoch's admission ticket (VAT) is paid from the vote account. ${why.charAt(0).toUpperCase()}${why.slice(1)}, so nothing refills it: top it up before it runs out, or it won't be admitted to the next epoch.`
+      });
+    }
+  }
 
   // Jito's BAM Boost: still receiving it (in the newest distribution),
   // something claimable, and never claimed any. Replaces its bam_boost
