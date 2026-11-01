@@ -100,30 +100,41 @@ const SkipCausesCard = ({
               <tr>
                 <th />
                 <th className="text-end">Median</th>
+                <th className="text-end text-body-tertiary">Cluster</th>
                 <th className="text-end">90th pct</th>
-                <th className="text-end">Cluster median</th>
+                <th className="text-end text-body-tertiary">Cluster</th>
               </tr>
             </thead>
             <tbody>
               {(
                 [
-                  ['Its own slots', pace.inWindow, cluster?.inWindow],
-                  ['After the previous leader', pace.handoff, cluster?.handoff]
+                  ['Within its window', pace.inWindow, cluster?.inWindow],
+                  [
+                    'Handoff from the previous leader',
+                    pace.handoff,
+                    cluster?.handoff
+                  ]
                 ] as const
               ).map(([label, it, c]) => (
                 <tr key={label}>
                   <td className="text-nowrap">{label}</td>
                   <td className="text-end font-monospace">{ms(it?.p50Ms)}</td>
                   <td className="text-end font-monospace text-body-tertiary">
-                    {ms(it?.p90Ms)}
-                  </td>
-                  <td className="text-end font-monospace text-body-tertiary">
                     {ms(c?.p50Ms)}
+                  </td>
+                  <td className="text-end font-monospace">{ms(it?.p90Ms)}</td>
+                  <td className="text-end font-monospace text-body-tertiary">
+                    {ms(c?.p90Ms)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </Table>
+          <p className="fs-10 text-body-tertiary mt-2 mb-0">
+            Time per slot; lower is better. Within its window: its own
+            consecutive slots. Handoff: from the previous leader&apos;s last
+            block to its first, which includes the network between them.
+          </p>
           {record.lagging && (
             <p className="fs-10 text-warning-emphasis mt-2 mb-0">
               Its own slots run slow
