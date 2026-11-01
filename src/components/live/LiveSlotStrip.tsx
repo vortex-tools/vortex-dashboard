@@ -57,17 +57,24 @@ type Col = {
 
 /** How a strip's cells are drawn: size, gap, and dots or blocks. */
 export type StripLook = { size: number; gap: number; shape: 'dot' | 'block' };
-const DEFAULT_LOOK: StripLook = { size: DOT, gap: COL_GAP, shape: 'dot' };
+// Rounded squares (the Voting tab's live votes; Home passes bigger ones).
+const DEFAULT_LOOK: StripLook = { size: DOT, gap: COL_GAP, shape: 'block' };
 const LookContext = createContext<StripLook>(DEFAULT_LOOK);
 const roundOf = (shape: StripLook['shape']) =>
-  shape === 'block' ? 'rounded-1' : 'rounded-circle';
+  shape === 'block' ? '' : 'rounded-circle';
+/** A block's corner, scaled to its size (a fixed 4px rounds a small
+ *  cell into a circle). */
+const radiusOf = (look: StripLook) =>
+  look.shape === 'block'
+    ? { borderRadius: Math.max(2, Math.round(look.size / 4)) }
+    : undefined;
 
 export const StripDot = ({ cls }: { cls: string }) => {
   const look = useContext(LookContext);
   return (
     <span
       className={`vx-dot d-inline-block ${roundOf(look.shape)} ${cls}`}
-      style={{ width: look.size, height: look.size }}
+      style={{ width: look.size, height: look.size, ...radiusOf(look) }}
     />
   );
 };
@@ -95,6 +102,7 @@ const Column = ({
           key={slot}
           to={`/slot/${slot}`}
           className={`d-inline-flex ${roundOf(look.shape)}${slot === hoverSlot ? ' vx-dot-hover' : ''}`}
+          style={radiusOf(look)}
           aria-label={`Slot ${slot.toLocaleString()}: ${cell.label}`}
           onMouseEnter={() => onHover(slot)}
           onFocus={() => onHover(slot)}
