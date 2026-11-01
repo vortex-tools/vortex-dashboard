@@ -62,6 +62,9 @@ const CHECK_LABELS: Record<string, string> = {
  *  runway). */
 const RETIRED_CHECKS = new Set(['identity_balance', 'vat']);
 
+/** Jito's CLI for claiming BAM Boost (signed by the identity). */
+const BAM_BOOST_CLI = 'https://github.com/jito-foundation/jito-bam-boost-cli';
+
 const checkLabel = (id: string) =>
   CHECK_LABELS[id] ?? id.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 
@@ -1166,9 +1169,26 @@ export const useValidatorNotices = (
   const sev = (s: ValidatorStatusCheck['status']): Severity =>
     s === 'fail' ? 'fail' : s === 'warn' ? 'warn' : 'info';
 
+  // Still receiving BAM Boost, something claimable, never claimed: its
+  // own notice (below) instead of the bam_boost check's.
+  const boost = status.bamBoost;
+  const unclaimedBoost =
+    boost &&
+    boost.claimedEpochs === 0 &&
+    boost.claimableAmount > 0 &&
+    boost.lastEpoch != null &&
+    boost.lastEpoch === boost.latestEpoch
+      ? boost
+      : null;
+
   // Operational checks.
   for (const c of status.checks)
-    if (!isSfdpCheck(c.id) && !RETIRED_CHECKS.has(c.id) && c.status !== 'ok')
+    if (
+      !isSfdpCheck(c.id) &&
+      !RETIRED_CHECKS.has(c.id) &&
+      c.status !== 'ok' &&
+      !(c.id === 'bam_boost' && unclaimedBoost)
+    )
       notices.push({
         id: `check-${c.id}`,
         severity: sev(c.status),
@@ -1319,24 +1339,35 @@ export const useValidatorNotices = (
         "Since SIMD-0232 an identity change doesn't move the block-revenue collector, so it can still point at a former identity. If that isn't intended, update the vote account's block revenue collector."
     });
 
-  // Jito's BAM Boost: eligible, never claimed, and every distribution
-  // expired (claimable is its bam_boost check's). Facts only.
-  const boost = status.bamBoost;
-  if (boost && boost.claimedEpochs === 0 && boost.expiredEpochs > 0) {
-    const range =
-      boost.firstEpoch != null && boost.lastEpoch != null
-        ? boost.firstEpoch === boost.lastEpoch
-          ? ` (${boost.firstEpoch})`
-          : ` (${boost.firstEpoch}–${boost.lastEpoch})`
+  // Jito's BAM Boost: still receiving it (in the newest distribution),
+  // something claimable, and never claimed any. Replaces its bam_boost
+  // check's notice (above). Facts only.
+  if (unclaimedBoost) {
+    const b = unclaimedBoost;
+    const end = b.nextClaimEndEpoch;
+    const expired =
+      b.expiredEpochs > 0
+        ? ` ${jitoSol(b.expiredAmount, 2)} already expired unclaimed (${b.expiredEpochs.toLocaleString()} epoch${b.expiredEpochs === 1 ? '' : 's'}).`
         : '';
-    const n = boost.expiredEpochs;
     notices.push({
-      id: 'bam-boost-unclaimed',
-      severity: 'info',
+      id: 'bam-boost-never-claimed',
+      severity: 'warn',
       source: 'Earnings',
       title: 'BAM Boost never claimed',
-      message: `${jitoSol(boost.expiredAmount, 2)} expired unclaimed`,
-      detail: `This validator was eligible for Jito BAM Boost in ${n.toLocaleString()} epoch${n === 1 ? '' : 's'}${range} and never claimed it; ${jitoSol(boost.expiredAmount, 2)} expired unclaimed. Each epoch's boost can be claimed by the identity for about 19 epochs.`
+      message: (
+        <>
+          {jitoSol(b.claimableAmount, 2)} claimable
+          {end != null &&
+            (b.latestEpoch != null && end <= b.latestEpoch
+              ? ', the oldest expires this epoch'
+              : `, the oldest until epoch ${end.toLocaleString()}`)}{' '}
+          ·{' '}
+          <a href={BAM_BOOST_CLI} target="_blank" rel="noreferrer">
+            how to claim ↗
+          </a>
+        </>
+      ),
+      detail: `This validator receives Jito BAM Boost and has never claimed it: ${jitoSol(b.claimableAmount, 2)} is claimable now${end != null ? `, the oldest until epoch ${end.toLocaleString()}` : ''}.${expired} Each epoch's boost is claimable for about 19 epochs, then expires; claims are signed with the identity keypair (Jito's jito-bam-boost-cli).`
     });
   }
 
