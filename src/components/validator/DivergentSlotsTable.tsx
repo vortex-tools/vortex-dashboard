@@ -117,22 +117,37 @@ const CAUSE: Record<
  */
 /** A window's slot whose vote agreed with the chain, in gray: its
  *  notarize vote landed, or it voted skip on a slot the chain skipped. */
-const AgreedVote = ({ code }: { code: number | null }) =>
-  code === OUTCOME.notarized ? (
-    <span
-      className="text-body-quaternary"
-      title="Its notarize vote landed: agreed with the chain"
-    >
-      Notarized
-    </span>
-  ) : code === OUTCOME.skipped ? (
-    <span
-      className="text-body-quaternary"
-      title="It voted skip, and the chain skipped the slot: agreed"
-    >
-      Skip
-    </span>
-  ) : null;
+const AgreedVote = ({
+  code,
+  info
+}: {
+  code: number | null;
+  info: SlotInfo | null | undefined;
+}) => {
+  if (code !== OUTCOME.notarized && code !== OUTCOME.skipped) return null;
+  const v = info?.votes;
+  return (
+    <div className="d-flex flex-column align-items-center gap-1 text-nowrap text-body-quaternary">
+      <span
+        title={
+          code === OUTCOME.notarized
+            ? 'Its notarize vote landed: agreed with the chain'
+            : 'It voted skip, and the chain skipped the slot: agreed'
+        }
+      >
+        {code === OUTCOME.notarized ? 'Notarized' : 'Skip'}
+      </span>
+      {v && (
+        <span
+          className="fs-10 font-monospace"
+          title="Stake in its notarize / skip reward certificates"
+        >
+          {ppb(v.notarStakePpb)} / {ppb(v.skipStakePpb)}
+        </span>
+      )}
+    </div>
+  );
+};
 
 /** One slot of a window whose vote went wrong: what (linked to the slot's
  *  page), why, and the stake in its notarize / skip reward certificates
@@ -304,9 +319,13 @@ const DivergentSlotsTable = ({
     let live = true;
     // The rows' slots and their payers' (slot + 8): each block's own
     // footer says what software built it.
+    // Every slot of each window on screen (the agreeing ones show their
+    // shares too), and the divergent ones' reward blocks (slot + 8).
     fetchSlots(
       shown.flatMap(w =>
-        [...w.slots.keys()].flatMap(slot => [slot, slot + 8]).concat(w.start)
+        [0, 1, 2, 3]
+          .map(n => w.start + n)
+          .concat([...w.slots.keys()].map(slot => slot + 8))
       )
     ).then(
       f => live && setInfos(m => new Map([...m, ...f])),
@@ -546,7 +565,10 @@ const DivergentSlotsTable = ({
                       ) : voteOf && !divergentSlots.has(slot) ? (
                         // Agreed (a divergent slot the tab leaves out
                         // stays blank).
-                        <AgreedVote code={voteOf(slot)} />
+                        <AgreedVote
+                          code={voteOf(slot)}
+                          info={infos.get(slot)}
+                        />
                       ) : null}
                     </td>
                   );
