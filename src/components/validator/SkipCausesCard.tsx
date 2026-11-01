@@ -114,9 +114,18 @@ const SkipCausesCard = ({
             <thead>
               <tr>
                 <th />
-                <th className="text-end">Median</th>
+                <th colSpan={2} className="text-center border-start">
+                  Median
+                </th>
+                <th colSpan={2} className="text-center border-start">
+                  90th percentile
+                </th>
+              </tr>
+              <tr>
+                <th />
+                <th className="text-end border-start">This validator</th>
                 <th className="text-end text-body-tertiary">Cluster</th>
-                <th className="text-end">90th pct</th>
+                <th className="text-end border-start">This validator</th>
                 <th className="text-end text-body-tertiary">Cluster</th>
               </tr>
             </thead>
@@ -133,11 +142,15 @@ const SkipCausesCard = ({
               ).map(([label, it, c]) => (
                 <tr key={label}>
                   <td className="text-nowrap">{label}</td>
-                  <td className="text-end font-monospace">{ms(it?.p50Ms)}</td>
+                  <td className="text-end font-monospace border-start">
+                    {ms(it?.p50Ms)}
+                  </td>
                   <td className="text-end font-monospace text-body-tertiary">
                     {ms(c?.p50Ms)}
                   </td>
-                  <td className="text-end font-monospace">{ms(it?.p90Ms)}</td>
+                  <td className="text-end font-monospace border-start">
+                    {ms(it?.p90Ms)}
+                  </td>
                   <td className="text-end font-monospace text-body-tertiary">
                     {ms(c?.p90Ms)}
                   </td>
