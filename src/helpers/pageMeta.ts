@@ -217,7 +217,9 @@ export const MOVED: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
   [/^\/cluster\/income\/?$/, () => '/leaderboards/fees'],
   [/^\/live\/?$/, () => '/status'],
   [/^\/cluster-health\/?$/, () => '/client-versions'],
-  [/^\/alpenglow(\/.*)?$/, () => '/'],
+  // The migration is over: its pages go to the live Alpenglow page (the
+  // share page with a validator: that validator, in worker/seo.ts).
+  [/^\/alpenglow(\/.*)?$/, () => '/leaderboards/consensus'],
   [
     /^\/validator\/([^/]+)\/(block-income|income)\/?$/,
     m => `/validator/${m[1]}/fees`

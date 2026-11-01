@@ -6,7 +6,8 @@ import {
   RouteObject,
   createBrowserRouter,
   useLocation,
-  useParams
+  useParams,
+  useSearchParams
 } from 'react-router';
 import Error404 from 'pages/error/Error404';
 import App from 'App';
@@ -58,6 +59,14 @@ const Decentralization = lazy(() => import('pages/Decentralization'));
 // Redirect helpers for backwards-compat with the pre-nav-refactor URLs.
 // /leaderboards/producers[/epoch/:epoch] -> the consensus leaderboard's
 // Producing view, same epoch.
+const RedirectAlpenglow = () => {
+  const [params] = useSearchParams();
+  const v = params.get('v');
+  return (
+    <Navigate to={v ? `/validator/${v}` : '/leaderboards/consensus'} replace />
+  );
+};
+
 const RedirectProducers = () => {
   const { epoch } = useParams();
   return (
@@ -207,9 +216,11 @@ const routes: RouteObject[] = [
                 element: <GovernanceProposal />
               },
 
-              // Mainnet's TowerBFT -> Alpenglow migration: timing and readiness.
-              // The migration is done (both clusters on Alpenglow).
-              { path: '/alpenglow/*', element: <Navigate to="/" replace /> },
+              // Mainnet's TowerBFT -> Alpenglow migration is done: its pages go
+              // to the live Alpenglow page, a share link to its validator (as
+              // the Worker's 301s).
+              { path: '/alpenglow', element: <RedirectAlpenglow /> },
+              { path: '/alpenglow/*', element: <RedirectAlpenglow /> },
 
               // What the cluster is doing now (Alpenglow).
               { path: '/status', element: <LiveConsensus /> },

@@ -8,7 +8,7 @@
  * (wrangler.jsonc run_worker_first).
  *
  *   /share/alpenglow/<identity>           X card tags; people are sent on to
- *                                         /alpenglow/share?v=<identity>
+ *                                         /validator/<identity>
  *   /share/alpenglow/<identity>/card.png  the card image (1200 x 630)
  *
  * Readiness comes from the API's /validators/status (one validator) and
@@ -393,12 +393,9 @@ const page = (origin: string, identity: string, s: Status | null) => {
   // fix gets a fresh image past X's cache.
   const v = r ? cardVersion(r, s!.epoch) : '0';
   const image = `${origin}/share/alpenglow/${identity}/card.png?v=${v}`;
-  // Visitors land on the share page with this validator picked (see its
-  // readiness, then look up their own) - or, where Alpenglow already runs
-  // (nothing to share), on the validator's page.
-  const target = r?.migrated
-    ? `${origin}/validator/${identity}`
-    : `${origin}/alpenglow/share?v=${identity}`;
+  // Visitors land on the validator's page (the migration is done: the
+  // share page is gone).
+  const target = `${origin}/validator/${identity}`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <title>${esc(title)} | Vortex</title>

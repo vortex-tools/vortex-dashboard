@@ -595,6 +595,16 @@ export const seo = async (
       : new Response('not found', { status: 404 });
   }
 
+  // An old Alpenglow share link names a validator: its page (an identity
+  // then 301s on to the vote account).
+  const shared = url.searchParams.get('v');
+  if (
+    path.replace(/\/$/, '') === '/alpenglow/share' &&
+    shared &&
+    BASE58.test(shared)
+  )
+    return Response.redirect(`${origin}/validator/${shared}`, 301);
+
   for (const [re, to] of MOVED) {
     const m = path.match(re);
     if (m) return Response.redirect(`${origin}${to(m)}${url.search}`, 301);
