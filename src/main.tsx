@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router';
 import { router } from 'Routes';
 import { VortexDataProvider } from 'providers/VortexDataProvider';
 import { IS_MOCK_API } from 'helpers/apiEndpoint';
+import { reloadForNewBuild } from 'helpers/chunkReload';
 // Nunito Sans, self-hosted (was Google Fonts): no third-party round trips
 // before text can render, and font-display: swap.
 import '@fontsource/nunito-sans/300.css';
@@ -17,29 +18,15 @@ import 'assets/scss/theme.scss';
 import 'assets/scss/user.scss';
 
 // After a deploy, a tab opened before it still asks for the old build's
-// on-demand chunks (the world map), which are gone: the SPA fallback answers
-// with index.html and the import fails ("Expected a JavaScript-or-Wasm
-// module script ... MIME type text/html"). Reload once to pick up the new
-// build; the guard stops a loop if a chunk is really missing.
-const RELOAD_KEY = 'vx-chunk-reload';
+// on-demand chunks, which are gone: reload into the new build (a few
+// spaced tries; helpers/chunkReload). Out of tries, the import fails and
+// the page's error screen shows it.
 window.addEventListener('vite:preloadError', event => {
-  let last = 0;
-  try {
-    last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
-  } catch {
-    // storage blocked: reload anyway, at most once per load
-  }
-  if (Date.now() - last < 60_000) return;
-  event.preventDefault();
-  try {
-    sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
-  } catch {
-    // ignore
-  }
-  // The page's error screen shows "loading the new version" meanwhile.
-  (window as { vxReloading?: boolean }).vxReloading = true;
-  window.location.reload();
+  if (reloadForNewBuild()) event.preventDefault();
 });
+
+// The app is up: index.html's boot-time reload stands down.
+(window as { vxBooted?: boolean }).vxBooted = true;
 
 const render = () =>
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

@@ -13,6 +13,38 @@
          it's hidden until then rather than flashing unstyled. -->
     <script>
       document.documentElement.classList.add('js');
+      // Right after a deploy an edge can answer this page with the new
+      // build's HTML before it has the build's files: the app's own script
+      // fails to load (index.html comes back for it) and nothing would run.
+      // Reload a few times, spaced out (as helpers/chunkReload, same key),
+      // until the app is up; then its own handlers take over.
+      addEventListener(
+        'error',
+        function (e) {
+          var t = e.target;
+          var src = t && (t.src || t.href);
+          if (window.vxBooted || !src || !/\/assets\//.test(src)) return;
+          if (window.vxReloading) return;
+          var delays = [0, 3000, 10000];
+          var a = { first: Date.now(), count: 0 };
+          try {
+            var s = JSON.parse(sessionStorage.getItem('vx-chunk-reload'));
+            if (s && Date.now() - s.first < 120000) a = s;
+          } catch (_) {}
+          if (a.count >= delays.length) return;
+          try {
+            sessionStorage.setItem(
+              'vx-chunk-reload',
+              JSON.stringify({ first: a.first, count: a.count + 1 })
+            );
+          } catch (_) {}
+          window.vxReloading = true;
+          setTimeout(function () {
+            location.reload();
+          }, delays[a.count]);
+        },
+        true
+      );
     </script>
     <style>
       .js [data-seo-summary] {
