@@ -48,7 +48,7 @@ import {
 import { PoolDetail, PoolValidatorRef } from 'providers/vortex-schemas';
 import { Fragment, useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
-import { Link, Navigate, useParams } from 'react-router';
+import { Link, Navigate, useLocation, useParams } from 'react-router';
 
 echarts.use([
   BarChart,
@@ -735,6 +735,7 @@ const PoolNotFound = ({ name }: { name: string }) => {
 const StakePool = () => {
   const { name: param = '' } = useParams();
   const name = decodeURIComponent(param);
+  const { search } = useLocation();
   const context = useContext(VortexDataContext);
   const slice = context?.poolState;
   const fetchData = slice?.fetchData;
@@ -869,6 +870,11 @@ const StakePool = () => {
         )}
       </div>
     );
+
+  // Addressed by a former name (or another case of it): the API answers
+  // under its name, so move there (the Worker 301s opened links too).
+  if (data.name !== name)
+    return <Navigate to={`${poolPath(data.name)}${search}`} replace />;
 
   // Its commission on rewards (not for SFDP, which has none).
   const fee = data.fees?.epochFeeBps != null ? data.fees : null;

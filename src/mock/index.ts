@@ -52,9 +52,9 @@ const POOLS = [
     stake: 4.2e16
   },
   {
-    name: 'Marinade (mSOL)',
+    name: 'mSOL',
     kind: 'marinade',
-    fullName: null,
+    fullName: 'Marinade liquid staking',
     n: 350,
     stake: 2.3e15
   },
