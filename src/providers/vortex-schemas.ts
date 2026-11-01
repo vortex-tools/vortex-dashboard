@@ -675,6 +675,10 @@ export const epochEarningsSchema = z.object({
     inflationCommission: z.number().nullable(),
     blockRevenueCommission: z.number().nullable(),
     mevCommission: z.number().nullable(),
+    // "tipRouter": the validator's cut as the tip router paid it (after
+    // the builder's and the router's fees); "estimated": the same, worked
+    // out before Jito publishes the split. Absent on older APIs.
+    mevCommissionBasis: z.string().nullable().optional().catch(null),
     // Alpenglow: voteAccountReward's gross breakdown (before commission):
     // what its votes earned, and its producer bonus. Not part of net.
     votingReward: z.number().nullable().optional().catch(null),

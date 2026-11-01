@@ -266,7 +266,7 @@ const EarningsChart = ({
                 label +=
                   bps == null
                     ? ' (rate unknown)'
-                    : ` (${(bps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%${r.rates?.mevCommissionBpsSource === 'previousEpoch' ? ', last epoch’s rate' : ''})`;
+                    : ` (${(bps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%${r.rates?.mevCommissionBpsSource === 'previousEpoch' ? ', last epoch’s rate' : ''}${r.income.mevCommissionBasis === 'estimated' ? ', est.' : ''})`;
               }
               // BAM Boost: paid in JitoSOL (valued at the epoch's rate);
               // claimable counts as pending, expired as nothing.
