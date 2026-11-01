@@ -50,13 +50,12 @@ const SLOWER = [1.05, 1.25];
 const DIVERGENT_RED = 0.05;
 
 /**
- * Where a validator sits in the network, for one epoch: every validator a
- * faint dot (sized by stake), this one pulsing, and either its handoffs -
- * a line from each region its previous leaders were in, as thick as how
- * many, colored by its time over the network floor against the cluster's
- * from the same region - or its divergent votes: each leader it voted
- * on, sized by its slots and colored by how often this validator's vote
- * diverged from the chain on them.
+ * Where a validator sits in the network, for one epoch - kept sparse: it,
+ * pulsing, and either its handoffs (a line from each region its previous
+ * leaders were in, as thick as how many, colored by its time over the
+ * network floor against the cluster's from the same region) or the
+ * leaders it diverged on (sized by how many votes, amber or red by the
+ * rate).
  */
 const NetworkMap = ({
   geo,
@@ -100,7 +99,6 @@ const NetworkMap = ({
 
   const option = useMemo(() => {
     const me = coord(geo.get(self));
-    const faint = getThemeColor(isDark ? 'gray-600' : 'gray-400');
     const tone = (excess: number | null, cluster: number | null) => {
       if (excess == null || cluster == null || cluster <= 0)
         return getThemeColor('secondary');
@@ -130,12 +128,11 @@ const NetworkMap = ({
                 node: string;
                 d: LeaderDivergence;
                 c: [number, number];
-              } => !!x.c && x.d.slots > 0
+              } => !!x.c && x.d.divergent > 0
             )
-            // Divergent leaders drawn last, on top.
             .sort((a, b) => a.d.divergent - b.d.divergent)
         : [];
-    const maxSlots = Math.max(1, ...leaderDots.map(x => x.d.slots));
+    const maxDivergent = Math.max(1, ...leaderDots.map(x => x.d.divergent));
     return {
       animation: false,
       tooltip: { trigger: 'item', confine: true },
@@ -154,23 +151,6 @@ const NetworkMap = ({
         emphasis: { disabled: true }
       },
       series: [
-        // Every validator, faint (none in the divergent view: its
-        // leaders are the dots there).
-        {
-          type: 'scatter',
-          coordinateSystem: 'geo',
-          silent: true,
-          symbolSize: (v: number[]) =>
-            Math.max(2, Math.min(7, Math.sqrt(v[2] / 1e9 / 1e5) * 3)),
-          itemStyle: {
-            color: faint,
-            opacity: mode === 'divergent' ? 0.25 : 0.5
-          },
-          data: [...geo.values()]
-            .map(v => ({ c: coord(v), s: v.activatedStake }))
-            .filter(x => x.c)
-            .map(x => [...x.c!, x.s])
-        },
         {
           type: 'lines',
           coordinateSystem: 'geo',
@@ -187,7 +167,7 @@ const NetworkMap = ({
           data: lines.map(({ h, from }) => ({
             coords: [from, me],
             lineStyle: {
-              width: 1 + (5 * h.count) / maxCount,
+              width: 1.5 + (3 * h.count) / maxCount,
               color: tone(h.excessP50Ms, h.clusterExcessP50Ms)
             }
           }))
@@ -196,7 +176,7 @@ const NetworkMap = ({
           type: 'scatter',
           coordinateSystem: 'geo',
           zlevel: 1,
-          symbolSize: (v: number[]) => 4 + 14 * Math.sqrt(v[2] / maxSlots),
+          symbolSize: (v: number[]) => 4 + 10 * Math.sqrt(v[2] / maxDivergent),
           tooltip: {
             formatter: (p: { dataIndex: number }) => {
               const x = leaderDots[p.dataIndex];
@@ -206,16 +186,12 @@ const NetworkMap = ({
             }
           },
           data: leaderDots.map(({ d, c }) => ({
-            value: [...c, d.slots],
+            value: [...c, d.divergent],
             itemStyle: {
-              color: d.divergent
-                ? getThemeColor(
-                    d.divergent / d.slots >= DIVERGENT_RED
-                      ? 'danger'
-                      : 'warning'
-                  )
-                : faint,
-              opacity: d.divergent ? 0.85 : 0.35
+              color: getThemeColor(
+                d.divergent / d.slots >= DIVERGENT_RED ? 'danger' : 'warning'
+              ),
+              opacity: 0.85
             }
           }))
         },

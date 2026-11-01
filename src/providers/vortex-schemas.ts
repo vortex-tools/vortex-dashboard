@@ -1488,6 +1488,58 @@ export const classifyBlockInsight = (
   return 'ready';
 };
 
+// Handoffs by a region group (the previous or next leader's), against
+// the network floor (great-circle distance at fibre speed): the median and
+// the median per-handoff excess over it (can be slightly negative: clock
+// skew).
+const handoffRegionsSchema = z
+  .record(
+    z.string(),
+    z.object({
+      count: z.number(),
+      p50Ms: z.number().nullable().catch(null),
+      p90Ms: z.number().nullable().catch(null),
+      expectedP50Ms: z.number().nullable().catch(null),
+      excessP50Ms: z.number().nullable().catch(null)
+    })
+  )
+  .nullable()
+  .optional()
+  .catch(null);
+
+// A producer's slot pace for an epoch (the producers board's record and
+// cluster row, /validators/pace).
+export const slotDurationSchema = z.object({
+  inWindow: z
+    .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
+    .nullable()
+    .catch(null),
+  handoff: z
+    .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
+    .nullable()
+    .catch(null),
+  // Handoffs by the previous leader's region, against the network
+  // floor (great-circle distance at fibre speed): its median and the
+  // median per-handoff excess over it (can be slightly negative: clock
+  // skew). And its own region.
+  handoffByRegion: handoffRegionsSchema,
+  handoffExpectedP50Ms: z.number().nullable().optional().catch(null),
+  handoffExcessP50Ms: z.number().nullable().optional().catch(null),
+  region: z.string().nullable().optional().catch(null),
+  // The other direction: the next leader's first block after its last
+  // block of a window, overall and by the next leader's region. null on
+  // the cluster row (every handoff is both) and before it was recorded.
+  handoffOut: z
+    .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
+    .nullable()
+    .optional()
+    .catch(null),
+  handoffOutByRegion: handoffRegionsSchema,
+  handoffOutExpectedP50Ms: z.number().nullable().optional().catch(null),
+  handoffOutExcessP50Ms: z.number().nullable().optional().catch(null)
+});
+export type SlotDuration = z.infer<typeof slotDurationSchema>;
+
 // ---- Block producers (/epochs/leaderboard/producers, Alpenglow) ----------
 //
 // Every node the leader schedule names, with its window record, what its
@@ -1558,41 +1610,7 @@ export const producerLeaderboardRecordSchema = z.object({
     .catch(null),
   // Its slot pace (ms): inWindow = its own slots after the first of a
   // window; handoff = a window's first block after the previous leader's.
-  slotDuration: z
-    .object({
-      inWindow: z
-        .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
-        .nullable()
-        .catch(null),
-      handoff: z
-        .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
-        .nullable()
-        .catch(null),
-      // Handoffs by the previous leader's region, against the network
-      // floor (great-circle distance at fibre speed): its median and the
-      // median per-handoff excess over it (can be slightly negative: clock
-      // skew). And its own region.
-      handoffByRegion: z
-        .record(
-          z.string(),
-          z.object({
-            count: z.number(),
-            p50Ms: z.number().nullable().catch(null),
-            p90Ms: z.number().nullable().catch(null),
-            expectedP50Ms: z.number().nullable().catch(null),
-            excessP50Ms: z.number().nullable().catch(null)
-          })
-        )
-        .nullable()
-        .optional()
-        .catch(null),
-      handoffExpectedP50Ms: z.number().nullable().optional().catch(null),
-      handoffExcessP50Ms: z.number().nullable().optional().catch(null),
-      region: z.string().nullable().optional().catch(null)
-    })
-    .nullable()
-    .optional()
-    .catch(null),
+  slotDuration: slotDurationSchema.nullable().optional().catch(null),
   // Its own slots run slow against the cluster's (the board's
   // skipClassification.laggingRatio).
   lagging: z.boolean().nullable().optional().catch(null),
@@ -3512,3 +3530,24 @@ export const validatorTipBlocksSchema = z.object({
     .catch([])
 });
 export type ValidatorTipBlocks = z.infer<typeof validatorTipBlocksSchema>;
+
+// ---- Slot pace history (/validators/pace) -----------------------------
+// A validator's slot pace per classified Alpenglow epoch, newest first,
+// with the cluster's beside it.
+export const validatorPaceSchema = z.object({
+  voteKey: z.string().nullable().catch(null),
+  identity: z.string().nullable().catch(null),
+  epochs: z
+    .array(
+      z.object({
+        epoch: z.number(),
+        identity: z.string().nullable().catch(null),
+        complete: z.boolean().catch(false),
+        slotDuration: slotDurationSchema.nullable().catch(null),
+        lagging: z.boolean().nullable().optional().catch(null),
+        cluster: slotDurationSchema.nullable().catch(null)
+      })
+    )
+    .catch([])
+});
+export type ValidatorPace = z.infer<typeof validatorPaceSchema>;

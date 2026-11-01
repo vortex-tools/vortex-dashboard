@@ -4,12 +4,29 @@ import { REGIONS, REGION_NAME } from 'helpers/network';
 import { ProducerLeaderboard } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
 
+type Stat = { count: number; p50Ms: number; p90Ms: number } | null | undefined;
+type Num = number | null | undefined;
+
+/** "1,367 handoffs · 90th percentile 323 ms", for a cell's hover. */
+const about = (s: Stat) =>
+  s
+    ? `${s.count.toLocaleString()} handoffs · 90th percentile ${ms(s.p90Ms)}`
+    : undefined;
+
+/** Over the floor against the cluster's: red when 25%+ slower. */
+const slow = (mine: Num, theirs: Num) =>
+  mine != null && theirs != null && theirs > 0 && mine / theirs > 1.25
+    ? ' text-danger'
+    : '';
+
 /**
- * Its handoffs for an epoch: from the previous leader's last block to its
- * first, against the cluster's (median, 90th percentile), and the same
- * net of the network floor (the fibre-speed distance between the two) -
- * then by where the previous leader was, each against the cluster's
- * handoffs from the same region.
+ * Its handoffs for an epoch, kept to a phone's width: in (the previous
+ * leader's last block to its first) and out (its last to the next
+ * leader's first, where the API has it) - the median, and over the
+ * network floor (less the fibre-speed distance between the two) - against
+ * the cluster's; then over the floor by region, in and out against the
+ * cluster's handoffs from that region. Counts and 90th percentiles on
+ * hover.
  */
 const HandoffCard = ({
   record,
@@ -22,128 +39,132 @@ const HandoffCard = ({
   const it = pace?.handoff;
   if (!record || !pace || !it) return null;
   const cluster = board?.cluster?.slotDuration;
-  const byRegion = pace.handoffByRegion
-    ? REGIONS.filter(k => (pace.handoffByRegion![k]?.count ?? 0) > 0).map(
-        k => [k, pace.handoffByRegion![k]] as const
-      )
-    : null;
+  const out = pace.handoffOut;
+  const inBy = pace.handoffByRegion;
+  const outBy = pace.handoffOutByRegion;
+  const regions = REGIONS.filter(
+    r =>
+      r !== 'unknown' &&
+      ((inBy?.[r]?.count ?? 0) > 0 || (outBy?.[r]?.count ?? 0) > 0)
+  );
+  const rows: Array<[string, Num, Num, string | undefined]> = [
+    ['In, median', it.p50Ms, cluster?.handoff?.p50Ms, about(it)],
+    [
+      'In, over the floor',
+      pace.handoffExcessP50Ms,
+      cluster?.handoffExcessP50Ms,
+      undefined
+    ],
+    ...(out
+      ? ([
+          ['Out, median', out.p50Ms, cluster?.handoff?.p50Ms, about(out)],
+          [
+            'Out, over the floor',
+            pace.handoffOutExcessP50Ms,
+            cluster?.handoffExcessP50Ms,
+            undefined
+          ]
+        ] as Array<[string, Num, Num, string | undefined]>)
+      : [])
+  ];
   return (
     <SectionCard
       title="Handoffs"
       icon="shuffle"
-      info="From the previous leader's last block to its first, which includes the network between them: its median and 90th percentile against the cluster's, and over the network floor - the handoff less the fibre-speed distance between the two hosts (~200 km/ms), so a validator far from the rest compares fairly. Then by where the previous leader was, against the cluster's handoffs from the same region."
+      info="In: from the previous leader's last block to its first. Out: from its last block to the next leader's first. Each includes the network between the two; over the floor takes out the fibre-speed distance between them (~200 km/ms), so a validator far from the rest compares fairly. By region: over the floor, by where the other leader was, against the cluster's handoffs from that region. Hover a figure for its count and 90th percentile."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
           <tr>
             <th />
-            <th colSpan={2} className="text-center border-start">
-              Median
-            </th>
-            <th colSpan={2} className="text-center border-start">
-              90th percentile
-            </th>
-          </tr>
-          <tr>
-            <th />
-            <th className="text-end border-start">This validator</th>
-            <th className="text-end text-body-tertiary">Cluster</th>
-            <th className="text-end border-start">This validator</th>
+            <th className="text-end">This validator</th>
             <th className="text-end text-body-tertiary">Cluster</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td className="text-nowrap">
-              Handoff ({it.count.toLocaleString()})
-            </td>
-            <td className="text-end font-monospace border-start">
-              {ms(it.p50Ms)}
-            </td>
-            <td className="text-end font-monospace text-body-tertiary">
-              {ms(cluster?.handoff?.p50Ms)}
-            </td>
-            <td className="text-end font-monospace border-start">
-              {ms(it.p90Ms)}
-            </td>
-            <td className="text-end font-monospace text-body-tertiary">
-              {ms(cluster?.handoff?.p90Ms)}
-            </td>
-          </tr>
-          {pace.handoffExcessP50Ms != null && (
-            <tr>
+          {rows.map(([label, mine, theirs, title]) => (
+            <tr key={label}>
+              <td className="text-nowrap">{label}</td>
               <td
-                className="text-nowrap"
-                title="Its median handoff's time above the network floor between it and the previous leader"
+                className={`text-end font-monospace${slow(mine, theirs)}`}
+                title={title}
               >
-                Over the network floor
-              </td>
-              <td className="text-end font-monospace border-start">
-                {ms(pace.handoffExcessP50Ms)}
+                {ms(mine)}
               </td>
               <td className="text-end font-monospace text-body-tertiary">
-                {ms(cluster?.handoffExcessP50Ms)}
+                {ms(theirs)}
               </td>
-              <td className="border-start" />
-              <td />
             </tr>
-          )}
+          ))}
         </tbody>
       </Table>
-      {byRegion ? (
+      {regions.length > 0 ? (
         <>
           <h6 className="fs-10 text-uppercase text-body-tertiary mt-3 mb-2">
-            By where the previous leader was
+            Over the floor, by region
           </h6>
-          <Table
-            responsive
-            size="sm"
-            className="data-table compact-rows fs-9 mb-0"
-          >
+          <Table size="sm" className="data-table compact-rows fs-9 mb-0">
             <thead>
               <tr>
-                <th>From</th>
-                <th className="text-end">Handoffs</th>
-                <th className="text-end">Median</th>
+                <th />
                 <th
                   className="text-end"
-                  title="The physical minimum: the distance between the two hosts at fibre speed (~200 km/ms)"
+                  title="From a previous leader in this region"
                 >
-                  Network floor
+                  In
                 </th>
-                <th
-                  className="text-end"
-                  title="The median handoff's time above its floor: routing, queueing and the leader's own pace"
-                >
-                  Over the floor
-                </th>
+                {outBy && (
+                  <th
+                    className="text-end"
+                    title="To a next leader in this region"
+                  >
+                    Out
+                  </th>
+                )}
                 <th
                   className="text-end text-body-tertiary"
-                  title="The cluster's median over the floor, for handoffs from the same region"
+                  title="The cluster's handoffs from this region"
                 >
                   Cluster
                 </th>
               </tr>
             </thead>
             <tbody>
-              {byRegion.map(([k, r]) => (
-                <tr key={k}>
-                  <td className="text-nowrap">{REGION_NAME[k]}</td>
-                  <td className="text-end font-monospace text-body-tertiary">
-                    {r.count.toLocaleString()}
-                  </td>
-                  <td className="text-end font-monospace">{ms(r.p50Ms)}</td>
-                  <td className="text-end font-monospace text-body-tertiary">
-                    {ms(r.expectedP50Ms)}
-                  </td>
-                  <td className="text-end font-monospace">
-                    {ms(r.excessP50Ms)}
-                  </td>
-                  <td className="text-end font-monospace text-body-tertiary">
-                    {ms(cluster?.handoffByRegion?.[k]?.excessP50Ms)}
-                  </td>
-                </tr>
-              ))}
+              {regions.map(r => {
+                const i = inBy?.[r];
+                const o = outBy?.[r];
+                const c = cluster?.handoffByRegion?.[r]?.excessP50Ms;
+                return (
+                  <tr key={r}>
+                    <td className="text-nowrap">{REGION_NAME[r]}</td>
+                    <td
+                      className={`text-end font-monospace${slow(i?.excessP50Ms, c)}`}
+                      title={
+                        i
+                          ? `${i.count.toLocaleString()} handoffs · median ${ms(i.p50Ms)} · network floor ${ms(i.expectedP50Ms)}`
+                          : undefined
+                      }
+                    >
+                      {ms(i?.excessP50Ms)}
+                    </td>
+                    {outBy && (
+                      <td
+                        className={`text-end font-monospace${slow(o?.excessP50Ms, c)}`}
+                        title={
+                          o
+                            ? `${o.count.toLocaleString()} handoffs · median ${ms(o.p50Ms)} · network floor ${ms(o.expectedP50Ms)}`
+                            : undefined
+                        }
+                      >
+                        {ms(o?.excessP50Ms)}
+                      </td>
+                    )}
+                    <td className="text-end font-monospace text-body-tertiary">
+                      {ms(c)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         </>

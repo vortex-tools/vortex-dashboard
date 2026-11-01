@@ -2,11 +2,14 @@ import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import HandoffCard from 'components/network/HandoffCard';
+import HandoffTrend from 'components/network/HandoffTrend';
 import NetworkMap, {
   MapMode,
   RegionHandoff
 } from 'components/network/NetworkMap';
-import ConsensusRecordHeader from 'components/validator/ConsensusRecordHeader';
+import ConsensusRecordHeader, {
+  recordPath
+} from 'components/validator/ConsensusRecordHeader';
 import HostChangesCard from 'components/validator/HostChangesCard';
 import {
   REGIONS,
@@ -19,8 +22,10 @@ import {
 import useConsensusRecord from 'hooks/useConsensusRecord';
 import useRecordBoards from 'hooks/useRecordBoards';
 import { geoAsOf, placeOf, useValidatorGeoAt } from 'hooks/useValidatorGeo';
-import { useCallback, useMemo, useState } from 'react';
+import { VortexDataContext } from 'providers/VortexDataProvider';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
+import { useNavigate } from 'react-router';
 
 const pct = (x: number | null | undefined, digits = 1) =>
   x == null
@@ -105,6 +110,18 @@ const ValidatorNetwork = () => {
       clusterExcessP50Ms: cluster?.[r]?.excessP50Ms ?? null
     }));
   }, [producer, producerBoard]);
+
+  // Its handoffs over the floor per epoch (one request, ~30 epochs).
+  const context = useContext(VortexDataContext);
+  const fetchPace = context?.validatorPaceState.fetchData;
+  const paceKey = alpenglowActive ? voteAddress : '';
+  useEffect(() => {
+    if (paceKey) fetchPace?.(paceKey);
+  }, [paceKey, fetchPace]);
+  const paceHistory = paceKey
+    ? context?.validatorPaceState.data.get(paceKey)
+    : undefined;
+  const navigate = useNavigate();
 
   const [mode, setMode] = useState<MapMode>('handoffs');
   const view: MapMode = handoffs.length ? mode : 'divergent';
@@ -205,7 +222,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Handoffs: a line from each region its previous leaders were in, as thick as how many handoffs, green when its time over the network floor is about the cluster's from the same region (within 5%), amber and red when slower. Divergent votes: each leader whose slots it voted on, sized by those slots, amber or red (5%+) where its vote diverged from the chain. Gray dots are every validator, sized by stake."
+              info="Handoffs: a line from each region its previous leaders were in, as thick as how many handoffs, green when its time over the network floor is about the cluster's from the same region (within 5%), amber and red when slower. Divergent votes: the leaders whose slots it voted against the chain on, sized by how many, red where it's 5% or more of their slots."
               aside={
                 handoffs.length ? (
                   <ButtonGroup size="sm">
@@ -330,6 +347,22 @@ const ValidatorNetwork = () => {
             </SectionCard>
           </Col>
         </Row>
+        {paceHistory &&
+          paceHistory.epochs.filter(
+            e => e.slotDuration?.handoffExcessP50Ms != null
+          ).length >= 2 && (
+            <SectionCard
+              title="Handoffs Over Time"
+              icon="trending-up"
+              info="Its median handoff over the network floor per epoch - in (from the previous leader), out (to the next leader, where recorded) - against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
+            >
+              <HandoffTrend
+                pace={paceHistory}
+                epoch={epoch}
+                onPick={e => navigate(recordPath(address, e, 'network'))}
+              />
+            </SectionCard>
+          )}
         <HostChangesCard identity={node} currentEpoch={currentEpoch} />
       </div>
     );

@@ -100,6 +100,8 @@ import {
   ValidatorVoteAccountChanges,
   validatorTipsSchema,
   ValidatorTips,
+  validatorPaceSchema,
+  ValidatorPace,
   validatorTipBlocksSchema,
   ValidatorTipBlocks,
   clusterActivitySchema,
@@ -851,6 +853,15 @@ const validatorTipsRequest = (voteKey: string) => ({
   schema: validatorTipsSchema,
   timeout: 20_000
 });
+// A validator's slot pace per epoch (handoffs in and out, by region), the
+// Network tab's trend.
+export const PACE_EPOCHS = 30;
+const validatorPaceRequest = (voteKey: string) => ({
+  path: '/validators/pace',
+  params: { voteKey, limit: PACE_EPOCHS },
+  schema: validatorPaceSchema,
+  timeout: 20_000
+});
 // One epoch's blocks with their tips; the key is `${voteKey}:${epoch}`.
 const validatorTipBlocksRequest = (key: string) => {
   const [voteKey, epoch] = key.split(':');
@@ -1451,6 +1462,7 @@ interface VortexDataState {
     ValidatorVoteAccountChanges
   >;
   validatorTipsState: KeyedSlice<string, ValidatorTips>;
+  validatorPaceState: KeyedSlice<string, ValidatorPace>;
   validatorTipBlocksState: KeyedSlice<string, ValidatorTipBlocks>;
   clusterActivityState: KeyedSlice<number, ClusterActivity>;
   governanceProposalState: KeyedSlice<string, GovernanceProposalDetail>;
@@ -1592,6 +1604,10 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: validatorTipsRequest,
     toEntries: keyed<string, ValidatorTips>()
   });
+  const validatorPaceState = useKeyedSlice({
+    request: validatorPaceRequest,
+    toEntries: keyed<string, ValidatorPace>()
+  });
   const validatorTipBlocksState = useKeyedSlice({
     request: validatorTipBlocksRequest,
     toEntries: keyed<string, ValidatorTipBlocks>()
@@ -1715,6 +1731,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       poolState,
       validatorVoteAccountChangesState,
       validatorTipsState,
+      validatorPaceState,
       validatorTipBlocksState,
       clusterActivityState,
       governanceProposalState,
@@ -1767,6 +1784,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       poolState,
       validatorVoteAccountChangesState,
       validatorTipsState,
+      validatorPaceState,
       validatorTipBlocksState,
       clusterActivityState,
       governanceProposalState,
