@@ -1,6 +1,10 @@
 import FeatherIcon from 'feather-icons-react';
 import DelayedSpinner from 'components/common/DelayedSpinner';
-import { isStaleChunk, reloadForNewBuild } from 'helpers/chunkReload';
+import {
+  isStaleChunk,
+  reloadForNewBuild,
+  reloadPending
+} from 'helpers/chunkReload';
 import { useEffect, useState } from 'react';
 import { Link, useRouteError } from 'react-router';
 
@@ -14,7 +18,11 @@ const RouteError = () => {
   // A new version is out: load it (a few spaced tries; while one's
   // under way, say so). Out of tries, or another error: show it.
   const stale = isStaleChunk(error);
-  const [reloading] = useState(() => stale && reloadForNewBuild());
+  // A reload already under way (main.tsx's handler swallowed the import
+  // for it, whatever error that left) shows as loading too.
+  const [reloading] = useState(
+    () => reloadPending() || (stale && reloadForNewBuild())
+  );
   useEffect(() => {
     if (!reloading) console.error(error);
   }, [error, reloading]);

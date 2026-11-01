@@ -5,7 +5,7 @@ import { RouterProvider } from 'react-router';
 import { router } from 'Routes';
 import { VortexDataProvider } from 'providers/VortexDataProvider';
 import { IS_MOCK_API } from 'helpers/apiEndpoint';
-import { reloadForNewBuild } from 'helpers/chunkReload';
+import { reloadForNewBuild, settleAfterBoot } from 'helpers/chunkReload';
 // Nunito Sans, self-hosted (was Google Fonts): no third-party round trips
 // before text can render, and font-display: swap.
 import '@fontsource/nunito-sans/300.css';
@@ -27,6 +27,7 @@ window.addEventListener('vite:preloadError', event => {
 
 // The app is up: index.html's boot-time reload stands down.
 (window as { vxBooted?: boolean }).vxBooted = true;
+settleAfterBoot();
 
 const render = () =>
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

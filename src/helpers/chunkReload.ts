@@ -51,10 +51,25 @@ export const reloadForNewBuild = (): boolean => {
   return true;
 };
 
+/** A load that has run this long without a stale chunk landed on a
+ *  working build: the next deploy starts its tries afresh (at once,
+ *  not after the last try's delay). */
+const SETTLED_MS = 30_000;
+export const settleAfterBoot = () =>
+  setTimeout(() => {
+    if (reloadPending()) return;
+    try {
+      sessionStorage.removeItem(KEY);
+    } catch {
+      // ignore
+    }
+  }, SETTLED_MS);
+
 /** A page's code that's gone. Chrome, Firefox and Safari word it
  *  differently; a lazy page whose import was swallowed for a reload
- *  (main.tsx) resolves to undefined. */
+ *  (main.tsx) resolves to undefined - React.lazy says so, React Router's
+ *  lazy reads its .default and throws. */
 export const isStaleChunk = (error: unknown) =>
-  /dynamically imported module|Importing a module script failed|module script|Expected the result of a dynamic import|resolves to: undefined/i.test(
+  /dynamically imported module|Importing a module script failed|module script|Expected the result of a dynamic import|resolves to: undefined|reading 'default'/i.test(
     error instanceof Error ? error.message : String(error)
   );
