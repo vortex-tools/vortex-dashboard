@@ -298,15 +298,15 @@ const EarningsChart = ({
                     `of ${format(convert(r, toSol(c.votes)))} votes + ${format(convert(r, toSol(c.bonus)))} producer bonus (gross)`
                   )
                 );
-              // MEV: what it's a share of - the tips in its blocks (gross),
-              // less the builder's and tip router's fees; at 0% all of
-              // that goes to its stakers.
+              // MEV: what it's a share of - the tips in its blocks (gross,
+              // before the builder's and tip router's fees); at 0% all of
+              // it goes to its stakers.
               const tips = r.blockRevenue.mevTips;
               if (d.name === 'MEV' && tips > 0)
                 return (
                   main +
                   sub(
-                    `of ${format(convert(r, toSol(tips)))} tips in its blocks (gross, before builder and tip router fees)${r.rates?.mevCommissionBps === 0 ? '; all to its stakers' : ''}`
+                    `of ${format(convert(r, toSol(tips)))} gross tips${r.rates?.mevCommissionBps === 0 ? ' · all to stakers' : ''}`
                   )
                 );
               return main;
