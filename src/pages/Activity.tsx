@@ -304,19 +304,32 @@ const columns = (
  * (failovers, migrations, software), from /cluster/activity. Filtered by kind, by validator (name or either key) and by how
  * many epochs back, all in the URL (?kind=&validator=&epochs=).
  */
-/** The change filter's group options: every on-chain or every host
- *  change. */
+/** The change filter's group options: every on-chain change (but
+ *  withdrawals), every withdrawal, every host change. */
 const ONCHAIN = 'onchain';
+const WITHDRAWALS = 'withdrawals';
 const INFRA = 'infra';
+/** Money out: from the vote account, or from the identity. */
+const WITHDRAW_KINDS = new Set(['withdraw', 'identityWithdraw']);
+type Group = 'onchain' | 'withdrawals' | 'infra';
+const groupOf = (kind: string): Group =>
+  HOST_KINDS.has(kind)
+    ? 'infra'
+    : WITHDRAW_KINDS.has(kind)
+      ? 'withdrawals'
+      : 'onchain';
+const GROUPS: Array<[Group, string, string]> = [
+  ['onchain', 'On-chain', 'All on-chain'],
+  ['withdrawals', 'Withdrawals', 'All withdrawals'],
+  ['infra', 'Infrastructure', 'All infrastructure']
+];
 const matchesKind = (e: ActivityEvent, kind: string) =>
   !kind ||
-  (kind === ONCHAIN
-    ? !HOST_KINDS.has(e.kind)
-    : kind === INFRA
-      ? HOST_KINDS.has(e.kind)
-      : kind === BLS_FILTER
-        ? isBlsChange(e)
-        : e.kind === kind);
+  (kind === ONCHAIN || kind === WITHDRAWALS || kind === INFRA
+    ? groupOf(e.kind) === kind
+    : kind === BLS_FILTER
+      ? isBlsChange(e)
+      : e.kind === kind);
 
 /** Identity withdrawals under this many SOL are routine payments: not
  *  listed. */
@@ -329,7 +342,14 @@ const isSmall = (e: ActivityEvent) => {
 
 /** A kind's name in the change filter. */
 const kindLabel = (k: string) =>
-  k === BLS_FILTER ? 'BLS key' : (CHANGE_KIND[k]?.label ?? k);
+  k === BLS_FILTER
+    ? 'BLS key'
+    : // Under Withdrawals: where the money came from.
+      k === 'withdraw'
+      ? 'From the vote account'
+      : k === 'identityWithdraw'
+        ? 'From the identity'
+        : (CHANGE_KIND[k]?.label ?? k);
 
 const Activity = () => {
   const context = useContext(VortexDataContext);
@@ -464,27 +484,22 @@ const Activity = () => {
             onChange={e => set('kind', e.target.value)}
           >
             <option value="">All changes</option>
-            {/* On-chain (vote-account transactions) and infrastructure
-                (gossip: hosts and software), each alphabetical. */}
-            {[
-              ['On-chain', false],
-              ['Infrastructure', true]
-            ].map(([group, host]) => {
+            {/* On-chain (vote-account transactions), withdrawals (vote
+                account and identity) and infrastructure (gossip: hosts and
+                software), each alphabetical. */}
+            {GROUPS.map(([group, label, all]) => {
+              const isGroup =
+                kind === ONCHAIN || kind === WITHDRAWALS || kind === INFRA;
               const shown = (
-                kinds.includes(kind) ||
-                !kind ||
-                kind === ONCHAIN ||
-                kind === INFRA
+                kinds.includes(kind) || !kind || isGroup
                   ? kinds
                   : [...kinds, kind]
               )
-                .filter(k => HOST_KINDS.has(k) === host)
+                .filter(k => groupOf(k) === group)
                 .sort((x, y) => kindLabel(x).localeCompare(kindLabel(y)));
               return shown.length ? (
-                <optgroup key={String(group)} label={String(group)}>
-                  <option value={host ? INFRA : ONCHAIN}>
-                    All {host ? 'infrastructure' : 'on-chain'}
-                  </option>
+                <optgroup key={group} label={label}>
+                  <option value={group}>{all}</option>
                   {shown.map(k => (
                     <option key={k} value={k}>
                       {kindLabel(k)}
