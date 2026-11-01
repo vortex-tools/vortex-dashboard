@@ -36,6 +36,8 @@ window.addEventListener('vite:preloadError', event => {
   } catch {
     // ignore
   }
+  // The page's error screen shows "loading the new version" meanwhile.
+  (window as { vxReloading?: boolean }).vxReloading = true;
   window.location.reload();
 });
 
