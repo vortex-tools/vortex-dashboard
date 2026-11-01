@@ -54,6 +54,10 @@ export const formatLamports = (lamports: number, digits?: number): string => {
   return `◎${fmt.format(sol)}`;
 };
 
+/** JitoSOL base units (9 decimals, as BAM Boost is paid): "1.2345 JitoSOL". */
+export const jitoSol = (units: number, digits = 4): string =>
+  `${solFormatter(digits).format(units / 1_000_000_000)} JitoSOL`;
+
 /** A validator's share of total stake for a table cell: "2.31%"; any
  *  non-zero share below 0.01% shows as "0.01%" (no "<", so the column's
  *  digits stay aligned). */

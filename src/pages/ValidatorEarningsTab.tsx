@@ -1,3 +1,4 @@
+import BamBoostCard from 'components/validator/BamBoostCard';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import UntrackedState from 'components/common/UntrackedState';
 import SectionCard from 'components/common/SectionCard';
@@ -19,7 +20,8 @@ const REFRESH_MS = 60_000;
  * A validator's Earnings tab: net earnings over time (inflation commission,
  * block revenue and MEV, less costs), then its inflation rewards per
  * epoch (Alpenglow: voting and production, the current epoch so far;
- * Tower before it). Block income is the Fees tab, stake the Staking tab.
+ * Tower before it), and BAM Boost where it has any. Block income is the
+ * Fees tab, stake the Staking tab.
  */
 const ValidatorEarningsTab = () => {
   const { address = '' } = useParams();
@@ -107,6 +109,15 @@ const ValidatorEarningsTab = () => {
                 />
               )}
             </SectionCard>
+          </Col>
+        )}
+        {/* Mainnet only (Jito's BAM); nothing for a validator without it. */}
+        {nodeAddress && identity && !isTestnet && (
+          <Col xs={12} lg={6}>
+            <BamBoostCard
+              identity={nodeAddress}
+              voteKey={identity.voteAddress}
+            />
           </Col>
         )}
       </Row>

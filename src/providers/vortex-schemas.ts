@@ -441,6 +441,33 @@ export const validatorStatusSchema = z.object({
     })
     .nullable()
     .catch(null),
+  // Jito's BAM Boost (JitoSOL, base units): what's claimable now and
+  // when each expires, and what was claimed or let expire. null when it
+  // never had any (or on older APIs).
+  bamBoost: z
+    .object({
+      claimable: z
+        .array(
+          z.object({
+            epoch: z.number(),
+            amount: z.number(),
+            claimEndEpoch: z.number().nullable().catch(null)
+          })
+        )
+        .catch([]),
+      claimableAmount: z.number().catch(0),
+      nextClaimEndEpoch: z.number().nullable().catch(null),
+      claimedEpochs: z.number().catch(0),
+      claimedAmount: z.number().catch(0),
+      expiredEpochs: z.number().catch(0),
+      expiredAmount: z.number().catch(0),
+      firstEpoch: z.number().nullable().catch(null),
+      lastEpoch: z.number().nullable().catch(null),
+      latestEpoch: z.number().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   checks: z.array(
     z.object({ id: z.string(), status: checkStatusSchema, summary: z.string() })
   )
@@ -3409,7 +3436,22 @@ const tipPathSchema = z.object({
     .nullable()
     .optional()
     .catch(null),
-  fundingTxCount: z.number().nullable().optional().catch(null)
+  fundingTxCount: z.number().nullable().optional().catch(null),
+  // What the figures count: lamports, or JitoSOL base units (9 decimals)
+  // for bamBoost, which is never summed into the epoch's total.
+  unit: z.enum(['lamports', 'jitoSol']).catch('lamports'),
+  // bamBoost only: whether the validator claimed it (claimable until
+  // claimEndEpoch, then expired). null elsewhere, and when it wasn't in
+  // Jito's distribution that epoch.
+  claim: z
+    .object({
+      state: z.string(),
+      claimed: z.number().nullable().catch(null),
+      claimEndEpoch: z.number().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null)
 });
 export type TipPath = z.infer<typeof tipPathSchema>;
 export const validatorTipsSchema = z.object({

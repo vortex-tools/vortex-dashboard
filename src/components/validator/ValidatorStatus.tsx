@@ -15,7 +15,7 @@ import SfdpMatchStatus, {
 } from 'components/validator/SfdpMatchStatus';
 import SectionCard from 'components/common/SectionCard';
 import { isSfdpCheck, isSfdpState, sfdpMatch } from 'helpers/sfdp';
-import { formatLamports } from 'helpers/utils';
+import { formatLamports, jitoSol } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
 import { poolPath } from 'components/pools/pools';
 import { Link } from 'react-router';
@@ -52,7 +52,8 @@ const CHECK_LABELS: Record<string, string> = {
   vote_authority: 'Vote authority',
   vat: 'Admission ticket (VAT)',
   concentration: 'Concentration',
-  block_revenue_collector: 'Block rewards collector'
+  block_revenue_collector: 'Block rewards collector',
+  bam_boost: 'BAM Boost'
 };
 
 /** Checks the dashboard no longer shows: identity balance covered vote
@@ -187,6 +188,15 @@ const shortReason = (
       return vs.nextAuthorizedVoter !== s.identity
         ? 'voter key rotates next epoch'
         : null;
+    }
+    case 'bam_boost': {
+      const b = s.bamBoost;
+      if (!b?.claimableAmount) return null;
+      return `${jitoSol(b.claimableAmount)} unclaimed${
+        b.nextClaimEndEpoch != null
+          ? `, claimable until epoch ${b.nextClaimEndEpoch.toLocaleString()}`
+          : ''
+      }`;
     }
     default:
       return null;
