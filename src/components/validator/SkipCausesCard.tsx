@@ -40,35 +40,69 @@ const REGION: Record<string, string> = {
 const ms = (v: number | null | undefined) =>
   v == null ? '—' : `${Math.round(v).toLocaleString('en-US')} ms`;
 
-/**
- * Why its skipped slots this epoch were skipped (the API's classifier: a
- * late block, no block, a wrong parent, a duplicate, offline), and its
- * slot pace - its own slots within a window, and its first block after
- * the previous leader's - against the cluster's; a lagging producer is
- * flagged. Nothing before the epoch is classified.
- */
-const SkipCausesCard = ({
-  record,
-  board
-}: {
+type Props = {
   record: ProducerRow | null | undefined;
   board: ProducerLeaderboard | null | undefined;
-}) => {
+};
+
+/**
+ * Why its skipped slots this epoch were skipped (the API's classifier: a
+ * late block, no block, a wrong parent, a duplicate, offline). Nothing
+ * before the epoch is classified.
+ */
+export const SkippedSlotsCard = ({ record }: Props) => {
   const causes = record?.skipCauses;
+  if (!record || !causes) return null;
+  const total = CAUSES.reduce((a, [k]) => a + (causes[k] ?? 0), 0);
+  return (
+    <SectionCard
+      title="Skipped Slots"
+      icon="slash"
+      info="Why its skipped slots this epoch were skipped, as the API classifies them."
+    >
+      {total ? (
+        <Table size="sm" className="data-table compact-rows fs-9 mb-0">
+          <tbody>
+            {CAUSES.filter(([k]) => causes[k] > 0).map(([k, label, what]) => (
+              <tr key={k}>
+                <td className="text-nowrap fw-semibold">{label}</td>
+                <td className="text-end font-monospace">
+                  {causes[k].toLocaleString()}
+                </td>
+                <td className="text-body-tertiary">{what}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      ) : (
+        <p className="fs-9 text-body-tertiary mb-0">
+          No skipped slots this epoch.
+        </p>
+      )}
+    </SectionCard>
+  );
+};
+
+/**
+ * Its slot pace - its own slots within a window, and its first block after
+ * the previous leader's - against the cluster's, then (where the API has
+ * it) its handoffs by where the previous leader was, against the network
+ * floor between them. A lagging producer is flagged.
+ */
+export const SlotPaceCard = ({ record, board }: Props) => {
   const pace = record?.slotDuration;
-  if (!record || (!causes && !pace)) return null;
+  if (!record || !pace) return null;
   const cluster = board?.cluster?.slotDuration;
-  const total = causes ? CAUSES.reduce((a, [k]) => a + (causes[k] ?? 0), 0) : 0;
   const ratio = board?.skipClassification?.laggingRatio;
   // Handoffs by the previous leader's region, in REGION's order.
-  const byRegion = pace?.handoffByRegion
+  const byRegion = pace.handoffByRegion
     ? Object.keys(REGION)
         .filter(k => (pace.handoffByRegion![k]?.count ?? 0) > 0)
         .map(k => [k, pace.handoffByRegion![k]] as const)
     : null;
   return (
     <SectionCard
-      title="Skipped Slots and Pace"
+      title="Slot Pace"
       icon="fast-forward"
       badge={
         record.lagging ? (
@@ -77,150 +111,150 @@ const SkipCausesCard = ({
           </Badge>
         ) : undefined
       }
-      info="Why its skipped slots this epoch were skipped, as the API classifies them, and its slot pace: its own slots within a leader window, and its first block after the previous leader's, against the cluster's (median, 90th percentile). Lagging: its in-window pace is well behind the cluster's."
+      info="Its slot pace: its own slots within a leader window, and its first block after the previous leader's, against the cluster's (median, 90th percentile); then its handoffs by where the previous leader was, against the network floor between them. Lagging: its in-window pace is well behind the cluster's."
     >
-      {causes && (
-        <>
-          <h6 className="fs-10 text-uppercase text-body-tertiary mb-2">
-            {total
-              ? `Why its ${total.toLocaleString()} skipped slots were skipped`
-              : 'No skipped slots this epoch'}
-          </h6>
-          {total > 0 && (
-            <Table size="sm" className="data-table compact-rows fs-9 mb-3">
-              <tbody>
-                {CAUSES.filter(([k]) => causes[k] > 0).map(
-                  ([k, label, what]) => (
-                    <tr key={k}>
-                      <td className="text-nowrap fw-semibold">{label}</td>
-                      <td className="text-end font-monospace">
-                        {causes[k].toLocaleString()}
-                      </td>
-                      <td className="text-body-tertiary">{what}</td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </Table>
+      <Table size="sm" className="data-table compact-rows fs-9 mb-0">
+        <thead>
+          <tr>
+            <th />
+            <th colSpan={2} className="text-center border-start">
+              Median
+            </th>
+            <th colSpan={2} className="text-center border-start">
+              90th percentile
+            </th>
+          </tr>
+          <tr>
+            <th />
+            <th className="text-end border-start">This validator</th>
+            <th className="text-end text-body-tertiary">Cluster</th>
+            <th className="text-end border-start">This validator</th>
+            <th className="text-end text-body-tertiary">Cluster</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(
+            [
+              ['Within its window', pace.inWindow, cluster?.inWindow],
+              [
+                'Handoff from the previous leader',
+                pace.handoff,
+                cluster?.handoff
+              ]
+            ] as const
+          ).map(([label, it, c]) => (
+            <tr key={label}>
+              <td className="text-nowrap">{label}</td>
+              <td className="text-end font-monospace border-start">
+                {ms(it?.p50Ms)}
+              </td>
+              <td className="text-end font-monospace text-body-tertiary">
+                {ms(c?.p50Ms)}
+              </td>
+              <td className="text-end font-monospace border-start">
+                {ms(it?.p90Ms)}
+              </td>
+              <td className="text-end font-monospace text-body-tertiary">
+                {ms(c?.p90Ms)}
+              </td>
+            </tr>
+          ))}
+          {/* Geo-aware: the handoff less the network floor between the
+              two leaders, so distance drops out (medians only). */}
+          {pace.handoffExcessP50Ms != null && (
+            <tr>
+              <td
+                className="text-nowrap"
+                title="Its median handoff's time above the network floor between it and the previous leader (fibre-speed distance): what's left when distance is taken out"
+              >
+                Handoff over the network floor
+              </td>
+              <td className="text-end font-monospace border-start">
+                {ms(pace.handoffExcessP50Ms)}
+              </td>
+              <td className="text-end font-monospace text-body-tertiary">
+                {ms(cluster?.handoffExcessP50Ms)}
+              </td>
+              <td className="border-start" />
+              <td />
+            </tr>
           )}
-        </>
-      )}
-      {pace && (
+        </tbody>
+      </Table>
+      {byRegion && (
         <>
-          <h6 className="fs-10 text-uppercase text-body-tertiary mb-2">
-            Slot pace
+          <h6 className="fs-10 text-uppercase text-body-tertiary mt-3 mb-2">
+            Handoff by where the previous leader was
+            {pace.region && REGION[pace.region]
+              ? ` (it's in ${REGION[pace.region]})`
+              : ''}
           </h6>
           <Table size="sm" className="data-table compact-rows fs-9 mb-0">
             <thead>
               <tr>
-                <th />
-                <th colSpan={2} className="text-center border-start">
-                  Median
+                <th>From</th>
+                <th className="text-end">Handoffs</th>
+                <th className="text-end">Median</th>
+                <th
+                  className="text-end"
+                  title="The physical minimum: the distance between the two hosts at fibre speed (~200 km/ms)"
+                >
+                  Network floor
                 </th>
-                <th colSpan={2} className="text-center border-start">
-                  90th percentile
+                <th
+                  className="text-end"
+                  title="The median handoff's time above its floor: routing, queueing and the leader's own pace"
+                >
+                  Over the floor
                 </th>
-              </tr>
-              <tr>
-                <th />
-                <th className="text-end border-start">This validator</th>
-                <th className="text-end text-body-tertiary">Cluster</th>
-                <th className="text-end border-start">This validator</th>
-                <th className="text-end text-body-tertiary">Cluster</th>
+                <th
+                  className="text-end text-body-tertiary"
+                  title="The cluster's median over the floor, for handoffs from the same region"
+                >
+                  Cluster
+                </th>
               </tr>
             </thead>
             <tbody>
-              {(
-                [
-                  ['Within its window', pace.inWindow, cluster?.inWindow],
-                  [
-                    'Handoff from the previous leader',
-                    pace.handoff,
-                    cluster?.handoff
-                  ]
-                ] as const
-              ).map(([label, it, c]) => (
-                <tr key={label}>
-                  <td className="text-nowrap">{label}</td>
-                  <td className="text-end font-monospace border-start">
-                    {ms(it?.p50Ms)}
+              {byRegion.map(([k, r]) => (
+                <tr key={k}>
+                  <td className="text-nowrap">{REGION[k] ?? k}</td>
+                  <td className="text-end font-monospace text-body-tertiary">
+                    {r.count.toLocaleString()}
+                  </td>
+                  <td className="text-end font-monospace">{ms(r.p50Ms)}</td>
+                  <td className="text-end font-monospace text-body-tertiary">
+                    {ms(r.expectedP50Ms)}
+                  </td>
+                  <td className="text-end font-monospace">
+                    {ms(r.excessP50Ms)}
                   </td>
                   <td className="text-end font-monospace text-body-tertiary">
-                    {ms(c?.p50Ms)}
-                  </td>
-                  <td className="text-end font-monospace border-start">
-                    {ms(it?.p90Ms)}
-                  </td>
-                  <td className="text-end font-monospace text-body-tertiary">
-                    {ms(c?.p90Ms)}
+                    {ms(cluster?.handoffByRegion?.[k]?.excessP50Ms)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </Table>
-          {byRegion && (
-            <>
-              <h6 className="fs-10 text-uppercase text-body-tertiary mt-3 mb-2">
-                Handoff by where the previous leader was
-                {pace.region && REGION[pace.region]
-                  ? ` (it's in ${REGION[pace.region]})`
-                  : ''}
-              </h6>
-              <Table size="sm" className="data-table compact-rows fs-9 mb-0">
-                <thead>
-                  <tr>
-                    <th>From</th>
-                    <th className="text-end">Handoffs</th>
-                    <th className="text-end">Median</th>
-                    <th
-                      className="text-end"
-                      title="The physical minimum: the distance between the two hosts at fibre speed (~200 km/ms)"
-                    >
-                      Network floor
-                    </th>
-                    <th
-                      className="text-end"
-                      title="The median handoff's time above its floor: routing, queueing and the leader's own pace"
-                    >
-                      Over the floor
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {byRegion.map(([k, r]) => (
-                    <tr key={k}>
-                      <td className="text-nowrap">{REGION[k] ?? k}</td>
-                      <td className="text-end font-monospace text-body-tertiary">
-                        {r.count.toLocaleString()}
-                      </td>
-                      <td className="text-end font-monospace">{ms(r.p50Ms)}</td>
-                      <td className="text-end font-monospace text-body-tertiary">
-                        {ms(r.expectedP50Ms)}
-                      </td>
-                      <td className="text-end font-monospace">
-                        {ms(r.excessP50Ms)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </>
-          )}
-          <p className="fs-10 text-body-tertiary mt-2 mb-0">
-            Time per slot; lower is better. Within its window: its own
-            consecutive slots. Handoff: from the previous leader&apos;s last
-            block to its first, which includes the network between them.
-          </p>
-          {record.lagging && (
-            <p className="fs-10 text-warning-emphasis mt-2 mb-0">
-              Its own slots run slow
-              {ratio ? `: ${ratio}× the cluster's pace or more` : ''}.
-            </p>
-          )}
         </>
+      )}
+      <p className="fs-10 text-body-tertiary mt-2 mb-0">
+        Time per slot; lower is better. Within its window: its own consecutive
+        slots. Handoff: from the previous leader&apos;s last block to its first,
+        which includes the network between them; over the network floor takes
+        that distance out, so validators far from the rest compare fairly.
+      </p>
+      {record.lagging && (
+        <p className="fs-10 text-warning-emphasis mt-2 mb-0">
+          Its own slots run slow
+          {ratio ? `: ${ratio}× the cluster's pace or more` : ''}.
+        </p>
+      )}
+      {!byRegion && (
+        <p className="fs-10 text-body-tertiary mt-2 mb-0">
+          By region: not recorded for this epoch yet.
+        </p>
       )}
     </SectionCard>
   );
 };
-
-export default SkipCausesCard;

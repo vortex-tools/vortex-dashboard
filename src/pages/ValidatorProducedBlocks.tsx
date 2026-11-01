@@ -1,7 +1,11 @@
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
-import SkipCausesCard from 'components/validator/SkipCausesCard';
+import { Col, Row } from 'react-bootstrap';
+import {
+  SkippedSlotsCard,
+  SlotPaceCard
+} from 'components/validator/SkipCausesCard';
 import UntrackedState from 'components/common/UntrackedState';
 import BlackholeVoters from 'components/validator/BlackholeVoters';
 import ConsensusRecordHeader from 'components/validator/ConsensusRecordHeader';
@@ -99,7 +103,15 @@ const ValidatorProducedBlocks = () => {
                     {clockLine(clockVerdict(producer)!)}
                   </WarningBanner>
                 )}
-                <SkipCausesCard record={producer} board={producerBoard} />
+                {/* Side by side on large screens. */}
+                <Row className="g-3">
+                  <Col xs={12} lg={6}>
+                    <SkippedSlotsCard record={producer} board={producerBoard} />
+                  </Col>
+                  <Col xs={12} lg={6}>
+                    <SlotPaceCard record={producer} board={producerBoard} />
+                  </Col>
+                </Row>
                 <BlackholeVoters voteKey={recordKey} epoch={epoch} />
                 {(producer || !producerBoard) && (
                   <SectionCard
