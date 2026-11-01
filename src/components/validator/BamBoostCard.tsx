@@ -74,7 +74,11 @@ const BamBoostCard = ({
     currentEpoch != null && end <= currentEpoch
       ? 'expires this epoch'
       : `until epoch ${end}`;
-  if (!boost && !epochs.some(e => e.amount > 0)) return null;
+  // Only where there's something to see: boost to claim, or boost in its
+  // recent epochs. A validator that left BAM with everything claimed has
+  // nothing to do here (its history is in the Earnings chart).
+  if (!(boost?.claimableAmount ?? 0) && !epochs.some(e => e.amount > 0))
+    return null;
 
   const totals: Array<[string, number, number | null, string]> = boost
     ? [

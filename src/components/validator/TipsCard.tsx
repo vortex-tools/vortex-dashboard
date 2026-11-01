@@ -72,14 +72,11 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
               >
                 Tips
               </th>
-              <th className="text-end" title="The block builder's cut">
-                Builder fee
-              </th>
               <th
                 className="text-end"
-                title="The tip program's fee (Jito's tip router, for Jito tips)"
+                title="Taken out before the validator's commission: the block builder's cut and the tip program's fee (Jito's tip router, for Jito tips). Hover a value for the split."
               >
-                Tip program fee
+                Fees
               </th>
               <th
                 className="text-end"
@@ -111,11 +108,17 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
                   <td className="text-end font-monospace">
                     {sol(t?.gross ?? j?.gross)}
                   </td>
-                  <td className="text-end font-monospace text-body-tertiary">
-                    {sol(t?.builderFee)}
-                  </td>
-                  <td className="text-end font-monospace text-body-tertiary">
-                    {sol(t?.protocolFee)}
+                  <td
+                    className="text-end font-monospace text-body-tertiary"
+                    title={
+                      t?.builderFee != null || t?.protocolFee != null
+                        ? `Builder ${sol(t?.builderFee)} · tip program ${sol(t?.protocolFee)}`
+                        : undefined
+                    }
+                  >
+                    {t?.builderFee == null && t?.protocolFee == null
+                      ? sol(null)
+                      : sol((t?.builderFee ?? 0) + (t?.protocolFee ?? 0))}
                   </td>
                   <td className="text-end font-monospace">
                     {sol(t?.validatorCut)}
@@ -147,7 +150,7 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
     <SectionCard
       title="Tips"
       icon="gift"
-      info="Tips paid to tip accounts in its blocks per epoch, and their split: the block builder's fee, the tip program's fee, the validator's commission (its rate beside it) and its stakers. The validator's figure is what it was paid: its commission on the tips after both fees."
+      info="Tips paid to tip accounts in its blocks per epoch, and their split: the fees taken out first (the block builder's and the tip program's; hover for each), the validator's commission (its rate beside it) and its stakers. The validator's figure is what it was paid: its commission on the tips after both fees."
     >
       {body()}
     </SectionCard>
