@@ -1,7 +1,7 @@
 import Pager from 'components/common/Pager';
 import ValidatorLink from 'components/common/ValidatorLink';
 import UntrackedState from 'components/common/UntrackedState';
-import { Divergence, OFFLINE_RUN_SLOTS } from 'helpers/participation';
+import { Divergence, OFFLINE_RUN_SLOTS, OUTCOME } from 'helpers/participation';
 import { HoverPath } from 'components/validator/PathPreview';
 import { fetchSlots } from 'helpers/slotContext';
 import { parseUserAgent } from 'helpers/userAgent';
@@ -115,6 +115,25 @@ const CAUSE: Record<
  * slot, how fast the block was finalized, and the slot's leader (/slots). Agreeing votes
  * (including skips on skipped slots) are correct and not listed.
  */
+/** A window's slot whose vote agreed with the chain, in gray: its
+ *  notarize vote landed, or it voted skip on a slot the chain skipped. */
+const AgreedVote = ({ code }: { code: number | null }) =>
+  code === OUTCOME.notarized ? (
+    <span
+      className="text-body-quaternary"
+      title="Its notarize vote landed: agreed with the chain"
+    >
+      Notarized
+    </span>
+  ) : code === OUTCOME.skipped ? (
+    <span
+      className="text-body-quaternary"
+      title="It voted skip, and the chain skipped the slot: agreed"
+    >
+      Skip
+    </span>
+  ) : null;
+
 /** One slot of a window whose vote went wrong: what (linked to the slot's
  *  page), why, and the stake in its notarize / skip reward certificates
  *  (linked to the reward block); how it finalized on hover. */
@@ -197,8 +216,12 @@ const DivergentSlotsTable = ({
   onHover,
   geo: geoProp,
   geoAsOf = 'as of now',
-  card
+  card,
+  voteOf
 }: {
+  /** Any slot's vote outcome (OUTCOME codes), to show the agreeing ones
+   *  in gray. */
+  voteOf?: (slot: number) => number | null;
   /** Draw the card around it, the filters in its header (else the
    *  filters above the table). */
   card?: { title: string; icon: string; info?: string; before?: ReactNode };
@@ -241,6 +264,9 @@ const DivergentSlotsTable = ({
     () => [...rows].reverse().filter(r => r.kind !== 'notarized-skipped'),
     [rows]
   );
+  // Every divergent slot, whatever the tab: an agreeing vote is shown in
+  // gray only where the slot isn't one.
+  const divergentSlots = useMemo(() => new Set(rows.map(r => r.slot)), [rows]);
   const tabOf = (r: { slot: number; kind: Divergence }): Filter =>
     r.kind === 'late-skip' ? 'late-skip' : (causeOf?.(r.slot) ?? 'missed');
   const filtered = useMemo(
@@ -517,6 +543,10 @@ const DivergentSlotsTable = ({
                           }
                           selfNode={selfNode}
                         />
+                      ) : voteOf && !divergentSlots.has(slot) ? (
+                        // Agreed (a divergent slot the tab leaves out
+                        // stays blank).
+                        <AgreedVote code={voteOf(slot)} />
                       ) : null}
                     </td>
                   );

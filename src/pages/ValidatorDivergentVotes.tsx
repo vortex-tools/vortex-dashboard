@@ -222,6 +222,12 @@ const ValidatorDivergentVotes = () => {
                       ) : undefined
                     }}
                     rows={timeline.divergent}
+                    voteOf={slot => {
+                      const i = slot - timeline.firstSlot;
+                      return i >= 0 && i < timeline.codes.length
+                        ? timeline.codes[i]
+                        : null;
+                    }}
                     leaderOf={leaderOf}
                     selfNode={identity?.nodeAddress ?? null}
                     causeOf={causeOf}
