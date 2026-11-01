@@ -1519,7 +1519,28 @@ export const producerLeaderboardRecordSchema = z.object({
       handoff: z
         .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
         .nullable()
-        .catch(null)
+        .catch(null),
+      // Handoffs by the previous leader's region, against the network
+      // floor (great-circle distance at fibre speed): its median and the
+      // median per-handoff excess over it (can be slightly negative: clock
+      // skew). And its own region.
+      handoffByRegion: z
+        .record(
+          z.string(),
+          z.object({
+            count: z.number(),
+            p50Ms: z.number().nullable().catch(null),
+            p90Ms: z.number().nullable().catch(null),
+            expectedP50Ms: z.number().nullable().catch(null),
+            excessP50Ms: z.number().nullable().catch(null)
+          })
+        )
+        .nullable()
+        .optional()
+        .catch(null),
+      handoffExpectedP50Ms: z.number().nullable().optional().catch(null),
+      handoffExcessP50Ms: z.number().nullable().optional().catch(null),
+      region: z.string().nullable().optional().catch(null)
     })
     .nullable()
     .optional()
