@@ -368,7 +368,7 @@ const DivergentSlotsTable = ({
       <Table
         responsive
         size="sm"
-        className="data-table fs-9 mb-0"
+        className="data-table fs-9 mb-0 border"
         style={{ tableLayout: 'fixed', minWidth: 980 }}
       >
         <colgroup>
@@ -391,7 +391,7 @@ const DivergentSlotsTable = ({
             {[1, 2, 3, 4].map(n => (
               <th
                 key={n}
-                className="text-center"
+                className="text-center border-start"
                 title="The window's slot: empty when its vote agreed with the chain; else what went wrong, why, and the share of stake in its notarize / skip reward certificates"
               >
                 Slot {n}
@@ -479,7 +479,7 @@ const DivergentSlotsTable = ({
                   const slot = start + n;
                   const kind = slots.get(slot);
                   return (
-                    <td key={n} className="text-center">
+                    <td key={n} className="text-center border-start">
                       {kind ? (
                         <SlotCell
                           slot={slot}
