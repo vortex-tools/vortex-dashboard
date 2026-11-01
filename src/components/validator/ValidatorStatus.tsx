@@ -192,10 +192,15 @@ const shortReason = (
     case 'bam_boost': {
       const b = s.bamBoost;
       if (!b?.claimableAmount) return null;
+      // latestEpoch: Jito's newest distribution, made early in the
+      // current epoch.
+      const end = b.nextClaimEndEpoch;
       return `${jitoSol(b.claimableAmount)} unclaimed${
-        b.nextClaimEndEpoch != null
-          ? `, claimable until epoch ${b.nextClaimEndEpoch.toLocaleString()}`
-          : ''
+        end == null
+          ? ''
+          : b.latestEpoch != null && end <= b.latestEpoch
+            ? ', the oldest expires this epoch'
+            : `, claimable until epoch ${end.toLocaleString()}`
       }`;
     }
     default:
@@ -1313,6 +1318,27 @@ export const useValidatorNotices = (
       detail:
         "Since SIMD-0232 an identity change doesn't move the block-revenue collector, so it can still point at a former identity. If that isn't intended, update the vote account's block revenue collector."
     });
+
+  // Jito's BAM Boost: eligible, never claimed, and every distribution
+  // expired (claimable is its bam_boost check's). Facts only.
+  const boost = status.bamBoost;
+  if (boost && boost.claimedEpochs === 0 && boost.expiredEpochs > 0) {
+    const range =
+      boost.firstEpoch != null && boost.lastEpoch != null
+        ? boost.firstEpoch === boost.lastEpoch
+          ? ` (${boost.firstEpoch})`
+          : ` (${boost.firstEpoch}–${boost.lastEpoch})`
+        : '';
+    const n = boost.expiredEpochs;
+    notices.push({
+      id: 'bam-boost-unclaimed',
+      severity: 'info',
+      source: 'Earnings',
+      title: 'BAM Boost never claimed',
+      message: `${jitoSol(boost.expiredAmount, 2)} expired unclaimed`,
+      detail: `This validator was eligible for Jito BAM Boost in ${n.toLocaleString()} epoch${n === 1 ? '' : 's'}${range} and never claimed it; ${jitoSol(boost.expiredAmount, 2)} expired unclaimed. Each epoch's boost can be claimed by the identity for about 19 epochs.`
+    });
+  }
 
   // Software that can't go through the Alpenglow migration (mainnet,
   // until it migrates: Firedancer / Frankendancer (Anza), Agave < 4.3 by
