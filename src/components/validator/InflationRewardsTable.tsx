@@ -32,7 +32,7 @@ type Row = {
  * A validator's inflation rewards per epoch, newest first (the current
  * epoch so far), across both eras. Alpenglow epochs (/epochs/participation)
  * split the gross reward into voting and the production bonus, with what
- * missed votes didn't earn. Tower epochs
+ * missed votes didn't earn (Lost to misses). Tower epochs
  * (/epochs/earnings) carry the exact gross (inflationRewardGross) where the
  * API has reconciled it; elsewhere it's worked out from the commission the
  * vote account was paid and its rate (≈).
@@ -74,6 +74,8 @@ const InflationRewardsTable = ({
         .find(e => e.rates?.inflationRewardsCommissionBps != null)?.rates
         ?.inflationRewardsCommissionBps ?? null;
     for (const r of rows) {
+      // An epoch that hasn't started (the API lists the next one): no row.
+      if (currentEpoch != null && r.epoch > currentEpoch) continue;
       const w = r.rewards;
       // No rewards recorded (not voting, not admitted): still its row, so
       // an idle stretch shows rather than vanishes.
@@ -139,7 +141,7 @@ const InflationRewardsTable = ({
       });
     }
     return [...byEpoch.values()].sort((a, b) => b.epoch - a.epoch);
-  }, [rows, earnings, cutoverEpoch]);
+  }, [rows, earnings, cutoverEpoch, currentEpoch]);
 
   const [page, setPage] = useState(0);
   useEffect(() => setPage(0), [address]);
@@ -183,9 +185,9 @@ const InflationRewardsTable = ({
             </th>
             <th
               className="text-end d-none d-xxl-table-cell"
-              title="Alpenglow: its votes not in the reward certificates, unpaid"
+              title="What its missed votes would have earned (Alpenglow): votes not in the slots' reward certificates are not paid"
             >
-              Missed
+              Lost to misses
             </th>
           </tr>
         </thead>
@@ -242,9 +244,17 @@ const InflationRewardsTable = ({
                 {sol(r.commission)}
               </td>
               <td
-                className={`text-end font-monospace d-none d-xxl-table-cell${r.missed ? ' text-danger' : ''}`}
+                className={`text-end font-monospace d-none d-xxl-table-cell ${r.missed ? 'text-danger' : 'text-body-quaternary'}`}
               >
-                {sol(r.missed)}
+                {r.missed ? (
+                  r.missed < 5_000_000 ? (
+                    '<◎0.01'
+                  ) : (
+                    sol(r.missed)
+                  )
+                ) : (
+                  <Dash />
+                )}
               </td>
             </tr>
           ))}
