@@ -9,7 +9,9 @@ import {
 } from 'components/validator/SkipCausesCard';
 import UntrackedState from 'components/common/UntrackedState';
 import BlackholeVoters from 'components/validator/BlackholeVoters';
-import ConsensusRecordHeader from 'components/validator/ConsensusRecordHeader';
+import ConsensusRecordHeader, {
+  recordPath
+} from 'components/validator/ConsensusRecordHeader';
 import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
 import ProducingSection from 'components/validator/ProducingSection';
 import RecordSummary from 'components/validator/RecordSummary';
@@ -116,7 +118,11 @@ const ValidatorProducedBlocks = () => {
                     </Col>
                   )}
                   <Col xs={12} lg={skippedTotal(producer) > 0 ? 6 : 12}>
-                    <SlotPaceCard record={producer} board={producerBoard} />
+                    <SlotPaceCard
+                      record={producer}
+                      board={producerBoard}
+                      networkLink={recordPath(address, epoch, 'network')}
+                    />
                   </Col>
                 </Row>
                 <BlackholeVoters voteKey={recordKey} epoch={epoch} />

@@ -39,6 +39,7 @@ const ValidatorDivergentVotes = lazy(
 const ValidatorProducedBlocks = lazy(
   () => import('pages/ValidatorProducedBlocks')
 );
+const ValidatorNetwork = lazy(() => import('pages/ValidatorNetwork'));
 const SlotPage = lazy(() => import('pages/SlotPage'));
 const Validators = lazy(() => import('pages/Validators'));
 const ClientVersions = lazy(() => import('pages/ClientVersions'));
@@ -267,6 +268,10 @@ const routes: RouteObject[] = [
                 {
                   path: `/validator/:address/production${e}`,
                   element: <ValidatorProducedBlocks />
+                },
+                {
+                  path: `/validator/:address/network${e}`,
+                  element: <ValidatorNetwork />
                 }
               ]),
               // The record's old URLs open those tabs.

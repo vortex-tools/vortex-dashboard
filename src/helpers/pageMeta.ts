@@ -280,6 +280,14 @@ const VALIDATOR_TABS: Array<{
     testnet: true
   },
   {
+    seg: 'network',
+    name: 'Network',
+    title: n => `${n}: network and latency`,
+    about:
+      'where it runs, its handoff latency against the network floor by region, and its divergent votes by leader region',
+    testnet: true
+  },
+  {
     seg: 'earnings',
     name: 'Earnings',
     title: n => `${n}: earnings and inflation rewards`,

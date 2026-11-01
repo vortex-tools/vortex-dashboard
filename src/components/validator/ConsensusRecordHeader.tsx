@@ -6,10 +6,15 @@ import ValidatorPageHeader, {
 import { Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 
-/** The record's two pages: the validator's Voting and Production tabs. */
-export type RecordPage = 'votes' | 'blocks';
+/** The record's pages: the validator's Voting, Production and Network
+ *  tabs (each per epoch). */
+export type RecordPage = 'votes' | 'blocks' | 'network';
 
-const TAB = { votes: 'voting', blocks: 'production' } as const;
+const TAB = {
+  votes: 'voting',
+  blocks: 'production',
+  network: 'network'
+} as const;
 
 /** A validator's Voting or Production tab, at an epoch (null: current). */
 export const recordPath = (

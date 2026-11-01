@@ -10,6 +10,7 @@ export type ValidatorTab =
   | 'overview'
   | 'voting'
   | 'production'
+  | 'network'
   | 'earnings'
   | 'fees'
   | 'staking';
@@ -18,13 +19,14 @@ const TABS: Array<{ key: ValidatorTab; label: string }> = [
   { key: 'overview', label: 'Overview' },
   { key: 'voting', label: 'Voting' },
   { key: 'production', label: 'Production' },
+  { key: 'network', label: 'Network' },
   { key: 'earnings', label: 'Earnings' },
   { key: 'fees', label: 'Fees' },
   { key: 'staking', label: 'Staking' }
 ];
 
-/** A validator page's URL: the Overview, or a tab (Voting and Production
- *  optionally at an epoch). */
+/** A validator page's URL: the Overview, or a tab (Voting, Production and
+ *  Network optionally at an epoch). */
 export const validatorTabPath = (
   address: string,
   tab: ValidatorTab = 'overview',
@@ -33,7 +35,8 @@ export const validatorTabPath = (
   tab === 'overview'
     ? `/validator/${address}`
     : `/validator/${address}/${tab}${
-        epoch != null && (tab === 'voting' || tab === 'production')
+        epoch != null &&
+        (tab === 'voting' || tab === 'production' || tab === 'network')
           ? `/epoch/${epoch}`
           : ''
       }`;
@@ -69,7 +72,7 @@ const ValidatorPageHeader = ({
   // block income isn't tracked.
   const tabs = TABS.filter(
     t =>
-      (alpenglowActive || t.key !== 'production') &&
+      (alpenglowActive || (t.key !== 'production' && t.key !== 'network')) &&
       (!isTestnet || t.key !== 'staking') &&
       (blockIncomeTracked || t.key !== 'fees')
   );

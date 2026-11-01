@@ -559,7 +559,7 @@ const llms = (env: SeoEnv, origin: string) => {
 ${sections(env)
   .map(c => `- [${c.name}](${origin}${c.path})`)
   .join('\n')}
-- Validator pages: ${origin}/validator/<vote account or identity>, with tabs /voting, /production, /earnings${isTestnet(env) ? '' : ', /fees, /staking'}
+- Validator pages: ${origin}/validator/<vote account or identity>, with tabs /voting, /production, /network, /earnings${isTestnet(env) ? '' : ', /fees, /staking'}
 - Slot pages: ${origin}/slot/<slot>
 
 ## Optional
