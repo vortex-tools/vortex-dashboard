@@ -72,6 +72,9 @@ const RETIRED_CHECKS = new Set([
  *  a notice. */
 const VAT_NOTICE_EPOCHS = 10;
 
+/** Epochs a BAM Boost claim waits before it gets a notice. */
+const BOOST_NOTICE_AGE = 10;
+
 /** Jito's CLI for claiming BAM Boost (signed by the identity). */
 const BAM_BOOST_CLI = 'https://github.com/jito-foundation/jito-bam-boost-cli';
 
@@ -1158,7 +1161,16 @@ export const useValidatorNotices = (
   // Still receiving BAM Boost, something claimable, never claimed: its
   // own notice (below) instead of the bam_boost check's.
   const boost = status.bamBoost;
+  // BAM Boost notices wait until its oldest unclaimed boost is
+  // BOOST_NOTICE_AGE epochs old (about half its claim window): a
+  // validator that claims every few epochs isn't flagged in between.
+  const boostDue =
+    !!boost?.claimable.length &&
+    boost.latestEpoch != null &&
+    boost.latestEpoch - Math.min(...boost.claimable.map(c => c.epoch)) >=
+      BOOST_NOTICE_AGE;
   const unclaimedBoost =
+    boostDue &&
     boost &&
     boost.claimedEpochs === 0 &&
     boost.claimableAmount > 0 &&
@@ -1181,7 +1193,7 @@ export const useValidatorNotices = (
       !isSfdpCheck(c.id) &&
       !RETIRED_CHECKS.has(c.id) &&
       c.status !== 'ok' &&
-      !(c.id === 'bam_boost' && unclaimedBoost)
+      !(c.id === 'bam_boost' && (unclaimedBoost || !boostDue))
     )
       notices.push({
         id: `check-${c.id}`,
