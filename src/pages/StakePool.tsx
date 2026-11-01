@@ -60,7 +60,12 @@ echarts.use([
 
 /** A validator it delegates to; `dropped` marks a row added for one it
  *  stopped delegating to (the Changes view), which has no stake now. */
-type Validator = PoolDetail['validators'][number] & { dropped?: boolean };
+type Validator = PoolDetail['validators'][number] & {
+  dropped?: boolean;
+  /** A row of only its undirected or directed stake (no change since
+   *  the epoch before: that's of its whole stake). */
+  part?: boolean;
+};
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const ValidatorLink = ({ v }: { v: PoolValidatorRef | Validator }) => (
@@ -306,6 +311,7 @@ const columns = (
           </span>
         ) : (
           // New: no stake from it the epoch before (none, or 0).
+          !v.part &&
           !v.stakePrev && (
             <span className="badge badge-soft badge-soft-success ms-2 flex-shrink-0">
               New
@@ -330,7 +336,9 @@ const columns = (
         >
           {compactSol(v.stake)}
         </Link>
-        <Delta now={v.stake} prev={v.stakePrev} format={signedSol} below />
+        {!v.part && (
+          <Delta now={v.stake} prev={v.stakePrev} format={signedSol} below />
+        )}
       </>
     ),
     meta: END
@@ -843,7 +851,25 @@ const StakePool = () => {
   }, [validators]);
   // The Validators card's view: all of them, or the latest epoch's adds
   // (a filter of the table) or drops (no longer in it: their own list).
-  const [view, setView] = useState<'all' | 'directed' | 'changes'>('all');
+  const [view, setView] = useState<
+    'all' | 'undirected' | 'directed' | 'changes'
+  >('all');
+  // Undirected / Directed: each validator's row with only that part of
+  // its stake, its shares of the pool and of the validator scaled to it.
+  const tablePart = (part: 'undirected' | 'directed') => {
+    const poolStake = validators.reduce((a, v) => a + v.stake, 0);
+    return distParts[part].validators.map(r => {
+      const whole = validators.find(v => v.voteKey === r.voteKey);
+      const f = whole?.stake ? r.stake / whole.stake : 0;
+      return {
+        ...r,
+        part: true,
+        shareOfPool: poolStake ? r.stake / poolStake : null,
+        shareOfValidator:
+          whole?.shareOfValidator != null ? whole.shareOfValidator * f : null
+      } as Validator;
+    });
+  };
   const latest = data?.history.length
     ? data.history[data.history.length - 1]
     : null;
@@ -853,14 +879,17 @@ const StakePool = () => {
   const viewOptions: Array<[typeof view, string]> = [
     ['all', 'All'],
     ...(showDirected
-      ? [['directed', 'Directed'] as [typeof view, string]]
+      ? ([
+          ['undirected', 'Undirected'],
+          ['directed', 'Directed']
+        ] as Array<[typeof view, string]>)
       : []),
     ...(churn ? [['changes', 'Changes'] as [typeof view, string]] : [])
   ];
   const shown = useMemo(
     () =>
-      view === 'directed'
-        ? validators.filter(v => directedTotal(v) > 0)
+      view === 'undirected' || view === 'directed'
+        ? tablePart(view)
         : view === 'changes' && churn
           ? [
               // Added: their rows (marked New); dropped: a row each, with
@@ -883,12 +912,22 @@ const StakePool = () => {
               )
             ]
           : validators,
-    [view, validators, churn]
+    // tablePart reads distParts and validators.
+    [view, validators, churn, distParts]
   );
+  // A part's rewards would be of its whole stake: not shown there.
+  const isPart = view === 'undirected' || view === 'directed';
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(isSfdp, showOther, showRewards, showDirected, showAuction),
-      [isSfdp, showOther, showRewards, showDirected, showAuction]
+      () =>
+        columns(
+          isSfdp,
+          showOther,
+          showRewards && !isPart,
+          showDirected,
+          showAuction
+        ),
+      [isSfdp, showOther, showRewards, isPart, showDirected, showAuction]
     ),
     data: shown,
     sortable: true,
@@ -1269,6 +1308,14 @@ const StakePool = () => {
             ) : undefined
           }
         >
+          {isPart && (
+            <p className="fs-10 text-body-tertiary mb-2">
+              {view === 'undirected'
+                ? 'Only the stake it chose itself on each validator: every directed source taken out.'
+                : 'Only its directed stake on each validator.'}{' '}
+              Of the pool: that stake&apos;s share of the whole pool.
+            </p>
+          )}
           {view === 'changes' && churn && (
             <p className="fs-10 text-body-tertiary mb-2">
               Epoch {churn.epoch.toLocaleString()}: the validators it started
