@@ -272,6 +272,8 @@ const DivergentSlotsTable = ({
       </>
     );
   const [filter, setFilter] = useState<Filter>('all');
+  // The slot cell under the pointer (highlighted, its path previewed).
+  const [hoverSlot, setHoverSlot] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   // Notarized-skipped slots (it notarized a block the cluster skipped -
   // its vote still counts) aren't listed.
@@ -475,7 +477,12 @@ const DivergentSlotsTable = ({
             ))}
           </tr>
         </thead>
-        <tbody onMouseLeave={() => onHover?.(null)}>
+        <tbody
+          onMouseLeave={() => {
+            setHoverSlot(null);
+            onHover?.(null);
+          }}
+        >
           {shown.map(({ start, slots }) => {
             const first = [...slots.keys()][0];
             const leader =
@@ -485,12 +492,7 @@ const DivergentSlotsTable = ({
               .map(sl => infos.get(sl))
               .find(i => i?.outcome === 'block');
             return (
-              <tr
-                key={start}
-                onMouseEnter={() =>
-                  onHover?.({ slot: first, block: leader, payer })
-                }
-              >
+              <tr key={start}>
                 <td className="font-monospace text-nowrap">
                   <Link to={`/slot/${start}`}>{start.toLocaleString()}</Link>
                 </td>
@@ -548,7 +550,20 @@ const DivergentSlotsTable = ({
                   const slot = start + n;
                   const kind = slots.get(slot);
                   return (
-                    <td key={n} className="text-center border-start">
+                    <td
+                      key={n}
+                      className={`text-center border-start${hoverSlot === slot ? ' bg-body-highlight' : ''}`}
+                      // The hover is the cell's: its slot's path (its
+                      // producer, this voter, its reward leader).
+                      onMouseEnter={() => {
+                        setHoverSlot(slot);
+                        onHover?.({
+                          slot,
+                          block: infos.get(slot)?.leader ?? leader,
+                          payer: leaderOf?.(slot + 8) ?? payer
+                        });
+                      }}
+                    >
                       {kind ? (
                         <SlotCell
                           slot={slot}
