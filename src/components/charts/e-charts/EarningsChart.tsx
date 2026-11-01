@@ -289,10 +289,27 @@ const EarningsChart = ({
               // Alpenglow: what it's a share of - its votes' rewards and
               // its producer bonus (gross).
               const c = commission(r);
-              return d.name === 'Inflation commission' && c?.votes != null
-                ? main +
-                    `<div class="fs-10 text-body-tertiary ps-3">of ${format(convert(r, toSol(c.votes)))} votes + ${format(convert(r, toSol(c.bonus)))} producer bonus (gross)</div>`
-                : main;
+              const sub = (text: string) =>
+                `<div class="fs-10 text-body-tertiary ps-3">${text}</div>`;
+              if (d.name === 'Inflation commission' && c?.votes != null)
+                return (
+                  main +
+                  sub(
+                    `of ${format(convert(r, toSol(c.votes)))} votes + ${format(convert(r, toSol(c.bonus)))} producer bonus (gross)`
+                  )
+                );
+              // MEV: what it's a share of - the tips in its blocks (gross),
+              // less the builder's and tip router's fees; at 0% all of
+              // that goes to its stakers.
+              const tips = r.blockRevenue.mevTips;
+              if (d.name === 'MEV' && tips > 0)
+                return (
+                  main +
+                  sub(
+                    `of ${format(convert(r, toSol(tips)))} tips in its blocks (gross, before builder and tip router fees)${r.rates?.mevCommissionBps === 0 ? '; all to its stakers' : ''}`
+                  )
+                );
+              return main;
             })
             .join('');
           const n = netOf(r);
