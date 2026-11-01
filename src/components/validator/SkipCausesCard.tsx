@@ -45,6 +45,12 @@ type Props = {
   board: ProducerLeaderboard | null | undefined;
 };
 
+/** Its classified skipped slots this epoch (0 or none: no card). */
+export const skippedTotal = (record: ProducerRow | null | undefined) =>
+  record?.skipCauses
+    ? CAUSES.reduce((a, [k]) => a + (record.skipCauses![k] ?? 0), 0)
+    : 0;
+
 /**
  * Why its skipped slots this epoch were skipped (the API's classifier: a
  * late block, no block, a wrong parent, a duplicate, offline). Nothing
@@ -52,33 +58,27 @@ type Props = {
  */
 export const SkippedSlotsCard = ({ record }: Props) => {
   const causes = record?.skipCauses;
-  if (!record || !causes) return null;
-  const total = CAUSES.reduce((a, [k]) => a + (causes[k] ?? 0), 0);
+  const total = skippedTotal(record);
+  if (!record || !causes || !total) return null;
   return (
     <SectionCard
       title="Skipped Slots"
       icon="slash"
       info="Why its skipped slots this epoch were skipped, as the API classifies them."
     >
-      {total ? (
-        <Table size="sm" className="data-table compact-rows fs-9 mb-0">
-          <tbody>
-            {CAUSES.filter(([k]) => causes[k] > 0).map(([k, label, what]) => (
-              <tr key={k}>
-                <td className="text-nowrap fw-semibold">{label}</td>
-                <td className="text-end font-monospace">
-                  {causes[k].toLocaleString()}
-                </td>
-                <td className="text-body-tertiary">{what}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      ) : (
-        <p className="fs-9 text-body-tertiary mb-0">
-          No skipped slots this epoch.
-        </p>
-      )}
+      <Table size="sm" className="data-table compact-rows fs-9 mb-0">
+        <tbody>
+          {CAUSES.filter(([k]) => causes[k] > 0).map(([k, label, what]) => (
+            <tr key={k}>
+              <td className="text-nowrap fw-semibold">{label}</td>
+              <td className="text-end font-monospace">
+                {causes[k].toLocaleString()}
+              </td>
+              <td className="text-body-tertiary">{what}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
     </SectionCard>
   );
 };

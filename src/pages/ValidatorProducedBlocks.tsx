@@ -4,7 +4,8 @@ import SectionCard from 'components/common/SectionCard';
 import { Col, Row } from 'react-bootstrap';
 import {
   SkippedSlotsCard,
-  SlotPaceCard
+  SlotPaceCard,
+  skippedTotal
 } from 'components/validator/SkipCausesCard';
 import UntrackedState from 'components/common/UntrackedState';
 import BlackholeVoters from 'components/validator/BlackholeVoters';
@@ -105,10 +106,16 @@ const ValidatorProducedBlocks = () => {
                 )}
                 {/* Side by side on large screens. */}
                 <Row className="g-3">
-                  <Col xs={12} lg={6}>
-                    <SkippedSlotsCard record={producer} board={producerBoard} />
-                  </Col>
-                  <Col xs={12} lg={6}>
+                  {/* No skipped slots: no card, and pace takes the row. */}
+                  {skippedTotal(producer) > 0 && (
+                    <Col xs={12} lg={6}>
+                      <SkippedSlotsCard
+                        record={producer}
+                        board={producerBoard}
+                      />
+                    </Col>
+                  )}
+                  <Col xs={12} lg={skippedTotal(producer) > 0 ? 6 : 12}>
                     <SlotPaceCard record={producer} board={producerBoard} />
                   </Col>
                 </Row>
