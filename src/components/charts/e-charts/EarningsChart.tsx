@@ -212,7 +212,9 @@ const EarningsChart = ({
             (isCurrent(r) ? ' · in progress' : '') +
             (r.consensus === 'alpenglow' ? ' · Alpenglow' : '') +
             `</div>`;
+          // Alpenglow votes are free: no vote fees row.
           const body = shown
+            .filter(d => d.name !== 'Vote fees' || r.consensus !== 'alpenglow')
             .map(d => {
               let label = d.name;
               // Its inflation commission rate, as for MEV; "est." until paid.
