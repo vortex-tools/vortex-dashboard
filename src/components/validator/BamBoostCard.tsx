@@ -38,13 +38,42 @@ const BamBoostCard = ({
   const boost = context?.validatorStatusState.data.get(identity)?.bamBoost;
   const tips = context?.validatorTipsState.data.get(voteKey);
 
-  // Its BAM epochs with figures, newest first (the API's order).
-  const epochs = (tips?.epochs ?? []).flatMap(e => {
+  const currentEpoch = context?.currentEpochState.epoch ?? null;
+
+  // Its recent BAM epochs with figures (/validators/tips covers the last
+  // few), plus every epoch still claimable (status: older ones too, which
+  // are the ones about to expire), newest first.
+  type Row = {
+    epoch: number;
+    amount: number;
+    claim: { state: string; claimEndEpoch: number | null } | null;
+  };
+  const byEpoch = new Map<number, Row>();
+  for (const e of tips?.epochs ?? []) {
     const p = e.paths.find(
       p => p.path === 'bamBoost' && p.basis === 'exact' && p.unit === 'jitoSol'
     );
-    return p ? [{ epoch: e.epoch, amount: p.gross ?? 0, claim: p.claim }] : [];
-  });
+    if (p)
+      byEpoch.set(e.epoch, {
+        epoch: e.epoch,
+        amount: p.gross ?? 0,
+        claim: p.claim ?? null
+      });
+  }
+  for (const c of boost?.claimable ?? [])
+    if (!byEpoch.has(c.epoch))
+      byEpoch.set(c.epoch, {
+        epoch: c.epoch,
+        amount: c.amount,
+        claim: { state: 'claimable', claimEndEpoch: c.claimEndEpoch }
+      });
+  const epochs = [...byEpoch.values()].sort((a, b) => b.epoch - a.epoch);
+  const oldest = epochs.length ? epochs[epochs.length - 1].epoch : null;
+  /** A claim window's end, against the current epoch. */
+  const until = (end: number) =>
+    currentEpoch != null && end <= currentEpoch
+      ? 'expires this epoch'
+      : `until epoch ${end.toLocaleString()}`;
   if (!boost && !epochs.some(e => e.amount > 0)) return null;
 
   const totals: Array<[string, number, number | null, string]> = boost
@@ -54,7 +83,7 @@ const BamBoostCard = ({
           boost.claimableAmount,
           boost.claimable.length,
           boost.nextClaimEndEpoch != null
-            ? `the first until epoch ${boost.nextClaimEndEpoch.toLocaleString()}`
+            ? `the oldest ${until(boost.nextClaimEndEpoch)}`
             : ''
         ],
         ['Claimed', boost.claimedAmount, boost.claimedEpochs, ''],
@@ -69,7 +98,7 @@ const BamBoostCard = ({
       info="JitoSOL that Jito pays validators running its BAM block engine, per epoch by effective stake. The validator claims it, until a deadline; unclaimed, it expires. Paid per epoch, not per block, so it isn't part of block income. An epoch is Jito's distribution epoch."
     >
       {totals.length > 0 && (
-        <div className="d-flex flex-wrap column-gap-7 row-gap-3 mb-3">
+        <div className="d-flex flex-wrap column-gap-5 row-gap-3 mb-3">
           {totals.map(([label, amount, count, note]) => (
             <div key={label}>
               <div className="fs-10 text-uppercase text-body-tertiary">
@@ -127,10 +156,20 @@ const BamBoostCard = ({
                         </Badge>
                         {e.claim.state === 'claimable' &&
                           e.claim.claimEndEpoch != null && (
-                            <span className="fs-10 text-body-tertiary ms-2">
-                              until epoch{' '}
-                              {e.claim.claimEndEpoch.toLocaleString()}
-                            </span>
+                            <>
+                              {' '}
+                              <span
+                                className={`fs-10 ms-1 ${
+                                  until(e.claim.claimEndEpoch).startsWith(
+                                    'expires'
+                                  )
+                                    ? 'text-danger fw-semibold'
+                                    : 'text-body-tertiary'
+                                }`}
+                              >
+                                {until(e.claim.claimEndEpoch)}
+                              </span>
+                            </>
                           )}
                       </>
                     )}
@@ -141,6 +180,14 @@ const BamBoostCard = ({
           </tbody>
         </Table>
       )}
+      {boost?.firstEpoch != null &&
+        oldest != null &&
+        boost.firstEpoch < oldest && (
+          <p className="fs-10 text-body-tertiary mt-2 mb-0">
+            Its recent epochs and every one still claimable; the totals above
+            count all since epoch {boost.firstEpoch.toLocaleString()}.
+          </p>
+        )}
     </SectionCard>
   );
 };
