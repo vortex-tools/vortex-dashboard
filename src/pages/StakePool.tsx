@@ -115,11 +115,167 @@ const rewardDetail = (v: Validator) =>
     .filter(Boolean)
     .join(' · ');
 
+/** PMPE (SOL per 1,000 SOL of stake per epoch) as Marinade shows it. */
+const pmpe = (v: number | null | undefined) =>
+  v == null ? '—' : v.toFixed(v >= 1 ? 3 : 4);
+/** The cap that bound a validator's auction stake, in words. */
+const CAP: Record<string, string> = {
+  WANT: 'its own max',
+  BOND: 'its bond',
+  ASO: 'operator share',
+  COUNTRY: 'country share',
+  VALIDATOR: 'validator share',
+  MNDE: 'MNDE votes'
+};
+const auctionColumns: ColumnDef<Validator>[] = [
+  {
+    id: 'offer',
+    header: () => (
+      <span title="What it offers stakers in Marinade's auction, per 1,000 SOL per epoch: its on-chain yield (inflation, MEV) plus its bid">
+        Offer
+      </span>
+    ),
+    accessorFn: v => v.auction?.totalPmpe ?? undefined,
+    sortUndefined: 'last',
+    cell: ({ row: { original: v } }) => (
+      <span
+        title={
+          v.auction?.onchainPmpe != null
+            ? `${pmpe(v.auction.onchainPmpe)} on chain + ${pmpe(v.auction.effectiveBidPmpe)} bid`
+            : undefined
+        }
+      >
+        {pmpe(v.auction?.totalPmpe)}
+        {v.auction?.eligible === false && (
+          <span
+            className="badge badge-soft badge-soft-secondary ms-2"
+            title="Not eligible in this run"
+          >
+            Ineligible
+          </span>
+        )}
+      </span>
+    ),
+    meta: END
+  },
+  {
+    id: 'bid',
+    header: () => (
+      <span title="The bid it pays per the auction, per 1,000 SOL per epoch (its posted bid on hover)">
+        Bid
+      </span>
+    ),
+    accessorFn: v => v.auction?.effectiveBidPmpe ?? undefined,
+    sortUndefined: 'last',
+    cell: ({ row: { original: v } }) => (
+      <span
+        title={
+          v.auction?.bidCpmpe != null
+            ? `Posted bid ${pmpe(v.auction.bidCpmpe)}`
+            : undefined
+        }
+      >
+        {pmpe(v.auction?.effectiveBidPmpe)}
+      </span>
+    ),
+    meta: END
+  },
+  {
+    id: 'bond',
+    header: () => (
+      <span title="The bond backing its bid (health on hover: 1 = exactly covered)">
+        Bond
+      </span>
+    ),
+    accessorFn: v => v.auction?.bondLamports ?? undefined,
+    sortUndefined: 'last',
+    cell: ({ row: { original: v } }) =>
+      v.auction?.bondLamports != null ? (
+        <span
+          title={
+            v.auction.bondHealth != null
+              ? `Bond health ${v.auction.bondHealth.toFixed(2)}`
+              : undefined
+          }
+        >
+          {compactSol(v.auction.bondLamports)}
+        </span>
+      ) : (
+        <span className="text-body-quaternary">—</span>
+      ),
+    meta: END
+  },
+  {
+    id: 'cap',
+    header: () => (
+      <span title="What limited its stake in the auction">Capped by</span>
+    ),
+    accessorFn: v => v.auction?.caps?.binding ?? undefined,
+    sortUndefined: 'last',
+    cell: ({ row: { original: v } }) => {
+      const b = v.auction?.caps?.binding;
+      return b ? (
+        <span className="text-nowrap">{CAP[b] ?? b.toLowerCase()}</span>
+      ) : (
+        <span className="text-body-quaternary">—</span>
+      );
+    },
+    meta: { cellProps: { className: 'text-body-secondary' } }
+  }
+];
+
+/** Marinade's auction run that allocated the epoch: what the winning
+ *  validators offer stakers, per 1,000 SOL per epoch and as a yearly rate,
+ *  and the stake it allocated (both Marinade pools). */
+const AuctionRun = ({
+  run,
+  epochsPerYear
+}: {
+  run: NonNullable<PoolDetail['auctionRun']>;
+  epochsPerYear: number | null;
+}) => (
+  <SectionCard
+    title={`Auction · epoch ${run.epoch.toLocaleString()}`}
+    icon="trending-up"
+    info="Marinade's Stake Auction Marketplace places this stake: each epoch validators bid for it, backed by a bond, and are ranked by what they offer stakers (their on-chain yield plus their bid). The run allocates both Marinade pools. PMPE: SOL per 1,000 SOL of stake per epoch."
+  >
+    <div className="d-flex flex-wrap column-gap-5 row-gap-2 fs-9">
+      {run.winningTotalPmpe != null && (
+        <div>
+          <span className="text-body-tertiary">Winning offer </span>
+          <span className="font-monospace fw-semibold">
+            {pmpe(run.winningTotalPmpe)}
+          </span>
+          <span className="text-body-tertiary"> per 1,000 SOL per epoch</span>
+          {epochsPerYear && (
+            <span className="text-body-tertiary">
+              {' '}
+              (≈{' '}
+              {((run.winningTotalPmpe / 1000) * epochsPerYear * 100).toFixed(1)}
+              % a year)
+            </span>
+          )}
+        </div>
+      )}
+      {run.tvlLamports != null && (
+        <div>
+          <span className="text-body-tertiary">Stake auctioned </span>
+          <span className="font-monospace fw-semibold">
+            {compactSol(run.tvlLamports)}
+          </span>
+          <span className="text-body-tertiary"> (mSOL and Native)</span>
+        </div>
+      )}
+    </div>
+  </SectionCard>
+);
+
 const columns = (
   isSfdp: boolean,
   showOther: boolean,
   showRewards: boolean,
-  showDirected: boolean
+  showDirected: boolean,
+  showAuction: boolean
 ): ColumnDef<Validator>[] => [
   {
     id: 'rank',
@@ -220,6 +376,10 @@ const columns = (
         } as ColumnDef<Validator>
       ]
     : []),
+  // Marinade: its place in the auction (PMPE: SOL per 1,000 SOL of stake
+  // per epoch) - its whole offer to stakers, the bid it pays, its bond,
+  // and the cap that bound its stake.
+  ...(showAuction ? auctionColumns : []),
   ...(showRewards
     ? [
         {
@@ -621,6 +781,8 @@ const StakePool = () => {
   const showRewards = !!data?.validators.some(v => v.inflationReward != null);
   // And its directed stake (JitoSOL, bSOL, JSOL, vSOL): chosen by its
   // holders, a protocol, the pool itself or matching.
+  // Marinade's pools: each validator's place in the auction.
+  const showAuction = !!data?.validators.some(v => v.auction);
   // Only where some of it is (JitoSOL's directed sources are all the
   // pool's or a protocol's).
   const showDirected = !!data?.validators.some(v => directedTotal(v) > 0);
@@ -684,8 +846,8 @@ const StakePool = () => {
   );
   const table = useAdvanceTable({
     columns: useMemo(
-      () => columns(isSfdp, showOther, showRewards, showDirected),
-      [isSfdp, showOther, showRewards, showDirected]
+      () => columns(isSfdp, showOther, showRewards, showDirected, showAuction),
+      [isSfdp, showOther, showRewards, showDirected, showAuction]
     ),
     data: shown,
     sortable: true,
@@ -903,8 +1065,13 @@ const StakePool = () => {
             <Col xs={6} lg>
               {/* Stake someone chose rather than its own selection, and
                   who: its holders, a protocol, the pool itself, matching. */}
+              {/* All of it bought in an auction (Marinade): "Paid". */}
               <StatCard
-                label="Directed"
+                label={
+                  directed.by.bought > 0 && directed.by.bought === directedStake
+                    ? 'Paid'
+                    : 'Directed'
+                }
                 value={pct(directedStake / data.stake)}
                 wrapSublabel
                 sublabel={
@@ -913,7 +1080,11 @@ const StakePool = () => {
                     {directed.validators != null &&
                       ` to ${directed.validators.toLocaleString()} ${directed.validators === 1 ? 'validator' : 'validators'}`}
                     {directed.basis === 'target' && ' · target'}
-                    <span className="d-block">{choosersLine(directed.by)}</span>
+                    <span className="d-block">
+                      {directed.by.bought === directedStake
+                        ? "won with validators' bids"
+                        : choosersLine(directed.by)}
+                    </span>
                   </>
                 }
               />
@@ -940,6 +1111,10 @@ const StakePool = () => {
             </Col>
           )}
         </Row>
+
+        {data.auctionRun && (
+          <AuctionRun run={data.auctionRun} epochsPerYear={epochsPerYear} />
+        )}
 
         <Row className="g-3">
           <Col xs={12} lg={6}>

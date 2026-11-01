@@ -187,6 +187,11 @@ const columns = (
                 }: ${choosersLine(poolDirectedBy(p))}`}
               >
                 {pct(sumBy(poolDirectedBy(p)) / p.stake)}
+                {/* All of it won in an auction (Marinade). */}
+                {poolDirectedBy(p).bought > 0 &&
+                  poolDirectedBy(p).bought === sumBy(poolDirectedBy(p)) && (
+                    <span className="text-body-tertiary fs-10"> paid</span>
+                  )}
               </span>
             ) : (
               <span className="text-body-quaternary">—</span>

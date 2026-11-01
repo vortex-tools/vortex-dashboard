@@ -3047,6 +3047,31 @@ const poolValidatorRefSchema = z.object({
 });
 export type PoolValidatorRef = z.infer<typeof poolValidatorRefSchema>;
 
+// A validator in Marinade's auction run (PMPE: SOL per 1,000 SOL of
+// stake per epoch): its bid, what it pays per the auction, its whole offer
+// to stakers (on-chain yield + bid), its bond and the cap that bound it.
+const nn = z.number().nullable().optional().catch(null);
+const poolAuctionSchema = z
+  .object({
+    stakedLamports: nn,
+    targetLamports: nn,
+    bidCpmpe: nn,
+    effectiveBidPmpe: nn,
+    totalPmpe: nn,
+    onchainPmpe: nn,
+    bondLamports: nn,
+    caps: z
+      .object({ binding: z.string().nullable().optional().catch(null) })
+      .nullable()
+      .optional()
+      .catch(null),
+    eligible: z.boolean().nullable().optional().catch(null),
+    bondHealth: nn
+  })
+  .nullable()
+  .optional()
+  .catch(null);
+
 export const poolDetailSchema = z.object({
   name: z.string(),
   kind: z.string().nullable().catch(null),
@@ -3089,6 +3114,16 @@ export const poolDetailSchema = z.object({
   stake: z.number().catch(0),
   top10Share: z.number().nullable().catch(null),
   fees: poolFeesSchema,
+  // Marinade's auction run that allocated the epoch (both its pools).
+  auctionRun: z
+    .object({
+      epoch: z.number(),
+      winningTotalPmpe: z.number().nullable().catch(null),
+      tvlLamports: z.number().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   // Validators held only at the minimum stake (<= 50 SOL), not listed.
   minimumOnly: z.number().nullable().optional().catch(null),
   validators: z
@@ -3129,6 +3164,9 @@ export const poolDetailSchema = z.object({
           .nullable()
           .optional()
           .catch(null),
+        // Marinade (mSOL / Native): its place in the epoch's auction run
+        // (PMPE = SOL per 1,000 SOL of stake per epoch). null elsewhere.
+        auction: poolAuctionSchema,
         // SFDP's stake on the same validator (overlap).
         sfdpStake: z.number().nullable().catch(null),
         // Other known pools (not this one, not SFDP; only pools with 10+
