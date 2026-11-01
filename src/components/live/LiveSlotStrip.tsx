@@ -479,7 +479,7 @@ const LiveSlotStrip = ({
               slot={cursor ?? newest.start}
               leaderNode={liveLeader}
               leaderName={nameOf(liveLeader)}
-              className="flex-shrink-0 bg-body-highlight border-translucent"
+              className="flex-shrink-0 bg-primary-subtle border-primary-subtle"
             />
             {/* Every window, newest first under the "now" backing; the row
               slides right as windows enter and fades out at the edge. */}
@@ -489,7 +489,7 @@ const LiveSlotStrip = ({
               style={{ minWidth: 0, padding: PAD }}
             >
               <span
-                className="position-absolute rounded-pill bg-primary-subtle"
+                className="position-absolute rounded-2 border border-primary-subtle bg-primary-subtle"
                 style={{ left: 0, top: 0, bottom: 0, width: DOT + 2 * PAD }}
               />
               <div
