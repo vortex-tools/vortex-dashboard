@@ -193,6 +193,7 @@ const LiveSlotStrip = ({
   waiting = 'waiting for the record…',
   lead = LEAD,
   onHeldChange,
+  onSlot,
   headerless = false,
   look = DEFAULT_LOOK,
   className
@@ -206,6 +207,9 @@ const LiveSlotStrip = ({
   /** Told when playback is held (paused or hovered), e.g. to highlight
    *  the card the strip sits in. */
   onHeldChange?: (held: boolean) => void;
+  /** The slot the strip is at, live (where the playhead would be while
+   *  it's held), for a figure elsewhere that should match it. */
+  onSlot?: (slot: number) => void;
   /** How far the playhead trails `recorded`: more than the slots a data
    *  refresh brings at once, so it never has to wait for one. */
   lead?: number;
@@ -265,6 +269,15 @@ const LiveSlotStrip = ({
   }, [held]);
   const cursorRef = useRef(cursor);
   cursorRef.current = cursor;
+  // Report the live position: the playhead, or while it's held (pause,
+  // hover) where it would be.
+  const onSlotRef = useRef(onSlot);
+  onSlotRef.current = onSlot;
+  useEffect(() => {
+    const live =
+      paused || hovering ? (recorded != null ? recorded - lead : null) : cursor;
+    if (live != null) onSlotRef.current?.(live);
+  }, [cursor, paused, hovering, recorded, lead]);
   // Set when a hold ends: fast-forward until back at the present.
   const catchUp = useRef(false);
   useEffect(() => {

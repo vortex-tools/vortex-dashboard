@@ -1,3 +1,4 @@
+import { setLiveSlot } from 'hooks/useLiveSlot';
 import SectionCard from 'components/common/SectionCard';
 import LiveSlotStrip, {
   StripCell,
@@ -168,6 +169,7 @@ const SlotStrip = () => {
           waiting="waiting for slots…"
           className=""
           onHeldChange={setHeld}
+          onSlot={setLiveSlot}
           headerless
           look={LOOK}
         />

@@ -1,6 +1,7 @@
 import EpochProgressSublabel from 'components/common/EpochProgressSublabel';
 import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';
+import useLiveSlot from 'hooks/useLiveSlot';
 import FeatherIcon from 'feather-icons-react';
 import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
@@ -36,6 +37,22 @@ const ClientDiversityCard = lazy(
   () => import('components/home/ClientDiversityCard')
 );
 const ThroughputCard = lazy(() => import('components/home/ThroughputCard'));
+
+/** The Current Slot card's number: the slot the Live Slots strip is at, so
+ *  the two match (a few seconds behind the chain), until the strip reports
+ *  one - or while halted - the estimate. Its own component, so only it
+ *  re-renders as the strip plays. */
+const LiveSlotValue = ({
+  fallback,
+  halted
+}: {
+  fallback: number | null;
+  halted: boolean;
+}) => {
+  const strip = useLiveSlot();
+  const v = halted ? fallback : (strip ?? fallback);
+  return <>{v != null ? v.toLocaleString() : '—'}</>;
+};
 
 /** Longest the live cards wait for the reads that decide the layout. */
 const SETTLE_MAX_MS = 3_000;
@@ -339,7 +356,7 @@ const Home = () => {
           <Col {...cardCol} className="order-first order-md-0">
             <StatCard
               label="Current Slot"
-              value={currentSlot != null ? currentSlot.toLocaleString() : '—'}
+              value={<LiveSlotValue fallback={currentSlot} halted={!!halt} />}
               sublabel={
                 halt
                   ? `halted ${formatDuration(Date.now() / 1000 - halt.since)} ago`
