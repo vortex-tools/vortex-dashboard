@@ -287,8 +287,8 @@ export const withdrawalSol = (e: ActivityEvent) =>
   e.kind === 'identityWithdraw' && !e.token && e.lamports != null
     ? e.lamports / 1e9
     : null;
-/** "◎0.0072" or "1,250 EPjF…Dt1v": the SOL, or the token amount and its
- *  mint. */
+/** "◎0.0072" or "1,250 USDC": the SOL, or the token amount and its
+ *  symbol (its mint, shortened, where the API has no symbol). */
 const WithdrawalAmount = ({ e }: { e: ActivityEvent }) => {
   if (e.token) {
     const raw = e.token.amount;
@@ -302,7 +302,11 @@ const WithdrawalAmount = ({ e }: { e: ActivityEvent }) => {
     return (
       <span className="font-monospace" title={`Token ${e.token.mint}`}>
         {amount}{' '}
-        <span className="text-body-tertiary">{short(e.token.mint)}</span>
+        {e.token.symbol ? (
+          e.token.symbol
+        ) : (
+          <span className="text-body-tertiary">{short(e.token.mint)}</span>
+        )}
       </span>
     );
   }

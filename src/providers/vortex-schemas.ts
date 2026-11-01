@@ -3401,7 +3401,10 @@ export const activityEventSchema = voteAccountChangeSchema.extend({
       mint: z.string(),
       amount: z.string(),
       decimals: z.number(),
-      tokenAccount: z.string().nullable().optional().catch(null)
+      tokenAccount: z.string().nullable().optional().catch(null),
+      // The token's symbol (JitoSOL, USDC) from its metadata; null when
+      // it has none, absent on older APIs.
+      symbol: z.string().nullable().optional().catch(null)
     })
     .nullable()
     .optional()
