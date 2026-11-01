@@ -628,6 +628,30 @@ export const seo = async (
       );
   }
 
+  // A pool page under a former name (or another case of its name) moves
+  // to the name the API answers with: renamed pools keep their old links.
+  const p = path.match(/^\/pool\/([^/]+)$/);
+  if (p && !isTestnet(env)) {
+    let name: string | undefined;
+    try {
+      name = decodeURIComponent(p[1]);
+    } catch {
+      /* malformed: left to renderPage */
+    }
+    const facts =
+      name &&
+      (await api<PoolFacts>(
+        env,
+        `/pool?name=${encodeURIComponent(name)}&limit=1`,
+        600
+      ));
+    if (facts && facts.name !== name)
+      return Response.redirect(
+        `${origin}/pool/${encodeURIComponent(facts.name)}${url.search}`,
+        301
+      );
+  }
+
   // A file that doesn't exist: the SPA fallback would answer 200 with the
   // app shell (a soft 404).
   if (/^\/[^/]+\.[a-z0-9]+$/i.test(path) && path !== '/index.html') {
