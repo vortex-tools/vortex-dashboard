@@ -24,6 +24,24 @@ const isCluster = (r: ProducerLeaderboardRecord) =>
 const pctOf = (v: number | null | undefined, digits = 2) =>
   v == null ? <Dash /> : `${(v * 100).toFixed(digits)}%`;
 
+/** "No block 3 · late block 1": its skipped slots by cause. */
+const SKIP_CAUSE_LABEL: Array<[string, string]> = [
+  ['lateBlock', 'late block'],
+  ['noBlock', 'no block'],
+  ['staleParent', 'wrong parent'],
+  ['duplicate', 'duplicate'],
+  ['offline', 'offline'],
+  ['unknown', 'unknown']
+];
+const skipCausesText = (r: ProducerLeaderboardRecord) => {
+  const c = r.skipCauses as Record<string, number> | null | undefined;
+  if (!c) return undefined;
+  const parts = SKIP_CAUSE_LABEL.filter(([k]) => c[k] > 0).map(
+    ([k, label]) => `${label} ${c[k].toLocaleString()}`
+  );
+  return parts.length ? `Skipped: ${parts.join(' · ')}` : undefined;
+};
+
 const num = (
   id: string,
   header: ReactElement | string,
@@ -126,6 +144,14 @@ export const createProducerLeaderboardColumns = (
           }
         >
           {r.nodeName || truncateAddress(r.nodeAddress)}
+          {r.lagging && (
+            <span
+              className="badge badge-soft badge-soft-warning ms-2 fs-10"
+              title="Its own slots run slow against the cluster's pace"
+            >
+              Lagging
+            </span>
+          )}
         </Link>
       );
     },
@@ -204,7 +230,8 @@ export const createProducerLeaderboardColumns = (
       Skip Rate
     </span>,
     r => r.skipRate,
-    v => pctOf(v) as string,
+    // Why, on hover (once the epoch is classified).
+    (v, r) => <span title={skipCausesText(r)}>{pctOf(v)}</span>,
     { opensGroup: true }
   ),
   num(

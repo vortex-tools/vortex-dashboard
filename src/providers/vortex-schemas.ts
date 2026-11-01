@@ -1491,6 +1491,42 @@ export const producerLeaderboardRecordSchema = z.object({
   // null: not classified; absent on older APIs.
   blackholeVoterCount: z.number().nullable().optional().catch(undefined),
   blackholeStakePpb: z.number().nullable().optional().catch(undefined),
+  // Why its skipped slots were skipped (counts; null before the epoch is
+  // classified): offline = itself not voting; noBlock = no block reached
+  // the cluster; lateBlock = its block was notarized by 1%+ of stake but
+  // the skip won; staleParent = built on a wrong parent; duplicate = more
+  // than one version of the block; unknown = no record of it.
+  skipCauses: z
+    .object({
+      offline: z.number().catch(0),
+      unknown: z.number().catch(0),
+      duplicate: z.number().catch(0),
+      staleParent: z.number().catch(0),
+      lateBlock: z.number().catch(0),
+      noBlock: z.number().catch(0)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  // Its slot pace (ms): inWindow = its own slots after the first of a
+  // window; handoff = a window's first block after the previous leader's.
+  slotDuration: z
+    .object({
+      inWindow: z
+        .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
+        .nullable()
+        .catch(null),
+      handoff: z
+        .object({ count: z.number(), p50Ms: z.number(), p90Ms: z.number() })
+        .nullable()
+        .catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  // Its own slots run slow against the cluster's (the board's
+  // skipClassification.laggingRatio).
+  lagging: z.boolean().nullable().optional().catch(null),
   nextWindowSlot: z.number().nullable().catch(null),
   skipRate: z.number().nullable().catch(null),
   rewardCerts: z.number().catch(0),
@@ -1566,6 +1602,18 @@ export const producerLeaderboardSchema = z.object({
   // The blackhole-pair rule's thresholds (share left out, min slots).
   blackholeShare: z.number().nullable().optional().catch(undefined),
   blackholeMinSlots: z.number().nullable().optional().catch(undefined),
+  // The skip classifier's thresholds (lagging = in-window pace this many
+  // times the cluster's, over this many samples).
+  skipClassification: z
+    .object({
+      laggingRatio: z.number().nullable().catch(null),
+      laggingMinSamples: z.number().nullable().catch(null),
+      offlineSlots: z.number().nullable().catch(null),
+      lateBlockMinShare: z.number().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   cluster: producerLeaderboardRecordSchema.nullable().catch(null),
   records: z.array(producerLeaderboardRecordSchema)
 });
