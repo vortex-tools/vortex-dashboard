@@ -10,7 +10,8 @@ import {
 /**
  * What happened on individual slots (/slots, one item per slot: outcome,
  * leader, votes on it, finalization), for tables of slots. Fetched in as
- * few <= 1,000-slot range requests as possible. A slot is cached for the
+ * few requests as possible: a contiguous run as a <= 1,000-slot range,
+ * scattered slots as a list. A slot is cached for the
  * session once it's settled (outcome, votes and - for a block -
  * finalization all known), or once it's deep enough behind the ingest tip
  * that nothing about it changes: an answer missing a part (no votes, no
@@ -87,40 +88,77 @@ const legacyRange = async (start: number, end: number): Promise<SlotInfo[]> => {
   }));
 };
 
+/** Slots per list request (/slots?slots=, the API's cap). */
+const MAX_LIST = 500;
+let noList = false; // /slots answered a list with 400 once: ranges only
+
+/** A contiguous range's slots, from /slots (or the legacy footers). */
+const fetchRange = async (start: number, end: number): Promise<SlotInfo[]> => {
+  if (legacy) return legacyRange(start, end);
+  const res = await fetch(
+    `${API_ENDPOINT}/slots?startSlot=${start}&endSlot=${end}`
+  );
+  if (res.status === 404) {
+    legacy = true;
+    return legacyRange(start, end);
+  }
+  if (!res.ok) throw new Error(`slots ${res.status}`);
+  return slotRangeSchema.parse(await res.json()).slots;
+};
+
+/** Scattered slots in one request (/slots?slots=a,b,c); falls back to
+ *  their ranges on an API without the list form (400) or /slots (404). */
+const fetchList = async (slots: number[]): Promise<SlotInfo[]> => {
+  if (!legacy && !noList) {
+    const res = await fetch(`${API_ENDPOINT}/slots?slots=${slots.join(',')}`);
+    if (res.ok) return slotRangeSchema.parse(await res.json()).slots;
+    if (res.status === 400) noList = true;
+    else if (res.status === 404) legacy = true;
+    else throw new Error(`slots ${res.status}`);
+  }
+  const ranges = await Promise.all(
+    groupRanges(slots).map(([start, end]) => fetchRange(start, end))
+  );
+  return ranges.flat();
+};
+
+/**
+ * Slots' facts. One contiguous run (a live strip) is a range request;
+ * scattered slots (a table's rows across an epoch) go as lists of up to
+ * MAX_LIST, so a page costs one request rather than one per cluster.
+ */
 export const fetchSlots = async (
   slots: number[]
 ): Promise<Map<number, SlotInfo | null>> => {
   const out = new Map<number, SlotInfo | null>();
-  const todo = slots.filter(s => {
-    if (!cache.has(s)) return true;
-    out.set(s, cache.get(s)!);
-    return false;
-  });
-  await Promise.all(
-    groupRanges(todo).map(async ([start, end]) => {
-      let items: SlotInfo[];
-      if (!legacy) {
-        const res = await fetch(
-          `${API_ENDPOINT}/slots?startSlot=${start}&endSlot=${end}`
-        );
-        if (res.status === 404) {
-          legacy = true;
-          items = await legacyRange(start, end);
-        } else {
-          if (!res.ok) throw new Error(`slots ${res.status}`);
-          items = slotRangeSchema.parse(await res.json()).slots;
-        }
-      } else items = await legacyRange(start, end);
-      const bySlot = new Map(items.map(i => [i.slot, i]));
-      for (const i of items) if (i.outcome != null) noteIngestTip(i.slot);
-      for (const s of todo)
-        if (s >= start && s <= end) {
-          const i = bySlot.get(s) ?? null;
-          if ((i && settled(i)) || final(s, i)) cache.set(s, i);
-          out.set(s, i);
-        }
+  const todo = [...new Set(slots)]
+    .filter(s => {
+      if (!cache.has(s)) return true;
+      out.set(s, cache.get(s)!);
+      return false;
     })
-  );
+    .sort((a, b) => a - b);
+  if (!todo.length) return out;
+  const ranges = groupRanges(todo);
+  const batches: Array<() => Promise<SlotInfo[]>> =
+    ranges.length === 1 || noList
+      ? ranges.map(
+          ([start, end]) =>
+            () =>
+              fetchRange(start, end)
+        )
+      : Array.from({ length: Math.ceil(todo.length / MAX_LIST) }, (_, n) => {
+          const chunk = todo.slice(n * MAX_LIST, (n + 1) * MAX_LIST);
+          return () => fetchList(chunk);
+        });
+  const items = (await Promise.all(batches.map(f => f()))).flat();
+  const bySlot = new Map(items.map(i => [i.slot, i]));
+  for (const i of items) if (i.outcome != null) noteIngestTip(i.slot);
+  for (const s of todo) {
+    const i = bySlot.get(s) ?? null;
+    if ((i && settled(i)) || final(s, i)) cache.set(s, i);
+    out.set(s, i);
+  }
   return out;
 };
 
