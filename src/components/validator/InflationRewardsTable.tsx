@@ -32,7 +32,7 @@ type Row = {
  * A validator's inflation rewards per epoch, newest first (the current
  * epoch so far), across both eras. Alpenglow epochs (/epochs/participation)
  * split the gross reward into voting and the production bonus, with what
- * missed votes didn't earn (Lost to misses). Tower epochs
+ * missed votes didn't earn (Lost to missed votes). Tower epochs
  * (/epochs/earnings) carry the exact gross (inflationRewardGross) where the
  * API has reconciled it; elsewhere it's worked out from the commission the
  * vote account was paid and its rate (≈).
@@ -187,7 +187,7 @@ const InflationRewardsTable = ({
               className="text-end d-none d-xxl-table-cell"
               title="What its missed votes would have earned (Alpenglow): votes not in the slots' reward certificates are not paid"
             >
-              Lost to misses
+              Lost to missed votes
             </th>
           </tr>
         </thead>
