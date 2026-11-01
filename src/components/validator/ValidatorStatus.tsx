@@ -171,15 +171,24 @@ const shortReason = (
       if (!c) return null;
       const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
       const over: string[] = [];
+      // No cluster rule: these are SFDP's limits for the stake it gives.
       if (c.asnStakeShare > 0.25)
         over.push(
-          `${s.geo?.asnOrganization ?? `ASN ${c.asn}`} at ${pct(c.asnStakeShare)} of stake (limit 25%)`
+          `${s.geo?.asnOrganization ?? `ASN ${c.asn}`} hosts ${pct(c.asnStakeShare)} of stake, over SFDP's 25% per network`
         );
       if (c.dataCenterStakeShare > 0.15)
         over.push(
-          `ASN + city at ${pct(c.dataCenterStakeShare)} (SFDP limit 15%)`
+          `its data center hosts ${pct(c.dataCenterStakeShare)} of stake, over SFDP's 15%`
         );
       return over.length ? over.join(' · ') : null;
+    }
+    case 'block_revenue_collector': {
+      const to = customCollectors(
+        s.voteState,
+        s.identity,
+        s.voteAccount
+      ).blocks;
+      return to ? `block fees go to ${shortKey(to)}, not its identity` : null;
     }
     case 'vote_authority': {
       const vs = s.voteState;
@@ -1181,6 +1190,16 @@ export const useValidatorNotices = (
       ? boost
       : null;
 
+  // Longer words for a few checks than the API's summary.
+  const detailOf = (c: ValidatorStatusCheck) => {
+    if (c.id === 'block_revenue_collector')
+      return "Since SIMD-0232 the vote account names who collects block fees, and changing the validator's identity doesn't change it. If this is a former identity rather than a deliberate choice, update the vote account's block revenue collector.";
+    if (c.id === 'concentration')
+      return "Concentration has no cluster-wide limit. These are the Solana Foundation Delegation Program's: it doesn't add stake to validators on a network (ASN) hosting over 25% of stake, or in a data center hosting over 15%.";
+    return c.summary;
+  };
+  const isParticipant = isSfdpState(status.sfdp.participant?.state);
+
   // Operational checks.
   for (const c of status.checks)
     if (
@@ -1191,11 +1210,13 @@ export const useValidatorNotices = (
     )
       notices.push({
         id: `check-${c.id}`,
-        severity: sev(c.status),
-        source: 'Operational',
+        // Concentration only binds SFDP participants: info for the rest.
+        severity:
+          c.id === 'concentration' && !isParticipant ? 'info' : sev(c.status),
+        source: c.id === 'concentration' ? 'Decentralization' : 'Operational',
         title: checkLabel(c.id),
         message: shortReason(c, status) ?? shortenKeys(c.summary),
-        detail: c.summary
+        detail: detailOf(c)
       });
 
   // SFDP (program participants only).
