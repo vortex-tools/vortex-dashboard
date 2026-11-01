@@ -11,10 +11,6 @@ type Epoch = ValidatorTips['epochs'][number];
 
 /** Why a path has no figures, in a line. */
 const UNAVAILABLE: Record<string, string> = {
-  harmonic:
-    "Harmonic's tips are paid as priority fees: they're in the block's priority fees, not told apart.",
-  paladinP3:
-    "Paladin's tips are paid as priority fees: they're in the block's priority fees, not told apart.",
   rakuraiTips: "Rakurai's own tip program isn't ingested yet.",
   raikuTips: "Raiku's own tip program isn't ingested yet."
 };
@@ -28,8 +24,7 @@ const bps = (b: number | null | undefined) =>
  * A validator's tip income per epoch (/validators/tips): what the tips
  * in its blocks came to, and how they were split - the block builder's
  * fee, the tip program's fee, the validator's commission and its
- * stakers. Builders that pay tips as priority fees (Harmonic, Paladin)
- * are in its block fees, not here.
+ * stakers.
  * Paths the API can't measure are named under the table. BAM Boost is its
  * own card.
  */
@@ -152,7 +147,7 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
     <SectionCard
       title="Tips"
       icon="gift"
-      info="Tips paid to tip accounts in its blocks per epoch, and their split: the block builder's fee, the tip program's fee, the validator's commission (its rate beside it) and its stakers. The validator's figure is what it was paid: its commission on the tips after both fees. Builders that pay tips as priority fees (Harmonic, Paladin) are in its block fees instead."
+      info="Tips paid to tip accounts in its blocks per epoch, and their split: the block builder's fee, the tip program's fee, the validator's commission (its rate beside it) and its stakers. The validator's figure is what it was paid: its commission on the tips after both fees."
     >
       {body()}
     </SectionCard>
