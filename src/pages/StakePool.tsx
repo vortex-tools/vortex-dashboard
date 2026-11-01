@@ -1065,13 +1065,8 @@ const StakePool = () => {
             <Col xs={6} lg>
               {/* Stake someone chose rather than its own selection, and
                   who: its holders, a protocol, the pool itself, matching. */}
-              {/* All of it bought in an auction (Marinade): "Paid". */}
               <StatCard
-                label={
-                  directed.by.bought > 0 && directed.by.bought === directedStake
-                    ? 'Paid'
-                    : 'Directed'
-                }
+                label="Directed"
                 value={pct(directedStake / data.stake)}
                 wrapSublabel
                 sublabel={
@@ -1080,11 +1075,7 @@ const StakePool = () => {
                     {directed.validators != null &&
                       ` to ${directed.validators.toLocaleString()} ${directed.validators === 1 ? 'validator' : 'validators'}`}
                     {directed.basis === 'target' && ' · target'}
-                    <span className="d-block">
-                      {directed.by.bought === directedStake
-                        ? "won with validators' bids"
-                        : choosersLine(directed.by)}
-                    </span>
+                    <span className="d-block">{choosersLine(directed.by)}</span>
                   </>
                 }
               />
