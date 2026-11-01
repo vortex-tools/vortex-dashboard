@@ -74,6 +74,8 @@ const BucketOutcomeChart = ({
       yAxis: {
         type: 'value',
         minInterval: 1,
+        // A short chart: two gridlines, so the labels don't crowd.
+        splitNumber: 2,
         splitLine: {
           lineStyle: { color: getThemeColor('tertiary-bg'), type: 'dashed' }
         },
@@ -105,7 +107,7 @@ const BucketOutcomeChart = ({
       echarts={echarts}
       notMerge
       option={option}
-      style={{ height: 240, width: '100%' }}
+      style={{ height: 120, width: '100%' }}
       onEvents={
         onBucketClick
           ? {

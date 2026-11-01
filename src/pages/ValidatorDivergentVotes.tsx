@@ -186,7 +186,6 @@ const ValidatorDivergentVotes = () => {
                     epoch={epoch}
                     currentEpoch={currentEpoch}
                   />
-                  <VoteSplit row={row} />
                   {timeline && (
                     <SectionCard
                       title="Slot Timeline"
@@ -282,86 +281,6 @@ const ValidatorDivergentVotes = () => {
         voterNode={identity?.nodeAddress ?? null}
         nameOf={nameOf}
       />
-    </div>
-  );
-};
-
-/**
- * Its eligible slots, split: notarize votes landed, skip votes landed
- * (and of those, skipped blocks - a skip on a block the cluster
- * notarized), missed. The ratio at a glance, under the cards.
- */
-const VoteSplit = ({
-  row
-}: {
-  row: NonNullable<ReturnType<typeof useConsensusRecord>['row']>;
-}) => {
-  const of = row.eligibleSlots ?? 0;
-  if (of <= 0) return null;
-  const parts = [
-    {
-      label: 'Notarize',
-      n: row.notarizedSlots,
-      cls: 'bg-success',
-      text: 'text-success'
-    },
-    {
-      label: 'Skip',
-      n: row.skippedSlots - row.skippedNotarizedSlots,
-      cls: 'bg-success-subtle',
-      text: 'text-body-secondary'
-    },
-    {
-      label: 'Skipped blocks',
-      n: row.skippedNotarizedSlots,
-      cls: 'bg-warning',
-      text: 'text-warning'
-    },
-    {
-      label: 'Missed',
-      n: row.missedSlots,
-      cls: 'bg-danger',
-      text: 'text-danger'
-    }
-  ];
-  return (
-    <div className="bg-body-emphasis rounded border border-translucent p-3">
-      <div
-        className="d-flex rounded-1 overflow-hidden bg-body-secondary mb-2"
-        style={{ height: 12 }}
-        aria-hidden
-      >
-        {parts.map(p => (
-          <div
-            key={p.label}
-            className={p.cls}
-            style={{ width: `${share(p.n, of)}%` }}
-          />
-        ))}
-      </div>
-      <div className="d-flex flex-wrap column-gap-4 row-gap-1 fs-9">
-        {parts.map(p => (
-          <span
-            key={p.label}
-            className="d-inline-flex align-items-center gap-1"
-          >
-            <span
-              className={`d-inline-block rounded-1 ${p.cls}`}
-              style={{ width: 10, height: 10 }}
-            />
-            <span className="text-body-tertiary">{p.label}</span>
-            <span className={`font-monospace fw-semibold ${p.text}`}>
-              {p.n.toLocaleString()}
-            </span>
-            <span className="text-body-tertiary font-monospace fs-10">
-              {share(p.n, of).toFixed(2)}%
-            </span>
-          </span>
-        ))}
-        <span className="text-body-tertiary ms-auto">
-          of {of.toLocaleString()} eligible slots
-        </span>
-      </div>
     </div>
   );
 };
