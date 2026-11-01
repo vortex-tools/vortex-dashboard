@@ -40,6 +40,7 @@ const StakeSizes = ({ d }: { d: ValidatorDelegators }) => {
   const option = {
     color: [getThemeColor('primary')],
     tooltip: {
+      confine: true,
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       backgroundColor: getThemeColor('body-highlight-bg'),

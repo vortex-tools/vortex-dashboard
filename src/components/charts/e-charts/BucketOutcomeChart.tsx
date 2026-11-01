@@ -46,6 +46,7 @@ const BucketOutcomeChart = ({
         textStyle: { color: getThemeColor('body-color'), fontSize: 11 }
       },
       tooltip: {
+        confine: true,
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
         padding: 10,

@@ -171,6 +171,7 @@ const getDefaultOptions = (
   return {
     color: [getThemeColor('primary'), getThemeColor('tertiary-bg')],
     tooltip: {
+      confine: true,
       trigger: 'axis',
       padding: [7, 10],
       backgroundColor: getThemeColor('body-highlight-bg'),

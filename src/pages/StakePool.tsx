@@ -488,6 +488,7 @@ const DistributionChart = ({
     animation: false,
     grid: { left: 4, right: 8, top: 16, bottom: 4, containLabel: true },
     tooltip: {
+      confine: true,
       trigger: 'axis',
       backgroundColor: getThemeColor('body-highlight-bg'),
       borderColor: getThemeColor('border-color'),
@@ -593,6 +594,7 @@ const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
     animation: false,
     grid: { left: 4, right: 8, top: 16, bottom: 4, containLabel: true },
     tooltip: {
+      confine: true,
       trigger: 'axis',
       backgroundColor: getThemeColor('body-highlight-bg'),
       borderColor: getThemeColor('border-color'),

@@ -413,6 +413,7 @@ const CompareVoting = () => {
     return {
       visualMap,
       tooltip: {
+        confine: true,
         trigger: 'axis',
         padding: 10,
         backgroundColor: getThemeColor('body-highlight-bg'),

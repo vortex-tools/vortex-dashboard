@@ -207,6 +207,9 @@ const EarningsChart = ({
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        // Wider than half the chart: flipped left of the pointer mid-chart
+        // it ran past the card's edge and was clipped. Keep it inside.
+        confine: true,
         padding: 10,
         backgroundColor: getThemeColor('body-highlight-bg'),
         borderColor: getThemeColor('border-color'),

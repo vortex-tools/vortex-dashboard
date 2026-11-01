@@ -67,6 +67,7 @@ const VoteStatsRankingChart = ({ voteAddress }: { voteAddress: string }) => {
   const option = {
     color: [getThemeColor('primary')],
     tooltip: {
+      confine: true,
       trigger: 'axis',
       padding: 10,
       backgroundColor: getThemeColor('body-highlight-bg'),

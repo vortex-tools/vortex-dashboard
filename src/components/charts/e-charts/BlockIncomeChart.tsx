@@ -52,6 +52,7 @@ const getDefaultOptions = (
   // The validator in the palette color, the cluster a muted dashed line.
   color: [getThemeColor('primary'), getThemeColor('quaternary-color')],
   tooltip: {
+    confine: true,
     trigger: 'axis',
     padding: 10,
     backgroundColor: getThemeColor('body-highlight-bg'),
