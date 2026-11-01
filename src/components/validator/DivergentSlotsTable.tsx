@@ -364,7 +364,21 @@ const DivergentSlotsTable = ({
             </li>
           ))}
       </ul>
-      <Table responsive size="sm" className="data-table fs-9 mb-0">
+      {/* Fixed widths, so the columns stay put whatever the tab shows. */}
+      <Table
+        responsive
+        size="sm"
+        className="data-table fs-9 mb-0"
+        style={{ tableLayout: 'fixed', minWidth: 980 }}
+      >
+        <colgroup>
+          <col style={{ width: '9rem' }} />
+          <col style={{ width: '13rem' }} />
+          <col style={{ width: '13rem' }} />
+          {[0, 1, 2, 3].map(n => (
+            <col key={n} style={{ width: '8.5rem' }} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             <th>Window</th>
