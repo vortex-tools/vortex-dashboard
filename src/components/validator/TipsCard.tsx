@@ -25,9 +25,11 @@ const bps = (b: number | null | undefined) =>
   b == null ? null : `${(b / 100).toLocaleString('en-US')}%`;
 
 /**
- * A validator's tip income per epoch (/validators/tips): what Jito's tips
+ * A validator's tip income per epoch (/validators/tips): what the tips
  * in its blocks came to, and how they were split - the block builder's
- * fee, Jito's tip router, the validator's commission and its stakers.
+ * fee, the tip program's fee, the validator's commission and its
+ * stakers. Builders that pay tips as priority fees (Harmonic, Paladin)
+ * are in its block fees, not here.
  * Paths the API can't measure are named under the table. BAM Boost is its
  * own card.
  */
@@ -69,14 +71,20 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
             <tr>
               <th>Epoch</th>
               <th>Builder</th>
-              <th className="text-end" title="Jito tips paid in its blocks">
+              <th
+                className="text-end"
+                title="Tips paid to tip accounts in its blocks"
+              >
                 Tips
               </th>
               <th className="text-end" title="The block builder's cut">
                 Builder fee
               </th>
-              <th className="text-end" title="Jito's tip router">
-                Jito fee
+              <th
+                className="text-end"
+                title="The tip program's fee (Jito's tip router, for Jito tips)"
+              >
+                Tip program fee
               </th>
               <th
                 className="text-end"
@@ -130,8 +138,8 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
           </tbody>
         </Table>
         <div className="fs-10 text-body-tertiary mt-2">
-          The split lands hours after an epoch ends (Jito publishes it); an
-          epoch in progress has its tips so far.
+          The split lands hours after an epoch ends (the tip program publishes
+          it); an epoch in progress has its tips so far.
           {missing.map(p => (
             <div key={p}>{UNAVAILABLE[p]}</div>
           ))}
@@ -144,7 +152,7 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
     <SectionCard
       title="Tips"
       icon="gift"
-      info="Jito tips in its blocks per epoch, and their split: the block builder's fee, Jito's tip router, the validator's commission (its rate beside it) and its stakers. The validator's figure is what it was paid: its commission on the tips after both fees."
+      info="Tips paid to tip accounts in its blocks per epoch, and their split: the block builder's fee, the tip program's fee, the validator's commission (its rate beside it) and its stakers. The validator's figure is what it was paid: its commission on the tips after both fees. Builders that pay tips as priority fees (Harmonic, Paladin) are in its block fees instead."
     >
       {body()}
     </SectionCard>
