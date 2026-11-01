@@ -535,7 +535,12 @@ const ThroughputCard = ({
       // The live reading (the chart's newest point), then the metric
       // toggle where there is one.
       aside={
-        <span className="d-flex align-items-center gap-3">
+        // At least a small button's height, so a card without the toggle
+        // (Fees per Minute) has a header as tall as one with it.
+        <span
+          className="d-flex align-items-center gap-3"
+          style={{ minHeight: 'calc(1.5em + 0.5rem + 2px)' }}
+        >
           {view?.figures[0] && (
             <span
               className="font-monospace fw-bold text-body-emphasis fs-8"
