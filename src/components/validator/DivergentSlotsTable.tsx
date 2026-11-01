@@ -115,7 +115,7 @@ const CAUSE: Record<
  * slot, how fast the block was finalized, and the slot's leader (/slots). Agreeing votes
  * (including skips on skipped slots) are correct and not listed.
  */
-/** A window's slot whose vote agreed with the chain, in gray: its
+/** A window's slot whose vote agreed with the chain, in green: its
  *  notarize vote landed, or it voted skip on a slot the chain skipped. */
 const AgreedVote = ({
   code,
@@ -126,9 +126,12 @@ const AgreedVote = ({
 }) => {
   if (code !== OUTCOME.notarized && code !== OUTCOME.skipped) return null;
   const v = info?.votes;
+  // Laid out as a divergent slot's cell (label, the cause's line, the
+  // shares at the bottom), so the shares line up across the row.
   return (
-    <div className="d-flex flex-column align-items-center gap-1 text-nowrap text-body-quaternary">
+    <div className="d-flex flex-column align-items-center gap-1 text-nowrap">
       <span
+        className="fw-semibold text-success"
         title={
           code === OUTCOME.notarized
             ? 'Its notarize vote landed: agreed with the chain'
@@ -137,14 +140,16 @@ const AgreedVote = ({
       >
         {code === OUTCOME.notarized ? 'Notarized' : 'Skip'}
       </span>
-      {v && (
-        <span
-          className="fs-10 font-monospace"
-          title="Stake in its notarize / skip reward certificates"
-        >
-          {ppb(v.notarStakePpb)} / {ppb(v.skipStakePpb)}
-        </span>
-      )}
+      {/* The cause badge's line, empty. */}
+      <span className="badge invisible" aria-hidden>
+        &nbsp;
+      </span>
+      <span
+        className="fs-10 font-monospace text-body-tertiary"
+        title="Stake in its notarize / skip reward certificates"
+      >
+        {v ? `${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}` : '—'}
+      </span>
     </div>
   );
 };
