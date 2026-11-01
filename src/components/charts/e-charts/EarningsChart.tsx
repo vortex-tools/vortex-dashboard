@@ -7,6 +7,7 @@ import {
   TooltipComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import { jitoSol } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { EpochEarnings } from 'providers/VortexDataProvider';
 import { useMemo } from 'react';
@@ -69,7 +70,8 @@ export const netOf = (r: EpochEarnings) => {
       c.value +
       (r.income.blockRevenueCommission ?? 0) +
       (r.income.mevCommission ?? 0) +
-      (sfdpOf(r) ?? 0) -
+      (sfdpOf(r) ?? 0) +
+      (r.income.bamBoost ?? 0) -
       r.costs.voteFees -
       r.costs.vat,
     estimated: true
@@ -142,6 +144,12 @@ const EarningsChart = ({
         value: r => convert(r, toSol(r.income.mevCommission))
       },
       {
+        name: 'BAM Boost',
+        color: getThemeColor('info'),
+        stack: 'income',
+        value: r => convert(r, toSol(r.income.bamBoost))
+      },
+      {
         name: 'Vote fees',
         color: getThemeColor('gray-300'),
         stack: 'costs',
@@ -165,10 +173,13 @@ const EarningsChart = ({
     // Drop the VAT series entirely while every epoch is pre-Alpenglow, and
     // SFDP's while nothing was reimbursed.
     const sfdp = rows.some(r => sfdpOf(r) != null);
+    // And BAM Boost's while it was in no distribution.
+    const boost = rows.some(r => r.income.bamBoost != null);
     const shown = defs.filter(
       d =>
         (d.name !== 'VAT' || rows.some(r => r.costs.vat > 0)) &&
-        (d.name !== 'SFDP reimbursement' || sfdp)
+        (d.name !== 'SFDP reimbursement' || sfdp) &&
+        (d.name !== 'BAM Boost' || boost)
     );
     // Rewards are shades of primary (strongest = inflation), costs are
     // grays; net bars are primary, or danger when negative.
@@ -256,6 +267,20 @@ const EarningsChart = ({
                   bps == null
                     ? ' (rate unknown)'
                     : ` (${(bps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%${r.rates?.mevCommissionBpsSource === 'previousEpoch' ? ', last epoch’s rate' : ''})`;
+              }
+              // BAM Boost: paid in JitoSOL (valued at the epoch's rate);
+              // claimable counts as pending, expired as nothing.
+              if (d.name === 'BAM Boost') {
+                const b = r.bamBoost;
+                if (r.income.bamBoost == null) return line(label, '—', d.color);
+                if (b?.state === 'expired')
+                  return line(`${label} (expired)`, format(0), d.color);
+                if (b?.state === 'claimable') label += ' (pending)';
+                const main = line(label, format(d.value(r)), d.color);
+                return b
+                  ? main +
+                      `<div class="fs-10 text-body-tertiary ps-3">${jitoSol(b.jitoSol, 2)}${b.solPerJitoSol ? ` at ${b.solPerJitoSol.toFixed(4)} SOL each` : ''}${b.state === 'claimable' ? ', not claimed yet' : ''}</div>`
+                  : main;
               }
               if (d.name === 'Vote fees' && !r.costs.voteFeesExact)
                 label += ' (est. max)';

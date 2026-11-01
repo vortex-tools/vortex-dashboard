@@ -689,8 +689,24 @@ export const epochEarningsSchema = z.object({
     // part (voteAccountReward) plus its delegators' payouts, exact (0%
     // commission too). Not in net. null where the delegator side isn't
     // reconciled; absent on older APIs.
-    inflationRewardGross: z.number().nullable().optional().catch(null)
+    inflationRewardGross: z.number().nullable().optional().catch(null),
+    // Jito's BAM Boost for the epoch, in lamports at the distribution
+    // epoch's JitoSOL rate: in net when claimed or claimable (pending), 0
+    // when it expired; null when not in the distribution (or no rate).
+    bamBoost: z.number().nullable().optional().catch(null)
   }),
+  bamBoost: z
+    .object({
+      jitoSol: z.number(),
+      lamports: z.number().nullable().catch(null),
+      solPerJitoSol: z.number().nullable().catch(null),
+      state: z.string(),
+      claimEndEpoch: z.number().nullable().catch(null),
+      pending: z.boolean().catch(false)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   // SFDP attribution: inferred (transfers name no epoch), where it landed,
   // and whether a participant's payment is still expected. null: not a
   // participant.
