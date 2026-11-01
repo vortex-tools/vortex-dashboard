@@ -12,7 +12,10 @@ import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
-const PAGE = 25;
+/** Leader windows a page. */
+const PAGE = 20;
+/** Slots in a leader window. */
+const WINDOW = 4;
 
 const KIND: Record<Divergence, { label: string; title: string; cls: string }> =
   {
@@ -111,6 +114,80 @@ const CAUSE: Record<
  * slot, how fast the block was finalized, and the slot's leader (/slots). Agreeing votes
  * (including skips on skipped slots) are correct and not listed.
  */
+/** One slot of a window whose vote went wrong: what (linked to the slot's
+ *  page), why, and the stake in its notarize / skip reward certificates
+ *  (linked to the reward block); how it finalized on hover. */
+const SlotCell = ({
+  slot,
+  kind,
+  info,
+  infoError,
+  cause,
+  selfNode
+}: {
+  slot: number;
+  kind: Divergence;
+  info: SlotInfo | null | undefined;
+  infoError: boolean;
+  cause: MissCause | null;
+  selfNode: string | null;
+}) => {
+  const k = KIND[kind];
+  const v = info?.votes;
+  const fin = info?.finalization;
+  const finText =
+    fin?.lagSlots != null
+      ? `Finalized after ${fin.lagSlots.toLocaleString()} ${fin.lagSlots === 1 ? 'slot' : 'slots'}${
+          fin.lagMs != null && !(fin.lagMs <= 0 && fin.lagSlots > 0)
+            ? ` (${fin.lagMs.toLocaleString()} ms)`
+            : ''
+        }`
+      : kind === 'missed-skip'
+        ? 'The chain skipped the slot'
+        : null;
+  return (
+    <div className="d-flex flex-column align-items-center gap-1 text-nowrap">
+      <Link
+        to={`/slot/${slot}${selfNode ? `?voter=${selfNode}` : ''}`}
+        className={`fw-semibold ${k.cls}`}
+        title={[`Slot ${slot.toLocaleString()}`, k.title, finText]
+          .filter(Boolean)
+          .join('. ')}
+      >
+        {k.label}
+      </Link>
+      {cause ? (
+        <span
+          className={`badge badge-soft badge-soft-${CAUSE[cause].tone}`}
+          title={CAUSE[cause].title}
+        >
+          {CAUSE[cause].label}
+        </span>
+      ) : kind === 'late-skip' ? (
+        <span
+          className="fs-10 text-body-secondary"
+          title="It voted skip, but the cluster notarized the block: the block likely reached it too late. Its skip vote still counts."
+        >
+          cluster notarized
+        </span>
+      ) : null}
+      <Link
+        to={`/slot/${slot + 8}${selfNode ? `?voter=${selfNode}&on=${slot}` : ''}`}
+        className="fs-10 font-monospace text-body-tertiary"
+        title="Stake in its notarize / skip reward certificates (the reward block's unrewarded votes, this validator marked)"
+      >
+        {info === undefined
+          ? infoError
+            ? '—'
+            : '…'
+          : !v
+            ? '—'
+            : `${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}`}
+      </Link>
+    </div>
+  );
+};
+
 const DivergentSlotsTable = ({
   rows,
   leaderOf,
@@ -153,10 +230,22 @@ const DivergentSlotsTable = ({
     // tabOf reads causeOf.
     [listed, filter, causeOf]
   );
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
+  // One row per leader window (its four slots share a block producer and,
+  // at slot + 8, a reward leader), newest first; a slot whose vote agreed
+  // stays empty.
+  const windows = useMemo(() => {
+    const m = new Map<number, Map<number, Divergence>>();
+    for (const r of filtered) {
+      const start = r.slot - (r.slot % WINDOW);
+      if (!m.has(start)) m.set(start, new Map());
+      m.get(start)!.set(r.slot, r.kind);
+    }
+    return [...m].map(([start, slots]) => ({ start, slots }));
+  }, [filtered]);
+  const pages = Math.max(1, Math.ceil(windows.length / PAGE));
   const shown = useMemo(
-    () => filtered.slice(page * PAGE, (page + 1) * PAGE),
-    [filtered, page]
+    () => windows.slice(page * PAGE, (page + 1) * PAGE),
+    [windows, page]
   );
 
   // Per-slot facts (/slots) for the rows on screen: a few small ranges.
@@ -166,7 +255,11 @@ const DivergentSlotsTable = ({
     let live = true;
     // The rows' slots and their payers' (slot + 8): each block's own
     // footer says what software built it.
-    fetchSlots(shown.flatMap(r => [r.slot, r.slot + 8])).then(
+    fetchSlots(
+      shown.flatMap(w =>
+        [...w.slots.keys()].flatMap(slot => [slot, slot + 8]).concat(w.start)
+      )
+    ).then(
       f => live && setInfos(m => new Map([...m, ...f])),
       () => live && setInfoError(true)
     );
@@ -274,142 +367,66 @@ const DivergentSlotsTable = ({
       <Table responsive size="sm" className="data-table fs-9 mb-0">
         <thead>
           <tr>
-            <th>Slot</th>
-            <th className="d-none d-md-table-cell">Vote</th>
-            {causeOf && (
-              <th title="Why a missed vote was missed: offline, else a Poor reward block (slot + 8 - its leader's fault), else it didn't get in">
-                Cause
-              </th>
-            )}
-            <th
-              className="text-end"
-              title="Share of stake in this slot's notarize / skip reward certificates: the votes the slot + 8 leader had received, so not every vote cast. 'none' = no certificate of that kind. The rest of the stake isn't in either certificate (didn't vote, vote too late, voted for another block, or left out) - the footer can't tell which."
-            >
-              Notarize / skip
-            </th>
-            <th title="The slot's leader, whose block it voted on (it had to reach this validator and be replayed)">
+            <th>Window</th>
+            <th title="The window's leader, whose blocks it voted on (they had to reach this validator and be replayed)">
               Block producer
             </th>
-            <th title="The slot + 8 leader: its block (the reward block) rewards this slot's votes, so a missed vote is missing from its certificate">
+            <th title="The slot + 8 leader: its blocks (the reward blocks) reward these slots' votes, so a missed vote is missing from its certificates">
               Reward leader
             </th>
-            <th
-              className="text-end d-none d-md-table-cell"
-              title="How long until a finalization certificate covered the block (slots · ms); 'direct' when the block got its own certificate"
-            >
-              Finalized
-            </th>
+            {[1, 2, 3, 4].map(n => (
+              <th
+                key={n}
+                className="text-center border-start"
+                title="The window's slot: empty when its vote agreed with the chain; else what went wrong, why, and the share of stake in its notarize / skip reward certificates"
+              >
+                Slot {n}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody onMouseLeave={() => onHover?.(null)}>
-          {shown.map(({ slot, kind }) => {
-            const k = KIND[kind];
-            const leader = infos.get(slot)?.leader ?? leaderOf?.(slot) ?? null;
-            const payer = leaderOf?.(slot + 8) ?? null;
-            const info = infos.get(slot);
-            const v = info?.votes;
-            const fin = info?.finalization;
+          {shown.map(({ start, slots }) => {
+            const first = [...slots.keys()][0];
+            const leader =
+              infos.get(first)?.leader ?? leaderOf?.(first) ?? null;
+            const payer = leaderOf?.(first + 8) ?? null;
+            const blockInfo = [...slots.keys()]
+              .map(sl => infos.get(sl))
+              .find(i => i?.outcome === 'block');
             return (
               <tr
-                key={slot}
+                key={start}
                 onMouseEnter={() =>
-                  onHover?.({
-                    slot,
-                    block: leader,
-                    payer
-                  })
+                  onHover?.({ slot: first, block: leader, payer })
                 }
               >
-                <td className="font-monospace">
-                  {/* The slot's page: who its votes left out, this
-                      validator marked. */}
-                  <Link
-                    to={`/slot/${slot}${selfNode ? `?voter=${selfNode}` : ''}`}
-                  >
-                    {slot.toLocaleString()}
-                  </Link>
-                </td>
-                <td
-                  className={`text-nowrap fw-semibold d-none d-md-table-cell ${k.cls}`}
-                  title={k.title}
-                >
-                  {k.label}
-                </td>
-                {causeOf && (
-                  <td className="text-nowrap">
-                    {(() => {
-                      const c = kind.startsWith('missed')
-                        ? causeOf(slot)
-                        : null;
-                      return c ? (
-                        <span
-                          className={`badge badge-soft badge-soft-${CAUSE[c].tone}`}
-                          title={CAUSE[c].title}
-                        >
-                          {CAUSE[c].label}
-                        </span>
-                      ) : kind === 'late-skip' ? (
-                        <span
-                          className="text-body-secondary"
-                          title="It voted skip, but the cluster notarized the block: the block likely reached it too late. Its skip vote still counts."
-                        >
-                          Cluster notarized it
-                        </span>
-                      ) : (
-                        <span className="text-body-tertiary">—</span>
-                      );
-                    })()}
-                  </td>
-                )}
-                <td className="text-end font-monospace text-nowrap">
-                  {info === undefined ? (
-                    <span className="text-body-tertiary">
-                      {infoError ? '—' : '…'}
-                    </span>
-                  ) : !v ? (
-                    <span
-                      className="text-body-tertiary"
-                      title="The slot's votes aren't known yet (slot + 8 not ingested)"
-                    >
-                      —
-                    </span>
-                  ) : (
-                    `${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}`
-                  )}
+                <td className="font-monospace text-nowrap">
+                  <Link to={`/slot/${start}`}>{start.toLocaleString()}</Link>
                 </td>
                 <td className="text-nowrap">
-                  {/* The block producer (the slot's leader): its block had
-                      to reach this voter, be replayed and voted on. */}
                   {leader ? (
                     <>
                       <ValidatorLink
                         address={leader}
                         className="d-inline-block text-truncate align-bottom"
-                        style={{ maxWidth: 180 }}
+                        style={{ maxWidth: 170 }}
                       >
                         {nameOf(leader)}
                       </ValidatorLink>
-                      {kind === 'missed-skip' && (
-                        <span
-                          className="badge badge-soft badge-soft-secondary ms-2"
-                          title="The chain skipped this slot"
-                        >
-                          slot skipped
-                        </span>
-                      )}
                       {leader === selfNode && (
                         <span className="text-body-tertiary"> (self)</span>
                       )}
                       {detail(
                         leader,
-                        infos.get(slot)?.outcome === 'block'
-                          ? (infos.get(slot)?.footer?.userAgent ?? null)
+                        blockInfo
+                          ? (blockInfo.footer?.userAgent ?? null)
                           : undefined,
-                        infos.get(slot)?.footer?.userAgentKind
+                        blockInfo?.footer?.userAgentKind
                       )}
                     </>
                   ) : (
-                    CHAIN[kind]
+                    <span className="text-body-tertiary">—</span>
                   )}
                 </td>
                 <td className="text-nowrap">
@@ -418,12 +435,14 @@ const DivergentSlotsTable = ({
                       <ValidatorLink
                         address={payer}
                         className={`d-inline-block text-truncate align-bottom${
-                          kind.startsWith('missed') &&
-                          causeOf?.(slot) === 'thin'
+                          [...slots].some(
+                            ([sl, k]) =>
+                              k.startsWith('missed') && causeOf?.(sl) === 'thin'
+                          )
                             ? ' text-warning'
                             : ''
                         }`}
-                        style={{ maxWidth: 180 }}
+                        style={{ maxWidth: 170 }}
                       >
                         {nameOf(payer)}
                       </ValidatorLink>
@@ -432,58 +451,38 @@ const DivergentSlotsTable = ({
                       )}
                       {detail(
                         payer,
-                        infos.get(slot + 8)?.outcome === 'block'
-                          ? (infos.get(slot + 8)?.footer?.userAgent ?? null)
+                        infos.get(first + 8)?.outcome === 'block'
+                          ? (infos.get(first + 8)?.footer?.userAgent ?? null)
                           : undefined,
-                        infos.get(slot + 8)?.footer?.userAgentKind,
-                        // Its block, where this vote should have been: the
-                        // block page's left-out list, this voter marked.
-                        <Link
-                          to={`/slot/${slot + 8}${selfNode ? `?voter=${selfNode}&on=${slot}` : ''}`}
-                          className="font-monospace"
-                          title="The reward block: its unrewarded votes, this validator marked"
-                        >
-                          {(slot + 8).toLocaleString()}
-                        </Link>
+                        infos.get(first + 8)?.footer?.userAgentKind
                       )}
                     </>
                   ) : (
                     <span className="text-body-tertiary">—</span>
                   )}
                 </td>
-                <td className="text-end font-monospace text-nowrap d-none d-md-table-cell">
-                  {fin?.lagSlots != null ? (
-                    <span
-                      title={
-                        fin.directPath
-                          ? `own ${fin.directPath} certificate`
-                          : undefined
-                      }
-                    >
-                      {fin.lagSlots.toLocaleString()}{' '}
-                      {fin.lagSlots === 1 ? 'slot' : 'slots'}
-                      {/* ms comes from the two blocks' producer timestamps;
-                          some producers stamp parent + 1 ns, so a slot or
-                          more of lag can read as 0 ms - don't show that. */}
-                      {fin.lagMs != null &&
-                        !(fin.lagMs <= 0 && fin.lagSlots > 0) && (
-                          <span className="text-body-tertiary">
-                            {' '}
-                            · {fin.lagMs.toLocaleString()} ms
-                          </span>
-                        )}
-                    </span>
-                  ) : kind === 'missed-skip' || kind === 'notarized-skipped' ? (
-                    <span
-                      className="text-body-tertiary"
-                      title="The chain skipped the slot: there's no block to finalize"
-                    >
-                      skipped
-                    </span>
-                  ) : (
-                    <span className="text-body-tertiary">—</span>
-                  )}
-                </td>
+                {[0, 1, 2, 3].map(n => {
+                  const slot = start + n;
+                  const kind = slots.get(slot);
+                  return (
+                    <td key={n} className="border-start text-center">
+                      {kind ? (
+                        <SlotCell
+                          slot={slot}
+                          kind={kind}
+                          info={infos.get(slot)}
+                          infoError={infoError}
+                          cause={
+                            kind.startsWith('missed')
+                              ? (causeOf?.(slot) ?? null)
+                              : null
+                          }
+                          selfNode={selfNode}
+                        />
+                      ) : null}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}
@@ -493,7 +492,7 @@ const DivergentSlotsTable = ({
         <Pager
           page={page}
           pages={pages}
-          total={filtered.length}
+          total={windows.length}
           pageSize={PAGE}
           shown={shown.length}
           onPrev={() => setPage(p => p - 1)}
