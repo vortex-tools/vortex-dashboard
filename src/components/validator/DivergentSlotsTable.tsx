@@ -288,7 +288,10 @@ const DivergentSlotsTable = ({
   );
   // Every divergent slot, whatever the tab: an agreeing vote is shown in
   // gray only where the slot isn't one.
-  const divergentSlots = useMemo(() => new Set(rows.map(r => r.slot)), [rows]);
+  const divergentSlots = useMemo(
+    () => new Map(rows.map(r => [r.slot, r.kind] as const)),
+    [rows]
+  );
   const tabOf = (r: { slot: number; kind: Divergence }): Filter =>
     r.kind === 'late-skip' ? 'late-skip' : (causeOf?.(r.slot) ?? 'missed');
   const filtered = useMemo(
@@ -582,9 +585,27 @@ const DivergentSlotsTable = ({
                           }
                           selfNode={selfNode}
                         />
-                      ) : voteOf && !divergentSlots.has(slot) ? (
-                        // Agreed (a divergent slot the tab leaves out
-                        // stays blank).
+                      ) : divergentSlots.has(slot) ? (
+                        // Divergent, but the tab leaves it out: shown
+                        // faded, so the cell doesn't look empty.
+                        <div
+                          className="opacity-50"
+                          title="Not in this tab's filter: see All"
+                        >
+                          <SlotCell
+                            slot={slot}
+                            kind={divergentSlots.get(slot)!}
+                            info={infos.get(slot)}
+                            infoError={infoError}
+                            cause={
+                              divergentSlots.get(slot)!.startsWith('missed')
+                                ? (causeOf?.(slot) ?? null)
+                                : null
+                            }
+                            selfNode={selfNode}
+                          />
+                        </div>
+                      ) : voteOf ? (
                         <AgreedVote
                           code={voteOf(slot)}
                           info={infos.get(slot)}
