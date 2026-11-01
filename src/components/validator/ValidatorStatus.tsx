@@ -203,7 +203,7 @@ const shortReason = (
           ? ''
           : b.latestEpoch != null && end <= b.latestEpoch
             ? ', the oldest expires this epoch'
-            : `, claimable until epoch ${end.toLocaleString()}`
+            : `, claimable until epoch ${end}`
       }`;
     }
     default:
@@ -1360,14 +1360,14 @@ export const useValidatorNotices = (
           {end != null &&
             (b.latestEpoch != null && end <= b.latestEpoch
               ? ', the oldest expires this epoch'
-              : `, the oldest until epoch ${end.toLocaleString()}`)}{' '}
+              : `, the oldest until epoch ${end}`)}{' '}
           ·{' '}
           <a href={BAM_BOOST_CLI} target="_blank" rel="noreferrer">
             how to claim ↗
           </a>
         </>
       ),
-      detail: `This validator receives Jito BAM Boost and has never claimed it: ${jitoSol(b.claimableAmount, 2)} is claimable now${end != null ? `, the oldest until epoch ${end.toLocaleString()}` : ''}.${expired} Each epoch's boost is claimable for about 19 epochs, then expires; claims are signed with the identity keypair (Jito's jito-bam-boost-cli).`
+      detail: `This validator receives Jito BAM Boost and has never claimed it: ${jitoSol(b.claimableAmount, 2)} is claimable now${end != null ? `, the oldest until epoch ${end}` : ''}.${expired} Each epoch's boost is claimable for about 19 epochs, then expires; claims are signed with the identity keypair (Jito's jito-bam-boost-cli).`
     });
   }
 

@@ -73,7 +73,7 @@ const BamBoostCard = ({
   const until = (end: number) =>
     currentEpoch != null && end <= currentEpoch
       ? 'expires this epoch'
-      : `until epoch ${end.toLocaleString()}`;
+      : `until epoch ${end}`;
   if (!boost && !epochs.some(e => e.amount > 0)) return null;
 
   const totals: Array<[string, number, number | null, string]> = boost
@@ -137,7 +137,7 @@ const BamBoostCard = ({
               const [label, bg] = (e.claim && STATE[e.claim.state]) || [];
               return (
                 <tr key={e.epoch}>
-                  <td className="font-monospace">{e.epoch.toLocaleString()}</td>
+                  <td className="font-monospace">{e.epoch}</td>
                   <td className="text-end font-monospace">
                     {e.amount > 0 ? jitoSol(e.amount) : '—'}
                   </td>
@@ -185,7 +185,7 @@ const BamBoostCard = ({
         boost.firstEpoch < oldest && (
           <p className="fs-10 text-body-tertiary mt-2 mb-0">
             Its recent epochs and every one still claimable; the totals above
-            count all since epoch {boost.firstEpoch.toLocaleString()}.
+            count all since epoch {boost.firstEpoch}.
           </p>
         )}
     </SectionCard>
