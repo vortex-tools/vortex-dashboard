@@ -39,9 +39,9 @@ const KIND: Record<Divergence, { label: string; title: string; cls: string }> =
       cls: 'text-danger'
     },
     'late-skip': {
-      label: 'Skipped block',
+      label: 'Voted skip',
       title:
-        'Voted skip on a slot that made the chain: the block arrived too late or the validator saw another fork',
+        'Voted skip on a block the cluster notarized: the block arrived too late or the validator saw another fork',
       cls: 'text-warning'
     },
     'notarized-skipped': {
@@ -244,7 +244,14 @@ const DivergentSlotsTable = ({
   voteOf?: (slot: number) => number | null;
   /** Draw the card around it, the filters in its header (else the
    *  filters above the table). */
-  card?: { title: string; icon: string; info?: string; before?: ReactNode };
+  card?: {
+    title: string;
+    icon: string;
+    info?: string;
+    before?: ReactNode;
+    /** A link in the header, after the filters (e.g. to the map). */
+    link?: { to: string; label: string };
+  };
   /** Producer locations (the epoch's, from the page), and when from. */
   geo?: Map<string, ValidatorGeo> | null;
   geoAsOf?: string;
@@ -265,7 +272,18 @@ const DivergentSlotsTable = ({
         title={card.title}
         icon={card.icon}
         info={card.info}
-        aside={filters}
+        aside={
+          card.link ? (
+            <div className="d-flex align-items-center gap-3">
+              {filters}
+              <Link to={card.link.to} className="fs-9 text-nowrap">
+                {card.link.label} →
+              </Link>
+            </div>
+          ) : (
+            filters
+          )
+        }
       >
         {card.before}
         {body}
@@ -366,7 +384,7 @@ const DivergentSlotsTable = ({
           ['offline', 'Offline', 'secondary']
         ] as Array<[Filter, string, string]>)
       : ([['missed', 'Missed', 'danger']] as Array<[Filter, string, string]>)),
-    ['late-skip', 'Skipped blocks', 'warning']
+    ['late-skip', 'Voted skip', 'warning']
   ];
 
   // Where each producer was (the page's, else today's) and the software

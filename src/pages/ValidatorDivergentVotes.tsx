@@ -2,7 +2,9 @@ import BucketOutcomeChart from 'components/charts/e-charts/BucketOutcomeChart';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
-import ConsensusRecordHeader from 'components/validator/ConsensusRecordHeader';
+import ConsensusRecordHeader, {
+  recordPath
+} from 'components/validator/ConsensusRecordHeader';
 import LiveVoteStrip from 'components/validator/LiveVoteStrip';
 import VotingStatCards from 'components/validator/VotingStatCards';
 import DivergentSlotsTable, {
@@ -14,7 +16,6 @@ import RecordSummary from 'components/validator/RecordSummary';
 import MissedByProducer from 'components/validator/MissedByProducer';
 import ProducerMissesTable from 'components/validator/ProducerMissesTable';
 import PageSection from 'components/common/PageSection';
-import { HoverPath, PathPreview } from 'components/validator/PathPreview';
 import { geoAsOf, useValidatorGeoAt } from 'hooks/useValidatorGeo';
 import useConsensusRecord from 'hooks/useConsensusRecord';
 import {
@@ -141,13 +142,11 @@ const ValidatorDivergentVotes = () => {
     };
   }, [misses, timeline, leaderOf]);
 
-  // The slot a divergent-vote row hovered is about (the path preview).
   // Where each producer was that epoch (today's if the API has none).
   // The epoch's, once known (an unknown epoch would load today's first).
   const geoSet = useValidatorGeoAt(epoch, epoch != null);
   const geo = geoSet?.byNode ?? null;
   const asOf = geoAsOf(geoSet, epoch);
-  const [hoverPath, setHoverPath] = useState<HoverPath | null>(null);
 
   const name = identity?.displayName ?? 'Validator';
 
@@ -212,7 +211,11 @@ const ValidatorDivergentVotes = () => {
                     card={{
                       title: 'Divergent Votes',
                       icon: 'git-branch',
-                      info: 'Every slot where its vote differs from what the chain did, or is missing from the reward certificates (of its reward block, slot + 8).',
+                      link: {
+                        to: recordPath(address, epoch, 'network'),
+                        label: 'On the map'
+                      },
+                      info: "Every slot where it voted skip on a block the cluster notarized, or its vote is missing from the reward certificates (of its reward block, slot + 8). On the map: the Network tab, with each vote's block producer and reward leader.",
                       before: !timeline.clusterKnown ? (
                         <UntrackedState className="mb-2">
                           The chain&apos;s per-slot outcome isn&apos;t available
@@ -221,7 +224,11 @@ const ValidatorDivergentVotes = () => {
                         </UntrackedState>
                       ) : undefined
                     }}
-                    rows={timeline.divergent}
+                    // Notarizing a block the chain skipped did no harm:
+                    // not listed (as on the Network tab).
+                    rows={timeline.divergent.filter(
+                      d => d.kind !== 'notarized-skipped'
+                    )}
                     voteOf={slot => {
                       const i = slot - timeline.firstSlot;
                       return i >= 0 && i < timeline.codes.length
@@ -231,7 +238,6 @@ const ValidatorDivergentVotes = () => {
                     leaderOf={leaderOf}
                     selfNode={identity?.nodeAddress ?? null}
                     causeOf={causeOf}
-                    onHover={setHoverPath}
                     geo={geo}
                     geoAsOf={asOf}
                   />
@@ -281,12 +287,6 @@ const ValidatorDivergentVotes = () => {
           </>
         )}
       </div>
-      <PathPreview
-        hover={hoverPath}
-        geo={geo}
-        voterNode={identity?.nodeAddress ?? null}
-        nameOf={nameOf}
-      />
     </div>
   );
 };
