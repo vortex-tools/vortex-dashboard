@@ -8,7 +8,11 @@ import {
   useState
 } from 'react';
 import { useNavigate } from 'react-router';
-import { Validator, VortexDataContext } from 'providers/VortexDataProvider';
+import {
+  VALIDATOR_STATUS_SUMMARY_KEY,
+  Validator,
+  VortexDataContext
+} from 'providers/VortexDataProvider';
 
 const truncateAddress = (addr: string) =>
   addr.length <= 20 ? addr : `${addr.slice(0, 8)}…${addr.slice(-8)}`;
@@ -58,6 +62,29 @@ const ValidatorSearch = ({
   }, [query]);
 
   const showDropdown = focused && query.trim().length > 0;
+
+  // Each one's share of stake, from the status summary - fetched the first
+  // time the search is used (once a session, shared with the Validators
+  // page), and shown when it's in.
+  const fetchSummary = context?.validatorStatusSummaryState.fetchData;
+  useEffect(() => {
+    if (focused) fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
+  }, [focused, fetchSummary]);
+  const summary = context?.validatorStatusSummaryState.data.get(
+    VALIDATOR_STATUS_SUMMARY_KEY
+  );
+  const shareOf = useMemo(() => {
+    if (!summary) return null;
+    const total = summary.validators.reduce((a, v) => a + v.activatedStake, 0);
+    const by = new Map<string, number>();
+    for (const v of summary.validators)
+      if (total) {
+        by.set(v.voteAccount, v.activatedStake / total);
+        by.set(v.identity, v.activatedStake / total);
+      }
+    return (v: Validator) =>
+      by.get(v.voteAddress ?? '') ?? by.get(v.nodeAddress) ?? null;
+  }, [summary]);
 
   const go = (validator: Validator) => {
     if (onSelect) {
@@ -170,6 +197,12 @@ const ValidatorSearch = ({
                         {/* Records start at 369: there it means "or earlier". */}
                         {v.firstEpoch != null &&
                           ` · since epoch ${v.firstEpoch <= 369 ? '≤ ' : ''}${v.firstEpoch.toLocaleString()}`}
+                        {(() => {
+                          const share = shareOf?.(v);
+                          return share != null
+                            ? ` · ${share > 0 && share < 0.0001 ? '<0.01' : (share * 100).toFixed(2)}% of stake`
+                            : '';
+                        })()}
                       </span>
                     </div>
                   </button>
