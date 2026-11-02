@@ -258,8 +258,8 @@ const LeaderMap = ({
     >
       {lastHandoff && ready && geo && (
         <div
-          className="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded border bg-body fs-10 lh-sm d-flex align-items-center gap-1 text-nowrap"
-          style={{ zIndex: 2, maxWidth: 'calc(100% - 1rem)' }}
+          className="position-absolute bottom-0 start-0 m-1 px-2 py-1 rounded border bg-body fs-10 lh-sm d-flex align-items-center gap-1 text-nowrap"
+          style={{ zIndex: 2, maxWidth: 'calc(100% - 0.5rem)' }}
           title="The latest handoff measured: from the previous leader's last block to this one's first, by their block times - a slot (~200 ms) plus the network between them"
         >
           <span className="text-uppercase fw-bold text-body-tertiary flex-shrink-0 me-1">
