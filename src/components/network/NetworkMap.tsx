@@ -20,6 +20,8 @@ import {
 import {
   countryRegions,
   coord,
+  distanceKm,
+  fibreMs,
   loadWorld,
   regionOutlines
 } from 'helpers/worldMap';
@@ -52,6 +54,23 @@ export type RegionHandoff = {
   clusterExcessP50Ms: number | null;
   /** A slot that epoch (the cluster's pace within windows). */
   slotMs: number | null;
+};
+
+/** The middle of an ECharts `lines` curve from a to b (lon/lat), as the
+ *  series draws it: a quadratic whose control point sits off the chord by
+ *  `curveness` x its length, on screen (where latitude runs down). */
+const curveMid = (
+  a: [number, number],
+  b: [number, number],
+  curveness: number
+): [number, number] => {
+  const [x1, y1, x2, y2] = [a[0], -a[1], b[0], -b[1]];
+  const cx = (x1 + x2) / 2 - (y1 - y2) * curveness;
+  const cy = (y1 + y2) / 2 - (x2 - x1) * curveness;
+  return [
+    0.25 * x1 + 0.5 * cx + 0.25 * x2,
+    -(0.25 * y1 + 0.5 * cy + 0.25 * y2)
+  ];
 };
 
 const ms = (v: number | null | undefined) =>
@@ -585,6 +604,78 @@ const NetworkMap = ({
                   : [{ coords: [root, me], lineStyle: style(2, 0.9) }])
               ];
             })
+        },
+        // The hovered route's legs, labeled at their middles (level, so
+        // they read): what each trip is and its floor - the fibre-speed
+        // distance, and for a block also along the estimated Turbine path.
+        {
+          type: 'scatter',
+          coordinateSystem: 'geo',
+          zlevel: 2,
+          name: 'legLabels',
+          silent: true,
+          symbolSize: 0,
+          labelLayout: { moveOverlap: 'shiftY' },
+          data: me
+            ? legs
+                .filter(x => x.v.slot === highlight)
+                .flatMap(({ leg, c }) => {
+                  const floor = fibreMs(distanceKm(c, me));
+                  // Its own block: no trip.
+                  if (floor < 1) return [];
+                  const hops: Array<[number, number]> =
+                    leg === 'block' && turbine
+                      ? [
+                          c,
+                          turbine.roots[0],
+                          ...(turbine.layer === 2 && turbine.via
+                            ? [turbine.via]
+                            : []),
+                          me
+                        ]
+                      : [];
+                  const pathMs = hops
+                    .slice(1)
+                    .reduce(
+                      (a, h, i) => a + fibreMs(distanceKm(hops[i], h)),
+                      0
+                    );
+                  const text =
+                    leg === 'vote'
+                      ? `{b|Its vote → reward leader}\nfloor ${Math.round(floor)} ms`
+                      : hops.length
+                        ? `{b|Block → this validator, via Turbine}\nfloor ${Math.round(floor)} ms · ~${Math.round(pathMs)} ms by its path`
+                        : `{b|Block → this validator}\nfloor ${Math.round(floor)} ms`;
+                  // On its drawn arrow: the vote's (it to the leader), a
+                  // block's last leg (into it), or the straight one.
+                  const [from, to]: Array<[number, number]> =
+                    leg === 'vote'
+                      ? [me, c]
+                      : hops.length
+                        ? [hops[hops.length - 2], me]
+                        : [c, me];
+                  return [
+                    {
+                      value: curveMid(from, to, 0.2),
+                      label: {
+                        show: true,
+                        position: 'inside',
+                        formatter: text,
+                        fontSize: 10,
+                        lineHeight: 13,
+                        align: 'center',
+                        color: getThemeColor('body-color'),
+                        backgroundColor: getThemeColor('body-bg'),
+                        borderColor: getThemeColor(ROLE_COLOR[leg]),
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        padding: [2, 5],
+                        rich: { b: { fontWeight: 'bold', fontSize: 10 } }
+                      }
+                    }
+                  ];
+                })
+            : []
         },
         // Every producer and reward leader of the page's votes, by role;
         // the hovered vote's on top, the rest faint while one is hovered.
