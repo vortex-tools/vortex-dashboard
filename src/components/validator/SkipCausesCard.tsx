@@ -104,7 +104,7 @@ export const SlotPaceCard = ({
           </Badge>
         ) : undefined
       }
-      info="How fast it builds its own blocks: its consecutive slots within a leader window, against the cluster's (median, 90th percentile). Lagging: well behind the cluster's."
+      info="How fast it builds its own blocks: slots 2-4 of each leader window, each timed from its own previous block (one clock, no handoff), against the cluster's (median, 90th percentile). The window's first slot includes the handoff from the previous leader, so it is left out here and shown on the Network tab. Lagging: well behind the cluster's."
       aside={
         networkLink ? (
           <Link to={networkLink} className="fs-9">
@@ -139,7 +139,9 @@ export const SlotPaceCard = ({
         </tbody>
       </Table>
       <p className="fs-10 text-body-tertiary mt-2 mb-0">
-        Time per slot within its leader windows; lower is better.
+        Its slots after the first of each leader window, each against its own
+        previous block; lower is better. The first slot (the handoff from the
+        previous leader) is on the Network tab.
       </p>
       {record.lagging && (
         <p className="fs-10 text-warning-emphasis mt-2 mb-0">

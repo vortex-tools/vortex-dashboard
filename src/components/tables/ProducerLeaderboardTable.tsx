@@ -150,14 +150,6 @@ export const createProducerLeaderboardColumns = (
           }
         >
           {r.nodeName || truncateAddress(r.nodeAddress)}
-          {r.lagging && (
-            <span
-              className="badge badge-soft badge-soft-warning ms-2 fs-10"
-              title="Its own slots run slow against the cluster's pace"
-            >
-              Lagging
-            </span>
-          )}
         </Link>
       );
     },
