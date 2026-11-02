@@ -732,6 +732,9 @@ const NetworkMap = ({
                       // starts); a vote's on its arrow.
                       value: leg === 'block' ? c : curveMid(from, to, 0.2),
                       leg,
+                      // The straight line's middle latitude: the curve
+                      // swings below it or above.
+                      chordLat: (from[1] + to[1]) / 2,
                       label: {
                         show: true,
                         distance: 4,
@@ -752,17 +755,12 @@ const NetworkMap = ({
                 })
             : []
           ).map((x, _, all) => {
-            // Above its point in the north, below in the south; a vote's
-            // label close to the block's takes the other side of it.
-            const block = all.find(y => y !== x && y.leg === 'block');
+            // The block's above the producer in the north, below in the
+            // south; the vote's on the outside of its arrow's swing -
+            // below a curve that bends down, above one that bends up.
             const pos =
-              x.leg === 'vote' &&
-              block &&
-              Math.hypot(
-                block.value[0] - x.value[0],
-                block.value[1] - x.value[1]
-              ) < 25
-                ? hemiSide(block.value) === 'top'
+              x.leg === 'vote'
+                ? x.value[1] < x.chordLat
                   ? 'bottom'
                   : 'top'
                 : hemiSide(x.value);
