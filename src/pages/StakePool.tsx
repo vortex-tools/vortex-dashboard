@@ -968,18 +968,33 @@ const StakePool = () => {
         2
     : null;
   // What the pool earned this epoch, and the annual yield that rate makes.
+  // Each part on the stake it was paid on: inflation on the stake
+  // effective during the epoch (stakePrev), MEV and priority fees on the
+  // epoch-end stake (Jito's snapshot) - one base for both overstates a
+  // pool whose stake fell at the epoch's end.
   const totalReward = validators.reduce((a, v) => a + rewardOf(v), 0);
   const totalMev = validators.reduce((a, v) => a + (v.mevReward ?? 0), 0);
+  const earning = validators.filter(v => v.inflationReward != null);
+  const inflBase = earning.reduce((a, v) => a + (v.stakePrev ?? 0), 0);
+  const tipBase = validators.reduce((a, v) => a + v.stake, 0);
+  const epochRate =
+    (inflBase > 0
+      ? earning.reduce((a, v) => a + (v.inflationReward ?? 0), 0) / inflBase
+      : 0) +
+    (tipBase > 0
+      ? validators.reduce(
+          (a, v) => a + (v.mevReward ?? 0) + (v.priorityFeeReward ?? 0),
+          0
+        ) / tipBase
+      : 0);
   const apy =
-    showRewards && data.stake && epochsPerYear
-      ? (1 + totalReward / data.stake) ** epochsPerYear - 1
+    showRewards && (inflBase > 0 || tipBase > 0) && epochsPerYear
+      ? (1 + epochRate) ** epochsPerYear - 1
       : null;
   // The same, after the pool's commission comes off each epoch's rewards.
   const apyNet =
     apy != null && fee?.epochFeeBps != null && epochsPerYear
-      ? (1 + (totalReward / data.stake) * (1 - fee.epochFeeBps / 10000)) **
-          epochsPerYear -
-        1
+      ? (1 + epochRate * (1 - fee.epochFeeBps / 10000)) ** epochsPerYear - 1
       : null;
   // Its directed stake by who chose it: from the per-validator sources
   // where the API lists them (the column's figures), else its own sums.
