@@ -41,6 +41,15 @@
   flex: 0 1 20rem;
   min-width: 12rem;
   margin-left: 1rem;
+  // Desktop: centered on the bar (tablets: after the brand, where a
+  // centered box would run into the controls).
+  @include media-breakpoint-up(lg) {
+    position: absolute;
+    left: 50%;
+    width: 20rem;
+    margin-left: 0;
+    transform: translateX(-50%);
+  }
 }
 .vx-search-bar {
   height: 1.375rem;
