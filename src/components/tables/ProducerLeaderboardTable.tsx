@@ -12,6 +12,7 @@ import {
   IDEAL_RECORD_KEY,
   ProducerLeaderboardRecord
 } from 'providers/VortexDataProvider';
+import FeatherIcon from 'feather-icons-react';
 import { ReactElement } from 'react';
 import { Link } from 'react-router';
 
@@ -44,12 +45,34 @@ const skipCausesText = (r: ProducerLeaderboardRecord) => {
   return parts.length ? `Skipped: ${parts.join(' · ')}` : undefined;
 };
 
+/** Why a producer's handoff overhead isn't shown: its block times are
+ *  (nearly) all clamped - its clock is off, so nothing is timed - or the
+ *  overhead came out negative, faster than the floor allows (clock skew
+ *  between it and the previous leader). null: nothing to flag. */
+const handoffClockIssue = (
+  r: ProducerLeaderboardRecord,
+  overhead: number | null
+) => {
+  const clamped = (r.clockFloorBlocks ?? 0) + (r.clockCeilingBlocks ?? 0);
+  if (r.blocks > 0 && clamped >= 0.9 * r.blocks)
+    return `Its block times are clamped (${clamped.toLocaleString()} of ${r.blocks.toLocaleString()} blocks at the ${(r.clockFloorBlocks ?? 0) >= (r.clockCeilingBlocks ?? 0) ? 'lowest' : 'highest'} bound): its clock is off, so its handoffs can't be timed.`;
+  if (overhead != null && overhead < 0)
+    return `Its handoffs came out ${Math.round(-overhead)} ms faster than the floor allows: its clock is likely skewed against the previous leaders', so the figure isn't shown.`;
+  return null;
+};
+
 const num = (
   id: string,
   header: ReactElement | string,
   value: (r: ProducerLeaderboardRecord) => number | null,
   render: (v: number, r: ProducerLeaderboardRecord) => ReactElement | string,
-  opts: { opensGroup?: boolean; emphasis?: boolean; tone?: string } = {}
+  opts: {
+    opensGroup?: boolean;
+    emphasis?: boolean;
+    tone?: string;
+    /** What a row without a value shows (a dash by default). */
+    empty?: (r: ProducerLeaderboardRecord) => ReactElement | null;
+  } = {}
 ): ColumnDef<ProducerLeaderboardRecord> => ({
   id,
   accessorFn: r => value(r) ?? undefined,
@@ -57,7 +80,9 @@ const num = (
   header: () => header,
   cell: ({ row }) => {
     const v = value(row.original);
-    return v == null ? <Dash /> : render(v, row.original);
+    return v == null
+      ? (opts.empty?.(row.original) ?? <Dash />)
+      : render(v, row.original);
   },
   meta: {
     cellProps: {
@@ -253,7 +278,10 @@ export const createProducerLeaderboardColumns = (
     <span title="Leader handoffs' overhead: the median from the previous leader's last block to its first, less its own first block (a slot less 56 ms) and the notarization floor: the previous block reaching the voters and 60% of stake's votes reaching it, at fibre speed - the next leader starts only then. What's left is replay, vote processing and the model's error; compare with the cluster's.">
       Handoff
     </span>,
-    r => handoffExtra(r.slotDuration, clusterSlotMs).extra,
+    r => {
+      const v = handoffExtra(r.slotDuration, clusterSlotMs).extra;
+      return isCluster(r) || !handoffClockIssue(r, v) ? v : null;
+    },
     (v, r) => {
       const tone = isCluster(r) ? null : delayTone(v, clusterHandoffExtra);
       const cls =
@@ -276,7 +304,22 @@ export const createProducerLeaderboardColumns = (
         </Link>
       );
     },
-    { opensGroup: true }
+    {
+      opensGroup: true,
+      empty: r => {
+        const why = isCluster(r)
+          ? null
+          : handoffClockIssue(
+              r,
+              handoffExtra(r.slotDuration, clusterSlotMs).extra
+            );
+        return why ? (
+          <span className="text-warning" title={why}>
+            <FeatherIcon icon="alert-triangle" size={13} />
+          </span>
+        ) : null;
+      }
+    }
   ),
   ...productionBlockColumns<ProducerLeaderboardRecord>(r =>
     isCluster(r) ? null : r
