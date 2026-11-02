@@ -292,7 +292,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - for each, a solid line from the slot's block producer to it (the block's trip) and a dashed one from it to the reward leader, slot + 8's leader, whose block carries the reward certificate (its vote's trip); the table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - an arrow from the producer to it (the block's trip) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
                   <ButtonGroup size="sm">
@@ -501,6 +501,23 @@ const ValidatorNetwork = () => {
                         })}
                       </tbody>
                     </Table>
+                    <div className="d-flex flex-wrap gap-3 fs-10 text-body-tertiary mt-2">
+                      <span>
+                        <span
+                          className="d-inline-block rounded-circle align-middle me-1 bg-info"
+                          style={{ width: 8, height: 8 }}
+                        />
+                        Block producer: whose block it voted on
+                      </span>
+                      <span>
+                        <span
+                          className="d-inline-block rounded-circle align-middle me-1 bg-warning"
+                          style={{ width: 8, height: 8 }}
+                        />
+                        Reward leader: slot + 8, where its vote had to arrive
+                      </span>
+                      <span>Hover a row for its route.</span>
+                    </div>
                     {votePages > 1 && (
                       <Pager
                         page={votePage}

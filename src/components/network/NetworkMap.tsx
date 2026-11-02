@@ -60,6 +60,10 @@ const pct = (x: number) =>
 /** Degrees of the grid the hovered region's validators are grouped on. */
 const GRID = 3;
 
+/** A divergent vote's two leaders, by role: the block producer, and the
+ *  reward leader (slot + 8, whose block carries the certificate). */
+const ROLE_COLOR = { block: 'info', vote: 'warning' } as const;
+
 /** How far the map zooms in. */
 const MAX_ZOOM = 8;
 
@@ -70,9 +74,9 @@ const MAX_ZOOM = 8;
  * network floor - and a line to it; hovered, its
  * validators show as dots grouped by place, its figures in a corner, and
  * the region, line and label take its tone against the cluster's from
- * the same region) or a page of its divergent votes - from each slot's
- * block producer to it (solid) and from it to the reward leader (dashed),
- * in the vote's tone (the highlighted one bold).
+ * the same region) or a page of its divergent votes - every block producer
+ * (blue) and reward leader (amber) as a dot, and the hovered vote's route
+ * as two arrows: producer to it, it to the reward leader.
  */
 const NetworkMap = ({
   geo,
@@ -265,6 +269,17 @@ const NetworkMap = ({
             return out;
           })
         : [];
+    // One dot per leader and role (a leader can recur on a page); the
+    // hovered vote's own.
+    const dots = [
+      ...new Map(
+        [...legs]
+          .sort((a, b) =>
+            a.v.slot === highlight ? 1 : b.v.slot === highlight ? -1 : 0
+          )
+          .map(x => [`${x.leg}:${x.node}`, x])
+      ).values()
+    ];
     // Hosts: each place it ran from, and an arrow per move between two
     // (a move within one place can't be drawn: it's in the list).
     // One arrow per direction of each route (repeats drawn once), keyed
@@ -506,25 +521,31 @@ const NetworkMap = ({
             z: hover === h.region ? 10 : 1
           }))
         },
+        // The hovered vote's route only: its block's trip (producer to
+        // it) and its vote's (it to the reward leader), as arrows in each
+        // role's color.
         {
           type: 'lines',
           coordinateSystem: 'geo',
           zlevel: 1,
           name: 'paths',
           lineStyle: { curveness: 0.2 },
-          emphasis: { disabled: true },
-          tooltip: { show: false },
-          data: legs.map(({ v, leg, c }) => ({
-            name: String(v.slot),
-            coords: leg === 'block' ? [c, me] : [me, c],
-            lineStyle: {
-              color: getThemeColor(DIVERGENCE[v.kind].tone),
-              type: leg === 'vote' ? 'dashed' : 'solid',
-              width: highlight === v.slot ? 3 : 1.5,
-              opacity: highlight == null || highlight === v.slot ? 0.9 : 0.15
-            }
-          }))
+          symbol: ['none', 'arrow'],
+          symbolSize: 9,
+          silent: true,
+          data: legs
+            .filter(x => x.v.slot === highlight)
+            .map(({ leg, c }) => ({
+              coords: leg === 'block' ? [c, me] : [me, c],
+              lineStyle: {
+                color: getThemeColor(ROLE_COLOR[leg]),
+                width: 2.5,
+                opacity: 0.95
+              }
+            }))
         },
+        // Every producer and reward leader of the page's votes, by role;
+        // the hovered vote's on top, the rest faint while one is hovered.
         {
           type: 'scatter',
           coordinateSystem: 'geo',
@@ -533,23 +554,23 @@ const NetworkMap = ({
           emphasis: { disabled: true },
           tooltip: {
             formatter: (p: { dataIndex: number }) => {
-              const x = legs[p.dataIndex];
+              const x = dots[p.dataIndex];
               return x
                 ? `<b>${nameOf(x.node)}</b> · ${x.leg === 'block' ? 'block producer' : 'reward leader'}<br/>Slot ${x.v.slot.toLocaleString()} · ${DIVERGENCE[x.v.kind].label}`
                 : '';
             }
           },
-          data: legs.map(({ v, leg, c }) => ({
+          data: dots.map(({ v, leg, c }) => ({
             name: String(v.slot),
             value: c,
-            // The producer filled, the reward leader a ring.
-            symbol: leg === 'block' ? 'circle' : 'emptyCircle',
-            symbolSize: leg === 'block' ? 7 : 8,
+            symbolSize: highlight === v.slot ? 10 : 7,
             itemStyle: {
-              color: getThemeColor(DIVERGENCE[v.kind].tone),
-              borderWidth: leg === 'vote' ? 2 : 0,
-              opacity: highlight == null || highlight === v.slot ? 1 : 0.25
-            }
+              color: getThemeColor(ROLE_COLOR[leg]),
+              borderColor: getThemeColor('body-bg'),
+              borderWidth: 1,
+              opacity: highlight == null || highlight === v.slot ? 0.95 : 0.3
+            },
+            z: highlight === v.slot ? 10 : 1
           }))
         },
         {
