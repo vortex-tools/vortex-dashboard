@@ -25,6 +25,7 @@ import {
   loadWorld,
   regionOutlines
 } from 'helpers/worldMap';
+import { Dot, LabelSpec, Spot, layoutLabels } from 'helpers/labelLayout';
 import { useAppContext } from 'providers/AppProvider';
 import { ValidatorGeo } from 'providers/vortex-schemas';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -54,6 +55,78 @@ export type RegionHandoff = {
   clusterExcessP50Ms: number | null;
   /** A slot that epoch (the cluster's pace within windows). */
   slotMs: number | null;
+};
+
+/** The route and waypoint labels of the hovered vote, laid out together
+ *  (layoutLabels) once the chart is up: each one's box estimated from its
+ *  text, kept off the others, the dots and the edges. Before that (no
+ *  chart to measure), their first-choice sides stand. */
+type LabelItem = {
+  value: [number, number];
+  pref?: Spot;
+  gap?: number;
+  label: Record<string, unknown> & {
+    formatter?: unknown;
+    fontSize?: number;
+    lineHeight?: number;
+    padding?: number[];
+  };
+};
+const placeLabels = (
+  opt: { series: Array<{ name?: string; data?: unknown }> },
+  inst: ReturnType<ReactEChartsCore['getEchartsInstance']> | undefined,
+  W: number,
+  H: number,
+  me: [number, number] | null
+) => {
+  const items = opt.series
+    .filter(x => x.name === 'legLabels' || x.name === 'turbineHops')
+    .flatMap(x => (x.data as LabelItem[]) ?? []);
+  for (const it of items)
+    it.label = {
+      ...it.label,
+      position: it.pref ?? 'top',
+      distance: it.gap ?? 6
+    };
+  if (!inst || !W || !items.length) return;
+  const px = (c: [number, number]) =>
+    inst.convertToPixel({ geoIndex: 0 }, c) as [number, number] | undefined;
+  const specs: LabelSpec[] = [];
+  const placed: LabelItem[] = [];
+  for (const it of items) {
+    const at = px(it.value);
+    if (!at) continue;
+    const f = it.label.fontSize ?? 10;
+    const lines = String(it.label.formatter ?? '')
+      .replace(/\{b\||\}/g, '')
+      .split('\n');
+    const pad = it.label.padding ?? [2, 5];
+    specs.push({
+      at,
+      w: Math.max(...lines.map(l => l.length)) * f * 0.56 + 2 * pad[1] + 2,
+      h: lines.length * (it.label.lineHeight ?? f + 3) + 2 * pad[0] + 2,
+      gap: it.gap ?? 6,
+      prefs: [it.pref ?? 'top', it.pref === 'bottom' ? 'top' : 'bottom']
+    });
+    placed.push(it);
+  }
+  // The dots under the labels: every labeled point, and it (bigger, it
+  // pulses).
+  const dots: Dot[] = [
+    ...specs.map(s => ({ at: s.at, r: 6 })),
+    ...(me && px(me) ? [{ at: px(me)!, r: 14 }] : [])
+  ];
+  layoutLabels(specs, dots, W, H).forEach((r, i) => {
+    const s = specs[i];
+    placed[i].label = {
+      ...placed[i].label,
+      position: 'inside',
+      align: 'center',
+      verticalAlign: 'middle',
+      distance: 0,
+      offset: [r.center[0] - s.at[0], r.center[1] - s.at[1]]
+    };
+  });
 };
 
 /** Where a map label goes: above its point in the northern hemisphere,
@@ -601,7 +674,7 @@ const NetworkMap = ({
     // whole story.
     const label = (h: RegionHandoff) =>
       `{b|${REGION_NAME[h.region]}} ${signedMs(h.excessP50Ms)}`;
-    return {
+    const opt = {
       animation: false,
       tooltip: { trigger: 'item', confine: true },
       geo: {
@@ -899,107 +972,21 @@ const NetworkMap = ({
                   ];
                 })
             : []
-          ).map((x, _, all) => {
-            // The block's above the producer in the north, below in the
-            // south; the vote's on the outside of its arrow's swing -
-            // below a curve that bends down, above one that bends up.
-            const pref =
+          ).map(x => ({
+            ...x,
+            // Its first-choice side: the block's above the producer in the
+            // north, below in the south; the vote's on the outside of its
+            // arrow's swing. The block's well clear of the producer's
+            // dot, the vote's just off its line. layoutLabels (below)
+            // makes the final call with every label in view.
+            pref:
               x.leg === 'vote'
                 ? x.value[1] < x.chordLat
-                  ? 'bottom'
-                  : 'top'
-                : hemiSide(x.value);
-            // The block's well clear of the producer's dot; the vote's
-            // just off its line.
-            const dist = x.leg === 'vote' ? 5 : 16;
-            // Where the chart is up, place by pixels: each label's box
-            // (estimated from its text) nudged inside the map, and a vote
-            // label that would sit on the block's taken to its other side.
-            const box = (y: typeof x, side: 'top' | 'bottom') => {
-              const p = inst?.convertToPixel({ geoIndex: 0 }, y.value) as
-                | [number, number]
-                | undefined;
-              if (!p) return null;
-              const lines = String(y.label.formatter)
-                .replace(/\{b\||\}/g, '')
-                .split('\n');
-              const w = Math.max(...lines.map(l => l.length)) * 5.6 + 12;
-              const h = lines.length * 13 + 6;
-              const d = y.leg === 'vote' ? 5 : 16;
-              const top = side === 'top' ? p[1] - d - h : p[1] + d;
-              const left = p[0] - w / 2;
-              // Kept 4 px inside the chart's sides.
-              const W = width ?? 0;
-              const dx =
-                W && left < 4
-                  ? 4 - left
-                  : W && left + w > W - 4
-                    ? W - 4 - (left + w)
-                    : 0;
-              return { left: left + dx, top, w, h, dx };
-            };
-            const hit = (
-              a: ReturnType<typeof box>,
-              b: ReturnType<typeof box>
-            ) =>
-              !!a &&
-              !!b &&
-              a.left < b.left + b.w &&
-              b.left < a.left + a.w &&
-              a.top < b.top + b.h &&
-              b.top < a.top + a.h;
-            // Off the map's top or bottom edge: the other side.
-            const out = (q: ReturnType<typeof box>) =>
-              !!q && (q.top < 2 || q.top + q.h > height - 2);
-            const edgeFix = (y: typeof x, side: 'top' | 'bottom') => {
-              const flip = side === 'top' ? 'bottom' : 'top';
-              return out(box(y, side)) && !out(box(y, flip)) ? flip : side;
-            };
-            let pos: 'top' | 'bottom' = edgeFix(x, pref);
-            let shift = 0;
-            const block = all.find(y => y.leg === 'block');
-            if (x.leg === 'vote' && block && block !== x) {
-              const bb = box(block, edgeFix(block, hemiSide(block.value)));
-              // Clear of the block's label: its preferred side, the other,
-              // then either nudged sideways past it - the first that fits
-              // inside the map.
-              const W = width ?? 0;
-              const tries: Array<['top' | 'bottom', number]> = [];
-              for (const side of [
-                pos,
-                pos === 'top' ? 'bottom' : 'top'
-              ] as const) {
-                const v = box(x, side);
-                if (!v || out(v)) continue;
-                tries.push([side, 0]);
-                if (bb) {
-                  tries.push([side, bb.left + bb.w + 6 - v.left]);
-                  tries.push([side, bb.left - 6 - (v.left + v.w)]);
-                }
-              }
-              const fits = tries.find(([side, sh]) => {
-                const v = box(x, side);
-                if (!v) return false;
-                const moved = { ...v, left: v.left + sh };
-                return (
-                  !hit(moved, bb) &&
-                  (!W || (moved.left >= 2 && moved.left + moved.w <= W - 2))
-                );
-              });
-              if (fits) [pos, shift] = fits;
-            }
-            const mine = box(x, pos);
-            const dxAll = (mine?.dx ?? 0) + shift;
-            return {
-              ...x,
-              label: {
-                ...x.label,
-                position: pos,
-                distance: dist,
-                ...(dxAll ? { offset: [dxAll, 0] } : {})
-              }
-            };
-          })
+                  ? ('bottom' as const)
+                  : ('top' as const)
+                : hemiSide(x.value),
+            gap: x.leg === 'vote' ? 5 : 16
+          }))
         },
         // The hovered block's Turbine waypoints: each continent's root
         // (and a layer-2 relay), labeled with its share of shreds and the
@@ -1036,6 +1023,8 @@ const NetworkMap = ({
                     ) => ({
                       value,
                       detail,
+                      pref: hemiSide(value),
+                      gap: 6,
                       label: {
                         show: true,
                         position: hemiSide(value),
@@ -1187,6 +1176,8 @@ const NetworkMap = ({
         }
       ]
     };
+    placeLabels(opt, inst, width ?? 0, height, me);
+    return opt;
   }, [
     ready,
     viewTick,
