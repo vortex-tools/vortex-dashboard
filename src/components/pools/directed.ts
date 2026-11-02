@@ -65,7 +65,8 @@ const none = (): ByChooser => ({
 });
 
 /** Its directed stake by who chose it: from the sources where the API
- *  lists them, else its breakdown sums, else its directedStake (holders). */
+ *  lists them, else its breakdown sums, else its directedStake (holders;
+ *  it may hold protocol tickets too, but nothing splits them out). */
 export const directedBy = (v: Directed): ByChooser => {
   const out = none();
   if (v.directedSources) {
@@ -95,7 +96,9 @@ export const directedTotal = (v: Directed) => sumBy(directedBy(v));
 
 /** A pool's directed stake by who chose it, from its own sums
  *  (/pools, /pool directed): holders, a protocol's ticket, the pool's own
- *  choices (protocol = adminTarget + poolOwn), matching. */
+ *  choices (protocol = adminTarget + poolOwn), matching. directed.stake
+ *  counts the protocols' tickets too (user + protocolTicket + gauge), so
+ *  holders are what's left of it. */
 export const poolDirectedBy = (p: {
   directed?: {
     stake: number;
@@ -105,7 +108,10 @@ export const poolDirectedBy = (p: {
     bought?: number | null;
   } | null;
 }): ByChooser => ({
-  holders: p.directed?.stake ?? 0,
+  holders: Math.max(
+    0,
+    (p.directed?.stake ?? 0) - (p.directed?.protocolTicket ?? 0)
+  ),
   protocol: p.directed?.protocolTicket ?? 0,
   pool: p.directed?.protocol ?? 0,
   matching: p.directed?.matching ?? 0,

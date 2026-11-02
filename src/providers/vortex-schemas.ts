@@ -3147,7 +3147,7 @@ export const poolSummarySchema = z.object({
   droppedCount: z.number().nullable().optional().catch(null),
   // Curated: who runs it and how it picks validators, and its site.
   // null for pools not curated; absent on older APIs.
-  // Its holder-directed stake (user + gauge); a protocol's ticket
+  // Its directed stake (user + protocolTicket + gauge); a protocol's ticket
   // (protocolTicket); the pool's own choices (protocol = adminTarget +
   // poolOwn); matching. basis 'target' where only targets are published
   // (vSOL). null: a pool without directed staking.
@@ -3232,7 +3232,7 @@ export const poolDetailSchema = z.object({
   fullName: z.string().nullable().catch(null),
   // Curated: who runs it and how it picks validators, and its site.
   // null for pools not curated; absent on older APIs.
-  // Its holder-directed stake (user + gauge); a protocol's ticket
+  // Its directed stake (user + protocolTicket + gauge); a protocol's ticket
   // (protocolTicket); the pool's own choices (protocol = adminTarget +
   // poolOwn); matching. basis 'target' where only targets are published
   // (vSOL). null: a pool without directed staking.
