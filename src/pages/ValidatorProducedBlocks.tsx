@@ -127,18 +127,17 @@ const ValidatorProducedBlocks = () => {
                 </Row>
                 <BlackholeVoters voteKey={recordKey} epoch={epoch} />
                 {(producer || !producerBoard) && (
-                  <SectionCard
-                    title="Leader Slots"
-                    icon="box"
-                    info="Its leader windows (4 slots each), newest first: each slot's share of the online stake its block carried. Plain green is a full block (99.9%+); OK and Poor blocks show their share."
-                  >
-                    <ProducerWindowsTable
-                      voteKey={recordKey}
-                      epoch={epoch}
-                      nodeAddress={identity?.nodeAddress}
-                      current={epoch === currentEpoch}
-                    />
-                  </SectionCard>
+                  <ProducerWindowsTable
+                    voteKey={recordKey}
+                    epoch={epoch}
+                    nodeAddress={identity?.nodeAddress}
+                    current={epoch === currentEpoch}
+                    card={{
+                      title: 'Leader Slots',
+                      icon: 'box',
+                      info: "Its leader windows (4 slots each), newest first: each slot's share of the online stake its block carried. Plain green is a full block (99.9%+); OK and Poor blocks show their share."
+                    }}
+                  />
                 )}
               </div>
             </PageSection>

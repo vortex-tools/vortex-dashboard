@@ -1,3 +1,4 @@
+import SectionCard from 'components/common/SectionCard';
 import Pager from 'components/common/Pager';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import UntrackedState from 'components/common/UntrackedState';
@@ -8,7 +9,14 @@ import {
   productionWindowsKey
 } from 'providers/VortexDataProvider';
 import { ProductionWindows } from 'providers/vortex-schemas';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  ReactNode
+} from 'react';
 import { Form, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 import useLiveWindows, { when } from 'hooks/useLiveWindows';
@@ -126,7 +134,8 @@ const ProducerWindowsTable = ({
   voteKey,
   epoch,
   nodeAddress,
-  current = false
+  current = false,
+  card
 }: {
   voteKey: string;
   epoch: number;
@@ -135,6 +144,8 @@ const ProducerWindowsTable = ({
   /** The current epoch: the window being produced and the next ones on
    *  top, live, and a When column. */
   current?: boolean;
+  /** Draw its card: the filter goes in the card's header. */
+  card?: { title: string; icon: string; info?: string };
 }) => {
   const context = useContext(VortexDataContext);
   const slice = context?.productionWindowsState;
@@ -302,44 +313,65 @@ const ProducerWindowsTable = ({
     current && pageIndex === 0 && filter === 'all'
       ? [...liveWin.live].filter(l => l.firstSlot > newestPlayed).reverse()
       : [];
+  // In its card: the filter in the header; else above the table.
+  const frame = (body: ReactNode, aside?: ReactNode) =>
+    card ? (
+      <SectionCard
+        title={card.title}
+        icon={card.icon}
+        info={card.info}
+        aside={aside}
+      >
+        {body}
+      </SectionCard>
+    ) : (
+      <>
+        {aside && (
+          <div className="d-flex justify-content-end mb-2">{aside}</div>
+        )}
+        {body}
+      </>
+    );
   if (!legacy && playedN === 0 && upcomingN === 0 && !shown.length)
-    return (
+    return frame(
       <p className="fs-9 text-body-tertiary mb-0">
         No leader slots this epoch.
       </p>
     );
-  return (
-    <>
-      <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
-        {upcomingN > 0 && (
-          <span className="fs-9 text-body-tertiary">
-            {upcomingN.toLocaleString()} leader windows still ahead
-            {nextSlot != null && `, next at slot ${nextSlot.toLocaleString()}`}
-          </span>
-        )}
-        <Form.Select
-          size="sm"
-          className="w-auto ms-auto"
-          value={filter}
-          onChange={e => {
-            setFilter(e.target.value as WindowsFilter);
-            setPage(0);
-            setBefores([null]);
-          }}
-          aria-label="Filter leader slots"
-        >
-          <option value="all">All leader slots</option>
-          <option value="issues">Skips or Poor blocks</option>
-          {/* Per kind: filtered locally on a full-list API, by the server
+  const filterSelect = (
+    <Form.Select
+      size="sm"
+      // Into the card header's padding: it doesn't make it taller.
+      style={card ? { margin: '-7px 0' } : undefined}
+      className="w-auto"
+      value={filter}
+      onChange={e => {
+        setFilter(e.target.value as WindowsFilter);
+        setPage(0);
+        setBefores([null]);
+      }}
+      aria-label="Filter leader slots"
+    >
+      <option value="all">All leader slots</option>
+      <option value="issues">Skips or Poor blocks</option>
+      {/* Per kind: filtered locally on a full-list API, by the server
               once it reports per-kind counts. */}
-          {(legacy || first?.poorWindows !== undefined) && (
-            <>
-              <option value="poor">Poor blocks only</option>
-              <option value="skipped">Skipped slots only</option>
-            </>
-          )}
-        </Form.Select>
-      </div>
+      {(legacy || first?.poorWindows !== undefined) && (
+        <>
+          <option value="poor">Poor blocks only</option>
+          <option value="skipped">Skipped slots only</option>
+        </>
+      )}
+    </Form.Select>
+  );
+  return frame(
+    <>
+      {upcomingN > 0 && (
+        <p className="fs-9 text-body-tertiary mb-2">
+          {upcomingN.toLocaleString()} leader windows still ahead
+          {nextSlot != null && `, next at slot ${nextSlot.toLocaleString()}`}
+        </p>
+      )}
       <Table
         responsive
         size="sm"
@@ -503,7 +535,8 @@ const ProducerWindowsTable = ({
           }
         />
       )}
-    </>
+    </>,
+    filterSelect
   );
 };
 
