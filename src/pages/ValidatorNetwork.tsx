@@ -228,11 +228,14 @@ const ValidatorNetwork = () => {
   const views = (
     [
       ['handoffs', 'Leader handoffs', handoffs.length > 0],
-      ['divergent', 'Divergent votes', true],
+      // Only with some (once its votes have loaded).
+      ['divergent', 'Divergent votes', votes.length > 0],
       ['hosts', 'Hosts', moves.length > 0]
     ] as Array<[PageView, string, boolean]>
   ).filter(([, , has]) => has);
-  const view: PageView = views.some(([k]) => k === mode) ? mode : views[0][0];
+  const view: PageView = views.some(([k]) => k === mode)
+    ? mode
+    : (views[0]?.[0] ?? 'handoffs');
   const mapMode: MapMode = view;
   const isVotes = mapMode === 'divergent';
   // The tab's votes (skipped blocks or missed votes), in the table's
@@ -512,9 +515,7 @@ const ValidatorNetwork = () => {
               {isVotes &&
                 (tabVotes.length === 0 ? (
                   <p className="fs-9 text-body-tertiary mt-2 mb-0">
-                    {!timeline
-                      ? 'Loading its votes…'
-                      : 'No divergent votes this epoch: every vote agreed with the chain (offline runs aside).'}
+                    {!timeline ? 'Loading its votes…' : 'No divergent votes.'}
                   </p>
                 ) : (
                   <>
