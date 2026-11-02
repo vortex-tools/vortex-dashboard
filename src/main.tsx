@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import AppProvider from 'providers/AppProvider';
 import { RouterProvider } from 'react-router';
-import { router } from 'Routes';
+import { prefetchPages, router } from 'Routes';
 import { VortexDataProvider } from 'providers/VortexDataProvider';
 import { IS_MOCK_API } from 'helpers/apiEndpoint';
 import { reloadForNewBuild, settleAfterBoot } from 'helpers/chunkReload';
@@ -50,3 +50,9 @@ if (import.meta.env.VITE_DEPLOY_ENV === 'staging' && IS_MOCK_API)
     .catch(() => {})
     .finally(render);
 else render();
+
+// Once the first page is up, fetch the other pages' code in the
+// background, so moving between them never waits on a download.
+window.addEventListener('load', () => setTimeout(prefetchPages, 1500), {
+  once: true
+});

@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { ComponentType, lazy } from 'react';
 import RouteError from 'pages/error/RouteError';
 import MainLayout from 'layouts/MainLayout';
 import {
@@ -13,46 +13,75 @@ import Error404 from 'pages/error/Error404';
 import App from 'App';
 import TowerGate from 'components/common/TowerGate';
 import Home from 'pages/Home';
+import { reportNavigation } from 'components/layout/NavProgress';
 
-// Every page but Home loads on first visit (its own chunk): Home is the
-// usual landing and stays in the main bundle. MainLayout's Suspense
-// shows while one loads.
-const ValidatorEarningsTab = lazy(() => import('pages/ValidatorEarningsTab'));
-const ValidatorFees = lazy(() => import('pages/ValidatorFees'));
-const ValidatorStaking = lazy(() => import('pages/ValidatorStaking'));
-const VoteHistory = lazy(() => import('pages/VoteHistory'));
-const ClusterVoteStats = lazy(() => import('pages/ClusterVoteStats'));
-const IncomeLeaderboard = lazy(() => import('pages/IncomeLeaderboard'));
-const CompareVoting = lazy(() => import('pages/CompareVoting'));
-const VotingLeaderboard = lazy(() => import('pages/VotingLeaderboard'));
-const ValidatorOverview = lazy(() => import('pages/ValidatorOverview'));
-const VoteStats = lazy(() => import('pages/VoteStats'));
-const Usage = lazy(() => import('pages/Usage'));
-const ConsensusLeaderboard = lazy(() => import('pages/ConsensusLeaderboard'));
-const LiveConsensus = lazy(() => import('pages/LiveConsensus'));
-const ConsensusRecordRedirect = lazy(
+// Every page but Home is its own chunk: Home is the usual landing and
+// stays in the main bundle. They're all fetched in the background once the
+// app is up (prefetchPages, from main.tsx), so moving between pages doesn't
+// wait on a download - the page shows at once, in its own loading state.
+// MainLayout's Suspense covers a page reached before its chunk is in.
+type PageModule = { default: ComponentType };
+const pageLoads: Array<() => Promise<PageModule>> = [];
+/** React.lazy over a once-only load, which prefetchPages can start early. */
+const page = (load: () => Promise<PageModule>) => {
+  let started: Promise<PageModule> | null = null;
+  const once = () => (started ??= load());
+  pageLoads.push(once);
+  return lazy(once);
+};
+
+/** Fetch every page's chunk, one at a time, in the browser's idle time. */
+export const prefetchPages = () => {
+  const idle = (f: () => void) =>
+    'requestIdleCallback' in window
+      ? window.requestIdleCallback(f, { timeout: 4000 })
+      : setTimeout(f, 200);
+  const next = (i: number) => {
+    if (i >= pageLoads.length) return;
+    idle(() => {
+      pageLoads[i]()
+        .catch(() => undefined)
+        .finally(() => next(i + 1));
+    });
+  };
+  next(0);
+};
+const ValidatorEarningsTab = page(() => import('pages/ValidatorEarningsTab'));
+const ValidatorFees = page(() => import('pages/ValidatorFees'));
+const ValidatorStaking = page(() => import('pages/ValidatorStaking'));
+const VoteHistory = page(() => import('pages/VoteHistory'));
+const ClusterVoteStats = page(() => import('pages/ClusterVoteStats'));
+const IncomeLeaderboard = page(() => import('pages/IncomeLeaderboard'));
+const CompareVoting = page(() => import('pages/CompareVoting'));
+const VotingLeaderboard = page(() => import('pages/VotingLeaderboard'));
+const ValidatorOverview = page(() => import('pages/ValidatorOverview'));
+const VoteStats = page(() => import('pages/VoteStats'));
+const Usage = page(() => import('pages/Usage'));
+const ConsensusLeaderboard = page(() => import('pages/ConsensusLeaderboard'));
+const LiveConsensus = page(() => import('pages/LiveConsensus'));
+const ConsensusRecordRedirect = page(
   () => import('pages/ConsensusRecordRedirect')
 );
-const ValidatorDivergentVotes = lazy(
+const ValidatorDivergentVotes = page(
   () => import('pages/ValidatorDivergentVotes')
 );
-const ValidatorProducedBlocks = lazy(
+const ValidatorProducedBlocks = page(
   () => import('pages/ValidatorProducedBlocks')
 );
-const ValidatorNetwork = lazy(() => import('pages/ValidatorNetwork'));
-const SlotPage = lazy(() => import('pages/SlotPage'));
-const Validators = lazy(() => import('pages/Validators'));
-const ClientVersions = lazy(() => import('pages/ClientVersions'));
-const FeatureGatePage = lazy(() => import('pages/FeatureGatePage'));
-const FeatureGates = lazy(() => import('pages/FeatureGates'));
-const SimdPage = lazy(() => import('pages/SimdPage'));
-const StakePool = lazy(() => import('pages/StakePool'));
-const StakePools = lazy(() => import('pages/StakePools'));
-const Activity = lazy(() => import('pages/Activity'));
-const Simds = lazy(() => import('pages/Simds'));
-const Governance = lazy(() => import('pages/Governance'));
-const GovernanceProposal = lazy(() => import('pages/GovernanceProposal'));
-const Decentralization = lazy(() => import('pages/Decentralization'));
+const ValidatorNetwork = page(() => import('pages/ValidatorNetwork'));
+const SlotPage = page(() => import('pages/SlotPage'));
+const Validators = page(() => import('pages/Validators'));
+const ClientVersions = page(() => import('pages/ClientVersions'));
+const FeatureGatePage = page(() => import('pages/FeatureGatePage'));
+const FeatureGates = page(() => import('pages/FeatureGates'));
+const SimdPage = page(() => import('pages/SimdPage'));
+const StakePool = page(() => import('pages/StakePool'));
+const StakePools = page(() => import('pages/StakePools'));
+const Activity = page(() => import('pages/Activity'));
+const Simds = page(() => import('pages/Simds'));
+const Governance = page(() => import('pages/Governance'));
+const GovernanceProposal = page(() => import('pages/GovernanceProposal'));
+const Decentralization = page(() => import('pages/Decentralization'));
 
 // Inlined at build time. Staging-only pages are absent from the production
 // route table (and tree-shaken out of its bundle).
@@ -342,5 +371,7 @@ const routes: RouteObject[] = [
 ];
 
 export const router = createBrowserRouter(routes);
+// The navigation bar's target, as soon as the router has it.
+router.subscribe(state => reportNavigation(state.location.key));
 
 export default routes;
