@@ -46,7 +46,8 @@ type Item = {
  *
  * 1. a restart post while the cluster is halted (or posted this epoch,
  *    not yet finished);
- * 2. an urgent upgrade or downgrade posted this epoch or the last;
+ * 2. a security post or an urgent upgrade or downgrade, posted this
+ *    epoch or the last;
  * 3. a feature gate activating at the next epoch boundary, or activated
  *    this epoch (from the gates themselves, so it shows with or without
  *    a post);
@@ -110,6 +111,9 @@ const HomeAnnouncements = () => {
       if (a.kind === 'restart') {
         if (a.restart?.finished !== true && (!!halt || postedThisEpoch(a)))
           out.push(post(a, 0));
+      } else if (a.kind === 'security') {
+        // A vulnerability to patch: right after a restart.
+        if (postedSinceLastEpoch(a)) out.push(post(a, 1));
       } else if (
         (a.kind === 'upgrade' || a.kind === 'downgrade') &&
         // Replaced by a later post for the same client.

@@ -10,8 +10,13 @@ export const ANNOUNCEMENT_KIND: Record<string, string> = {
   upgrade: 'Upgrade',
   downgrade: 'Downgrade',
   feature: 'Feature activation',
+  security: 'Security',
   other: 'Announcement'
 };
+
+/** A CVE's public record. */
+export const cveUrl = (id: string) =>
+  `https://www.cve.org/CVERecord?id=${encodeURIComponent(id)}`;
 
 /** "Oct 31, 12:07 AM" (the year too when it isn't this one). */
 export const postedWhen = (unixS: number) => {
@@ -185,6 +190,19 @@ const AnnouncementsTable = ({
                   ))}
                 </>
               )}
+              {(a.cves?.length ?? 0) > 0 && (
+                <>
+                  {' · '}
+                  {a.cves!.map((id, i) => (
+                    <span key={id}>
+                      {i > 0 && ', '}
+                      <a href={cveUrl(id)} target="_blank" rel="noreferrer">
+                        {id} ↗
+                      </a>
+                    </span>
+                  ))}
+                </>
+              )}
             </td>
             <td className="text-end text-nowrap">
               {a.url ? (
@@ -213,7 +231,8 @@ export const summary = (a: Announcement) =>
     (a.versions.length > 0 || a.minVersions.length > 0) && versionsText(a),
     candidateText(a),
     a.epochs.length > 0 &&
-      `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`
+      `epoch ${a.epochs.map(e => e.toLocaleString()).join(', ')}`,
+    (a.cves?.length ?? 0) > 0 && a.cves!.join(', ')
   ]
     .filter(Boolean)
     .join(' · ');

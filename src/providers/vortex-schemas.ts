@@ -2588,8 +2588,11 @@ const restartFactsSchema = z.object({
 export type RestartFacts = z.infer<typeof restartFactsSchema>;
 
 const announcementFactsSchema = {
-  // 'restart' | 'upgrade' | 'feature' | 'other'
+  // 'restart' | 'upgrade' | 'downgrade' | 'feature' | 'security' (a
+  // vulnerability to patch or mitigate) | 'other'
   kind: z.string().catch('other'),
+  // CVE ids the post (or a page it links) names. Absent on older APIs.
+  cves: z.array(z.string()).optional().catch([]),
   restart: restartFactsSchema.nullable().catch(null),
   versions: z.array(z.string()).catch([]),
   minVersions: z.array(z.string()).catch([]),
