@@ -225,12 +225,14 @@ const ValidatorNetwork = () => {
     route: string;
   } | null>(null);
   // The views it has data for.
+  // A view counts until its data says otherwise: while it loads, the
+  // picked view stays (dropping to another and coming back looked like a
+  // snap back to Leader handoffs).
   const views = (
     [
-      ['handoffs', 'Leader handoffs', handoffs.length > 0],
-      // Only with some (once its votes have loaded).
-      ['divergent', 'Divergent votes', votes.length > 0],
-      ['hosts', 'Hosts', moves.length > 0]
+      ['handoffs', 'Leader handoffs', !producerBoard || handoffs.length > 0],
+      ['divergent', 'Divergent votes', !timeline || votes.length > 0],
+      ['hosts', 'Hosts', !hostData || moves.length > 0]
     ] as Array<[PageView, string, boolean]>
   ).filter(([, , has]) => has);
   const view: PageView = views.some(([k]) => k === mode)
@@ -381,7 +383,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain - a skip on a block that made it (or notarize on one that didn't), or no vote counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
                   <ButtonGroup
@@ -721,7 +723,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Divergent Votes by Region"
               icon="git-branch"
-              info="Its votes that disagreed with the chain, by where that slot's leader was, of the slots it voted on (runs of 32+ consecutive misses, when it wasn't voting at all, left out). Skipped blocks: it voted skip on a block that made the chain (or notarized one that didn't) - most often a block that reached it late. Missed votes: no vote of its was counted - not cast, or too late for the reward certificate."
+              info="Its votes that disagreed with the chain, by where that slot's leader was, of the slots it voted on (runs of 32+ consecutive misses, when it wasn't voting at all, left out). Skipped blocks: it voted skip on a block the cluster notarized - most often a block that reached it late. (Notarizing a block the chain skipped did no harm, and isn't counted.) Missed votes: no vote of its was counted - not cast, or too late for the reward certificate."
             >
               {!byRegion ? (
                 <DelayedSpinner loading label="Loading its votes…" />
@@ -738,7 +740,7 @@ const ValidatorNetwork = () => {
                         <th className="text-end">Slots</th>
                         <th
                           className="text-end"
-                          title="It voted skip on a block that made the chain (or notarize on one that didn't)"
+                          title="It voted skip on a block the cluster notarized"
                         >
                           Skipped blocks
                         </th>

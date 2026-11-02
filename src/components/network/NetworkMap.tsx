@@ -242,6 +242,11 @@ const NetworkMap = ({
   const view = viewRef.current;
 
   const option = useMemo(() => {
+    // Dark: the land and its borders as white over the warm card - a clear
+    // step off it that keeps its warmth.
+    const mix = (a: number) => `rgba(255, 255, 255, ${a})`;
+    const land = isDark ? mix(0.07) : getThemeColor('gray-100');
+    const border = isDark ? mix(0.18) : getThemeColor('border-color');
     const me = coord(geo.get(self));
     const tone = (excess: number | null, cluster: number | null) =>
       getThemeColor(delayTone(excess, cluster));
@@ -353,7 +358,9 @@ const NetworkMap = ({
                 color:
                   hover === r
                     ? tone(h.excessP50Ms, h.clusterExcessP50Ms)
-                    : getThemeColor(isDark ? 'gray-600' : 'gray-400'),
+                    : isDark
+                      ? mix(0.32)
+                      : getThemeColor('gray-400'),
                 width: hover === r ? 1.5 : 1,
                 opacity: 1
               }
@@ -420,13 +427,12 @@ const NetworkMap = ({
         layoutSize:
           width != null ? Math.min(width - 8, (height - 8) * ASPECT) : '100%',
         itemStyle: {
-          areaColor: getThemeColor(isDark ? 'body-highlight-bg' : 'gray-100'),
+          // Dark: land a step lighter than the card, borders lighter still
+          // (the light palette's subtle tones vanish on a dark card).
+          areaColor: land,
           // Handoffs: no borders between countries, so the regions'
           // outlines read as the shapes.
-          borderColor:
-            mode === 'handoffs'
-              ? getThemeColor(isDark ? 'body-highlight-bg' : 'gray-100')
-              : getThemeColor('border-color'),
+          borderColor: mode === 'handoffs' ? land : border,
           borderWidth: 0.5
         },
         emphasis: { disabled: true }
@@ -815,9 +821,18 @@ const NetworkMap = ({
             },
             // Off a leader dot or a host arrow: its highlight goes too (it
             // only lasts while the pointer is on it).
-            mouseout: (p: { seriesName?: string }) => {
+            mouseout: (p: { seriesName?: string; componentType?: string }) => {
               if (p.seriesName === 'leaders') onHighlight(null);
               else if (p.seriesName === 'moves') onHighlightMove?.(null);
+              // Off a region's countries, label or line: no stickiness
+              // (moving to another of its countries hovers it again).
+              else if (
+                p.componentType === 'geo' ||
+                p.seriesName === 'lines' ||
+                p.seriesName === 'labels' ||
+                p.seriesName === 'groups'
+              )
+                setHover(null);
             },
             globalout: () => {
               setHover(null);

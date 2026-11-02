@@ -33,9 +33,9 @@ export const regionOf = (g: ValidatorGeo | undefined): Region => {
         : 'other';
 };
 
-/** Its divergent votes in two kinds: a vote that disagreed with the chain
- *  (skip on a block that made it, notarize on one that didn't), and no
- *  vote counted at all. */
+/** Its divergent votes in two kinds: a skip on a notarized block, and no
+ *  vote counted at all (a notarize on a skipped block did no harm, and
+ *  isn't counted on the Network tab). */
 export const SKIPPED_KINDS = new Set<Divergence>([
   'late-skip',
   'notarized-skipped'
@@ -79,7 +79,7 @@ export const DIVERGENCE: Record<
   Divergence,
   { label: string; tone: 'danger' | 'warning' | 'info' }
 > = {
-  'late-skip': { label: 'Voted skip on a block', tone: 'danger' },
+  'late-skip': { label: 'Voted skip on a notarized block', tone: 'danger' },
   'missed-block': { label: 'Missed a block', tone: 'danger' },
   'missed-skip': { label: 'Missed a skip', tone: 'warning' },
   missed: { label: 'Missed', tone: 'warning' },
@@ -108,7 +108,13 @@ export const divergentVotes = (
   return divergent
     .filter(d => {
       const i = d.slot - firstSlot;
-      return i >= 0 && i < codes.length && !offline[i];
+      return (
+        i >= 0 &&
+        i < codes.length &&
+        !offline[i] &&
+        // Notarizing a block the chain skipped did no harm: not shown.
+        d.kind !== 'notarized-skipped'
+      );
     })
     .map(d => ({
       ...d,
@@ -140,6 +146,8 @@ export const divergenceByLeader = (
   for (const d of divergent) {
     const i = d.slot - firstSlot;
     if (i < 0 || i >= codes.length || offline[i]) continue;
+    // Notarizing a block the chain skipped did no harm: not counted.
+    if (d.kind === 'notarized-skipped') continue;
     const leader = leaderOf(d.slot);
     if (!leader) continue;
     const s = of(leader);
