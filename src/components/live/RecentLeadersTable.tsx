@@ -15,8 +15,8 @@ const mean = (a: number[]) =>
 /**
  * The latest leader windows up to the playhead, newest first: the
  * leader, where it is, and its four slots as dots colored like the
- * legend (each links to its slot) - with its handoff from the previous
- * leader (by block times; links to its Network tab), the window's mean
+ * legend (each links to its slot) - with its handoff to the next leader
+ * (by block times; links to its Network tab), the window's mean
  * notarize stake and finalization. A window's row appears when the
  * playhead enters it and its dots fill as each slot plays.
  */
@@ -63,7 +63,7 @@ const RecentLeadersTable = ({
           <th
             className="text-end"
             style={{ width: '6rem' }}
-            title={`From the previous leader's last block to this leader's first, by the two producers' block times: a slot (~200 ms) plus the network between them. * when this leader's first slot was skipped (the gap includes it).${NETWORK_TAB ? " Each links to the leader's Network tab." : ''}`}
+            title={`From this leader's last block to the next leader's first, by the two producers' block times: a slot (~200 ms) plus the network between them. * when a slot either side was skipped (the gap includes it).${NETWORK_TAB ? " Each links to the leader's Network tab." : ''}`}
           >
             Handoff
           </th>
@@ -98,7 +98,23 @@ const RecentLeadersTable = ({
               .map(i => i.votes?.notarStakePpb)
               .filter((v): v is number => v != null)
           );
-          const handoff = windowHandoff(first, infos);
+          // Its handoff to the next leader, once the next window has
+          // played into its first block; none when it leads that too.
+          const nextFirst = first + WINDOW;
+          const nextLeader = Array.from(
+            { length: WINDOW },
+            (_, k) => infos.get(nextFirst + k)?.leader
+          ).find(l => l != null);
+          const sameLeader = !!leader && nextLeader === leader;
+          const handoff =
+            !sameLeader && playhead >= nextFirst
+              ? windowHandoff(nextFirst, infos)
+              : null;
+          const skipped =
+            !!handoff && (handoff.afterSkip || handoff.beforeSkip);
+          const handoffTitle = handoff
+            ? `${Math.round(handoff.ms)} ms to the next leader${nextLeader ? `, ${nameOf(nextLeader)}` : ''}${skipped ? ' (a skipped slot in between)' : ''}`
+            : '';
           const lagMs = mean(
             played
               .map(i => i.finalization?.lagMs)
@@ -150,9 +166,9 @@ const RecentLeadersTable = ({
                         ? 'text-warning-emphasis'
                         : undefined
                     }
-                    title={`${Math.round(handoff.ms)} ms from the previous leader's last block${handoff.afterSkip ? ', its first slot skipped' : ''}`}
+                    title={handoffTitle}
                   >
-                    {Math.round(handoff.ms)} ms{handoff.afterSkip ? '*' : ''}
+                    {Math.round(handoff.ms)} ms{skipped ? '*' : ''}
                   </span>
                 ) : handoff && leader ? (
                   <Link
@@ -162,10 +178,17 @@ const RecentLeadersTable = ({
                         ? 'text-warning-emphasis'
                         : 'text-reset'
                     }
-                    title={`${Math.round(handoff.ms)} ms from the previous leader's last block${handoff.afterSkip ? ', its first slot skipped' : ''} - its Network tab`}
+                    title={`${handoffTitle} - its Network tab`}
                   >
-                    {Math.round(handoff.ms)} ms{handoff.afterSkip ? '*' : ''}
+                    {Math.round(handoff.ms)} ms{skipped ? '*' : ''}
                   </Link>
+                ) : sameLeader ? (
+                  <span
+                    className="text-body-tertiary"
+                    title="It leads the next window too: no handoff"
+                  >
+                    —
+                  </span>
                 ) : (
                   '…'
                 )}

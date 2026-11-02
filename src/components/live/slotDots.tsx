@@ -73,13 +73,14 @@ export const SlotDotLegend = () => (
  * A leader window's handoff, live: from the previous window's last block
  * to this window's first, by the producers' own block times (footer
  * producerTimeNanos; a clamped time - a clock off - doesn't count).
- * `afterSkip`: this window's first slot was skipped, so the gap includes
- * that skip. null until both blocks are in.
+ * `afterSkip`: this window's first slot was skipped, `beforeSkip`: the
+ * previous window's last - either way the gap includes the skip. null
+ * until both blocks are in.
  */
 export const windowHandoff = (
   first: number,
   infos: Map<number, SlotInfo | null>
-): { ms: number; afterSkip: boolean } | null => {
+): { ms: number; afterSkip: boolean; beforeSkip: boolean } | null => {
   const time = (s: number) => {
     const f = infos.get(s)?.footer;
     return infos.get(s)?.outcome === 'block' &&
@@ -89,11 +90,11 @@ export const windowHandoff = (
       : null;
   };
   let prev: number | null = null;
-  for (let s = first - 1; s >= first - WINDOW && prev == null; s--)
-    prev = time(s);
+  let j = 0;
+  for (; j < WINDOW && prev == null; j++) prev = time(first - 1 - j);
   let next: number | null = null;
   let k = 0;
   for (; k < WINDOW && next == null; k++) next = time(first + k);
   if (prev == null || next == null) return null;
-  return { ms: (next - prev) / 1e6, afterSkip: k > 1 };
+  return { ms: (next - prev) / 1e6, afterSkip: k > 1, beforeSkip: j > 1 };
 };
