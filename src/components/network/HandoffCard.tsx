@@ -40,6 +40,35 @@ const about = (s: Side) =>
 const slow = (mine: Num, theirs: Num) =>
   delayTone(mine, theirs) === 'danger' ? ' text-danger' : '';
 
+/** One direction's cell: its overhead (red when 40+ ms over the
+ *  cluster's), the cluster's on the same route under it; the median,
+ *  count, 90th percentile and floor on hover. */
+const OverheadCell = ({
+  mine,
+  cluster,
+  median,
+  side
+}: {
+  mine: Num;
+  cluster: Num;
+  median: Num;
+  side: Side;
+}) => (
+  <td
+    className="text-end font-monospace"
+    title={[median != null && `median ${ms(median)}`, about(side)]
+      .filter(Boolean)
+      .join(' · ')}
+  >
+    <span className={slow(mine, cluster).trim() || undefined}>
+      {signedMs(mine)}
+    </span>
+    <span className="d-block fs-10 fw-normal text-body-tertiary">
+      cluster {signedMs(cluster)}
+    </span>
+  </td>
+);
+
 /**
  * Its handoffs for an epoch in one phone-width table: all of them, then by
  * where the other leader was - the median from the previous leader, its
@@ -130,7 +159,7 @@ const HandoffCard = ({
     <SectionCard
       title="Leader Handoffs"
       icon="shuffle"
-      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the overhead (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the direct floor (the distance straight between the two) on both sides, as only the cluster has notarization floors by region - so these run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
+      info="To it: its first block after the previous leader's last. From it: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the overhead (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the direct floor (the distance straight between the two) on both sides, as only the cluster has notarization floors by region - so these run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
@@ -138,53 +167,38 @@ const HandoffCard = ({
             <th />
             <th
               className="text-end"
-              title="Median handoff from the previous leader"
+              title="Handoffs from the previous leader to it: its overhead (the median less its first block and the floor - notarization for All, direct by region), the cluster's on the same route below"
             >
-              Median
-            </th>
-            <th
-              className="text-end"
-              title="Its overhead from the previous leader: the median less its first block and the floor (notarization for All, direct by region)"
-            >
-              Overhead
+              To it
             </th>
             {hasOut && (
-              <th className="text-end" title="Its overhead to the next leader">
-                To next
+              <th
+                className="text-end"
+                title="Handoffs from it to the next leader: its overhead, the cluster's on the same route below"
+              >
+                From it
               </th>
             )}
-            <th
-              className="text-end text-body-tertiary"
-              title="The cluster's overhead on the same route: from that region to this validator's"
-            >
-              Cluster
-            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map(r => (
             <tr key={r.key} className={r.key === 'all' ? 'fw-semibold' : ''}>
               <td className="text-nowrap">{r.label}</td>
-              <td className="text-end font-monospace" title={about(r.inSide)}>
-                {ms(r.median)}
-              </td>
-              <td
-                className={`text-end font-monospace${slow(r.extraIn, r.clusterExtra)}`}
-                title={about(r.inSide)}
-              >
-                {signedMs(r.extraIn)}
-              </td>
+              <OverheadCell
+                mine={r.extraIn}
+                cluster={r.clusterExtra}
+                median={r.median}
+                side={r.inSide}
+              />
               {hasOut && (
-                <td
-                  className={`text-end font-monospace${slow(r.extraOut, r.clusterOut ?? r.clusterExtra)}`}
-                  title={about(r.outSide)}
-                >
-                  {signedMs(r.extraOut)}
-                </td>
+                <OverheadCell
+                  mine={r.extraOut}
+                  cluster={r.clusterOut ?? r.clusterExtra}
+                  median={r.outSide?.p50Ms}
+                  side={r.outSide}
+                />
               )}
-              <td className="text-end font-monospace text-body-tertiary fw-normal">
-                {signedMs(r.clusterExtra)}
-              </td>
             </tr>
           ))}
         </tbody>

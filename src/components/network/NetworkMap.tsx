@@ -615,8 +615,10 @@ const NetworkMap = ({
           name: 'legLabels',
           silent: true,
           symbolSize: 0,
-          labelLayout: { moveOverlap: 'shiftY' },
-          data: me
+          // Two labels set apart: the higher anchor's above it, the
+          // lower's below - so they never sit on each other, however
+          // close the two routes run.
+          data: (me
             ? legs
                 .filter(x => x.v.slot === highlight)
                 .flatMap(({ leg, c }) => {
@@ -659,7 +661,7 @@ const NetworkMap = ({
                       value: curveMid(from, to, 0.2),
                       label: {
                         show: true,
-                        position: 'inside',
+                        distance: 4,
                         formatter: text,
                         fontSize: 10,
                         lineHeight: 13,
@@ -676,6 +678,16 @@ const NetworkMap = ({
                   ];
                 })
             : []
+          ).map((x, _, all) => {
+            const higher = all.every(y => y === x || x.value[1] >= y.value[1]);
+            return {
+              ...x,
+              label: {
+                ...x.label,
+                position: all.length < 2 ? 'inside' : higher ? 'top' : 'bottom'
+              }
+            };
+          })
         },
         // Every producer and reward leader of the page's votes, by role;
         // the hovered vote's on top, the rest faint while one is hovered.
