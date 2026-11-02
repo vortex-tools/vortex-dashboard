@@ -749,11 +749,15 @@ export const validatorSchema = z.object({
   name: validatorNameSchema,
   // Its vote account's first epoch with stake (as /validators/status's),
   // so validators with the same name can be told apart. Requested.
-  firstEpoch: z.number().nullable().optional().catch(null)
+  firstEpoch: z.number().nullable().optional().catch(null),
+  // Its activated stake this epoch (lamports); absent on older APIs.
+  activatedStake: z.number().nullable().optional().catch(null)
 });
 
 export const validatorsResponseSchema = z.object({
-  validators: z.array(validatorSchema)
+  validators: z.array(validatorSchema),
+  // Every validator's activatedStake summed (share = one's / this).
+  totalActivatedStake: z.number().nullable().optional().catch(null)
 });
 
 export type Validator = z.infer<typeof validatorSchema>;

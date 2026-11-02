@@ -63,17 +63,29 @@ const ValidatorSearch = ({
 
   const showDropdown = focused && query.trim().length > 0;
 
-  // Each one's share of stake, from the status summary - fetched the first
-  // time the search is used (once a session, shared with the Validators
-  // page), and shown when it's in.
+  // Each one's share of stake: from the directory where it has stake
+  // (vortex-data 85811ce); else the status summary, fetched the first time
+  // the search is used (once a session, shared with the Validators page).
+  const directory = context?.validatorDirectoryState.validators;
+  const directoryTotal = useMemo(
+    () =>
+      directory?.some(v => v.activatedStake != null)
+        ? directory.reduce((a, v) => a + (v.activatedStake ?? 0), 0)
+        : null,
+    [directory]
+  );
   const fetchSummary = context?.validatorStatusSummaryState.fetchData;
   useEffect(() => {
-    if (focused) fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
-  }, [focused, fetchSummary]);
+    if (focused && !directoryTotal)
+      fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
+  }, [focused, directoryTotal, fetchSummary]);
   const summary = context?.validatorStatusSummaryState.data.get(
     VALIDATOR_STATUS_SUMMARY_KEY
   );
   const shareOf = useMemo(() => {
+    if (directoryTotal)
+      return (v: Validator) =>
+        v.activatedStake != null ? v.activatedStake / directoryTotal : null;
     if (!summary) return null;
     const total = summary.validators.reduce((a, v) => a + v.activatedStake, 0);
     const by = new Map<string, number>();
@@ -84,7 +96,7 @@ const ValidatorSearch = ({
       }
     return (v: Validator) =>
       by.get(v.voteAddress ?? '') ?? by.get(v.nodeAddress) ?? null;
-  }, [summary]);
+  }, [summary, directoryTotal]);
 
   const go = (validator: Validator) => {
     if (onSelect) {
