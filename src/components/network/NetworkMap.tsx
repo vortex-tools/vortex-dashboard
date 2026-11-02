@@ -867,7 +867,7 @@ const NetworkMap = ({
                           return hop(
                             p.root,
                             `{b|${city ?? REGION_NAME[p.region]}} +${Math.max(0, added)} ms`,
-                            `<b>${p.city ?? REGION_NAME[p.region]}</b> · a Turbine root (${REGION_NAME[p.region]})<br/>${Math.round(p.share * 100)}% of shreds start here (its share of stake)<br/>Producer → here ${legMs(c, p.root)} ms · here → ${via ? 'the relay' : 'it'} ${legMs(p.root, end)} ms: +${Math.max(0, added)} ms over the straight line`
+                            `<b>${p.city ?? REGION_NAME[p.region]}</b> · Turbine hop: a root (${REGION_NAME[p.region]})<br/>${Math.round(p.share * 100)}% of shreds start here (its share of stake)<br/>Producer → here ${legMs(c, p.root)} ms · here → ${via ? 'the relay' : 'it'} ${legMs(p.root, end)} ms: +${Math.max(0, added)} ms over the straight line`
                           );
                         }),
                       ...(via
@@ -875,7 +875,7 @@ const NetworkMap = ({
                             hop(
                               via,
                               '{b|Relay}',
-                              `<b>Relay</b> · layer 2: a layer-1 node passes the shreds on<br/>Relay → it ${legMs(via, me)} ms`
+                              `<b>Relay</b> · Turbine hop, layer 2: a layer-1 node passes the shreds on<br/>Relay → it ${legMs(via, me)} ms`
                             )
                           ]
                         : [])

@@ -724,6 +724,17 @@ const ValidatorNetwork = () => {
                         Reward leader: slot + 8, where its vote had to arrive -
                         solid, a vote is sent straight to it
                       </span>
+                      {turbine && waypoints && (
+                        <span>
+                          <span
+                            className="d-inline-block rounded-circle align-middle me-1 border border-info"
+                            style={{ width: 8, height: 8, borderWidth: 1.5 }}
+                          />
+                          Turbine hop: a root relaying the block&apos;s shreds,
+                          one per continent - its + ms is what that path adds
+                          over the straight line
+                        </span>
+                      )}
                       <span>
                         Hover a row, dot or route to see it; click to keep it.
                       </span>
@@ -731,10 +742,10 @@ const ValidatorNetwork = () => {
                         <Form.Check
                           type="switch"
                           id="network-turbine-waypoints"
-                          className="mb-0"
+                          className="mb-0 fs-10"
                           checked={waypoints}
                           onChange={e => setWaypoints(e.target.checked)}
-                          label="Turbine waypoints"
+                          label="Turbine hops"
                           title="Off: the block's paths as one arrow, labeled with the slowest path's floor"
                         />
                       )}
