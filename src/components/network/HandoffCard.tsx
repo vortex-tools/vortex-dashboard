@@ -126,7 +126,7 @@ const HandoffCard = ({
     <SectionCard
       title="Leader Handoffs"
       icon="shuffle"
-      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff spans the receiving leader's whole slot (~200 ms, building its block) plus the trip between the two, so the extra delay is the median less one slot (the cluster's pace within leader windows) and the network floor (the fibre-speed distance, ~200 km/ms): about 0 is as fast as physics allows. By region: by where the other leader was; the cluster's from that region. Hover a figure for its count, 90th percentile and floor."
+      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff spans the receiving leader's whole slot (~200 ms, building its block) plus the trip between the two, so the extra delay is the median less one slot (the cluster's pace within leader windows) and the network floor: the fibre-speed distance (~200 km/ms) straight between the two. That's a lower bound - the previous leader's block reaches this one through Turbine (relayed shreds), a longer path - so some of the extra delay is Turbine's. By region: by where the other leader was; the cluster's from that region. Hover a figure for its count, 90th percentile and floor."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
