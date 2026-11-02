@@ -34,6 +34,9 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router';
 
+/** Where the map's last-picked view is kept (this browser). */
+const MAP_VIEW_KEY = 'vx-network-map-view';
+
 /** Divergent votes on the map at a time. */
 const VOTES_PAGE = 10;
 /** Host moves listed under the Hosts map. */
@@ -169,7 +172,23 @@ const ValidatorNetwork = () => {
     : undefined;
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState<MapMode>('handoffs');
+  // The map view last picked, kept across validators and visits.
+  const [mode, setModeState] = useState<MapMode>(() => {
+    try {
+      const v = localStorage.getItem(MAP_VIEW_KEY);
+      return v === 'divergent' || v === 'hosts' ? v : 'handoffs';
+    } catch {
+      return 'handoffs';
+    }
+  });
+  const setMode = (m: MapMode) => {
+    setModeState(m);
+    try {
+      localStorage.setItem(MAP_VIEW_KEY, m);
+    } catch {
+      // storage blocked: this page keeps it
+    }
+  };
   // Its host moves (failovers, migrations), for the Hosts view.
   const fetchHosts = context?.hostChangesState.fetchData;
   useEffect(() => {
