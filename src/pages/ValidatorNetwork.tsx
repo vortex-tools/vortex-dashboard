@@ -23,6 +23,8 @@ import {
   turbineEstimate,
   divergenceByLeader,
   clusterExtra,
+  entryOverhead,
+  hasNotarization,
   extraDelay,
   hostMoves,
   routeKey,
@@ -181,28 +183,30 @@ const ValidatorNetwork = () => {
     const slotMs =
       producerBoard?.cluster?.slotDuration?.inWindow?.p50Ms ?? null;
     if (!mine) return [];
-    return REGIONS.filter(r => (mine[r]?.count ?? 0) > 0).map(r => ({
-      region: r,
-      count: mine[r]!.count,
-      p50Ms: mine[r]!.p50Ms,
-      expectedP50Ms: mine[r]!.expectedP50Ms,
-      // Overheads: over the direct floor, less its first block (the
-      // notarization floor isn't recorded by region per producer).
-      excessP50Ms: extraDelay(
-        mine[r]!.excessP50Ms,
-        slotMs,
-        mine[r]!.extraP50Ms
-      ),
-      // The cluster on the same route (r to its region) where the API
-      // has routes.
-      clusterExcessP50Ms: clusterExtra(
-        producerBoard?.cluster?.slotDuration,
-        r,
-        producer?.slotDuration?.region,
+    return REGIONS.filter(r => (mine[r]?.count ?? 0) > 0).map(r => {
+      // Against the notarization floor where its region figures have it,
+      // else the direct one - the cluster's on the same basis.
+      const notarized = hasNotarization(mine[r]);
+      const e = entryOverhead(mine[r], slotMs, notarized);
+      return {
+        region: r,
+        count: mine[r]!.count,
+        p50Ms: mine[r]!.p50Ms,
+        expectedP50Ms: e.floorMs,
+        notarized,
+        excessP50Ms: e.extra,
+        // The cluster on the same route (r to its region) where the API
+        // has routes.
+        clusterExcessP50Ms: clusterExtra(
+          producerBoard?.cluster?.slotDuration,
+          r,
+          producer?.slotDuration?.region,
+          slotMs,
+          notarized
+        ),
         slotMs
-      ),
-      slotMs
-    }));
+      };
+    });
   }, [producer, producerBoard]);
 
   // Its handoffs over the floor per epoch (one request, ~30 epochs).
@@ -431,7 +435,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its overhead - the median handoff less its first block (~144 ms: Agave ends it 56 ms before its slot is up) and the direct network floor (the fibre-speed distance straight between them) - against the cluster's on the same route. By region only the direct floor is recorded per validator, so these run higher than the overall Overhead, which is against the notarization round the next leader waits for: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip), each labeled with its floor (a block's also along its estimated Turbine path). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its overhead - the median handoff less its first block (~144 ms: Agave ends it 56 ms before its slot is up) and the direct network floor (the fibre-speed distance straight between them) - against the cluster's on the same route. Where its region figures have the notarization floor (the round the next leader waits for) they're against it, else the direct floor - then they run higher than the overall Overhead: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip), each labeled with its floor (a block's also along its estimated Turbine path). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 <ButtonGroup
                   size="sm"

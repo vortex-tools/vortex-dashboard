@@ -5,6 +5,8 @@ import {
   REGION_NAME,
   clusterExtra,
   delayTone,
+  entryOverhead,
+  hasNotarization,
   extraDelay,
   handoffExtra,
   signedMs
@@ -142,16 +144,29 @@ const HandoffCard = ({
       // The cluster on the same route: from r to its region (in), from
       // its region to r (out).
       const mine = pace.region;
+      // On the notarization floor where its region figures have it (the
+      // cluster's on the same basis), else the direct one on both sides.
+      const nIn = hasNotarization(i);
+      const nOut = hasNotarization(o);
+      const ein = entryOverhead(i, slotMs, nIn);
+      const eout = entryOverhead(o, slotMs, nOut);
+      const label = (n: boolean) => (n ? 'notarization floor' : 'direct floor');
       return {
         key: r,
         label: REGION_NAME[r],
         median: i?.p50Ms,
-        inSide: i ?? null,
-        extraIn: extraDelay(i?.excessP50Ms, slotMs, i?.extraP50Ms),
-        outSide: o ?? null,
-        extraOut: extraDelay(o?.excessP50Ms, slotMs, o?.extraP50Ms),
-        clusterExtra: clusterExtra(cluster, r, mine, slotMs),
-        clusterOut: mine ? clusterExtra(cluster, mine, r, slotMs) : undefined
+        inSide: i
+          ? { ...i, expectedP50Ms: ein.floorMs, floorLabel: label(nIn) }
+          : null,
+        extraIn: ein.extra,
+        outSide: o
+          ? { ...o, expectedP50Ms: eout.floorMs, floorLabel: label(nOut) }
+          : null,
+        extraOut: eout.extra,
+        clusterExtra: clusterExtra(cluster, r, mine, slotMs, nIn),
+        clusterOut: mine
+          ? clusterExtra(cluster, mine, r, slotMs, nOut)
+          : undefined
       };
     })
   ];
@@ -159,7 +174,7 @@ const HandoffCard = ({
     <SectionCard
       title="Leader Handoffs"
       icon="shuffle"
-      info="To it: its first block after the previous leader's last. From it: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the overhead (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the direct floor (the distance straight between the two) on both sides, as only the cluster has notarization floors by region - so these run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
+      info="To it: its first block after the previous leader's last. From it: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the overhead (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the notarization floor where its region figures have it, else the direct floor (the distance straight between the two) on both sides - then they run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>

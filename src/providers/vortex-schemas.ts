@@ -1507,7 +1507,20 @@ const handoffRegionsSchema = z
       excessP50Ms: z.number().nullable().catch(null),
       // excessP50Ms less the epoch's slot (the cluster's in-window p50):
       // the extra delay, ~0 at the physical limit. Absent on older APIs.
-      extraP50Ms: z.number().nullable().optional().catch(null)
+      extraP50Ms: z.number().nullable().optional().catch(null),
+      // Against the notarization floor: on the cluster row's regions, and
+      // producers' once recorded.
+      notarizationExpectedP50Ms: z
+        .number()
+        .nullable()
+        .optional()
+        .catch(undefined),
+      notarizationExcessP50Ms: z
+        .number()
+        .nullable()
+        .optional()
+        .catch(undefined),
+      notarizationExtraP50Ms: z.number().nullable().optional().catch(undefined)
     })
   )
   .nullable()
@@ -1593,7 +1606,22 @@ export const slotDurationSchema = z.object({
         p90Ms: z.number().nullable().catch(null),
         expectedP50Ms: z.number().nullable().catch(null),
         excessP50Ms: z.number().nullable().catch(null),
-        extraP50Ms: z.number().nullable().optional().catch(null)
+        extraP50Ms: z.number().nullable().optional().catch(null),
+        notarizationExpectedP50Ms: z
+          .number()
+          .nullable()
+          .optional()
+          .catch(undefined),
+        notarizationExcessP50Ms: z
+          .number()
+          .nullable()
+          .optional()
+          .catch(undefined),
+        notarizationExtraP50Ms: z
+          .number()
+          .nullable()
+          .optional()
+          .catch(undefined)
       })
     )
     .nullable()

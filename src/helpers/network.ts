@@ -445,32 +445,64 @@ export const routeKey = (m: Pick<HostMove, 'from' | 'to'>) => {
  * region go elsewhere, so its floor reads far longer than a same-region
  * route's).
  */
+/** A region's or route's figures, against the direct floor and (where
+ *  recorded) the notarization floor. */
+type FloorEntry = {
+  expectedP50Ms?: number | null;
+  excessP50Ms: number | null;
+  extraP50Ms?: number | null;
+  notarizationExpectedP50Ms?: number | null;
+  notarizationExcessP50Ms?: number | null;
+  notarizationExtraP50Ms?: number | null;
+};
+
+/** Whether an entry has its notarization floor. */
+export const hasNotarization = (e: FloorEntry | null | undefined) =>
+  e?.notarizationExtraP50Ms != null || e?.notarizationExcessP50Ms != null;
+
+/** An entry's overhead and floor: against the notarization floor when
+ *  `notarized` (and recorded), else the direct one. */
+export const entryOverhead = (
+  e: FloorEntry | null | undefined,
+  slotMs: Num,
+  notarized: boolean
+): { extra: number | null; floorMs: number | null } =>
+  notarized && hasNotarization(e)
+    ? {
+        extra: extraDelay(
+          e?.notarizationExcessP50Ms,
+          slotMs,
+          e?.notarizationExtraP50Ms
+        ),
+        floorMs: e?.notarizationExpectedP50Ms ?? null
+      }
+    : {
+        extra: extraDelay(e?.excessP50Ms, slotMs, e?.extraP50Ms),
+        floorMs: e?.expectedP50Ms ?? null
+      };
+
 export const clusterExtra = (
   cluster:
     | {
-        handoffByRoute?: Array<{
-          from: string;
-          to: string;
-          excessP50Ms: number | null;
-          extraP50Ms?: number | null;
-        }> | null;
-        handoffByRegion?: Record<
-          string,
-          { excessP50Ms: number | null; extraP50Ms?: number | null }
+        handoffByRoute?: Array<
+          FloorEntry & { from: string; to: string }
         > | null;
+        handoffByRegion?: Record<string, FloorEntry> | null;
       }
     | null
     | undefined,
   from: string,
   to: string | null | undefined,
-  slotMs: number | null | undefined
+  slotMs: number | null | undefined,
+  /** On the notarization floor (the producer's own figure is). */
+  notarized = false
 ) => {
   const route =
     to != null
       ? cluster?.handoffByRoute?.find(x => x.from === from && x.to === to)
       : undefined;
   const r = route ?? cluster?.handoffByRegion?.[from];
-  return extraDelay(r?.excessP50Ms, slotMs, r?.extraP50Ms);
+  return entryOverhead(r, slotMs, notarized).extra;
 };
 
 /** Turbine's fanout (agave turbine/src/cluster_nodes.rs): positions
