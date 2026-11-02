@@ -7,7 +7,7 @@ import { GeoComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { useAppContext } from 'providers/AppProvider';
 import { ValidatorGeo } from 'providers/vortex-schemas';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { coord, loadWorld } from 'helpers/worldMap';
 import { Link } from 'react-router';
 
@@ -258,21 +258,30 @@ const LeaderMap = ({
     >
       {lastHandoff && ready && geo && (
         <div
-          className="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded border bg-body fs-10 lh-sm"
-          style={{ zIndex: 2, maxWidth: '75%' }}
+          className="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded border bg-body fs-10 lh-sm d-flex align-items-center gap-1 text-nowrap"
+          style={{ zIndex: 2, maxWidth: 'calc(100% - 1rem)' }}
           title="The latest handoff measured: from the previous leader's last block to this one's first, by their block times - a slot (~200 ms) plus the network between them"
         >
-          <span className="text-body-tertiary">Handoff </span>
-          <span className="text-truncate">
-            {nameOf(lastHandoff.from)} →{' '}
-            <Link
-              to={`/validator/${lastHandoff.to}${NETWORK_TAB ? '/network' : ''}`}
-            >
-              {nameOf(lastHandoff.to)}
-            </Link>
-          </span>{' '}
+          <span className="text-uppercase fw-bold text-body-tertiary flex-shrink-0 me-1">
+            Handoff
+          </span>
+          {/* Each name truncates on its own, so the line never wraps. */}
+          {[lastHandoff.from, lastHandoff.to].map((n, i) => (
+            <Fragment key={i}>
+              {i > 0 && (
+                <span className="text-body-tertiary flex-shrink-0">→</span>
+              )}
+              <Link
+                to={`/validator/${n}${NETWORK_TAB ? '/network' : ''}`}
+                className="text-truncate"
+                style={{ minWidth: 0, maxWidth: '11em' }}
+              >
+                {nameOf(n)}
+              </Link>
+            </Fragment>
+          ))}
           <span
-            className={`font-monospace fw-semibold${lastHandoff.ms > SLOW_HANDOFF_MS ? ' text-warning-emphasis' : ''}`}
+            className={`font-monospace fw-semibold flex-shrink-0 ms-1${lastHandoff.ms > SLOW_HANDOFF_MS ? ' text-warning-emphasis' : ''}`}
           >
             {Math.round(lastHandoff.ms)} ms
           </span>
