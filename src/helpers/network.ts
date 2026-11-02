@@ -335,10 +335,10 @@ export const hostMoves = (data: {
   ].sort((a, b) => b.epoch - a.epoch || (b.slot ?? 0) - (a.slot ?? 0));
 };
 
-/** A move's route between two places, either way round, so a failover
- *  and its failback (and every repeat) share it. */
+/** A move's direction between two places (from > to): every repeat of a
+ *  failover the same way shares it, the failback has its own. */
 export const routeKey = (m: Pick<HostMove, 'from' | 'to'>) => {
   const k = (c: [number, number] | null) =>
     c ? `${c[0].toFixed(2)},${c[1].toFixed(2)}` : '?';
-  return [k(m.from), k(m.to)].sort().join('|');
+  return `${k(m.from)}>${k(m.to)}`;
 };

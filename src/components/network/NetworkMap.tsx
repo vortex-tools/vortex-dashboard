@@ -103,8 +103,8 @@ const NetworkMap = ({
   onHighlight: (slot: number | null) => void;
   /** Its host moves (the Hosts view), newest first. */
   moves?: HostMove[];
-  /** The route highlighted (routeKey: its rows or an arrow hovered), and
-   *  to set it from an arrow. */
+  /** The direction highlighted (routeKey: a row or an arrow hovered),
+   *  and to set it from an arrow. */
   highlightMove?: string | null;
   onHighlightMove?: (route: string | null) => void;
   nameOf: (node: string) => string;
@@ -282,8 +282,8 @@ const NetworkMap = ({
     ];
     // Hosts: each place it ran from, and an arrow per move between two
     // (a move within one place can't be drawn: it's in the list).
-    // One arrow per direction of each route (repeats drawn once), keyed
-    // by the route so it highlights with every row of it.
+    // One arrow per direction (repeats drawn once), keyed by it so it
+    // highlights with every row going that way.
     const arrows =
       mode === 'hosts'
         ? [
@@ -300,7 +300,7 @@ const NetworkMap = ({
                     !!m.to &&
                     (m.from[0] !== m.to[0] || m.from[1] !== m.to[1])
                 )
-                .map(m => [`${m.from}>${m.to}`, { ...m, route: routeKey(m) }])
+                .map(m => [routeKey(m), { ...m, route: routeKey(m) }])
             ).values()
           ]
         : [];

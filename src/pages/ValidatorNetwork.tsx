@@ -183,9 +183,12 @@ const ValidatorNetwork = () => {
   // The map and the list show the same moves: the latest few, or all.
   const [allMoves, setAllMoves] = useState(false);
   const shownMoves = allMoves ? moves : moves.slice(0, HOST_MOVES_SHOWN);
-  // The route hovered (a row or an arrow): its arrows and every row of
-  // it (a failover pair's repeats) highlighted.
-  const [hoverMove, setHoverMove] = useState<string | null>(null);
+  // The move hovered: a row (it and its arrow), or an arrow (it and every
+  // row going that way).
+  const [hoverMove, setHoverMove] = useState<{
+    row?: number;
+    route: string;
+  } | null>(null);
   // The views it has data for.
   const views = (
     [
@@ -323,8 +326,10 @@ const ValidatorNetwork = () => {
                 highlight={highlight}
                 onHighlight={setHighlight}
                 moves={shownMoves}
-                highlightMove={hoverMove}
-                onHighlightMove={setHoverMove}
+                highlightMove={hoverMove?.route ?? null}
+                onHighlightMove={route =>
+                  setHoverMove(route ? { route } : null)
+                }
                 nameOf={nameOf}
               />
               {view === 'hosts' && (
@@ -343,10 +348,17 @@ const ValidatorNetwork = () => {
                     {shownMoves.map((m, i) => (
                       <tr
                         key={i}
-                        onMouseEnter={() => setHoverMove(routeKey(m))}
+                        onMouseEnter={() =>
+                          setHoverMove({ row: i, route: routeKey(m) })
+                        }
                         onMouseLeave={() => setHoverMove(null)}
                         className={
-                          hoverMove != null && hoverMove === routeKey(m)
+                          // A row hovered: itself; an arrow: every row
+                          // of that direction.
+                          hoverMove &&
+                          (hoverMove.row != null
+                            ? hoverMove.row === i
+                            : hoverMove.route === routeKey(m))
                             ? 'bg-body-highlight'
                             : m.epoch === epoch
                               ? 'fw-semibold'
