@@ -381,6 +381,9 @@ const ValidatorNetwork = () => {
                         type="radio"
                         name="network-map"
                         variant="soft-secondary"
+                        // No vertical padding: the header stays as low as
+                        // its neighbours' (Where It Runs).
+                        className="py-0 lh-sm"
                         value={k}
                         checked={view === k}
                         onChange={() => setMode(k)}
