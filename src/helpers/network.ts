@@ -392,3 +392,71 @@ export const clusterExtra = (
   const r = route ?? cluster?.handoffByRegion?.[from];
   return extraDelay(r?.excessP50Ms, slotMs, r?.extraP50Ms);
 };
+
+/** Turbine's fanout (agave turbine/src/cluster_nodes.rs): positions
+ *  1..FANOUT of the stake-weighted shuffle are layer 1. */
+export const TURBINE_FANOUT = 200;
+
+export type TurbineEstimate = {
+  /** The stake-heaviest data centers: where a shred's root most likely is
+   *  (it's drawn per shred, stake-weighted). */
+  roots: Array<[number, number]>;
+  /** 1: it's among the top TURBINE_FANOUT by stake - a shred reaches it
+   *  from the root (2 hops); 2: through another node first (3 hops). */
+  layer: 1 | 2;
+  /** Layer 2: the stake-heavy data center nearest it, the likely relay. */
+  via: [number, number] | null;
+  /** Its rank by stake (1 = most), of the validators with a location. */
+  rank: number;
+};
+
+/**
+ * A rough Turbine path into a validator, not stake-adjusted (agave-master
+ * from anza/master 9260869da1): the leader sends each shred to one root,
+ * a stake-weighted draw that changes per shred; positions 1-200 of the
+ * same stake-weighted shuffle (layer 1) get it from the root, everyone
+ * else (layer 2, and every unstaked node) from a layer-1 node.
+ */
+export const turbineEstimate = (
+  node: string,
+  geo: Map<string, ValidatorGeo>
+): TurbineEstimate | null => {
+  const me = geo.get(node);
+  const myC =
+    me?.geo?.longitude != null && me.geo.latitude != null
+      ? ([me.geo.longitude, me.geo.latitude] as [number, number])
+      : null;
+  if (!myC) return null;
+  // Data centers (a provider in a city), by stake.
+  const dcs = new Map<string, { stake: number; lon: number; lat: number }>();
+  for (const v of geo.values()) {
+    const g = v.geo;
+    if (g?.longitude == null || g.latitude == null) continue;
+    const k = `${g.asn ?? '?'}:${g.city ?? `${g.longitude},${g.latitude}`}`;
+    const d = dcs.get(k) ?? { stake: 0, lon: 0, lat: 0 };
+    const w = Math.max(v.activatedStake, 1);
+    d.stake += w;
+    d.lon += g.longitude * w;
+    d.lat += g.latitude * w;
+    dcs.set(k, d);
+  }
+  const ranked = [...dcs.values()]
+    .sort((a, b) => b.stake - a.stake)
+    .map(d => [d.lon / d.stake, d.lat / d.stake] as [number, number]);
+  const roots = ranked.slice(0, 3);
+  const byStake = [...geo.values()]
+    .filter(v => v.geo?.longitude != null)
+    .sort((a, b) => b.activatedStake - a.activatedStake);
+  const rank = byStake.findIndex(v => v.nodeAddress === node) + 1;
+  const layer: 1 | 2 =
+    rank > 0 && rank <= TURBINE_FANOUT && (me?.activatedStake ?? 0) > 0 ? 1 : 2;
+  // Layer 2's relay: the nearest of the next stake-heavy data centers.
+  const dist = (a: [number, number], b: [number, number]) =>
+    (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+  const via =
+    layer === 2
+      ? (ranked.slice(1, 12).sort((a, b) => dist(a, myC) - dist(b, myC))[0] ??
+        null)
+      : null;
+  return { roots, layer, via, rank };
+};

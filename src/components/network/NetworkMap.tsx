@@ -7,6 +7,7 @@ import {
   DIVERGENCE,
   DivergentVote,
   HostMove,
+  TurbineEstimate,
   routeKey,
   REGION_NAME,
   delayTone,
@@ -88,6 +89,7 @@ const NetworkMap = ({
   highlight,
   onHighlight,
   moves = [],
+  turbine = null,
   highlightMove = null,
   onHighlightMove,
   nameOf
@@ -104,6 +106,9 @@ const NetworkMap = ({
   onHighlight: (slot: number | null) => void;
   /** Its host moves (the Hosts view), newest first. */
   moves?: HostMove[];
+  /** Divergent votes: the estimated Turbine path into it (block legs go
+   *  through it instead of straight). */
+  turbine?: TurbineEstimate | null;
   /** The direction highlighted (routeKey: a row or an arrow hovered),
    *  and to set it from an arrow. */
   highlightMove?: string | null;
@@ -536,17 +541,43 @@ const NetworkMap = ({
           silent: true,
           data: legs
             .filter(x => x.v.slot === highlight)
-            .map(({ leg, c }) => ({
-              coords: leg === 'block' ? [c, me] : [me, c],
-              lineStyle: {
+            .flatMap(({ leg, c }) => {
+              const style = (width: number, opacity: number) => ({
                 color: getThemeColor(ROLE_COLOR[leg]),
-                width: 2.5,
-                opacity: 0.95,
-                // A block isn't sent straight: its shreds fan out through
-                // Turbine, relayed on the way (dotted). A vote is (solid).
+                width,
+                opacity,
+                // A block's shreds fan out through Turbine (dotted); a
+                // vote goes straight to the reward leader (solid).
                 type: leg === 'block' ? 'dotted' : 'solid'
-              }
-            }))
+              });
+              if (leg === 'vote' || !turbine || !me)
+                return [
+                  {
+                    coords: leg === 'block' ? [c, me] : [me, c],
+                    lineStyle: style(2.5, 0.95)
+                  }
+                ];
+              // The estimated Turbine path: the producer to the likely
+              // roots (thin: one per shred, stake-weighted), the heaviest
+              // root on to it - straight (layer 1) or through a relay
+              // (layer 2).
+              const [root] = turbine.roots;
+              return [
+                ...turbine.roots.map(r => ({
+                  coords: [c, r],
+                  lineStyle: style(
+                    r === root ? 2 : 1.2,
+                    r === root ? 0.9 : 0.45
+                  )
+                })),
+                ...(turbine.layer === 2 && turbine.via
+                  ? [
+                      { coords: [root, turbine.via], lineStyle: style(2, 0.9) },
+                      { coords: [turbine.via, me], lineStyle: style(2, 0.9) }
+                    ]
+                  : [{ coords: [root, me], lineStyle: style(2, 0.9) }])
+              ];
+            })
         },
         // Every producer and reward leader of the page's votes, by role;
         // the hovered vote's on top, the rest faint while one is hovered.
@@ -661,6 +692,7 @@ const NetworkMap = ({
     votes,
     highlight,
     moves,
+    turbine,
     highlightMove,
     nameOf,
     getThemeColor,

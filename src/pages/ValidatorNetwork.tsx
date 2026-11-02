@@ -19,6 +19,8 @@ import {
   divergentVotes,
   DivergentVote,
   isSkipped,
+  TURBINE_FANOUT,
+  turbineEstimate,
   divergenceByLeader,
   clusterExtra,
   extraDelay,
@@ -246,6 +248,12 @@ const ValidatorNetwork = () => {
     },
     [geo, me0]
   );
+  // A rough Turbine path into it (its layer by stake rank), for the
+  // block legs.
+  const turbine = useMemo(
+    () => (node && geo ? turbineEstimate(node, geo) : null),
+    [node, geo]
+  );
   const tabVotes = useMemo(() => {
     const list = votes.filter(v =>
       view === 'skipped' ? isSkipped(v.kind) : !isSkipped(v.kind)
@@ -410,6 +418,7 @@ const ValidatorNetwork = () => {
                 highlight={highlight}
                 onHighlight={setHighlight}
                 moves={shownMoves}
+                turbine={turbine}
                 highlightMove={hoverMove?.route ?? null}
                 onHighlightMove={route =>
                   setHoverMove(route ? { route } : null)
@@ -664,6 +673,20 @@ const ValidatorNetwork = () => {
                         solid, a vote is sent straight to it
                       </span>
                       <span>Hover a row for its route.</span>
+                      {turbine && (
+                        <span className="w-100">
+                          Estimated Turbine path: the leader sends each shred to
+                          one root, drawn by stake, so it changes shred to shred
+                          (the three heaviest data centers are drawn). This
+                          validator is #{turbine.rank.toLocaleString()} by
+                          stake, so{' '}
+                          {turbine.layer === 1
+                            ? `in layer 1 (the top ${TURBINE_FANOUT}): a shred reaches it from the root, 2 hops from the leader.`
+                            : `in layer 2 (below the top ${TURBINE_FANOUT}): a shred reaches it through a layer-1 node, 3 hops from the leader.`}{' '}
+                          Not stake-weighted beyond that; hop counts ignore
+                          geography and latency.
+                        </span>
+                      )}
                     </div>
                     {votePages > 1 && (
                       <Pager
