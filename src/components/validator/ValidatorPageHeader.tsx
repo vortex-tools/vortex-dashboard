@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import BackLink from 'components/common/BackLink';
 import PageBreadcrumb from 'components/common/PageBreadcrumb';
 import ValidatorSearch from 'components/common/ValidatorSearch';
@@ -73,6 +74,7 @@ const ValidatorPageHeader = ({
   const tabs = TABS.filter(
     t =>
       (alpenglowActive || (t.key !== 'production' && t.key !== 'network')) &&
+      (NETWORK_TAB || t.key !== 'network') &&
       (!isTestnet || t.key !== 'staking') &&
       (blockIncomeTracked || t.key !== 'fees')
   );

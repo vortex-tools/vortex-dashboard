@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { graphic } from 'echarts/core';
@@ -264,7 +265,9 @@ const LeaderMap = ({
           <span className="text-body-tertiary">Handoff </span>
           <span className="text-truncate">
             {nameOf(lastHandoff.from)} →{' '}
-            <Link to={`/validator/${lastHandoff.to}/network`}>
+            <Link
+              to={`/validator/${lastHandoff.to}${NETWORK_TAB ? '/network' : ''}`}
+            >
               {nameOf(lastHandoff.to)}
             </Link>
           </span>{' '}

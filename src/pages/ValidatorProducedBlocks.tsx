@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
@@ -121,7 +122,11 @@ const ValidatorProducedBlocks = () => {
                     <SlotPaceCard
                       record={producer}
                       board={producerBoard}
-                      networkLink={recordPath(address, epoch, 'network')}
+                      networkLink={
+                        NETWORK_TAB
+                          ? recordPath(address, epoch, 'network')
+                          : undefined
+                      }
                     />
                   </Col>
                 </Row>

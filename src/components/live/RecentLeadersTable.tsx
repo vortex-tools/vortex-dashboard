@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import { placeOf } from 'hooks/useValidatorGeo';
 import ValidatorLink from 'components/common/ValidatorLink';
 import { SlotInfo, ValidatorGeo } from 'providers/vortex-schemas';
@@ -142,7 +143,18 @@ const RecentLeadersTable = ({
                 );
               })}
               <td className="text-end font-monospace text-nowrap">
-                {handoff && leader ? (
+                {handoff && leader && !NETWORK_TAB ? (
+                  <span
+                    className={
+                      handoff.ms > SLOW_HANDOFF_MS
+                        ? 'text-warning-emphasis'
+                        : undefined
+                    }
+                    title={`${Math.round(handoff.ms)} ms from the previous leader's last block${handoff.afterSkip ? ', its first slot skipped' : ''}`}
+                  >
+                    {Math.round(handoff.ms)} ms{handoff.afterSkip ? '*' : ''}
+                  </span>
+                ) : handoff && leader ? (
                   <Link
                     to={`/validator/${leader}/network`}
                     className={

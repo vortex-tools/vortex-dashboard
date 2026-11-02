@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import { ComponentType, lazy } from 'react';
 import RouteError from 'pages/error/RouteError';
 import MainLayout from 'layouts/MainLayout';
@@ -89,6 +90,12 @@ const Decentralization = page(() => import('pages/Decentralization'));
 // Redirect helpers for backwards-compat with the pre-nav-refactor URLs.
 // /leaderboards/producers[/epoch/:epoch] -> the consensus leaderboard's
 // Producing view, same epoch.
+// The Network tab, outside staging: the validator's page.
+const RedirectNetwork = () => {
+  const { address } = useParams();
+  return <Navigate to={`/validator/${address ?? ''}`} replace />;
+};
+
 const RedirectAlpenglow = () => {
   const [params] = useSearchParams();
   const v = params.get('v');
@@ -300,7 +307,12 @@ const routes: RouteObject[] = [
                 },
                 {
                   path: `/validator/:address/network${e}`,
-                  element: <ValidatorNetwork />
+                  // Staging only for now: elsewhere the validator's page.
+                  element: NETWORK_TAB ? (
+                    <ValidatorNetwork />
+                  ) : (
+                    <RedirectNetwork />
+                  )
                 }
               ]),
               // The record's old URLs open those tabs.

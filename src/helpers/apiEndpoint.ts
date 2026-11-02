@@ -12,6 +12,9 @@
  * (localStorage), restricted to API_OPTIONS. Production ignores it.
  */
 export const IS_STAGING = import.meta.env.VITE_DEPLOY_ENV === 'staging';
+/** The validator page's Network tab: staging only until it's reviewed
+ *  (production and testnet hide it, and every link into it). */
+export const NETWORK_TAB = IS_STAGING;
 /** The testnet.vx.tools build (the main build against the testnet API). */
 export const IS_TESTNET_SITE = import.meta.env.VITE_DEPLOY_ENV === 'testnet';
 

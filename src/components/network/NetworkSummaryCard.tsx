@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import SectionCard from 'components/common/SectionCard';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import HostChangesCard from 'components/validator/HostChangesCard';
@@ -49,9 +50,11 @@ const NetworkSummaryCard = ({
     <SectionCard
       title="Network"
       icon="globe"
-      info="Where it runs and how its leader handoffs compare with the cluster's - overhead: the median handoff less its own first block and the notarization round it waits for (the previous block reaching the voters, their votes reaching it), against the cluster's - then its host history. The Network tab has the map, handoffs by region and its divergent votes."
+      info="Where it runs and how its leader handoffs compare with the cluster's - overhead: the median handoff less its own first block and the notarization round it waits for (the previous block reaching the voters, their votes reaching it), against the cluster's - then its host history."
       linkTo={
-        alpenglowActive ? recordPath(address, null, 'network') : undefined
+        alpenglowActive && NETWORK_TAB
+          ? recordPath(address, null, 'network')
+          : undefined
       }
       linkLabel="Network tab"
     >

@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import { delayTone, handoffExtra, signedMs } from 'helpers/network';
 import { ColumnDef } from '@tanstack/react-table';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
@@ -249,7 +250,7 @@ export const createProducerLeaderboardColumns = (
   ),
   num(
     'handoff',
-    <span title="Leader handoffs' overhead: the median from the previous leader's last block to its first, less its own first block (a slot less 56 ms) and the notarization floor: the previous block reaching the voters and 60% of stake's votes reaching it, at fibre speed - the next leader starts only then. What's left is replay, vote processing and the model's error; compare with the cluster's. Each opens the validator's Network tab.">
+    <span title="Leader handoffs' overhead: the median from the previous leader's last block to its first, less its own first block (a slot less 56 ms) and the notarization floor: the previous block reaching the voters and 60% of stake's votes reaching it, at fibre speed - the next leader starts only then. What's left is replay, vote processing and the model's error; compare with the cluster's.">
       Handoff
     </span>,
     r => handoffExtra(r.slotDuration, clusterSlotMs).extra,
@@ -263,6 +264,8 @@ export const createProducerLeaderboardColumns = (
             : 'text-reset';
       return isCluster(r) ? (
         <span className="text-body-tertiary">{signedMs(v)}</span>
+      ) : !NETWORK_TAB ? (
+        <span className={cls}>{signedMs(v)}</span>
       ) : (
         <Link
           to={recordPath(r.voteAddress ?? r.nodeAddress, epoch, 'network')}

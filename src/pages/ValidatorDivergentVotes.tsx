@@ -1,3 +1,4 @@
+import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import BucketOutcomeChart from 'components/charts/e-charts/BucketOutcomeChart';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
@@ -211,11 +212,13 @@ const ValidatorDivergentVotes = () => {
                     card={{
                       title: 'Divergent Votes',
                       icon: 'git-branch',
-                      link: {
-                        to: recordPath(address, epoch, 'network'),
-                        label: 'On the map'
-                      },
-                      info: "Every slot where it voted skip on a block the cluster notarized, or its vote is missing from the reward certificates (of its reward block, slot + 8). On the map: the Network tab, with each vote's block producer and reward leader.",
+                      link: NETWORK_TAB
+                        ? {
+                            to: recordPath(address, epoch, 'network'),
+                            label: 'On the map'
+                          }
+                        : undefined,
+                      info: `Every slot where it voted skip on a block the cluster notarized, or its vote is missing from the reward certificates (of its reward block, slot + 8).${NETWORK_TAB ? " On the map: the Network tab, with each vote's block producer and reward leader." : ''}`,
                       before: !timeline.clusterKnown ? (
                         <UntrackedState className="mb-2">
                           The chain&apos;s per-slot outcome isn&apos;t available
