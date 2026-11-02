@@ -383,9 +383,10 @@ const ValidatorNetwork = () => {
                 views.length > 1 ? (
                   <ButtonGroup
                     size="sm"
-                    // Full-size buttons into the header's own padding: as
-                    // tall as fits, the header as low as Where It Runs'.
-                    style={{ margin: '-7px 0' }}
+                    // Full-size buttons, set into the header's padding
+                    // (12 px above the ~16 px title row, 8 below): centered,
+                    // and the header no taller than Where It Runs'.
+                    style={{ margin: '-8.5px 0 -4.5px' }}
                   >
                     {views.map(([k, label]) => (
                       <ToggleButton

@@ -341,8 +341,9 @@ const ProducerWindowsTable = ({
   const filterSelect = (
     <Form.Select
       size="sm"
-      // Into the card header's padding: it doesn't make it taller.
-      style={card ? { margin: '-7px 0' } : undefined}
+      // Set into the header's padding (12 px above the ~16 px title
+      // row, 8 below): centered, and the header no taller.
+      style={card ? { margin: '-8.5px 0 -4.5px' } : undefined}
       className="w-auto"
       value={filter}
       onChange={e => {
