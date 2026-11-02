@@ -1542,7 +1542,27 @@ export const slotDurationSchema = z.object({
   handoffOutByRegion: handoffRegionsSchema,
   handoffOutExpectedP50Ms: z.number().nullable().optional().catch(null),
   handoffOutExcessP50Ms: z.number().nullable().optional().catch(null),
-  handoffOutExtraP50Ms: z.number().nullable().optional().catch(null)
+  handoffOutExtraP50Ms: z.number().nullable().optional().catch(null),
+  // The cluster row only: handoffs by route (the previous leader's region
+  // to the next one's), so a producer's figures from a region compare with
+  // the cluster's on the same route. null on producer rows; absent on
+  // older APIs.
+  handoffByRoute: z
+    .array(
+      z.object({
+        from: z.string(),
+        to: z.string(),
+        count: z.number(),
+        p50Ms: z.number().nullable().catch(null),
+        p90Ms: z.number().nullable().catch(null),
+        expectedP50Ms: z.number().nullable().catch(null),
+        excessP50Ms: z.number().nullable().catch(null),
+        extraP50Ms: z.number().nullable().optional().catch(null)
+      })
+    )
+    .nullable()
+    .optional()
+    .catch(null)
 });
 export type SlotDuration = z.infer<typeof slotDurationSchema>;
 

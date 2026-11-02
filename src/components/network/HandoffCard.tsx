@@ -3,6 +3,7 @@ import { ProducerRow, ms } from 'components/validator/SkipCausesCard';
 import {
   REGIONS,
   REGION_NAME,
+  clusterExtra,
   delayTone,
   extraDelay,
   signedMs
@@ -70,6 +71,8 @@ const HandoffCard = ({
     outSide: Side;
     extraOut: Num;
     clusterExtra: Num;
+    /** The cluster's on its outgoing route, for the To next cell. */
+    clusterOut?: Num;
   };
   const rows: Row[] = [
     {
@@ -103,7 +106,9 @@ const HandoffCard = ({
     ).map(r => {
       const i = inBy?.[r];
       const o = outBy?.[r];
-      const c = cluster?.handoffByRegion?.[r];
+      // The cluster on the same route: from r to its region (in), from
+      // its region to r (out).
+      const mine = pace.region;
       return {
         key: r,
         label: REGION_NAME[r],
@@ -112,7 +117,8 @@ const HandoffCard = ({
         extraIn: extraDelay(i?.excessP50Ms, slotMs, i?.extraP50Ms),
         outSide: o ?? null,
         extraOut: extraDelay(o?.excessP50Ms, slotMs, o?.extraP50Ms),
-        clusterExtra: extraDelay(c?.excessP50Ms, slotMs, c?.extraP50Ms)
+        clusterExtra: clusterExtra(cluster, r, mine, slotMs),
+        clusterOut: mine ? clusterExtra(cluster, mine, r, slotMs) : undefined
       };
     })
   ];
@@ -148,7 +154,7 @@ const HandoffCard = ({
             )}
             <th
               className="text-end text-body-tertiary"
-              title="The cluster's extra delay (from that region)"
+              title="The cluster's extra delay on the same route: from that region to this validator's"
             >
               Cluster
             </th>
@@ -169,7 +175,7 @@ const HandoffCard = ({
               </td>
               {hasOut && (
                 <td
-                  className={`text-end font-monospace${slow(r.extraOut, r.clusterExtra)}`}
+                  className={`text-end font-monospace${slow(r.extraOut, r.clusterOut ?? r.clusterExtra)}`}
                   title={about(r.outSide)}
                 >
                   {signedMs(r.extraOut)}

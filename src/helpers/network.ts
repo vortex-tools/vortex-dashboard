@@ -357,3 +357,38 @@ export const routeKey = (m: Pick<HostMove, 'from' | 'to'>) => {
     c ? `${c[0].toFixed(2)},${c[1].toFixed(2)}` : '?';
   return `${k(m.from)}>${k(m.to)}`;
 };
+
+/**
+ * The cluster's extra delay to compare a producer's handoffs with: on the
+ * same route (from -> to) where the API has routes, else the cluster's
+ * from that region (which mixes every destination: most handoffs from a
+ * region go elsewhere, so its floor reads far longer than a same-region
+ * route's).
+ */
+export const clusterExtra = (
+  cluster:
+    | {
+        handoffByRoute?: Array<{
+          from: string;
+          to: string;
+          excessP50Ms: number | null;
+          extraP50Ms?: number | null;
+        }> | null;
+        handoffByRegion?: Record<
+          string,
+          { excessP50Ms: number | null; extraP50Ms?: number | null }
+        > | null;
+      }
+    | null
+    | undefined,
+  from: string,
+  to: string | null | undefined,
+  slotMs: number | null | undefined
+) => {
+  const route =
+    to != null
+      ? cluster?.handoffByRoute?.find(x => x.from === from && x.to === to)
+      : undefined;
+  const r = route ?? cluster?.handoffByRegion?.[from];
+  return extraDelay(r?.excessP50Ms, slotMs, r?.extraP50Ms);
+};

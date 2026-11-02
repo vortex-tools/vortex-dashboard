@@ -20,6 +20,7 @@ import {
   DivergentVote,
   isSkipped,
   divergenceByLeader,
+  clusterExtra,
   extraDelay,
   hostMoves,
   routeKey,
@@ -157,10 +158,13 @@ const ValidatorNetwork = () => {
         slotMs,
         mine[r]!.extraP50Ms
       ),
-      clusterExcessP50Ms: extraDelay(
-        cluster?.[r]?.excessP50Ms,
-        slotMs,
-        cluster?.[r]?.extraP50Ms
+      // The cluster on the same route (r to its region) where the API
+      // has routes.
+      clusterExcessP50Ms: clusterExtra(
+        producerBoard?.cluster?.slotDuration,
+        r,
+        producer?.slotDuration?.region,
+        slotMs
       ),
       slotMs
     }));

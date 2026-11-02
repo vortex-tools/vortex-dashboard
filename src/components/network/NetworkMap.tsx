@@ -739,8 +739,7 @@ const NetworkMap = ({
             {ms(open.expectedP50Ms)}, <b>{signedMs(open.excessP50Ms)}</b> extra
           </div>
           <div className="text-body-tertiary">
-            Cluster from {REGION_NAME[open.region]}:{' '}
-            {signedMs(open.clusterExcessP50Ms)} extra
+            Cluster on this route: {signedMs(open.clusterExcessP50Ms)} extra
           </div>
         </div>
       )}
