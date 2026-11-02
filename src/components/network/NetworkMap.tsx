@@ -285,6 +285,29 @@ const NetworkMap = ({
   const view = viewRef.current;
 
   const option = useMemo(() => {
+    // A drawn curve's middle: ECharts bends a line in screen pixels, so
+    // where the chart is up, work there (lon/lat stretch it otherwise).
+    const inst = chartRef.current?.getEchartsInstance();
+    const curveMiddle = (
+      a: [number, number],
+      b: [number, number]
+    ): [number, number] => {
+      const pa = inst?.convertToPixel({ geoIndex: 0 }, a) as
+        | [number, number]
+        | undefined;
+      const pb = inst?.convertToPixel({ geoIndex: 0 }, b) as
+        | [number, number]
+        | undefined;
+      if (!pa || !pb) return curveMid(a, b, 0.2);
+      const k = 0.2;
+      const cx = (pa[0] + pb[0]) / 2 - (pa[1] - pb[1]) * k;
+      const cy = (pa[1] + pb[1]) / 2 - (pb[0] - pa[0]) * k;
+      const m = inst?.convertFromPixel({ geoIndex: 0 }, [
+        0.25 * pa[0] + 0.5 * cx + 0.25 * pb[0],
+        0.25 * pa[1] + 0.5 * cy + 0.25 * pb[1]
+      ]) as [number, number] | undefined;
+      return m ?? curveMid(a, b, 0.2);
+    };
     // Dark: the land and its borders as white over the warm card - a clear
     // step off it that keeps its warmth.
     const mix = (a: number) => `rgba(255, 255, 255, ${a})`;
@@ -730,7 +753,7 @@ const NetworkMap = ({
                     {
                       // A block's by its producer (where its route
                       // starts); a vote's on its arrow.
-                      value: leg === 'block' ? c : curveMid(from, to, 0.2),
+                      value: leg === 'block' ? c : curveMiddle(from, to),
                       leg,
                       // The straight line's middle latitude: the curve
                       // swings below it or above.
@@ -764,10 +787,15 @@ const NetworkMap = ({
                   ? 'bottom'
                   : 'top'
                 : hemiSide(x.value);
-            // Well clear of its dot (the producer's, for a block).
+            // The block's well clear of the producer's dot; the vote's
+            // just off its line.
             return {
               ...x,
-              label: { ...x.label, position: pos, distance: 16 }
+              label: {
+                ...x.label,
+                position: pos,
+                distance: x.leg === 'vote' ? 5 : 16
+              }
             };
           })
         },
