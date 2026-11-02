@@ -83,11 +83,15 @@ export const DIVERGENCE: Record<
 export type DivergentVote = {
   slot: number;
   kind: Divergence;
+  /** The slot's leader: the block producer. */
   leader: string | null;
+  /** The reward leader: slot + 8's, whose block carries the reward
+   *  certificate its vote had to reach. */
+  payer: string | null;
 };
 
 /** Its divergent votes, newest first, offline runs left out, with each
- *  slot's leader. */
+ *  slot's block producer and reward leader (slot + 8). */
 export const divergentVotes = (
   codes: Uint8Array,
   firstSlot: number,
@@ -100,7 +104,11 @@ export const divergentVotes = (
       const i = d.slot - firstSlot;
       return i >= 0 && i < codes.length && !offline[i];
     })
-    .map(d => ({ ...d, leader: leaderOf(d.slot) }))
+    .map(d => ({
+      ...d,
+      leader: leaderOf(d.slot),
+      payer: leaderOf(d.slot + 8)
+    }))
     .sort((a, b) => b.slot - a.slot);
 };
 

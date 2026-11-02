@@ -288,7 +288,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Handoffs: each region its previous leaders were in, with a line as thick as how many handoffs - hover one for its figures, colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - each a line from that slot's leader to it (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Handoffs: each region its previous leaders were in, with a line as thick as how many handoffs - hover one for its figures, colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - for each, a solid line from the slot's block producer to it (the block's trip) and a dashed one from it to the reward leader, slot + 8's leader, whose block carries the reward certificate (its vote's trip); the table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
                   <ButtonGroup size="sm">
@@ -392,25 +392,49 @@ const ValidatorNetwork = () => {
                       <thead>
                         <tr>
                           <th>Slot</th>
-                          <th>Leader</th>
-                          <th className="d-none d-sm-table-cell">Its vote</th>
-                          <th
-                            className="text-end"
-                            title="The network floor between the leader and it: the fibre-speed distance (~200 km/ms)"
-                          >
-                            Floor
+                          <th title="The slot's leader, whose block it voted on (solid line)">
+                            Block producer
                           </th>
+                          <th title="Slot + 8's leader, whose block carries the slot's reward certificate - where its vote had to arrive (dashed line)">
+                            Reward leader
+                          </th>
+                          <th className="d-none d-sm-table-cell">Its vote</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pageVotes.map(v => {
-                          const from = v.leader
-                            ? coord(geo.get(v.leader))
-                            : null;
                           const to = coord(me);
-                          const floor =
-                            from && to ? fibreMs(distanceKm(from, to)) : null;
                           const k = DIVERGENCE[v.kind];
+                          // A leader's name, then where it was and the
+                          // network floor between it and this validator.
+                          const who = (n: string | null) => {
+                            if (!n)
+                              return (
+                                <span className="text-body-tertiary">—</span>
+                              );
+                            const g = geo.get(n);
+                            const c = coord(g);
+                            const floor =
+                              c && to ? fibreMs(distanceKm(c, to)) : null;
+                            return (
+                              <>
+                                <div
+                                  className="text-truncate"
+                                  style={{ maxWidth: 'min(170px, 26vw)' }}
+                                >
+                                  {nameOf(n)}
+                                </div>
+                                <div
+                                  className="fs-10 text-body-tertiary text-truncate"
+                                  style={{ maxWidth: 'min(170px, 26vw)' }}
+                                >
+                                  {floor != null &&
+                                    `${Math.round(floor)} ms · `}
+                                  {placeOf(g) ?? 'unknown place'}
+                                </div>
+                              </>
+                            );
+                          };
                           return (
                             <tr
                               key={v.slot}
@@ -420,31 +444,25 @@ const ValidatorNetwork = () => {
                                 highlight === v.slot ? 'bg-body-highlight' : ''
                               }
                             >
-                              <td className="font-monospace">
-                                <Link to={`/slot/${v.slot}`}>
+                              <td>
+                                <Link
+                                  to={`/slot/${v.slot}`}
+                                  className="font-monospace"
+                                >
                                   {v.slot.toLocaleString()}
                                 </Link>
-                              </td>
-                              <td
-                                className="text-truncate"
-                                style={{ maxWidth: 180 }}
-                              >
-                                {v.leader ? nameOf(v.leader) : '—'}
-                                <span
-                                  className={`d-sm-none fs-10 text-${k.tone} ms-1`}
+                                <div
+                                  className={`d-sm-none fs-10 text-nowrap text-${k.tone}`}
                                 >
                                   {k.label}
-                                </span>
+                                </div>
                               </td>
+                              <td>{who(v.leader)}</td>
+                              <td>{who(v.payer)}</td>
                               <td
                                 className={`d-none d-sm-table-cell text-${k.tone}`}
                               >
                                 {k.label}
-                              </td>
-                              <td className="text-end font-monospace text-body-tertiary">
-                                {floor != null
-                                  ? `${Math.round(floor)} ms`
-                                  : '—'}
                               </td>
                             </tr>
                           );

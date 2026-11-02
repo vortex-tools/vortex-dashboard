@@ -69,8 +69,9 @@ const MAX_ZOOM = 8;
  * network floor - and a line to it as thick as how many; hovered, its
  * validators show as dots grouped by place, its figures in a corner, and
  * the region, line and label take its tone against the cluster's from
- * the same region) or a page of its divergent votes, each a line from
- * that slot's leader to it in the vote's tone (the highlighted one bold).
+ * the same region) or a page of its divergent votes - from each slot's
+ * block producer to it (solid) and from it to the reward leader (dashed),
+ * in the vote's tone (the highlighted one bold).
  */
 const NetworkMap = ({
   geo,
@@ -164,15 +165,26 @@ const NetworkMap = ({
                 !!x.from && x.h.region !== 'unknown'
             )
         : [];
-    // Divergent votes (the page shown): a line from each slot's leader
-    // to it, in the vote's tone; the highlighted one bold, the rest faint.
-    const paths =
+    // Divergent votes (the page shown): from each slot's block producer
+    // to it (solid: its block's trip) and from it to the reward leader
+    // (dashed: its vote's trip), in the vote's tone; the highlighted one
+    // bold, the rest faint.
+    const legs =
       mode === 'divergent' && me
-        ? votes
-            .map(v => ({ v, from: v.leader ? coord(geo.get(v.leader)) : null }))
-            .filter(
-              (x): x is { v: DivergentVote; from: [number, number] } => !!x.from
-            )
+        ? votes.flatMap(v => {
+            const out: Array<{
+              v: DivergentVote;
+              leg: 'block' | 'vote';
+              node: string;
+              c: [number, number];
+            }> = [];
+            const p = v.leader ? coord(geo.get(v.leader)) : null;
+            const r = v.payer ? coord(geo.get(v.payer)) : null;
+            if (p && v.leader)
+              out.push({ v, leg: 'block', node: v.leader, c: p });
+            if (r && v.payer) out.push({ v, leg: 'vote', node: v.payer, c: r });
+            return out;
+          })
         : [];
     // Hosts: each place it ran from, and an arrow per move between two
     // (a move within one place can't be drawn: it's in the list).
@@ -413,13 +425,14 @@ const NetworkMap = ({
           lineStyle: { curveness: 0.2 },
           emphasis: { disabled: true },
           tooltip: { show: false },
-          data: paths.map(({ v, from }) => ({
+          data: legs.map(({ v, leg, c }) => ({
             name: String(v.slot),
-            coords: [from, me],
+            coords: leg === 'block' ? [c, me] : [me, c],
             lineStyle: {
               color: getThemeColor(DIVERGENCE[v.kind].tone),
+              type: leg === 'vote' ? 'dashed' : 'solid',
               width: highlight === v.slot ? 3 : 1.5,
-              opacity: highlight == null || highlight === v.slot ? 0.9 : 0.2
+              opacity: highlight == null || highlight === v.slot ? 0.9 : 0.15
             }
           }))
         },
@@ -429,21 +442,24 @@ const NetworkMap = ({
           zlevel: 1,
           name: 'leaders',
           emphasis: { disabled: true },
-          symbolSize: 7,
           tooltip: {
             formatter: (p: { dataIndex: number }) => {
-              const x = paths[p.dataIndex];
+              const x = legs[p.dataIndex];
               return x
-                ? `<b>${x.v.leader ? nameOf(x.v.leader) : 'Unknown'}</b><br/>Slot ${x.v.slot.toLocaleString()} · ${DIVERGENCE[x.v.kind].label}`
+                ? `<b>${nameOf(x.node)}</b> · ${x.leg === 'block' ? 'block producer' : 'reward leader'}<br/>Slot ${x.v.slot.toLocaleString()} · ${DIVERGENCE[x.v.kind].label}`
                 : '';
             }
           },
-          data: paths.map(({ v, from }) => ({
+          data: legs.map(({ v, leg, c }) => ({
             name: String(v.slot),
-            value: from,
+            value: c,
+            // The producer filled, the reward leader a ring.
+            symbol: leg === 'block' ? 'circle' : 'emptyCircle',
+            symbolSize: leg === 'block' ? 7 : 8,
             itemStyle: {
               color: getThemeColor(DIVERGENCE[v.kind].tone),
-              opacity: highlight == null || highlight === v.slot ? 1 : 0.3
+              borderWidth: leg === 'vote' ? 2 : 0,
+              opacity: highlight == null || highlight === v.slot ? 1 : 0.25
             }
           }))
         },
