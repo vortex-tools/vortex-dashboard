@@ -40,7 +40,7 @@ import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router';
 
 /** The map's views: handoffs, its divergent votes in two kinds, hosts. */
-type PageView = 'handoffs' | 'skipped' | 'missed' | 'hosts';
+type PageView = 'handoffs' | 'divergent' | 'hosts';
 /** What the votes table sorts by. */
 type VoteSort = 'slot' | 'producer' | 'reward' | 'vote';
 
@@ -188,10 +188,10 @@ const ValidatorNetwork = () => {
   const [mode, setModeState] = useState<PageView>(() => {
     try {
       const v = localStorage.getItem(MAP_VIEW_KEY);
-      return v === 'skipped' || v === 'missed' || v === 'hosts'
-        ? v
-        : v === 'divergent'
-          ? 'missed'
+      return v === 'hosts'
+        ? 'hosts'
+        : v === 'divergent' || v === 'skipped' || v === 'missed'
+          ? 'divergent'
           : 'handoffs';
     } catch {
       return 'handoffs';
@@ -228,14 +228,12 @@ const ValidatorNetwork = () => {
   const views = (
     [
       ['handoffs', 'Leader handoffs', handoffs.length > 0],
-      ['skipped', 'Skipped blocks', true],
-      ['missed', 'Missed votes', true],
+      ['divergent', 'Divergent votes', true],
       ['hosts', 'Hosts', moves.length > 0]
     ] as Array<[PageView, string, boolean]>
   ).filter(([, , has]) => has);
   const view: PageView = views.some(([k]) => k === mode) ? mode : views[0][0];
-  const mapMode: MapMode =
-    view === 'skipped' || view === 'missed' ? 'divergent' : view;
+  const mapMode: MapMode = view;
   const isVotes = mapMode === 'divergent';
   // The tab's votes (skipped blocks or missed votes), in the table's
   // order, a page at a time on the map. A leader's floor (to this
@@ -255,9 +253,7 @@ const ValidatorNetwork = () => {
     [node, geo]
   );
   const tabVotes = useMemo(() => {
-    const list = votes.filter(v =>
-      view === 'skipped' ? isSkipped(v.kind) : !isSkipped(v.kind)
-    );
+    const list = votes;
     const key = (v: DivergentVote): number | string =>
       voteSort.key === 'slot'
         ? v.slot
@@ -382,7 +378,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Skipped blocks and Missed votes: its votes that disagreed with the chain (a skip on a block that made it, or notarize on one that didn't) and those never counted, ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain - a skip on a block that made it (or notarize on one that didn't), or no vote counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
                   <ButtonGroup
@@ -517,9 +513,7 @@ const ValidatorNetwork = () => {
                   <p className="fs-9 text-body-tertiary mt-2 mb-0">
                     {!timeline
                       ? 'Loading its votes…'
-                      : view === 'skipped'
-                        ? 'No skipped blocks this epoch: it never voted against a block that made the chain.'
-                        : 'No missed votes this epoch (offline runs aside).'}
+                      : 'No divergent votes this epoch: every vote agreed with the chain (offline runs aside).'}
                   </p>
                 ) : (
                   <>
