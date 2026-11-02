@@ -537,15 +537,38 @@ const NetworkMap = ({
     // root, but the producer's own continent's and this validator's go
     // straight (a root next to either adds next to nothing, and its
     // waypoint would crowd that dot).
-    const turbinePaths = (node: string, c: [number, number]) =>
-      turbine
-        ? turbine.paths.map(p =>
-            p.region === regionOf(geo.get(node)) ||
-            p.region === regionOf(geo.get(self))
-              ? { ...p, root: c, local: true }
-              : { ...p, local: false }
-          )
-        : [];
+    // Each path's floor (producer, root, relay if layer 2, it) and
+    // whether it's needed: any 32 of a set's 64 shreds rebuild it, so the
+    // block is in once the fastest paths carrying half the shreds (by the
+    // roots' stake) have delivered - the rest arrive after it's rebuilt.
+    // A light estimate: no per-set noise, no loss.
+    const turbinePaths = (node: string, c: [number, number]) => {
+      if (!turbine || !me) return [];
+      const via = turbine.layer === 2 ? turbine.via : null;
+      const ms = (root: [number, number]) => {
+        const hops = [c, root, ...(via ? [via] : []), me];
+        return hops
+          .slice(1)
+          .reduce((a, h, i) => a + fibreMs(distanceKm(hops[i], h)), 0);
+      };
+      const paths = turbine.paths.map(p => {
+        const local =
+          p.region === regionOf(geo.get(node)) ||
+          p.region === regionOf(geo.get(self));
+        const root = local ? c : p.root;
+        return { ...p, root, local, ms: ms(root), needed: false };
+      });
+      let got = 0;
+      for (const p of [...paths].sort((a, b) => a.ms - b.ms)) {
+        if (got >= 0.5) break;
+        p.needed = true;
+        got += p.share;
+      }
+      return paths;
+    };
+    /** When the block is rebuilt: the slowest needed path's floor. */
+    const rebuiltMs = (paths: ReturnType<typeof turbinePaths>) =>
+      Math.max(0, ...paths.filter(p => p.needed).map(p => p.ms));
     // One dot per leader and role (a leader can recur on a page); the
     // hovered vote's own.
     const dots = [
@@ -842,23 +865,28 @@ const NetworkMap = ({
                 opacity: 0.4 + 0.55 * share
               });
               return [
-                ...turbinePaths(node, c).flatMap(({ root, share, local }) => {
-                  const { width, opacity } = w(share);
-                  return [
-                    ...(local
-                      ? []
-                      : [
-                          {
-                            coords: [c, root],
-                            lineStyle: style(width, opacity)
-                          }
-                        ]),
-                    {
-                      coords: [root, via ?? me],
-                      lineStyle: style(width, opacity)
-                    }
-                  ];
-                }),
+                ...turbinePaths(node, c).flatMap(
+                  ({ root, share, local, needed }) => {
+                    // A path the block doesn't wait for: faint.
+                    const { width, opacity } = needed
+                      ? w(share)
+                      : { width: 1, opacity: 0.18 };
+                    return [
+                      ...(local
+                        ? []
+                        : [
+                            {
+                              coords: [c, root],
+                              lineStyle: style(width, opacity)
+                            }
+                          ]),
+                      {
+                        coords: [root, via ?? me],
+                        lineStyle: style(width, opacity)
+                      }
+                    ];
+                  }
+                ),
                 ...(via
                   ? [{ coords: [via, me], lineStyle: style(2.5, 0.95) }]
                   : [])
@@ -888,28 +916,11 @@ const NetworkMap = ({
                   if (floor < 1) return [];
                   // Along each continent's path: producer, root, (relay,)
                   // it - the label gives their range.
-                  const pathsMs =
+                  // When it's rebuilt: once the needed paths are in.
+                  const rebuilt =
                     leg === 'block' && turbine
-                      ? turbinePaths(node, c).map(({ root }) => {
-                          const hops: Array<[number, number]> = [
-                            c,
-                            root,
-                            ...(turbine.layer === 2 && turbine.via
-                              ? [turbine.via]
-                              : []),
-                            me
-                          ];
-                          return hops
-                            .slice(1)
-                            .reduce(
-                              (a, h, i) => a + fibreMs(distanceKm(hops[i], h)),
-                              0
-                            );
-                        })
-                      : [];
-                  const lo = Math.round(Math.min(...pathsMs));
-                  const hi = Math.round(Math.max(...pathsMs));
-                  const pathText = lo === hi ? `~${lo}` : `~${lo}–${hi}`;
+                      ? Math.round(rebuiltMs(turbinePaths(node, c)))
+                      : 0;
                   // The arrow into it: from the likeliest root (or relay).
                   const hops: Array<[number, number]> =
                     leg === 'block' && turbine
@@ -932,10 +943,10 @@ const NetworkMap = ({
                       : !hops.length
                         ? `{b|Block → this validator}\nfloor ${f} ms`
                         : narrow
-                          ? `{b|Block, via Turbine}\nfloor ${f} · ${!waypoints ? `up to ~${hi}` : pathText} ms`
+                          ? `{b|Block, via Turbine}\nfloor ${f} · in by ~${rebuilt} ms`
                           : !waypoints
-                            ? `{b|Block → this validator, via Turbine}\nup to ~${hi} ms · floor ${f} ms`
-                            : `{b|Block → this validator, via Turbine}\nfloor ${f} ms · ${pathText} ms by its paths`;
+                            ? `{b|Block → this validator, via Turbine}\nin by ~${rebuilt} ms · floor ${f} ms`
+                            : `{b|Block → this validator, via Turbine}\nfloor ${f} ms · rebuilt by ~${rebuilt} ms`;
                   // On its drawn arrow: the vote's (it to the leader), a
                   // block's last leg (into it), or the straight one.
                   const [from, to]: Array<[number, number]> =
@@ -1045,7 +1056,7 @@ const NetworkMap = ({
                       Math.round(fibreMs(distanceKm(a, b)));
                     return [
                       ...turbinePaths(node, c)
-                        .filter(p => !p.local)
+                        .filter(p => !p.local && p.needed)
                         .map(p => {
                           const city = p.city?.split(' am ')[0] ?? null;
                           // What going through this root adds over the

@@ -734,7 +734,10 @@ const ValidatorNetwork = () => {
                           />
                           Turbine hop: a root relaying the block&apos;s shreds,
                           one per continent - its + ms is what that path adds
-                          over the straight line
+                          over the straight line. Any half of a block&apos;s
+                          shreds rebuilds it, so it&apos;s in once the fastest
+                          paths carrying half the stake have delivered; paths
+                          slower than that are faint (a rough estimate)
                         </span>
                       )}
                       <span>
