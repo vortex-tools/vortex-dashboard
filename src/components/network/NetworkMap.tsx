@@ -323,6 +323,17 @@ const NetworkMap = ({
             return out;
           })
         : [];
+    // A block's Turbine paths from its producer: through each continent's
+    // root, but the producer's own continent's goes straight (a root near
+    // the producer adds next to nothing, and its waypoint would crowd it).
+    const turbinePaths = (node: string, c: [number, number]) =>
+      turbine
+        ? turbine.paths.map(p =>
+            p.region === regionOf(geo.get(node))
+              ? { ...p, root: c, local: true }
+              : { ...p, local: false }
+          )
+        : [];
     // One dot per leader and role (a leader can recur on a page); the
     // hovered vote's own.
     const dots = [
@@ -592,7 +603,7 @@ const NetworkMap = ({
           emphasis: { disabled: true },
           data: legs
             .filter(x => x.v.slot === highlight)
-            .flatMap(({ leg, c }) => {
+            .flatMap(({ leg, c, node }) => {
               const style = (width: number, opacity: number) => ({
                 color: getThemeColor(ROLE_COLOR[leg]),
                 width,
@@ -618,10 +629,17 @@ const NetworkMap = ({
                 opacity: 0.4 + 0.55 * share
               });
               return [
-                ...turbine.paths.flatMap(({ root, share }) => {
+                ...turbinePaths(node, c).flatMap(({ root, share, local }) => {
                   const { width, opacity } = w(share);
                   return [
-                    { coords: [c, root], lineStyle: style(width, opacity) },
+                    ...(local
+                      ? []
+                      : [
+                          {
+                            coords: [c, root],
+                            lineStyle: style(width, opacity)
+                          }
+                        ]),
                     {
                       coords: [root, via ?? me],
                       lineStyle: style(width, opacity)
@@ -651,7 +669,7 @@ const NetworkMap = ({
           data: (me
             ? legs
                 .filter(x => x.v.slot === highlight)
-                .flatMap(({ leg, c }) => {
+                .flatMap(({ leg, c, node }) => {
                   const floor = fibreMs(distanceKm(c, me));
                   // Its own block: no trip.
                   if (floor < 1) return [];
@@ -659,7 +677,7 @@ const NetworkMap = ({
                   // it - the label gives their range.
                   const pathsMs =
                     leg === 'block' && turbine
-                      ? turbine.paths.map(({ root }) => {
+                      ? turbinePaths(node, c).map(({ root }) => {
                           const hops: Array<[number, number]> = [
                             c,
                             root,
@@ -773,7 +791,7 @@ const NetworkMap = ({
             me && turbine && waypoints
               ? legs
                   .filter(x => x.v.slot === highlight && x.leg === 'block')
-                  .flatMap(({ c }) => {
+                  .flatMap(({ c, node }) => {
                     if (fibreMs(distanceKm(c, me)) < 1) return [];
                     const via = turbine.layer === 2 ? turbine.via : null;
                     const end = via ?? me;
@@ -803,21 +821,23 @@ const NetworkMap = ({
                     const legMs = (a: [number, number], b: [number, number]) =>
                       Math.round(fibreMs(distanceKm(a, b)));
                     return [
-                      ...turbine.paths.map(p => {
-                        const city = p.city?.split(' am ')[0] ?? null;
-                        // What going through this root adds over the
-                        // straight line: the path's floor less the direct.
-                        const added =
-                          legMs(c, p.root) +
-                          legMs(p.root, end) +
-                          (via ? legMs(via, me) : 0) -
-                          legMs(c, me);
-                        return hop(
-                          p.root,
-                          `{b|${city ?? REGION_NAME[p.region]}} +${Math.max(0, added)} ms`,
-                          `<b>${p.city ?? REGION_NAME[p.region]}</b> · a Turbine root (${REGION_NAME[p.region]})<br/>${Math.round(p.share * 100)}% of shreds start here (its share of stake)<br/>Producer → here ${legMs(c, p.root)} ms · here → ${via ? 'the relay' : 'it'} ${legMs(p.root, end)} ms: +${Math.max(0, added)} ms over the straight line`
-                        );
-                      }),
+                      ...turbinePaths(node, c)
+                        .filter(p => !p.local)
+                        .map(p => {
+                          const city = p.city?.split(' am ')[0] ?? null;
+                          // What going through this root adds over the
+                          // straight line: the path's floor less the direct.
+                          const added =
+                            legMs(c, p.root) +
+                            legMs(p.root, end) +
+                            (via ? legMs(via, me) : 0) -
+                            legMs(c, me);
+                          return hop(
+                            p.root,
+                            `{b|${city ?? REGION_NAME[p.region]}} +${Math.max(0, added)} ms`,
+                            `<b>${p.city ?? REGION_NAME[p.region]}</b> · a Turbine root (${REGION_NAME[p.region]})<br/>${Math.round(p.share * 100)}% of shreds start here (its share of stake)<br/>Producer → here ${legMs(c, p.root)} ms · here → ${via ? 'the relay' : 'it'} ${legMs(p.root, end)} ms: +${Math.max(0, added)} ms over the straight line`
+                          );
+                        }),
                       ...(via
                         ? [
                             hop(
