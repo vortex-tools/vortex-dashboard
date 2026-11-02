@@ -20,6 +20,7 @@ import {
 import { Form, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 import useLiveWindows, { when } from 'hooks/useLiveWindows';
+import useWindowHandoffs, { WindowHandoffs } from 'hooks/useWindowHandoffs';
 
 const PAGE = PRODUCTION_WINDOWS_PAGE;
 /** A handoff slower than this (ms) is tinted, as on Cluster Status. */
@@ -124,6 +125,44 @@ export const SlotCell = ({ s }: { s: Slot }) => {
     </Link>
   );
 };
+
+/** A window's two handoff cells: to it, from it. */
+const HandoffCells = ({ h }: { h: WindowHandoffs }) => (
+  <>
+    {(['in', 'out'] as const).map(side => {
+      const x = h[side];
+      const same = side === 'in' ? h.sameIn : h.sameOut;
+      return (
+        <td
+          key={side}
+          className="text-end font-monospace text-nowrap d-none d-sm-table-cell"
+        >
+          {x ? (
+            <span
+              className={
+                x.ms > SLOW_HANDOFF_MS ? 'text-warning-emphasis' : undefined
+              }
+              title={`${Math.round(x.ms)} ms ${side === 'in' ? 'from the previous leader' : 'to the next leader'}${x.skipped ? ' (a skipped slot in between)' : ''}`}
+            >
+              {Math.round(x.ms)} ms{x.skipped ? '*' : ''}
+            </span>
+          ) : (
+            <span
+              className="text-body-tertiary"
+              title={
+                same
+                  ? `It leads the ${side === 'in' ? 'window before' : 'next window'} too: no handoff`
+                  : undefined
+              }
+            >
+              —
+            </span>
+          )}
+        </td>
+      );
+    })}
+  </>
+);
 
 /**
  * One validator's leader windows in an epoch (/epochs/production/windows),
@@ -262,6 +301,11 @@ const ProducerWindowsTable = ({
           ),
     [played, filter, legacy]
   );
+  // The page's handoffs both ways, from the slots' block times.
+  const pageWindows = legacy
+    ? windows.slice(page * PAGE, (page + 1) * PAGE)
+    : windows;
+  const handoffsOf = useWindowHandoffs(pageWindows.map(w => w.firstSlot));
 
   if (failed)
     return (
@@ -387,25 +431,46 @@ const ProducerWindowsTable = ({
       >
         <thead>
           <tr>
-            <th title="Its 4 consecutive leader slots, by the first">
+            <th
+              rowSpan={2}
+              title="Its 4 consecutive leader slots, by the first"
+            >
               Leader window
             </th>
-            <th>Slots</th>
+            <th rowSpan={2}>Slots</th>
             <th
+              rowSpan={2}
               className="text-end d-none d-sm-table-cell"
               title="Online stake its blocks carried / online stake, over these 4 slots, as the Production score counts it: a block that carried 99.9%+ counts as full, a skipped slot as 0"
             >
               Inclusion
             </th>
             <th
-              className="text-end d-none d-sm-table-cell"
-              title="From the previous leader's last block to its first, by the two producers' block times: its first block (~144 ms) plus the wait for the previous block. Blank after a skip, with a clamped block time, or until the slot is classified."
+              colSpan={2}
+              className="text-center d-none d-sm-table-cell"
+              title="Leader handoffs, by the producers' block times: from the previous leader's last block to its first (to it), and from its last to the next leader's first (from it) - a block (~200 ms) plus the trip between them. * when a slot either side was skipped; a dash when it leads that window too, or a block time is clamped."
             >
               Handoff
             </th>
             {current && (
-              <th className="text-end d-none d-sm-table-cell">When</th>
+              <th rowSpan={2} className="text-end d-none d-sm-table-cell">
+                When
+              </th>
             )}
+          </tr>
+          <tr>
+            <th
+              className="text-end d-none d-sm-table-cell"
+              title="From the previous leader's last block to its first"
+            >
+              To it
+            </th>
+            <th
+              className="text-end d-none d-sm-table-cell"
+              title="From its last block to the next leader's first"
+            >
+              From it
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -445,6 +510,9 @@ const ProducerWindowsTable = ({
                     );
                   })}
                 </div>
+              </td>
+              <td className="text-end text-body-tertiary d-none d-sm-table-cell">
+                —
               </td>
               <td className="text-end text-body-tertiary d-none d-sm-table-cell">
                 —
@@ -496,21 +564,7 @@ const ProducerWindowsTable = ({
               <td className="text-end font-monospace d-none d-sm-table-cell">
                 {pct(windowInclusion(w))}
               </td>
-              <td className="text-end font-monospace text-nowrap d-none d-sm-table-cell">
-                {w.slots[0]?.slotMs != null ? (
-                  <span
-                    className={
-                      w.slots[0].slotMs > SLOW_HANDOFF_MS
-                        ? 'text-warning-emphasis'
-                        : undefined
-                    }
-                  >
-                    {Math.round(w.slots[0].slotMs)} ms
-                  </span>
-                ) : (
-                  <span className="text-body-tertiary">—</span>
-                )}
-              </td>
+              <HandoffCells h={handoffsOf(w.firstSlot)} />
               {current && (
                 <td className="text-end text-nowrap text-body-tertiary d-none d-sm-table-cell">
                   {liveWin.slotNow != null
@@ -525,7 +579,7 @@ const ProducerWindowsTable = ({
           {!shown.length && !liveRows.length && (
             <tr>
               <td
-                colSpan={current ? 5 : 4}
+                colSpan={current ? 6 : 5}
                 className="text-center text-body-tertiary py-3"
               >
                 {filter === 'all'
