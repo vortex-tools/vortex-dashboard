@@ -125,16 +125,27 @@ const NetworkMap = ({
   const [hover, setHover] = useState<Region | null>(null);
   // Zoom and pan (scroll / pinch / drag, or the buttons): kept here so a
   // hover's redraw doesn't reset them.
+  // Not state: a drag reports every step, and re-rendering mid-drag would
+  // reset the chart under the pointer. The buttons bump `viewTick` to
+  // redraw; scroll / drag only update the ref, read on the next redraw.
   const chartRef = useRef<ReactEChartsCore>(null);
-  const [view, setView] = useState<{
-    zoom: number;
-    center?: [number, number];
-  }>({ zoom: 1 });
-  const zoomBy = (f: number) =>
-    setView(v => ({
+  const viewRef = useRef<{ zoom: number; center?: [number, number] }>({
+    zoom: 1
+  });
+  const [viewTick, setViewTick] = useState(0);
+  const zoomBy = (f: number) => {
+    const v = viewRef.current;
+    viewRef.current = {
       ...v,
       zoom: Math.min(MAX_ZOOM, Math.max(1, v.zoom * f))
-    }));
+    };
+    setViewTick(t => t + 1);
+  };
+  const resetView = () => {
+    viewRef.current = { zoom: 1 };
+    setViewTick(t => t + 1);
+  };
+  const view = viewRef.current;
 
   const option = useMemo(() => {
     const me = coord(geo.get(self));
@@ -506,7 +517,7 @@ const NetworkMap = ({
     };
   }, [
     ready,
-    view,
+    viewTick,
     geo,
     self,
     mode,
@@ -557,7 +568,7 @@ const NetworkMap = ({
               className="btn btn-soft-secondary px-2 py-0 fs-10"
               aria-label="Reset the map"
               title="Back to the whole world"
-              onClick={() => setView({ zoom: 1 })}
+              onClick={resetView}
             >
               ⟲
             </button>
@@ -596,7 +607,10 @@ const NetworkMap = ({
               componentType?: string;
               name?: string;
               data?: { name?: string };
+              event?: { event?: { buttons?: number } };
             }) => {
+              // Mid-drag: a redraw would stop the pan.
+              if (p.event?.event?.buttons) return;
               if (
                 (p as { seriesName?: string }).seriesName === 'paths' ||
                 (p as { seriesName?: string }).seriesName === 'leaders'
@@ -622,7 +636,10 @@ const NetworkMap = ({
                 }
               )?.geo?.[0];
               if (g)
-                setView({ zoom: g.zoom ?? 1, center: g.center ?? undefined });
+                viewRef.current = {
+                  zoom: g.zoom ?? 1,
+                  center: g.center ?? undefined
+                };
             }
           }}
         />
