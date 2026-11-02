@@ -598,3 +598,18 @@ th.leaderboard-sticky-col {
     var(--vx-body-bg)
   );
 }
+
+// The Network tab's map pans by dragging: a grab hand over it, a closed
+// one while the button is down (over ECharts' own cursor, set on its
+// canvas layers).
+.vx-map-pan,
+.vx-map-pan * {
+  cursor: grab !important;
+}
+.vx-map-pan.vx-map-panning,
+.vx-map-pan.vx-map-panning * {
+  cursor: grabbing !important;
+}
+.vx-map-pan .btn {
+  cursor: pointer !important;
+}

@@ -133,6 +133,9 @@ const NetworkMap = ({
     zoom: 1
   });
   const [viewTick, setViewTick] = useState(0);
+  // A button down on the map: the closed-hand cursor (CSS only; the chart
+  // isn't redrawn for it).
+  const [panning, setPanning] = useState(false);
   const zoomBy = (f: number) => {
     const v = viewRef.current;
     viewRef.current = {
@@ -540,7 +543,17 @@ const NetworkMap = ({
       ? handoffs.find(h => h.region === hover)
       : undefined;
   return (
-    <div ref={boxRef} className="position-relative" style={{ height }}>
+    <div
+      ref={boxRef}
+      className={`position-relative vx-map-pan${panning ? ' vx-map-panning' : ''}`}
+      style={{ height }}
+      onPointerDown={e => {
+        // Not on the zoom buttons.
+        if (!(e.target as HTMLElement).closest('.btn')) setPanning(true);
+      }}
+      onPointerUp={() => setPanning(false)}
+      onPointerLeave={() => setPanning(false)}
+    >
       {ready && (
         <div
           className="position-absolute top-0 end-0 m-2 btn-group-vertical btn-group-sm"
