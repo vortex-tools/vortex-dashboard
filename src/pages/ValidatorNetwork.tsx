@@ -182,6 +182,8 @@ const ValidatorNetwork = () => {
   // The map and the list show the same moves: the latest few, or all.
   const [allMoves, setAllMoves] = useState(false);
   const shownMoves = allMoves ? moves : moves.slice(0, HOST_MOVES_SHOWN);
+  // The move hovered (a row or its arrow), highlighted on both.
+  const [hoverMove, setHoverMove] = useState<number | null>(null);
   // The views it has data for.
   const views = (
     [
@@ -319,6 +321,8 @@ const ValidatorNetwork = () => {
                 highlight={highlight}
                 onHighlight={setHighlight}
                 moves={shownMoves}
+                highlightMove={hoverMove}
+                onHighlightMove={setHoverMove}
                 nameOf={nameOf}
               />
               {view === 'hosts' && (
@@ -337,7 +341,15 @@ const ValidatorNetwork = () => {
                     {shownMoves.map((m, i) => (
                       <tr
                         key={i}
-                        className={m.epoch === epoch ? 'bg-body-highlight' : ''}
+                        onMouseEnter={() => setHoverMove(i)}
+                        onMouseLeave={() => setHoverMove(null)}
+                        className={
+                          hoverMove === i
+                            ? 'bg-body-highlight'
+                            : m.epoch === epoch
+                              ? 'fw-semibold'
+                              : ''
+                        }
                       >
                         <td className="text-nowrap">
                           <Link to={recordPath(address, m.epoch, 'network')}>
@@ -358,6 +370,24 @@ const ValidatorNetwork = () => {
                     ))}
                   </tbody>
                 </Table>
+              )}
+              {view === 'hosts' && (
+                <div className="d-flex flex-wrap gap-3 fs-10 text-body-tertiary mt-2">
+                  <span>
+                    <span
+                      className="d-inline-block align-middle me-1 bg-warning"
+                      style={{ width: 14, height: 3 }}
+                    />
+                    Failover: to a spare running the same identity (and back)
+                  </span>
+                  <span>
+                    <span
+                      className="d-inline-block align-middle me-1 bg-primary"
+                      style={{ width: 14, height: 3 }}
+                    />
+                    Moved: to a new host for good
+                  </span>
+                </div>
               )}
               {view === 'hosts' && moves.length > HOST_MOVES_SHOWN && (
                 <div className="d-flex justify-content-between fs-10 text-body-tertiary mt-2">

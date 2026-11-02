@@ -82,6 +82,8 @@ const NetworkMap = ({
   highlight,
   onHighlight,
   moves = [],
+  highlightMove = null,
+  onHighlightMove,
   nameOf
 }: {
   geo: Map<string, ValidatorGeo>;
@@ -96,6 +98,10 @@ const NetworkMap = ({
   onHighlight: (slot: number | null) => void;
   /** Its host moves (the Hosts view), newest first. */
   moves?: HostMove[];
+  /** The move highlighted (its row hovered: an index into moves), and to
+   *  set it from an arrow. */
+  highlightMove?: number | null;
+  onHighlightMove?: (i: number | null) => void;
   nameOf: (node: string) => string;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
@@ -262,17 +268,20 @@ const NetworkMap = ({
     // (a move within one place can't be drawn: it's in the list).
     const arrows =
       mode === 'hosts'
-        ? moves.filter(
-            (
-              m
-            ): m is HostMove & {
-              from: [number, number];
-              to: [number, number];
-            } =>
-              !!m.from &&
-              !!m.to &&
-              (m.from[0] !== m.to[0] || m.from[1] !== m.to[1])
-          )
+        ? moves
+            .map((m, i) => ({ ...m, i }))
+            .filter(
+              (
+                m
+              ): m is HostMove & {
+                i: number;
+                from: [number, number];
+                to: [number, number];
+              } =>
+                !!m.from &&
+                !!m.to &&
+                (m.from[0] !== m.to[0] || m.from[1] !== m.to[1])
+            )
         : [];
     const places =
       mode === 'hosts'
@@ -555,13 +564,15 @@ const NetworkMap = ({
             }
           },
           data: arrows.map(m => ({
+            name: String(m.i),
             coords: [m.from, m.to],
             lineStyle: {
               color: getThemeColor(
                 m.kind === 'failover' ? 'warning' : 'primary'
               ),
-              width: 2,
-              opacity: 0.85
+              width: highlightMove === m.i ? 3.5 : 2,
+              opacity:
+                highlightMove == null || highlightMove === m.i ? 0.9 : 0.15
             }
           }))
         },
@@ -619,6 +630,7 @@ const NetworkMap = ({
     votes,
     highlight,
     moves,
+    highlightMove,
     nameOf,
     getThemeColor,
     isDark,
@@ -722,6 +734,10 @@ const NetworkMap = ({
             }) => {
               // Mid-drag: a redraw would stop the pan.
               if (p.event?.event?.buttons) return;
+              if ((p as { seriesName?: string }).seriesName === 'moves') {
+                onHighlightMove?.(Number(p.data?.name));
+                return;
+              }
               if (
                 (p as { seriesName?: string }).seriesName === 'paths' ||
                 (p as { seriesName?: string }).seriesName === 'leaders'
@@ -738,6 +754,7 @@ const NetworkMap = ({
             globalout: () => {
               setHover(null);
               onHighlight(null);
+              onHighlightMove?.(null);
             },
             // Scroll, pinch or drag: keep where it is.
             georoam: () => {
