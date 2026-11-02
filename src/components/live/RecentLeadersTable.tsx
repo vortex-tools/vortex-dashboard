@@ -3,7 +3,10 @@ import ValidatorLink from 'components/common/ValidatorLink';
 import { SlotInfo, ValidatorGeo } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
-import { SLOT_KIND, WINDOW, slotKind } from './slotDots';
+import { SLOT_KIND, WINDOW, slotKind, windowHandoff } from './slotDots';
+
+/** A handoff slower than this (ms) is tinted: a slot plus ~100 ms. */
+const SLOW_HANDOFF_MS = 300;
 
 const mean = (a: number[]) =>
   a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
@@ -11,7 +14,8 @@ const mean = (a: number[]) =>
 /**
  * The latest leader windows up to the playhead, newest first: the
  * leader, where it is, and its four slots as dots colored like the
- * legend (each links to its slot) - with the window's mean
+ * legend (each links to its slot) - with its handoff from the previous
+ * leader (by block times; links to its Network tab), the window's mean
  * notarize stake and finalization. A window's row appears when the
  * playhead enters it and its dots fill as each slot plays.
  */
@@ -39,7 +43,7 @@ const RecentLeadersTable = ({
       responsive
       size="sm"
       className="data-table fs-9 mb-0"
-      style={{ tableLayout: 'fixed', minWidth: 520 }}
+      style={{ tableLayout: 'fixed', minWidth: 580 }}
     >
       <thead>
         <tr>
@@ -54,6 +58,13 @@ const RecentLeadersTable = ({
             style={{ width: WINDOW * 24 }}
           >
             Slots
+          </th>
+          <th
+            className="text-end"
+            style={{ width: '6rem' }}
+            title="From the previous leader's last block to this leader's first, by the two producers' block times: a slot (~200 ms) plus the network between them. * when this leader's first slot was skipped (the gap includes it). Each links to the leader's Network tab."
+          >
+            Handoff
           </th>
           <th
             className="text-end d-none d-sm-table-cell"
@@ -86,6 +97,7 @@ const RecentLeadersTable = ({
               .map(i => i.votes?.notarStakePpb)
               .filter((v): v is number => v != null)
           );
+          const handoff = windowHandoff(first, infos);
           const lagMs = mean(
             played
               .map(i => i.finalization?.lagMs)
@@ -129,6 +141,23 @@ const RecentLeadersTable = ({
                   </td>
                 );
               })}
+              <td className="text-end font-monospace text-nowrap">
+                {handoff && leader ? (
+                  <Link
+                    to={`/validator/${leader}/network`}
+                    className={
+                      handoff.ms > SLOW_HANDOFF_MS
+                        ? 'text-warning-emphasis'
+                        : 'text-reset'
+                    }
+                    title={`${Math.round(handoff.ms)} ms from the previous leader's last block${handoff.afterSkip ? ', its first slot skipped' : ''} - its Network tab`}
+                  >
+                    {Math.round(handoff.ms)} ms{handoff.afterSkip ? '*' : ''}
+                  </Link>
+                ) : (
+                  '…'
+                )}
+              </td>
               <td className="text-end font-monospace d-none d-sm-table-cell">
                 {notar != null ? `${(notar / 1e7).toFixed(1)}%` : '…'}
               </td>

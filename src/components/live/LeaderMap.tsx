@@ -8,8 +8,11 @@ import { useAppContext } from 'providers/AppProvider';
 import { ValidatorGeo } from 'providers/vortex-schemas';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { coord, loadWorld } from 'helpers/worldMap';
+import { Link } from 'react-router';
 
 const FLIGHT_MS = 600;
+/** A handoff slower than this (ms) is tinted: a slot plus ~100 ms. */
+const SLOW_HANDOFF_MS = 300;
 
 echarts.use([
   EffectScatterChart,
@@ -34,9 +37,13 @@ const LeaderMap = ({
   geo,
   leaders,
   nameOf,
-  fill = false
+  fill = false,
+  lastHandoff = null
 }: {
   geo: Map<string, ValidatorGeo> | null;
+  /** The latest measured handoff (by block times - the newest leader's is
+   *  in seconds after it starts), shown in a corner. */
+  lastHandoff?: { from: string; to: string; ms: number } | null;
   /** Take its parent's height (it must give one) rather than one from
    *  its width. */
   fill?: boolean;
@@ -243,7 +250,31 @@ const LeaderMap = ({
   }, [handoff?.key, ready]);
 
   return (
-    <div ref={boxRef} style={fill ? { height: '100%' } : undefined}>
+    <div
+      ref={boxRef}
+      className="position-relative"
+      style={fill ? { height: '100%' } : undefined}
+    >
+      {lastHandoff && ready && geo && (
+        <div
+          className="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded border bg-body fs-10 lh-sm"
+          style={{ zIndex: 2, maxWidth: '75%' }}
+          title="The latest handoff measured: from the previous leader's last block to this one's first, by their block times - a slot (~200 ms) plus the network between them"
+        >
+          <span className="text-body-tertiary">Handoff </span>
+          <span className="text-truncate">
+            {nameOf(lastHandoff.from)} →{' '}
+            <Link to={`/validator/${lastHandoff.to}/network`}>
+              {nameOf(lastHandoff.to)}
+            </Link>
+          </span>{' '}
+          <span
+            className={`font-monospace fw-semibold${lastHandoff.ms > SLOW_HANDOFF_MS ? ' text-warning-emphasis' : ''}`}
+          >
+            {Math.round(lastHandoff.ms)} ms
+          </span>
+        </div>
+      )}
       {!ready || !geo ? (
         <div
           className="d-flex align-items-center justify-content-center text-body-tertiary fs-9"

@@ -5,7 +5,7 @@ import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
 import SlotPlayer, { PausedBadge } from 'components/live/SlotPlayer';
 import PlaybackBar from 'components/live/PlaybackBar';
-import { SlotDotLegend } from 'components/live/slotDots';
+import { SlotDotLegend, windowHandoff } from 'components/live/slotDots';
 import ConsensusHealth from 'components/live/ConsensusHealth';
 import LeaderMap from 'components/live/LeaderMap';
 import RecentLeadersTable from 'components/live/RecentLeadersTable';
@@ -483,6 +483,23 @@ const LiveConsensus = () => {
     return out;
   }, [cursor, infos]);
 
+  // The latest handoff measured by block times, for the map's corner:
+  // the newest window whose first block and its previous window's last
+  // are both in (a different leader; the same one isn't a handoff).
+  const lastHandoff = useMemo(() => {
+    if (cursor == null) return null;
+    const first = cursor - (cursor % WINDOW);
+    for (let w = 0; w < 6; w++) {
+      const at = first - w * WINDOW;
+      const to = infos.get(at)?.leader;
+      const from = infos.get(at - 1)?.leader;
+      if (!to || !from || to === from) continue;
+      const h = windowHandoff(at, infos);
+      if (h && !h.afterSkip) return { from, to, ms: h.ms };
+    }
+    return null;
+  }, [cursor, infos]);
+
   const dir = context?.validatorDirectoryState;
   const nameOf = (node: string | null | undefined) =>
     node ? (dir?.byNodeAddress?.get(node)?.name ?? short(node)) : '—';
@@ -736,6 +753,7 @@ const LiveConsensus = () => {
                         leaders={recentLeaders}
                         nameOf={nameOf}
                         fill={isXl}
+                        lastHandoff={lastHandoff}
                       />
                     </div>
                   </SectionCard>

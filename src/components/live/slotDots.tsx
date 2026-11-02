@@ -68,3 +68,32 @@ export const SlotDotLegend = () => (
     )}
   </div>
 );
+
+/**
+ * A leader window's handoff, live: from the previous window's last block
+ * to this window's first, by the producers' own block times (footer
+ * producerTimeNanos; a clamped time - a clock off - doesn't count).
+ * `afterSkip`: this window's first slot was skipped, so the gap includes
+ * that skip. null until both blocks are in.
+ */
+export const windowHandoff = (
+  first: number,
+  infos: Map<number, SlotInfo | null>
+): { ms: number; afterSkip: boolean } | null => {
+  const time = (s: number) => {
+    const f = infos.get(s)?.footer;
+    return infos.get(s)?.outcome === 'block' &&
+      f?.producerTimeNanos != null &&
+      !f.clockClamp
+      ? f.producerTimeNanos
+      : null;
+  };
+  let prev: number | null = null;
+  for (let s = first - 1; s >= first - WINDOW && prev == null; s--)
+    prev = time(s);
+  let next: number | null = null;
+  let k = 0;
+  for (; k < WINDOW && next == null; k++) next = time(first + k);
+  if (prev == null || next == null) return null;
+  return { ms: (next - prev) / 1e6, afterSkip: k > 1 };
+};
