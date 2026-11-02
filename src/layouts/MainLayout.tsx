@@ -2,6 +2,7 @@ import ApiStatusBanner from 'components/common/ApiStatusBanner';
 import ClusterHaltBanner from 'components/common/ClusterHaltBanner';
 import Footer from 'components/layout/Footer';
 import Sidebar from 'components/layout/Sidebar';
+import NavProgress from 'components/layout/NavProgress';
 import TopBar from 'components/layout/TopBar';
 import { useAppContext } from 'providers/AppProvider';
 import DelayedSpinner from 'components/common/DelayedSpinner';
@@ -14,6 +15,7 @@ const MainLayout = () => {
   return (
     <div className={`vx-shell${sidebarCollapsed ? ' is-rail' : ''}`}>
       <TopBar />
+      <NavProgress />
       <Sidebar />
       <main className="content">
         <ApiStatusBanner />

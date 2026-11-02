@@ -319,3 +319,32 @@
     }
   }
 }
+
+// A page on its way (its code downloading): a thin bar under the top bar,
+// sliding, until the page is on screen.
+.vx-nav-progress {
+  position: fixed;
+  top: var(--#{$prefix}navbar-top-height);
+  left: 0;
+  right: 0;
+  z-index: $zindex-fixed + 1;
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--#{$prefix}primary) 20%, transparent);
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 30%;
+    background: var(--#{$prefix}primary);
+    animation: vx-nav-progress 900ms ease-in-out infinite;
+  }
+}
+@keyframes vx-nav-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
