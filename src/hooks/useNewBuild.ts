@@ -2,11 +2,11 @@ import useLiveRefresh from 'hooks/useLiveRefresh';
 import { useState } from 'react';
 
 /** How often to look for a newer deploy. */
-const CHECK_MS = 60_000;
+const CHECK_MS = 15_000;
 
 /**
  * A newer deploy than the one running: the page's HTML is fetched (no
- * cache) every minute while the tab is visible, and its build stamp
+ * cache) every 15 s while the tab is visible, and its build stamp
  * (vite.config's <meta name="vx-build">) compared with this build's.
  * null while it's the same (or it couldn't tell).
  */
