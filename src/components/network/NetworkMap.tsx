@@ -66,7 +66,7 @@ const MAX_ZOOM = 8;
  * Where a validator sits in the network, for one epoch - kept sparse: it,
  * pulsing, and either its handoffs (each region its previous leaders were
  * in drawn as one shape with a small label - region, time over the
- * network floor - and a line to it as thick as how many; hovered, its
+ * network floor - and a line to it; hovered, its
  * validators show as dots grouped by place, its figures in a corner, and
  * the region, line and label take its tone against the cluster's from
  * the same region) or a page of its divergent votes - from each slot's
@@ -137,6 +137,79 @@ const NetworkMap = ({
   // A button down on the map: the closed-hand cursor (CSS only; the chart
   // isn't redrawn for it).
   const [panning, setPanning] = useState(false);
+  // Touch screens pinch to zoom; a mouse or trackpad zooms with Ctrl / ⌘ +
+  // scroll (a trackpad pinch sends that too), and a plain scroll scrolls
+  // the page - with a hint, briefly.
+  const coarse = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      !!window.matchMedia?.('(pointer: coarse)').matches,
+    []
+  );
+  const isMac = useMemo(
+    () =>
+      typeof navigator !== 'undefined' &&
+      /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+    []
+  );
+  const [hint, setHint] = useState(false);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || coarse) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let frame = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) {
+        setHint(true);
+        clearTimeout(timer);
+        timer = setTimeout(() => setHint(false), 1400);
+        return;
+      }
+      e.preventDefault();
+      const inst = chartRef.current?.getEchartsInstance();
+      if (!inst) return;
+      const box = el.getBoundingClientRect();
+      const px: [number, number] = [e.clientX - box.left, e.clientY - box.top];
+      const v = viewRef.current;
+      const zoom = Math.min(
+        MAX_ZOOM,
+        Math.max(1, v.zoom * Math.exp(-e.deltaY * 0.0025))
+      );
+      if (zoom === v.zoom) return;
+      // Keep the point under the cursor where it is: the new center is
+      // the old one pulled toward it by the zoom's ratio.
+      const at = inst.convertFromPixel({ geoIndex: 0 }, px) as
+        | [number, number]
+        | undefined;
+      const mid = inst.convertFromPixel({ geoIndex: 0 }, [
+        box.width / 2,
+        box.height / 2
+      ]) as [number, number] | undefined;
+      const k = v.zoom / zoom;
+      viewRef.current = {
+        zoom,
+        center:
+          zoom === 1
+            ? undefined
+            : at && mid
+              ? [at[0] + (mid[0] - at[0]) * k, at[1] + (mid[1] - at[1]) * k]
+              : v.center
+      };
+      // One redraw a frame, however fast the wheel turns.
+      if (!frame)
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          setViewTick(t => t + 1);
+        });
+      setHint(false);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      clearTimeout(timer);
+      cancelAnimationFrame(frame);
+    };
+  }, [coarse, ready]);
   const zoomBy = (f: number) => {
     const v = viewRef.current;
     viewRef.current = {
@@ -155,7 +228,6 @@ const NetworkMap = ({
     const me = coord(geo.get(self));
     const tone = (excess: number | null, cluster: number | null) =>
       getThemeColor(delayTone(excess, cluster));
-    const maxCount = Math.max(1, ...handoffs.map(h => h.count));
     const lines =
       mode === 'handoffs' && me
         ? handoffs
@@ -298,7 +370,9 @@ const NetworkMap = ({
       tooltip: { trigger: 'item', confine: true },
       geo: {
         map: 'world',
-        roam: true,
+        // Desktop: drag pans, and only Ctrl / ⌘ + scroll zooms (a plain
+        // scroll moves the page; handled below). Touch: pinch and drag.
+        roam: coarse ? true : 'move',
         zoom: view.zoom,
         ...(view.center ? { center: view.center } : {}),
         scaleLimit: { min: 1, max: MAX_ZOOM },
@@ -343,7 +417,7 @@ const NetworkMap = ({
             name: h.region,
             coords: [from, me],
             lineStyle: {
-              width: 1.5 + (3 * h.count) / maxCount,
+              width: hover === h.region ? 3 : 2,
               color:
                 hover === h.region
                   ? tone(h.excessP50Ms, h.clusterExcessP50Ms)
@@ -570,6 +644,14 @@ const NetworkMap = ({
       onPointerUp={() => setPanning(false)}
       onPointerLeave={() => setPanning(false)}
     >
+      {hint && (
+        <div
+          className="position-absolute top-50 start-50 translate-middle px-3 py-2 rounded bg-body border shadow-sm fs-9"
+          style={{ zIndex: 3, pointerEvents: 'none' }}
+        >
+          Hold {isMac ? '⌘' : 'Ctrl'} and scroll to zoom
+        </div>
+      )}
       {ready && (
         <div
           className="position-absolute top-0 end-0 m-2 btn-group-vertical btn-group-sm"
