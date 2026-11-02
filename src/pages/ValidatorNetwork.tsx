@@ -218,7 +218,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Where It Runs"
               icon="map-pin"
-              info={`Its location and network provider (ASN) ${geoAsOf(geoSet, epoch)}, from IP geolocation (DB-IP), and how much of the stake with a known location runs on the same network, and in the same data center (that network in its city).`}
+              info={`Its location and network provider (ASN) ${geoAsOf(geoSet, epoch)}, from IP geolocation (DB-IP), and how much of the stake with a known location runs on the same provider (ASN), and in the same data center (that provider in its city).`}
             >
               {me?.geo ? (
                 <Table size="sm" className="data-table compact-rows fs-9 mb-0">
@@ -253,7 +253,9 @@ const ValidatorNetwork = () => {
                     </tr>
                     {shares && (
                       <tr>
-                        <td className="text-body-tertiary">On its network</td>
+                        <td className="text-body-tertiary">
+                          Same provider (ASN)
+                        </td>
                         <td>
                           {pct(shares.asnShare)} of stake
                           <span className="text-body-tertiary">
@@ -266,9 +268,7 @@ const ValidatorNetwork = () => {
                     )}
                     {shares?.dcShare != null && (
                       <tr>
-                        <td className="text-body-tertiary">
-                          In its data center
-                        </td>
+                        <td className="text-body-tertiary">Same data center</td>
                         <td>
                           {pct(shares.dcShare)} of stake
                           <span className="text-body-tertiary">
