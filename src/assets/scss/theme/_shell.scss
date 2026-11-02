@@ -72,6 +72,20 @@
   input::placeholder {
     color: var(--#{$prefix}tertiary-color);
   }
+  // Dark: the bar is dark too - a stronger tint and a faint edge, so the
+  // box still reads as one.
+  [data-bs-theme='dark'] & {
+    border-color: var(--#{$prefix}border-color-translucent);
+    background-color: color-mix(
+      in srgb,
+      var(--#{$prefix}body-color) 12%,
+      var(--#{$prefix}topbar-bg)
+    );
+  }
+  [data-bs-theme='dark'] &:focus-within {
+    background-color: var(--#{$prefix}body-bg);
+    border-color: var(--#{$prefix}border-color);
+  }
 }
 .vx-topbar-end {
   display: flex;
