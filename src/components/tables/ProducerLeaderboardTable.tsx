@@ -1,3 +1,4 @@
+import { delayTone, extraDelay, signedMs } from 'helpers/network';
 import { ColumnDef } from '@tanstack/react-table';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import AdvanceTable from 'components/base/AdvanceTable';
@@ -89,7 +90,12 @@ export const createProducerLeaderboardColumns = (
    *  shown faded, as on the consensus leaderboard. */
   subsequentTies: Set<string> = new Set(),
   scores: Map<string, ProducerScore> = new Map(),
-  minSlots = 20
+  minSlots = 20,
+  /** The epoch's slot (the cluster's in-window p50), for the handoff
+   *  extra delay on APIs that don't give it. */
+  clusterSlotMs: number | null = null,
+  /** The cluster's handoff extra delay, to tint each producer's by. */
+  clusterHandoffExtra: number | null = null
 ): ColumnDef<ProducerLeaderboardRecord>[] => [
   {
     id: 'rank',
@@ -248,6 +254,39 @@ export const createProducerLeaderboardColumns = (
           <span className="text-body-tertiary"> / {v.toLocaleString()}</span>
         </span>
       )
+  ),
+  num(
+    'handoff',
+    <span title="Leader handoffs' extra delay: the median from the previous leader's last block to its first, less one slot (the cluster's pace within windows) and the network floor between the two (a lower bound - blocks travel through Turbine). About 0 is as fast as physics allows. Each opens the validator's Network tab.">
+      Handoff
+    </span>,
+    r =>
+      extraDelay(
+        r.slotDuration?.handoffExcessP50Ms,
+        clusterSlotMs,
+        r.slotDuration?.handoffExtraP50Ms
+      ),
+    (v, r) => {
+      const tone = isCluster(r) ? null : delayTone(v, clusterHandoffExtra);
+      const cls =
+        tone === 'danger'
+          ? 'text-danger'
+          : tone === 'warning'
+            ? 'text-warning-emphasis'
+            : 'text-reset';
+      return isCluster(r) ? (
+        <span className="text-body-tertiary">{signedMs(v)}</span>
+      ) : (
+        <Link
+          to={recordPath(r.voteAddress ?? r.nodeAddress, epoch, 'network')}
+          className={cls}
+          title={`${r.slotDuration?.handoff?.count?.toLocaleString() ?? '?'} handoffs · median ${r.slotDuration?.handoff?.p50Ms != null ? Math.round(r.slotDuration.handoff.p50Ms) : '?'} ms - its Network tab`}
+        >
+          {signedMs(v)}
+        </Link>
+      );
+    },
+    { opensGroup: true }
   ),
   ...productionBlockColumns<ProducerLeaderboardRecord>(r =>
     isCluster(r) ? null : r

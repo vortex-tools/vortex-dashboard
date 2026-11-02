@@ -1,3 +1,4 @@
+import { extraDelay } from 'helpers/network';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import ConsensusHeader, {
   consensusBreadcrumbs
@@ -186,9 +187,15 @@ const ProducerLeaderboard = () => {
         totalStake,
         ties,
         scores,
-        MIN_LEADER_SLOTS
+        MIN_LEADER_SLOTS,
+        board?.cluster?.slotDuration?.inWindow?.p50Ms ?? null,
+        extraDelay(
+          board?.cluster?.slotDuration?.handoffExcessP50Ms,
+          board?.cluster?.slotDuration?.inWindow?.p50Ms,
+          board?.cluster?.slotDuration?.handoffExtraP50Ms
+        )
       ),
-    [board?.epoch, totalStake, ties, scores]
+    [board, totalStake, ties, scores]
   );
   const clusterScore = board?.cluster ? scoreOf(board.cluster) : null;
   const table = useAdvanceTable({
