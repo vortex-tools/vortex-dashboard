@@ -472,12 +472,14 @@ const NetworkMap = ({
             formatter: (p: { dataIndex: number }) =>
               places[p.dataIndex]?.label ?? ''
           },
-          data: places.map(x => ({
+          data: places.map((x, i) => ({
             value: x.c,
             itemStyle: { color: getThemeColor('secondary') },
             label: {
               show: true,
-              position: 'right',
+              // Alternate sides, so two places close together (a
+              // failover pair) don't stack their labels.
+              position: i % 2 ? 'left' : 'right',
               formatter: x.label.split(' · ')[0],
               fontSize: 10,
               color: getThemeColor('body-color'),

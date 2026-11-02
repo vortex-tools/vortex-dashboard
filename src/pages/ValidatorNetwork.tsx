@@ -179,6 +179,9 @@ const ValidatorNetwork = () => {
     () => (hostData ? hostMoves(hostData) : []),
     [hostData]
   );
+  // The map and the list show the same moves: the latest few, or all.
+  const [allMoves, setAllMoves] = useState(false);
+  const shownMoves = allMoves ? moves : moves.slice(0, HOST_MOVES_SHOWN);
   // The views it has data for.
   const views = (
     [
@@ -315,7 +318,7 @@ const ValidatorNetwork = () => {
                 votes={pageVotes}
                 highlight={highlight}
                 onHighlight={setHighlight}
-                moves={moves}
+                moves={shownMoves}
                 nameOf={nameOf}
               />
               {view === 'hosts' && (
@@ -331,7 +334,7 @@ const ValidatorNetwork = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {moves.slice(0, HOST_MOVES_SHOWN).map((m, i) => (
+                    {shownMoves.map((m, i) => (
                       <tr
                         key={i}
                         className={m.epoch === epoch ? 'bg-body-highlight' : ''}
@@ -355,6 +358,23 @@ const ValidatorNetwork = () => {
                     ))}
                   </tbody>
                 </Table>
+              )}
+              {view === 'hosts' && moves.length > HOST_MOVES_SHOWN && (
+                <div className="d-flex justify-content-between fs-10 text-body-tertiary mt-2">
+                  <span>
+                    {allMoves
+                      ? `All ${moves.length.toLocaleString()} moves`
+                      : `The latest ${HOST_MOVES_SHOWN} of ${moves.length.toLocaleString()} moves`}
+                    , on the map and here
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 fs-10"
+                    onClick={() => setAllMoves(a => !a)}
+                  >
+                    {allMoves ? 'Show fewer' : 'Show all'}
+                  </button>
+                </div>
               )}
               {view === 'divergent' &&
                 (votes.length === 0 ? (

@@ -10,13 +10,25 @@ import {
 import { ProducerLeaderboard } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
 
-type Stat = { count: number; p50Ms: number; p90Ms: number } | null | undefined;
 type Num = number | null | undefined;
+type Side = {
+  count: number;
+  p50Ms: number | null;
+  p90Ms: number | null;
+  expectedP50Ms?: number | null;
+} | null;
 
-/** "1,367 handoffs · 90th percentile 323 ms", for a cell's hover. */
-const about = (s: Stat) =>
+/** "1,367 handoffs · 90th percentile 323 ms · network floor 39 ms", for a
+ *  cell's hover. */
+const about = (s: Side) =>
   s
-    ? `${s.count.toLocaleString()} handoffs · 90th percentile ${ms(s.p90Ms)}`
+    ? [
+        `${s.count.toLocaleString()} handoffs`,
+        s.p90Ms != null && `90th percentile ${ms(s.p90Ms)}`,
+        s.expectedP50Ms != null && `network floor ${ms(s.expectedP50Ms)}`
+      ]
+        .filter(Boolean)
+        .join(' · ')
     : undefined;
 
 /** An extra delay against the cluster's: red when 40+ ms more. */
@@ -24,191 +36,157 @@ const slow = (mine: Num, theirs: Num) =>
   delayTone(mine, theirs) === 'danger' ? ' text-danger' : '';
 
 /**
- * Its handoffs for an epoch, kept to a phone's width: in (the previous
- * leader's last block to its first) and out (its last to the next
- * leader's first, where the API has it) - the median, and over the
- * network floor (less the fibre-speed distance between the two) - against
- * the cluster's; then over the floor by region, in and out against the
- * cluster's handoffs from that region. Counts and 90th percentiles on
- * hover.
+ * Its handoffs for an epoch in one phone-width table: all of them, then by
+ * where the other leader was - the median from the previous leader, its
+ * extra delay (the median less one slot and the network floor: ~0 is the
+ * physical limit), the extra delay to the next leader where the API has
+ * it, and the cluster's extra delay (from that region). Counts, 90th
+ * percentiles and floors on hover.
  */
 const HandoffCard = ({
   record,
-  board,
-  note
+  board
 }: {
   record: ProducerRow | null | undefined;
   board: ProducerLeaderboard | null | undefined;
-  /** A caveat under the figures (a host change mid-epoch). */
-  note?: string;
 }) => {
   const pace = record?.slotDuration;
   const it = pace?.handoff;
   if (!record || !pace || !it) return null;
   const cluster = board?.cluster?.slotDuration;
-  // A slot that epoch (the cluster's pace within windows): a handoff
-  // spans one, so the extra delay is over the floor less it.
+  // A slot that epoch (the cluster's pace within windows), for APIs that
+  // don't give the extra delay themselves.
   const slotMs = cluster?.inWindow?.p50Ms;
   const out = pace.handoffOut;
   const inBy = pace.handoffByRegion;
   const outBy = pace.handoffOutByRegion;
-  const regions = REGIONS.filter(
-    r =>
-      r !== 'unknown' &&
-      ((inBy?.[r]?.count ?? 0) > 0 || (outBy?.[r]?.count ?? 0) > 0)
-  );
-  const rows: Array<[string, Num, Num, string | undefined]> = [
-    [
-      'From previous leader, median',
-      it.p50Ms,
-      cluster?.handoff?.p50Ms,
-      about(it)
-    ],
-    [
-      'From previous leader, extra delay',
-      extraDelay(pace.handoffExcessP50Ms, slotMs, pace.handoffExtraP50Ms),
-      extraDelay(
+  const hasOut = !!out;
+  type Row = {
+    key: string;
+    label: string;
+    median: Num;
+    inSide: Side;
+    extraIn: Num;
+    outSide: Side;
+    extraOut: Num;
+    clusterExtra: Num;
+  };
+  const rows: Row[] = [
+    {
+      key: 'all',
+      label: 'All',
+      median: it.p50Ms,
+      inSide: { ...it, expectedP50Ms: pace.handoffExpectedP50Ms },
+      extraIn: extraDelay(
+        pace.handoffExcessP50Ms,
+        slotMs,
+        pace.handoffExtraP50Ms
+      ),
+      outSide: out
+        ? { ...out, expectedP50Ms: pace.handoffOutExpectedP50Ms }
+        : null,
+      extraOut: extraDelay(
+        pace.handoffOutExcessP50Ms,
+        slotMs,
+        pace.handoffOutExtraP50Ms
+      ),
+      clusterExtra: extraDelay(
         cluster?.handoffExcessP50Ms,
         slotMs,
         cluster?.handoffExtraP50Ms
-      ),
-      undefined
-    ],
-    ...(out
-      ? ([
-          [
-            'To next leader, median',
-            out.p50Ms,
-            cluster?.handoff?.p50Ms,
-            about(out)
-          ],
-          [
-            'To next leader, extra delay',
-            extraDelay(
-              pace.handoffOutExcessP50Ms,
-              slotMs,
-              pace.handoffOutExtraP50Ms
-            ),
-            extraDelay(
-              cluster?.handoffExcessP50Ms,
-              slotMs,
-              cluster?.handoffExtraP50Ms
-            ),
-            undefined
-          ]
-        ] as Array<[string, Num, Num, string | undefined]>)
-      : [])
+      )
+    },
+    ...REGIONS.filter(
+      r =>
+        r !== 'unknown' &&
+        ((inBy?.[r]?.count ?? 0) > 0 || (outBy?.[r]?.count ?? 0) > 0)
+    ).map(r => {
+      const i = inBy?.[r];
+      const o = outBy?.[r];
+      const c = cluster?.handoffByRegion?.[r];
+      return {
+        key: r,
+        label: REGION_NAME[r],
+        median: i?.p50Ms,
+        inSide: i ?? null,
+        extraIn: extraDelay(i?.excessP50Ms, slotMs, i?.extraP50Ms),
+        outSide: o ?? null,
+        extraOut: extraDelay(o?.excessP50Ms, slotMs, o?.extraP50Ms),
+        clusterExtra: extraDelay(c?.excessP50Ms, slotMs, c?.extraP50Ms)
+      };
+    })
   ];
   return (
     <SectionCard
       title="Handoffs"
       icon="shuffle"
-      info="From previous leader: its first block after the previous leader's last. To next leader: the next leader's first block after its last. A handoff spans the receiving leader's whole slot (~200 ms, building its block) plus the trip between the two, so the extra delay is the median less one slot (the cluster's pace within leader windows) and the network floor (the fibre-speed distance, ~200 km/ms): about 0 is as fast as physics allows. By region: by where the other leader was, against the cluster's handoffs from there. Hover a figure for its count, median and floor."
+      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff spans the receiving leader's whole slot (~200 ms, building its block) plus the trip between the two, so the extra delay is the median less one slot (the cluster's pace within leader windows) and the network floor (the fibre-speed distance, ~200 km/ms): about 0 is as fast as physics allows. By region: by where the other leader was; the cluster's from that region. Hover a figure for its count, 90th percentile and floor."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
           <tr>
             <th />
-            <th className="text-end">This validator</th>
-            <th className="text-end text-body-tertiary">Cluster</th>
+            <th
+              className="text-end"
+              title="Median handoff from the previous leader"
+            >
+              Median
+            </th>
+            <th
+              className="text-end"
+              title="Its extra delay from the previous leader: the median less one slot and the network floor"
+            >
+              Extra
+            </th>
+            {hasOut && (
+              <th
+                className="text-end"
+                title="Its extra delay to the next leader"
+              >
+                To next
+              </th>
+            )}
+            <th
+              className="text-end text-body-tertiary"
+              title="The cluster's extra delay (from that region)"
+            >
+              Cluster
+            </th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(([label, mine, theirs, title]) => (
-            <tr key={label}>
-              <td className="text-nowrap">{label}</td>
-              <td
-                className={`text-end font-monospace${slow(mine, theirs)}`}
-                title={title}
-              >
-                {label.endsWith('extra delay') ? signedMs(mine) : ms(mine)}
+          {rows.map(r => (
+            <tr key={r.key} className={r.key === 'all' ? 'fw-semibold' : ''}>
+              <td className="text-nowrap">{r.label}</td>
+              <td className="text-end font-monospace" title={about(r.inSide)}>
+                {ms(r.median)}
               </td>
-              <td className="text-end font-monospace text-body-tertiary">
-                {label.endsWith('extra delay') ? signedMs(theirs) : ms(theirs)}
+              <td
+                className={`text-end font-monospace${slow(r.extraIn, r.clusterExtra)}`}
+                title={about(r.inSide)}
+              >
+                {signedMs(r.extraIn)}
+              </td>
+              {hasOut && (
+                <td
+                  className={`text-end font-monospace${slow(r.extraOut, r.clusterExtra)}`}
+                  title={about(r.outSide)}
+                >
+                  {signedMs(r.extraOut)}
+                </td>
+              )}
+              <td className="text-end font-monospace text-body-tertiary fw-normal">
+                {signedMs(r.clusterExtra)}
               </td>
             </tr>
           ))}
         </tbody>
       </Table>
-      {regions.length > 0 ? (
-        <>
-          <h6 className="fs-10 text-uppercase text-body-tertiary mt-3 mb-2">
-            Extra delay, by region
-          </h6>
-          <Table size="sm" className="data-table compact-rows fs-9 mb-0">
-            <thead>
-              <tr>
-                <th />
-                <th
-                  className="text-end"
-                  title="Its handoffs from a previous leader in this region"
-                >
-                  From
-                </th>
-                {outBy && (
-                  <th
-                    className="text-end"
-                    title="Its handoffs to a next leader in this region"
-                  >
-                    To
-                  </th>
-                )}
-                <th
-                  className="text-end text-body-tertiary"
-                  title="The cluster's handoffs from this region"
-                >
-                  Cluster
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {regions.map(r => {
-                const i = inBy?.[r];
-                const o = outBy?.[r];
-                const cr = cluster?.handoffByRegion?.[r];
-                const c = extraDelay(cr?.excessP50Ms, slotMs, cr?.extraP50Ms);
-                const ie = extraDelay(i?.excessP50Ms, slotMs, i?.extraP50Ms);
-                const oe = extraDelay(o?.excessP50Ms, slotMs, o?.extraP50Ms);
-                return (
-                  <tr key={r}>
-                    <td className="text-nowrap">{REGION_NAME[r]}</td>
-                    <td
-                      className={`text-end font-monospace${slow(ie, c)}`}
-                      title={
-                        i
-                          ? `${i.count.toLocaleString()} handoffs · median ${ms(i.p50Ms)} · network floor ${ms(i.expectedP50Ms)}`
-                          : undefined
-                      }
-                    >
-                      {signedMs(ie)}
-                    </td>
-                    {outBy && (
-                      <td
-                        className={`text-end font-monospace${slow(oe, c)}`}
-                        title={
-                          o
-                            ? `${o.count.toLocaleString()} handoffs · median ${ms(o.p50Ms)} · network floor ${ms(o.expectedP50Ms)}`
-                            : undefined
-                        }
-                      >
-                        {signedMs(oe)}
-                      </td>
-                    )}
-                    <td className="text-end font-monospace text-body-tertiary">
-                      {signedMs(c)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-        </>
-      ) : (
+      {!inBy && (
         <p className="fs-10 text-body-tertiary mt-2 mb-0">
           By region: not recorded for this epoch yet.
         </p>
       )}
-      {note && <p className="fs-10 text-warning-emphasis mt-2 mb-0">{note}</p>}
     </SectionCard>
   );
 };
