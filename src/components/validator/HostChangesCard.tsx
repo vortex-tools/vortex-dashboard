@@ -149,8 +149,18 @@ const HostChangesCard = ({
   const now = linesOf(
     data.events.filter(e => currentEpoch != null && e.epoch === currentEpoch)
   );
-  const moves = data.migrations.filter(m => m.kind === 'migration').reverse();
   const latest = data.migrations[data.migrations.length - 1];
+  // "Now at ... since epoch N": the latest move, when it's where it runs.
+  const since =
+    !switching &&
+    !!latest &&
+    placeKey(latest.after) === placeKey(live ? { geo: live } : latest.after);
+  // Its moves to new hosts, newest first - less the one "since" already
+  // tells.
+  const moves = data.migrations
+    .filter(m => m.kind === 'migration')
+    .reverse()
+    .filter(m => !(since && m === latest));
   const shownMoves = all ? moves : moves.slice(0, FIRST_MIGRATIONS);
   // Its backup: a site the epoch-level failovers took it to other than
   // the one it runs at now - the most used, and since when.
@@ -187,9 +197,7 @@ const HostChangesCard = ({
           <span className="text-body-tertiary">
             {switching
               ? ' · switching hosts…'
-              : latest &&
-                  placeKey(latest.after) ===
-                    placeKey(live ? { geo: live } : latest.after)
+              : since
                 ? ` since epoch ${latest.epoch.toLocaleString()}`
                 : ''}
           </span>
@@ -203,10 +211,12 @@ const HostChangesCard = ({
           {Math.min(...backup.epochs).toLocaleString()}
         </p>
       )}
-      {!backup && (live || latest) && <div className="mb-3" />}
+      {!backup && (live || latest) && (now.length > 0 || moves.length > 0) && (
+        <div className="mb-3" />
+      )}
 
       {/* Each section only when it has something; neither: one line. */}
-      {!now.length && !moves.length && (
+      {!now.length && !moves.length && !since && (
         <p className="fs-9 text-body-tertiary mb-0">
           No host changes recorded.
         </p>
@@ -294,7 +304,7 @@ const HostChangesCard = ({
       {moves.length > 0 && (
         <>
           <h6 className="fs-10 text-uppercase text-body-tertiary mb-2">
-            Migrations
+            {since ? 'Earlier migrations' : 'Migrations'}
           </h6>
           <Table size="sm" className="data-table compact-rows fs-9 mb-0">
             <tbody>
