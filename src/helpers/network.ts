@@ -237,3 +237,85 @@ export const delayTone = (
       : mine - cluster <= 40
         ? 'warning'
         : 'danger';
+
+/** A move between hosts, for the map: a failover (to its spare and back)
+ *  or a migration, with where it went from and to. */
+export type HostMove = {
+  epoch: number;
+  /** The slot it was seen at (events of recent epochs); null for an
+   *  epoch-level migration. */
+  slot: number | null;
+  kind: 'failover' | 'migration';
+  from: [number, number] | null;
+  to: [number, number] | null;
+  fromLabel: string;
+  toLabel: string;
+};
+
+type HostSide = {
+  host: number | null;
+  geo: {
+    city: string | null;
+    asnOrganization: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  } | null;
+};
+
+const sideCoord = (h: HostSide): [number, number] | null =>
+  h.geo?.longitude != null && h.geo.latitude != null
+    ? [h.geo.longitude, h.geo.latitude]
+    : null;
+const sideLabel = (h: HostSide) =>
+  [h.geo?.city, h.geo?.asnOrganization].filter(Boolean).join(' · ') ||
+  'Unknown host';
+
+/**
+ * Its host moves, newest first: the minute-level events where the API has
+ * them (failovers and moves; software changes left out), and the
+ * epoch-level migrations of epochs before those.
+ */
+export const hostMoves = (data: {
+  migrations: Array<{
+    epoch: number;
+    kind: string;
+    before: HostSide;
+    after: HostSide;
+  }>;
+  events: Array<{
+    epoch: number;
+    slot: number | null;
+    kind: string;
+    ipChanged: boolean | null;
+    before: HostSide;
+    after: HostSide;
+  }>;
+}): HostMove[] => {
+  const move = (
+    epoch: number,
+    slot: number | null,
+    kind: string,
+    before: HostSide,
+    after: HostSide
+  ): HostMove => ({
+    epoch,
+    slot,
+    kind: kind === 'failover' ? 'failover' : 'migration',
+    from: sideCoord(before),
+    to: sideCoord(after),
+    fromLabel: sideLabel(before),
+    toLabel: sideLabel(after)
+  });
+  const events = data.events.filter(
+    e => e.kind !== 'software' && e.ipChanged !== false
+  );
+  const firstEventEpoch = events.length
+    ? Math.min(...events.map(e => e.epoch))
+    : Infinity;
+  return [
+    ...events.map(e => move(e.epoch, e.slot, e.kind, e.before, e.after)),
+    ...data.migrations
+      .filter(m => m.epoch < firstEventEpoch)
+      .map(m => move(m.epoch, null, m.kind, m.before, m.after))
+  ].sort((a, b) => b.epoch - a.epoch || (b.slot ?? 0) - (a.slot ?? 0));
+};

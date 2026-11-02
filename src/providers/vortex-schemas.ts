@@ -2218,7 +2218,9 @@ const hostStateSchema = z.object({
       asnOrganization: z.string().nullable().catch(null),
       countryCode: z.string().nullable().catch(null),
       country: z.string().nullable().optional().catch(null),
-      city: z.string().nullable().catch(null)
+      city: z.string().nullable().catch(null),
+      latitude: z.number().nullable().optional().catch(null),
+      longitude: z.number().nullable().optional().catch(null)
     })
     .nullable()
     .catch(null),

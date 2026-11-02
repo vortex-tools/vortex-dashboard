@@ -34,10 +34,13 @@ const slow = (mine: Num, theirs: Num) =>
  */
 const HandoffCard = ({
   record,
-  board
+  board,
+  note
 }: {
   record: ProducerRow | null | undefined;
   board: ProducerLeaderboard | null | undefined;
+  /** A caveat under the figures (a host change mid-epoch). */
+  note?: string;
 }) => {
   const pace = record?.slotDuration;
   const it = pace?.handoff;
@@ -193,6 +196,7 @@ const HandoffCard = ({
           By region: not recorded for this epoch yet.
         </p>
       )}
+      {note && <p className="fs-10 text-warning-emphasis mt-2 mb-0">{note}</p>}
     </SectionCard>
   );
 };

@@ -6,6 +6,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import {
   DIVERGENCE,
   DivergentVote,
+  HostMove,
   REGION_NAME,
   delayTone,
   signedMs,
@@ -35,7 +36,7 @@ echarts.use([
 /** The world map's width to height (Antarctica dropped). */
 const ASPECT = 1.9;
 
-export type MapMode = 'handoffs' | 'divergent';
+export type MapMode = 'handoffs' | 'divergent' | 'hosts';
 
 export type RegionHandoff = {
   region: Region;
@@ -79,6 +80,7 @@ const NetworkMap = ({
   votes,
   highlight,
   onHighlight,
+  moves = [],
   nameOf
 }: {
   geo: Map<string, ValidatorGeo>;
@@ -91,6 +93,8 @@ const NetworkMap = ({
   /** The slot highlighted (its list row hovered), and to set it. */
   highlight: number | null;
   onHighlight: (slot: number | null) => void;
+  /** Its host moves (the Hosts view), newest first. */
+  moves?: HostMove[];
   nameOf: (node: string) => string;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
@@ -155,6 +159,37 @@ const NetworkMap = ({
             .filter(
               (x): x is { v: DivergentVote; from: [number, number] } => !!x.from
             )
+        : [];
+    // Hosts: each place it ran from, and an arrow per move between two
+    // (a move within one place can't be drawn: it's in the list).
+    const arrows =
+      mode === 'hosts'
+        ? moves.filter(
+            (
+              m
+            ): m is HostMove & {
+              from: [number, number];
+              to: [number, number];
+            } =>
+              !!m.from &&
+              !!m.to &&
+              (m.from[0] !== m.to[0] || m.from[1] !== m.to[1])
+          )
+        : [];
+    const places =
+      mode === 'hosts'
+        ? [
+            ...new Map(
+              moves
+                .flatMap(m =>
+                  [
+                    [m.from, m.fromLabel],
+                    [m.to, m.toLabel]
+                  ].filter((x): x is [[number, number], string] => !!x[0])
+                )
+                .map(([c, label]) => [`${c[0]},${c[1]}`, { c, label }])
+            ).values()
+          ]
         : [];
     // Handoffs: each region with any drawn as one shape (its countries a
     // tint, no borders between them); hovered, in its tone.
@@ -398,6 +433,62 @@ const NetworkMap = ({
             }
           }))
         },
+        {
+          type: 'lines',
+          coordinateSystem: 'geo',
+          zlevel: 1,
+          name: 'moves',
+          lineStyle: { curveness: 0.25 },
+          symbol: ['none', 'arrow'],
+          symbolSize: 8,
+          emphasis: { disabled: true },
+          tooltip: {
+            formatter: (p: { dataIndex: number }) => {
+              const m = arrows[p.dataIndex];
+              return m
+                ? `<b>${m.kind === 'failover' ? 'Failover' : 'Moved'}</b> · epoch ${m.epoch}${m.slot != null ? `, slot ${m.slot.toLocaleString()}` : ''}<br/>${m.fromLabel} → ${m.toLabel}`
+                : '';
+            }
+          },
+          data: arrows.map(m => ({
+            coords: [m.from, m.to],
+            lineStyle: {
+              color: getThemeColor(
+                m.kind === 'failover' ? 'warning' : 'primary'
+              ),
+              width: 2,
+              opacity: 0.85
+            }
+          }))
+        },
+        {
+          type: 'scatter',
+          coordinateSystem: 'geo',
+          zlevel: 1,
+          name: 'places',
+          symbolSize: 7,
+          emphasis: { disabled: true },
+          tooltip: {
+            formatter: (p: { dataIndex: number }) =>
+              places[p.dataIndex]?.label ?? ''
+          },
+          data: places.map(x => ({
+            value: x.c,
+            itemStyle: { color: getThemeColor('secondary') },
+            label: {
+              show: true,
+              position: 'right',
+              formatter: x.label.split(' · ')[0],
+              fontSize: 10,
+              color: getThemeColor('body-color'),
+              backgroundColor: getThemeColor('body-bg'),
+              borderColor: getThemeColor('border-color'),
+              borderWidth: 1,
+              borderRadius: 4,
+              padding: [2, 5]
+            }
+          }))
+        },
         // It: pulsing, on top.
         {
           type: 'effectScatter',
@@ -421,6 +512,7 @@ const NetworkMap = ({
     handoffs,
     votes,
     highlight,
+    moves,
     nameOf,
     getThemeColor,
     isDark,

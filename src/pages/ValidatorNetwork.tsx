@@ -19,6 +19,7 @@ import {
   divergentVotes,
   divergenceByLeader,
   extraDelay,
+  hostMoves,
   divergenceByRegion,
   networkShares,
   regionOf
@@ -34,6 +35,8 @@ import { Link, useNavigate } from 'react-router';
 
 /** Divergent votes on the map at a time. */
 const VOTES_PAGE = 10;
+/** Host moves listed under the Hosts map. */
+const HOST_MOVES_SHOWN = 10;
 
 const pct = (x: number | null | undefined, digits = 1) =>
   x == null
@@ -158,7 +161,26 @@ const ValidatorNetwork = () => {
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<MapMode>('handoffs');
-  const view: MapMode = handoffs.length ? mode : 'divergent';
+  // Its host moves (failovers, migrations), for the Hosts view.
+  const fetchHosts = context?.hostChangesState.fetchData;
+  useEffect(() => {
+    if (node) fetchHosts?.(node);
+  }, [node, fetchHosts]);
+  const hostData = node ? context?.hostChangesState.data.get(node) : undefined;
+  const moves = useMemo(
+    () => (hostData ? hostMoves(hostData) : []),
+    [hostData]
+  );
+  const movedThisEpoch = moves.filter(m => m.epoch === epoch);
+  // The views it has data for.
+  const views = (
+    [
+      ['handoffs', 'Handoffs', handoffs.length > 0],
+      ['divergent', 'Divergent votes', true],
+      ['hosts', 'Hosts', moves.length > 0]
+    ] as Array<[MapMode, string, boolean]>
+  ).filter(([, , has]) => has);
+  const view: MapMode = views.some(([k]) => k === mode) ? mode : views[0][0];
 
   const body = () => {
     if (unavailable)
@@ -256,16 +278,11 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Handoffs: each region its previous leaders were in, with a line as thick as how many handoffs - hover one for its figures, colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - each a line from that slot's leader to it (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out."
+              info="Handoffs: each region its previous leaders were in, with a line as thick as how many handoffs - hover one for its figures, colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - each a line from that slot's leader to it (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
-                handoffs.length ? (
+                views.length > 1 ? (
                   <ButtonGroup size="sm">
-                    {(
-                      [
-                        ['handoffs', 'Handoffs'],
-                        ['divergent', 'Divergent votes']
-                      ] as Array<[MapMode, string]>
-                    ).map(([k, label]) => (
+                    {views.map(([k, label]) => (
                       <ToggleButton
                         key={k}
                         id={`network-map-${k}`}
@@ -291,8 +308,47 @@ const ValidatorNetwork = () => {
                 votes={pageVotes}
                 highlight={highlight}
                 onHighlight={setHighlight}
+                moves={moves}
                 nameOf={nameOf}
               />
+              {view === 'hosts' && (
+                <Table
+                  size="sm"
+                  className="data-table compact-rows fs-9 mt-2 mb-0"
+                >
+                  <thead>
+                    <tr>
+                      <th>Epoch</th>
+                      <th>Change</th>
+                      <th>From → to</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {moves.slice(0, HOST_MOVES_SHOWN).map((m, i) => (
+                      <tr
+                        key={i}
+                        className={m.epoch === epoch ? 'bg-body-highlight' : ''}
+                      >
+                        <td className="text-nowrap">
+                          <Link to={recordPath(address, m.epoch, 'network')}>
+                            {m.epoch}
+                          </Link>
+                        </td>
+                        <td
+                          className={`text-nowrap ${m.kind === 'failover' ? 'text-warning-emphasis' : ''}`}
+                        >
+                          {m.kind === 'failover' ? 'Failover' : 'Moved'}
+                        </td>
+                        <td>
+                          {m.fromLabel}{' '}
+                          <span className="text-body-tertiary">→</span>{' '}
+                          {m.toLabel}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
               {view === 'divergent' &&
                 (votes.length === 0 ? (
                   <p className="fs-9 text-body-tertiary mt-2 mb-0">
@@ -388,7 +444,21 @@ const ValidatorNetwork = () => {
         <Row className="g-3">
           <Col xs={12} lg={6}>
             {producer?.slotDuration?.handoff ? (
-              <HandoffCard record={producer} board={producerBoard} />
+              <HandoffCard
+                record={producer}
+                board={producerBoard}
+                note={
+                  movedThisEpoch.length > 0
+                    ? `It changed hosts during this epoch (${movedThisEpoch
+                        .map(m =>
+                          m.kind === 'failover' ? 'a failover' : 'a move'
+                        )
+                        .join(
+                          ', '
+                        )}). Locations are recorded once an epoch, so the floors here use one host for all of it: handoffs from the other host's time are off by the distance between them.`
+                    : undefined
+                }
+              />
             ) : (
               <SectionCard title="Handoffs" icon="shuffle">
                 {producerBoard ? (
