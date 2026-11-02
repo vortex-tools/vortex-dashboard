@@ -249,7 +249,7 @@ export const createProducerLeaderboardColumns = (
   ),
   num(
     'handoff',
-    <span title="Leader handoffs' extra delay: the median from the previous leader's last block to its first, less one slot (the cluster's pace within windows) and the network floor between the two (a lower bound - blocks travel through Turbine). About 0 is as fast as physics allows. Each opens the validator's Network tab.">
+    <span title="Leader handoffs' extra delay: the median from the previous leader's last block to its first, less one slot (the cluster's pace within windows) and the network floor between the two (a lower bound - the next leader starts only once the previous block is notarized, a round of the cluster's votes). About 0 is as fast as physics allows. Each opens the validator's Network tab.">
       Handoff
     </span>,
     r =>
