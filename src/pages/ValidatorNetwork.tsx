@@ -451,7 +451,10 @@ const ValidatorNetwork = () => {
                           const k = DIVERGENCE[v.kind];
                           // A leader's name, then where it was and the
                           // network floor between it and this validator.
-                          const who = (n: string | null) => {
+                          const who = (
+                            n: string | null,
+                            role: 'info' | 'warning'
+                          ) => {
                             if (!n)
                               return (
                                 <span className="text-body-tertiary">—</span>
@@ -466,6 +469,11 @@ const ValidatorNetwork = () => {
                                   className="text-truncate"
                                   style={{ maxWidth: 'min(170px, 26vw)' }}
                                 >
+                                  {/* Its color on the map. */}
+                                  <span
+                                    className={`d-inline-block rounded-circle align-middle me-1 bg-${role}`}
+                                    style={{ width: 7, height: 7 }}
+                                  />
                                   {nameOf(n)}
                                 </div>
                                 <div
@@ -501,8 +509,8 @@ const ValidatorNetwork = () => {
                                   {k.label}
                                 </div>
                               </td>
-                              <td>{who(v.leader)}</td>
-                              <td>{who(v.payer)}</td>
+                              <td>{who(v.leader, 'info')}</td>
+                              <td>{who(v.payer, 'warning')}</td>
                               <td
                                 className={`d-none d-sm-table-cell text-${k.tone}`}
                               >
