@@ -49,7 +49,6 @@ const HandoffCard = ({
   // A slot that epoch (the cluster's pace within windows): a handoff
   // spans one, so the extra delay is over the floor less it.
   const slotMs = cluster?.inWindow?.p50Ms;
-  const extra = (v: Num) => extraDelay(v, slotMs);
   const out = pace.handoffOut;
   const inBy = pace.handoffByRegion;
   const outBy = pace.handoffOutByRegion;
@@ -67,8 +66,12 @@ const HandoffCard = ({
     ],
     [
       'From previous leader, extra delay',
-      extra(pace.handoffExcessP50Ms),
-      extra(cluster?.handoffExcessP50Ms),
+      extraDelay(pace.handoffExcessP50Ms, slotMs, pace.handoffExtraP50Ms),
+      extraDelay(
+        cluster?.handoffExcessP50Ms,
+        slotMs,
+        cluster?.handoffExtraP50Ms
+      ),
       undefined
     ],
     ...(out
@@ -81,8 +84,16 @@ const HandoffCard = ({
           ],
           [
             'To next leader, extra delay',
-            extra(pace.handoffOutExcessP50Ms),
-            extra(cluster?.handoffExcessP50Ms),
+            extraDelay(
+              pace.handoffOutExcessP50Ms,
+              slotMs,
+              pace.handoffOutExtraP50Ms
+            ),
+            extraDelay(
+              cluster?.handoffExcessP50Ms,
+              slotMs,
+              cluster?.handoffExtraP50Ms
+            ),
             undefined
           ]
         ] as Array<[string, Num, Num, string | undefined]>)
@@ -154,9 +165,10 @@ const HandoffCard = ({
               {regions.map(r => {
                 const i = inBy?.[r];
                 const o = outBy?.[r];
-                const c = extra(cluster?.handoffByRegion?.[r]?.excessP50Ms);
-                const ie = extra(i?.excessP50Ms);
-                const oe = extra(o?.excessP50Ms);
+                const cr = cluster?.handoffByRegion?.[r];
+                const c = extraDelay(cr?.excessP50Ms, slotMs, cr?.extraP50Ms);
+                const ie = extraDelay(i?.excessP50Ms, slotMs, i?.extraP50Ms);
+                const oe = extraDelay(o?.excessP50Ms, slotMs, o?.extraP50Ms);
                 return (
                   <tr key={r}>
                     <td className="text-nowrap">{REGION_NAME[r]}</td>

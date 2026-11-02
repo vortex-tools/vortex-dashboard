@@ -1500,7 +1500,10 @@ const handoffRegionsSchema = z
       p50Ms: z.number().nullable().catch(null),
       p90Ms: z.number().nullable().catch(null),
       expectedP50Ms: z.number().nullable().catch(null),
-      excessP50Ms: z.number().nullable().catch(null)
+      excessP50Ms: z.number().nullable().catch(null),
+      // excessP50Ms less the epoch's slot (the cluster's in-window p50):
+      // the extra delay, ~0 at the physical limit. Absent on older APIs.
+      extraP50Ms: z.number().nullable().optional().catch(null)
     })
   )
   .nullable()
@@ -1525,6 +1528,8 @@ export const slotDurationSchema = z.object({
   handoffByRegion: handoffRegionsSchema,
   handoffExpectedP50Ms: z.number().nullable().optional().catch(null),
   handoffExcessP50Ms: z.number().nullable().optional().catch(null),
+  // The excess less the epoch's slot (see handoffRegionsSchema).
+  handoffExtraP50Ms: z.number().nullable().optional().catch(null),
   region: z.string().nullable().optional().catch(null),
   // The other direction: the next leader's first block after its last
   // block of a window, overall and by the next leader's region. null on
@@ -1536,7 +1541,8 @@ export const slotDurationSchema = z.object({
     .catch(null),
   handoffOutByRegion: handoffRegionsSchema,
   handoffOutExpectedP50Ms: z.number().nullable().optional().catch(null),
-  handoffOutExcessP50Ms: z.number().nullable().optional().catch(null)
+  handoffOutExcessP50Ms: z.number().nullable().optional().catch(null),
+  handoffOutExtraP50Ms: z.number().nullable().optional().catch(null)
 });
 export type SlotDuration = z.infer<typeof slotDurationSchema>;
 

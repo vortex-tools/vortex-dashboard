@@ -214,8 +214,15 @@ export const regionCenter = (
  */
 export const extraDelay = (
   overFloorMs: number | null | undefined,
-  slotMs: number | null | undefined
-) => (overFloorMs == null || slotMs == null ? null : overFloorMs - slotMs);
+  slotMs: number | null | undefined,
+  /** The API's own figure (vortex-data 08d0c7e), used when it has one. */
+  apiExtra?: number | null
+) =>
+  apiExtra != null
+    ? apiExtra
+    : overFloorMs == null || slotMs == null
+      ? null
+      : overFloorMs - slotMs;
 
 /** "+17 ms" / "−2 ms" / "—". */
 export const signedMs = (v: number | null | undefined) => {

@@ -51,14 +51,23 @@ const HandoffTrend = ({
   const hasOut = rows.some(r => r.slotDuration?.handoffOutExcessP50Ms != null);
   // Extra delay: over the floor less that epoch's slot (the cluster's
   // pace within windows).
-  const extra = (r: (typeof rows)[number], v: number | null | undefined) =>
-    extraDelay(v, r.cluster?.inWindow?.p50Ms);
+  const extra = (
+    r: (typeof rows)[number],
+    v: number | null | undefined,
+    api: number | null | undefined
+  ) => extraDelay(v, r.cluster?.inWindow?.p50Ms, api);
   const option = useMemo(() => {
     const series = [
       {
         name: 'From previous leader',
         color: getThemeColor('primary'),
-        data: rows.map(r => extra(r, r.slotDuration?.handoffExcessP50Ms))
+        data: rows.map(r =>
+          extra(
+            r,
+            r.slotDuration?.handoffExcessP50Ms,
+            r.slotDuration?.handoffExtraP50Ms
+          )
+        )
       },
       ...(hasOut
         ? [
@@ -66,7 +75,11 @@ const HandoffTrend = ({
               name: 'To next leader',
               color: getThemeColor('info'),
               data: rows.map(r =>
-                extra(r, r.slotDuration?.handoffOutExcessP50Ms)
+                extra(
+                  r,
+                  r.slotDuration?.handoffOutExcessP50Ms,
+                  r.slotDuration?.handoffOutExtraP50Ms
+                )
               )
             }
           ]
@@ -75,7 +88,9 @@ const HandoffTrend = ({
         name: 'Cluster',
         color: getThemeColor('secondary'),
         dashed: true,
-        data: rows.map(r => extra(r, r.cluster?.handoffExcessP50Ms))
+        data: rows.map(r =>
+          extra(r, r.cluster?.handoffExcessP50Ms, r.cluster?.handoffExtraP50Ms)
+        )
       }
     ];
     return {
@@ -100,13 +115,13 @@ const HandoffTrend = ({
           const d = r.slotDuration;
           return [
             `<b>Epoch ${r.epoch}</b>${r.complete ? '' : ' (so far)'} · extra delay`,
-            `From previous leader ${signedMs(extra(r, d?.handoffExcessP50Ms))} (${(d?.handoff?.count ?? 0).toLocaleString()} handoffs)`,
+            `From previous leader ${signedMs(extra(r, d?.handoffExcessP50Ms, d?.handoffExtraP50Ms))} (${(d?.handoff?.count ?? 0).toLocaleString()} handoffs)`,
             ...(d?.handoffOutExcessP50Ms != null
               ? [
-                  `To next leader ${signedMs(extra(r, d.handoffOutExcessP50Ms))} (${(d.handoffOut?.count ?? 0).toLocaleString()})`
+                  `To next leader ${signedMs(extra(r, d.handoffOutExcessP50Ms, d.handoffOutExtraP50Ms))} (${(d.handoffOut?.count ?? 0).toLocaleString()})`
                 ]
               : []),
-            `Cluster ${signedMs(extra(r, r.cluster?.handoffExcessP50Ms))}`
+            `Cluster ${signedMs(extra(r, r.cluster?.handoffExcessP50Ms, r.cluster?.handoffExtraP50Ms))}`
           ].join('<br/>');
         }
       },

@@ -142,8 +142,16 @@ const ValidatorNetwork = () => {
       p50Ms: mine[r]!.p50Ms,
       expectedP50Ms: mine[r]!.expectedP50Ms,
       // Extra delays: over the floor, less one slot.
-      excessP50Ms: extraDelay(mine[r]!.excessP50Ms, slotMs),
-      clusterExcessP50Ms: extraDelay(cluster?.[r]?.excessP50Ms, slotMs),
+      excessP50Ms: extraDelay(
+        mine[r]!.excessP50Ms,
+        slotMs,
+        mine[r]!.extraP50Ms
+      ),
+      clusterExcessP50Ms: extraDelay(
+        cluster?.[r]?.excessP50Ms,
+        slotMs,
+        cluster?.[r]?.extraP50Ms
+      ),
       slotMs
     }));
   }, [producer, producerBoard]);
@@ -171,7 +179,6 @@ const ValidatorNetwork = () => {
     () => (hostData ? hostMoves(hostData) : []),
     [hostData]
   );
-  const movedThisEpoch = moves.filter(m => m.epoch === epoch);
   // The views it has data for.
   const views = (
     [
@@ -444,21 +451,7 @@ const ValidatorNetwork = () => {
         <Row className="g-3">
           <Col xs={12} lg={6}>
             {producer?.slotDuration?.handoff ? (
-              <HandoffCard
-                record={producer}
-                board={producerBoard}
-                note={
-                  movedThisEpoch.length > 0
-                    ? `It changed hosts during this epoch (${movedThisEpoch
-                        .map(m =>
-                          m.kind === 'failover' ? 'a failover' : 'a move'
-                        )
-                        .join(
-                          ', '
-                        )}). Locations are recorded once an epoch, so the floors here use one host for all of it: handoffs from the other host's time are off by the distance between them.`
-                    : undefined
-                }
-              />
+              <HandoffCard record={producer} board={producerBoard} />
             ) : (
               <SectionCard title="Handoffs" icon="shuffle">
                 {producerBoard ? (
