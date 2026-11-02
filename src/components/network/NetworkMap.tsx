@@ -736,8 +736,13 @@ const NetworkMap = ({
           coordinateSystem: 'geo',
           zlevel: 2,
           name: 'turbineHops',
-          silent: true,
           symbolSize: 5,
+          emphasis: { disabled: true },
+          // The detail on hover; the label stays one short line.
+          tooltip: {
+            formatter: (p: { data?: { detail?: string } }) =>
+              p.data?.detail ?? ''
+          },
           itemStyle: {
             color: getThemeColor('body-bg'),
             borderColor: getThemeColor(ROLE_COLOR.block),
@@ -751,38 +756,41 @@ const NetworkMap = ({
                     if (fibreMs(distanceKm(c, me)) < 1) return [];
                     const via = turbine.layer === 2 ? turbine.via : null;
                     const end = via ?? me;
-                    const hop = (value: [number, number], text: string) => ({
+                    const hop = (
+                      value: [number, number],
+                      text: string,
+                      detail: string
+                    ) => ({
                       value,
+                      detail,
                       label: {
                         show: true,
                         position: 'bottom' as const,
                         distance: 3,
                         formatter: text,
                         fontSize: 9,
-                        lineHeight: 11,
-                        color: getThemeColor('body-color'),
-                        backgroundColor: getThemeColor('body-bg'),
-                        borderColor: getThemeColor('border-color'),
-                        borderWidth: 1,
-                        borderRadius: 3,
-                        padding: [1, 4],
-                        rich: { b: { fontWeight: 'bold', fontSize: 9 } }
+                        color: getThemeColor('tertiary-color'),
+                        textBorderColor: getThemeColor('body-bg'),
+                        textBorderWidth: 2
                       }
                     });
                     const legMs = (a: [number, number], b: [number, number]) =>
                       Math.round(fibreMs(distanceKm(a, b)));
                     return [
-                      ...turbine.paths.map(p =>
-                        hop(
+                      ...turbine.paths.map(p => {
+                        const city = p.city?.split(' am ')[0] ?? null;
+                        return hop(
                           p.root,
-                          `{b|${p.city ?? REGION_NAME[p.region]}} root · ${Math.round(p.share * 100)}% of shreds\n${legMs(c, p.root)} + ${legMs(p.root, end)} ms`
-                        )
-                      ),
+                          `${city ?? REGION_NAME[p.region]} ${Math.round(p.share * 100)}%`,
+                          `<b>${p.city ?? REGION_NAME[p.region]}</b> · a Turbine root (${REGION_NAME[p.region]})<br/>${Math.round(p.share * 100)}% of shreds start here (its share of stake)<br/>Producer → here ${legMs(c, p.root)} ms · here → ${via ? 'the relay' : 'it'} ${legMs(p.root, end)} ms`
+                        );
+                      }),
                       ...(via
                         ? [
                             hop(
                               via,
-                              `{b|Relay} (layer 2)\n${legMs(via, me)} ms on`
+                              'Relay',
+                              `<b>Relay</b> · layer 2: a layer-1 node passes the shreds on<br/>Relay → it ${legMs(via, me)} ms`
                             )
                           ]
                         : [])
