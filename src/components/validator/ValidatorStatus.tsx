@@ -195,6 +195,21 @@ const shortReason = (
         );
       return over.length ? over.join(' · ') : null;
     }
+    case 'bam_boost': {
+      const b = s.bamBoost;
+      if (!b?.claimableAmount) return null;
+      // latestEpoch: Jito's newest distribution, made early in the
+      // current epoch.
+      const end = b.nextClaimEndEpoch;
+      const n = b.claimable.length;
+      return `${jitoSol(b.claimableAmount, 2)} unclaimed over ${n} epoch${n === 1 ? '' : 's'}${
+        end == null
+          ? ''
+          : b.latestEpoch != null && end <= b.latestEpoch
+            ? ', the oldest expires this epoch'
+            : `, the oldest claimable until epoch ${end}`
+      }`;
+    }
     default:
       return null;
   }
@@ -1205,8 +1220,19 @@ export const useValidatorNotices = (
           c.id === 'concentration' && !isParticipant ? 'info' : sev(c.status),
         source: c.id === 'concentration' ? 'Decentralization' : 'Operational',
         title: checkLabel(c.id),
-        message: shortReason(c, status) ?? shortenKeys(c.summary),
-        detail: detailOf(c)
+        // The short reason, with the API's sentence as the detail; with no
+        // short reason the sentence is the message and there's no detail
+        // (it would repeat it).
+        ...(() => {
+          const short = shortReason(c, status);
+          const detail = detailOf(c);
+          return short
+            ? { message: short, detail }
+            : {
+                message: shortenKeys(c.summary),
+                detail: detail !== c.summary ? detail : undefined
+              };
+        })()
       });
 
   // SFDP (program participants only).
