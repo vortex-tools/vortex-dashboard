@@ -1,6 +1,7 @@
 import ApiSelector from 'components/layout/ApiSelector';
 import ClusterSwitch from 'components/layout/ClusterSwitch';
 import ThemeToggle from 'components/layout/ThemeToggle';
+import ValidatorSearch from 'components/common/ValidatorSearch';
 import { IS_STAGING } from 'helpers/apiEndpoint';
 import useCluster from 'hooks/useCluster';
 import useNewBuild from 'hooks/useNewBuild';
@@ -68,6 +69,10 @@ const TopBar = () => {
         <span />
       </button>
       <Brand />
+      {/* Find a validator from any page (the sidebar has it on phones). */}
+      <div className="vx-topbar-search d-none d-md-block">
+        <ValidatorSearch compact placeholder="Search validators…" />
+      </div>
       <div className="vx-topbar-end">
         {import.meta.env.VITE_SOURCE_URL && (
           <span className="d-none d-sm-inline-flex align-items-center gap-1">

@@ -34,6 +34,12 @@
     color: var(--#{$prefix}emphasis-color);
   }
 }
+// A validator search from any page, after the brand.
+.vx-topbar-search {
+  flex: 0 1 20rem;
+  min-width: 12rem;
+  margin-left: 1rem;
+}
 .vx-topbar-end {
   display: flex;
   align-items: center;

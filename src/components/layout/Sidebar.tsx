@@ -6,6 +6,7 @@ import { useAppContext } from 'providers/AppProvider';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { Route, useNavRoutes } from 'sitemap';
+import ValidatorSearch from 'components/common/ValidatorSearch';
 
 const Icon = ({ icon }: { icon?: string | IconDefinition }) => (
   <span className="vx-sidebar-icon">
@@ -120,6 +121,10 @@ const Sidebar = () => {
       aria-label="Main"
     >
       <div className="vx-sidebar-nav">
+        {/* Phones: the top bar has no room for the search. */}
+        <div className="d-md-none px-3 pt-2 pb-3">
+          <ValidatorSearch compact placeholder="Search validators…" />
+        </div>
         {groups.map(g => (
           <section key={g.label} className="vx-sidebar-group">
             {!g.labelDisabled && (
