@@ -24,8 +24,9 @@
   border-bottom: 1px solid var(--#{$prefix}topbar-border);
 }
 .vx-brand {
-  font-size: map-get($font-sizes, 8);
+  font-size: map-get($font-sizes, 9);
   font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: 1;
   color: var(--#{$prefix}brand-color);
   text-decoration: none !important;
@@ -34,11 +35,34 @@
     color: var(--#{$prefix}emphasis-color);
   }
 }
-// A validator search from any page, after the brand.
+// A validator search from any page, after the brand: shorter than the
+// bar (room around it), tinted like the bar until focused.
 .vx-topbar-search {
   flex: 0 1 20rem;
   min-width: 12rem;
   margin-left: 1rem;
+}
+.vx-search-bar {
+  height: 1.375rem;
+  border: 1px solid transparent;
+  background-color: color-mix(
+    in srgb,
+    var(--#{$prefix}body-color) 6%,
+    var(--#{$prefix}topbar-bg)
+  );
+  transition:
+    background-color 120ms,
+    border-color 120ms;
+  &:hover {
+    border-color: var(--#{$prefix}border-color-translucent);
+  }
+  &:focus-within {
+    background-color: var(--#{$prefix}body-bg);
+    border-color: var(--#{$prefix}border-color);
+  }
+  input::placeholder {
+    color: var(--#{$prefix}tertiary-color);
+  }
 }
 .vx-topbar-end {
   display: flex;

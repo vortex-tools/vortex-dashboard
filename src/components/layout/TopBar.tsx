@@ -71,7 +71,7 @@ const TopBar = () => {
       <Brand />
       {/* Find a validator from any page (the sidebar has it on phones). */}
       <div className="vx-topbar-search d-none d-md-block">
-        <ValidatorSearch compact placeholder="Search validators…" />
+        <ValidatorSearch compact inBar placeholder="Search validators…" />
       </div>
       <div className="vx-topbar-end">
         {import.meta.env.VITE_SOURCE_URL && (

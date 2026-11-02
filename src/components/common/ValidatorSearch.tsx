@@ -25,6 +25,8 @@ interface ValidatorSearchProps {
   autoFocus?: boolean;
   /** A filter's size (a form-control-sm row) rather than the hero's. */
   compact?: boolean;
+  /** In the top bar: shorter, and tinted like the bar until focused. */
+  inBar?: boolean;
 }
 
 const ValidatorSearch = ({
@@ -32,7 +34,8 @@ const ValidatorSearch = ({
   placeholder,
   clearOnSelect = true,
   autoFocus,
-  compact = false
+  compact = false,
+  inBar = false
 }: ValidatorSearchProps) => {
   const context = useContext(VortexDataContext);
   const navigate = useNavigate();
@@ -94,16 +97,20 @@ const ValidatorSearch = ({
       style={compact ? { width: '20rem', maxWidth: '100%' } : undefined}
     >
       <div
-        className={`d-flex align-items-center bg-body-emphasis rounded border border-translucent ${compact ? 'px-2 py-1 fs-9' : 'px-3 py-2'}`}
+        className={
+          inBar
+            ? 'vx-search-bar d-flex align-items-center rounded px-2 fs-10'
+            : `d-flex align-items-center bg-body-emphasis rounded border border-translucent ${compact ? 'px-2 py-1 fs-9' : 'px-3 py-2'}`
+        }
       >
         <FeatherIcon
           icon="search"
-          size={compact ? 14 : 18}
+          size={inBar ? 12 : compact ? 14 : 18}
           className="text-body-tertiary me-2 flex-shrink-0"
         />
         <input
           type="text"
-          className={`form-control border-0 bg-transparent p-0${compact ? ' fs-9' : ''}`}
+          className={`form-control border-0 bg-transparent p-0${inBar ? ' fs-10' : compact ? ' fs-9' : ''}`}
           style={{ boxShadow: 'none' }}
           placeholder={resolvedPlaceholder}
           value={query}
