@@ -4,8 +4,11 @@ import { EffectScatterChart, LinesChart, ScatterChart } from 'echarts/charts';
 import { GeoComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import {
-  LeaderDivergence,
+  DIVERGENCE,
+  DivergentVote,
   REGION_NAME,
+  delayTone,
+  signedMs,
   Region,
   regionCenter,
   regionOf
@@ -39,9 +42,12 @@ export type RegionHandoff = {
   count: number;
   p50Ms: number | null;
   expectedP50Ms: number | null;
+  /** Its extra delay: over the network floor, less one slot. */
   excessP50Ms: number | null;
   /** The cluster's over-the-floor for handoffs from the same region. */
   clusterExcessP50Ms: number | null;
+  /** A slot that epoch (the cluster's pace within windows). */
+  slotMs: number | null;
 };
 
 const ms = (v: number | null | undefined) =>
@@ -55,12 +61,6 @@ const GRID = 3;
 /** How far the map zooms in. */
 const MAX_ZOOM = 8;
 
-/** Slower than the cluster by this much (over the floor): amber, then
- *  red. */
-const SLOWER = [1.05, 1.25];
-/** A leader's divergence rate from which it's red (amber below). */
-const DIVERGENT_RED = 0.05;
-
 /**
  * Where a validator sits in the network, for one epoch - kept sparse: it,
  * pulsing, and either its handoffs (each region its previous leaders were
@@ -68,16 +68,17 @@ const DIVERGENT_RED = 0.05;
  * network floor - and a line to it as thick as how many; hovered, its
  * validators show as dots grouped by place, its figures in a corner, and
  * the region, line and label take its tone against the cluster's from
- * the same region) or the
- * leaders it diverged on (sized by how many votes, amber or red by the
- * rate).
+ * the same region) or a page of its divergent votes, each a line from
+ * that slot's leader to it in the vote's tone (the highlighted one bold).
  */
 const NetworkMap = ({
   geo,
   self,
   mode,
   handoffs,
-  leaders,
+  votes,
+  highlight,
+  onHighlight,
   nameOf
 }: {
   geo: Map<string, ValidatorGeo>;
@@ -85,7 +86,11 @@ const NetworkMap = ({
   self: string;
   mode: MapMode;
   handoffs: RegionHandoff[];
-  leaders: Map<string, LeaderDivergence> | null;
+  /** Divergent votes to draw (a page of them). */
+  votes: DivergentVote[];
+  /** The slot highlighted (its list row hovered), and to set it. */
+  highlight: number | null;
+  onHighlight: (slot: number | null) => void;
   nameOf: (node: string) => string;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
@@ -129,14 +134,8 @@ const NetworkMap = ({
 
   const option = useMemo(() => {
     const me = coord(geo.get(self));
-    const tone = (excess: number | null, cluster: number | null) => {
-      if (excess == null || cluster == null || cluster <= 0)
-        return getThemeColor('secondary');
-      const r = excess / cluster;
-      return getThemeColor(
-        r <= SLOWER[0] ? 'success' : r <= SLOWER[1] ? 'warning' : 'danger'
-      );
-    };
+    const tone = (excess: number | null, cluster: number | null) =>
+      getThemeColor(delayTone(excess, cluster));
     const maxCount = Math.max(1, ...handoffs.map(h => h.count));
     const lines =
       mode === 'handoffs' && me
@@ -147,22 +146,16 @@ const NetworkMap = ({
                 !!x.from && x.h.region !== 'unknown'
             )
         : [];
-    const leaderDots =
-      mode === 'divergent' && leaders
-        ? [...leaders]
-            .map(([node, d]) => ({ node, d, c: coord(geo.get(node)) }))
+    // Divergent votes (the page shown): a line from each slot's leader
+    // to it, in the vote's tone; the highlighted one bold, the rest faint.
+    const paths =
+      mode === 'divergent' && me
+        ? votes
+            .map(v => ({ v, from: v.leader ? coord(geo.get(v.leader)) : null }))
             .filter(
-              (
-                x
-              ): x is {
-                node: string;
-                d: LeaderDivergence;
-                c: [number, number];
-              } => !!x.c && x.d.divergent > 0
+              (x): x is { v: DivergentVote; from: [number, number] } => !!x.from
             )
-            .sort((a, b) => a.d.divergent - b.d.divergent)
         : [];
-    const maxDivergent = Math.max(1, ...leaderDots.map(x => x.d.divergent));
     // Handoffs: each region with any drawn as one shape (its countries a
     // tint, no borders between them); hovered, in its tone.
     const shown = new Map(lines.map(x => [x.h.region, x.h]));
@@ -238,7 +231,7 @@ const NetworkMap = ({
     // Its label: small (region, over the floor) until hovered, then the
     // whole story.
     const label = (h: RegionHandoff) =>
-      `{b|${REGION_NAME[h.region]}} ${ms(h.excessP50Ms)}`;
+      `{b|${REGION_NAME[h.region]}} ${signedMs(h.excessP50Ms)}`;
     return {
       animation: false,
       tooltip: { trigger: 'item', confine: true },
@@ -364,25 +357,44 @@ const NetworkMap = ({
           }))
         },
         {
+          type: 'lines',
+          coordinateSystem: 'geo',
+          zlevel: 1,
+          name: 'paths',
+          lineStyle: { curveness: 0.2 },
+          emphasis: { disabled: true },
+          tooltip: { show: false },
+          data: paths.map(({ v, from }) => ({
+            name: String(v.slot),
+            coords: [from, me],
+            lineStyle: {
+              color: getThemeColor(DIVERGENCE[v.kind].tone),
+              width: highlight === v.slot ? 3 : 1.5,
+              opacity: highlight == null || highlight === v.slot ? 0.9 : 0.2
+            }
+          }))
+        },
+        {
           type: 'scatter',
           coordinateSystem: 'geo',
           zlevel: 1,
-          symbolSize: (v: number[]) => 4 + 10 * Math.sqrt(v[2] / maxDivergent),
+          name: 'leaders',
+          emphasis: { disabled: true },
+          symbolSize: 7,
           tooltip: {
             formatter: (p: { dataIndex: number }) => {
-              const x = leaderDots[p.dataIndex];
-              if (!x) return '';
-              const { d } = x;
-              return `<b>${nameOf(x.node)}</b><br/>${d.slots.toLocaleString()} of its slots voted on · ${d.divergent ? `${d.divergent.toLocaleString()} divergent (${pct(d.divergent / d.slots)})${d.late ? `, ${d.late.toLocaleString()} too late for its block` : ''}` : 'none divergent'}`;
+              const x = paths[p.dataIndex];
+              return x
+                ? `<b>${x.v.leader ? nameOf(x.v.leader) : 'Unknown'}</b><br/>Slot ${x.v.slot.toLocaleString()} · ${DIVERGENCE[x.v.kind].label}`
+                : '';
             }
           },
-          data: leaderDots.map(({ d, c }) => ({
-            value: [...c, d.divergent],
+          data: paths.map(({ v, from }) => ({
+            name: String(v.slot),
+            value: from,
             itemStyle: {
-              color: getThemeColor(
-                d.divergent / d.slots >= DIVERGENT_RED ? 'danger' : 'warning'
-              ),
-              opacity: 0.85
+              color: getThemeColor(DIVERGENCE[v.kind].tone),
+              opacity: highlight == null || highlight === v.slot ? 1 : 0.3
             }
           }))
         },
@@ -407,7 +419,8 @@ const NetworkMap = ({
     mode,
     hover,
     handoffs,
-    leaders,
+    votes,
+    highlight,
     nameOf,
     getThemeColor,
     isDark,
@@ -467,11 +480,12 @@ const NetworkMap = ({
             handoffs
           </div>
           <div>
-            Median {ms(open.p50Ms)} · network floor {ms(open.expectedP50Ms)}
+            Median {ms(open.p50Ms)}: a slot {ms(open.slotMs)}, network floor{' '}
+            {ms(open.expectedP50Ms)}, <b>{signedMs(open.excessP50Ms)}</b> extra
           </div>
-          <div>
-            Over the floor <b>{ms(open.excessP50Ms)}</b> · cluster{' '}
-            {ms(open.clusterExcessP50Ms)}
+          <div className="text-body-tertiary">
+            Cluster from {REGION_NAME[open.region]}:{' '}
+            {signedMs(open.clusterExcessP50Ms)} extra
           </div>
         </div>
       )}
@@ -489,13 +503,23 @@ const NetworkMap = ({
               name?: string;
               data?: { name?: string };
             }) => {
+              if (
+                (p as { seriesName?: string }).seriesName === 'paths' ||
+                (p as { seriesName?: string }).seriesName === 'leaders'
+              ) {
+                onHighlight(Number(p.data?.name));
+                return;
+              }
               const r =
                 p.componentType === 'geo'
                   ? countryRegions.get(p.name ?? '')
                   : (p.data?.name as Region | undefined);
               if (r && handoffs.some(h => h.region === r)) setHover(r);
             },
-            globalout: () => setHover(null),
+            globalout: () => {
+              setHover(null);
+              onHighlight(null);
+            },
             // Scroll, pinch or drag: keep where it is.
             georoam: () => {
               const g = (

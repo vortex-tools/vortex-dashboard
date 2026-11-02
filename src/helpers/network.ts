@@ -51,13 +51,8 @@ export type LeaderDivergence = {
  * OFFLINE_RUN_SLOTS+ consecutive misses are left out (it wasn't voting at
  * all: not about whose block it was).
  */
-export const divergenceByLeader = (
-  codes: Uint8Array,
-  firstSlot: number,
-  divergent: Array<{ slot: number; kind: Divergence }>,
-  leaderOf: (slot: number) => string | null
-): Map<string, LeaderDivergence> => {
-  // Offline runs, as a per-slot mask.
+/** Slots in a run of OFFLINE_RUN_SLOTS+ consecutive misses, as a mask. */
+const offlineMask = (codes: Uint8Array) => {
   const offline = new Uint8Array(codes.length);
   for (let i = 0; i < codes.length; ) {
     if (codes[i] !== OUTCOME.missed) {
@@ -69,6 +64,53 @@ export const divergenceByLeader = (
     if (j - i >= OFFLINE_RUN_SLOTS) offline.fill(1, i, j);
     i = j;
   }
+  return offline;
+};
+
+/** What a divergent vote was, in a few words, and its tone: the latency
+ *  kinds red, other misses amber, a notarized skip blue. */
+export const DIVERGENCE: Record<
+  Divergence,
+  { label: string; tone: 'danger' | 'warning' | 'info' }
+> = {
+  'late-skip': { label: 'Voted skip on a block', tone: 'danger' },
+  'missed-block': { label: 'Missed a block', tone: 'danger' },
+  'missed-skip': { label: 'Missed a skip', tone: 'warning' },
+  missed: { label: 'Missed', tone: 'warning' },
+  'notarized-skipped': { label: 'Notarized a skipped block', tone: 'info' }
+};
+
+export type DivergentVote = {
+  slot: number;
+  kind: Divergence;
+  leader: string | null;
+};
+
+/** Its divergent votes, newest first, offline runs left out, with each
+ *  slot's leader. */
+export const divergentVotes = (
+  codes: Uint8Array,
+  firstSlot: number,
+  divergent: Array<{ slot: number; kind: Divergence }>,
+  leaderOf: (slot: number) => string | null
+): DivergentVote[] => {
+  const offline = offlineMask(codes);
+  return divergent
+    .filter(d => {
+      const i = d.slot - firstSlot;
+      return i >= 0 && i < codes.length && !offline[i];
+    })
+    .map(d => ({ ...d, leader: leaderOf(d.slot) }))
+    .sort((a, b) => b.slot - a.slot);
+};
+
+export const divergenceByLeader = (
+  codes: Uint8Array,
+  firstSlot: number,
+  divergent: Array<{ slot: number; kind: Divergence }>,
+  leaderOf: (slot: number) => string | null
+): Map<string, LeaderDivergence> => {
+  const offline = offlineMask(codes);
   const out = new Map<string, LeaderDivergence>();
   const of = (leader: string) => {
     let d = out.get(leader);
@@ -162,3 +204,36 @@ export const regionCenter = (
   }
   return w ? [lon / w, lat / w] : null;
 };
+
+/**
+ * A handoff's extra delay: its time over the network floor less one slot.
+ * A handoff spans the next leader's whole slot (it still builds its block,
+ * ~200 ms) plus the trip between the two, so median − slot − floor is
+ * what's left: ~0 is as fast as physics allows. `slotMs` is the cluster's
+ * pace within leader windows that epoch.
+ */
+export const extraDelay = (
+  overFloorMs: number | null | undefined,
+  slotMs: number | null | undefined
+) => (overFloorMs == null || slotMs == null ? null : overFloorMs - slotMs);
+
+/** "+17 ms" / "−2 ms" / "—". */
+export const signedMs = (v: number | null | undefined) => {
+  if (v == null) return '—';
+  const r = Math.round(v);
+  return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r).toLocaleString('en-US')} ms`;
+};
+
+/** How an extra delay compares with the cluster's: green within 10 ms,
+ *  amber to 40 ms more, red beyond (differences: these sit near zero). */
+export const delayTone = (
+  mine: number | null | undefined,
+  cluster: number | null | undefined
+): 'success' | 'warning' | 'danger' | 'secondary' =>
+  mine == null || cluster == null
+    ? 'secondary'
+    : mine - cluster <= 10
+      ? 'success'
+      : mine - cluster <= 40
+        ? 'warning'
+        : 'danger';

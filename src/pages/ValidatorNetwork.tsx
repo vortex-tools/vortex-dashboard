@@ -11,21 +11,29 @@ import ConsensusRecordHeader, {
   recordPath
 } from 'components/validator/ConsensusRecordHeader';
 import HostChangesCard from 'components/validator/HostChangesCard';
+import Pager from 'components/common/Pager';
 import {
+  DIVERGENCE,
   REGIONS,
   REGION_NAME,
+  divergentVotes,
   divergenceByLeader,
+  extraDelay,
   divergenceByRegion,
   networkShares,
   regionOf
 } from 'helpers/network';
+import { coord, distanceKm, fibreMs } from 'helpers/worldMap';
 import useConsensusRecord from 'hooks/useConsensusRecord';
 import useRecordBoards from 'hooks/useRecordBoards';
 import { geoAsOf, placeOf, useValidatorGeoAt } from 'hooks/useValidatorGeo';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+
+/** Divergent votes on the map at a time. */
+const VOTES_PAGE = 10;
 
 const pct = (x: number | null | undefined, digits = 1) =>
   x == null
@@ -87,6 +95,27 @@ const ValidatorNetwork = () => {
         : null,
     [timeline, leaderOf]
   );
+  // Its divergent votes, newest first, a page at a time on the map.
+  const votes = useMemo(
+    () =>
+      timeline && leaderOf
+        ? divergentVotes(
+            timeline.codes,
+            timeline.firstSlot,
+            timeline.divergent,
+            leaderOf
+          )
+        : [],
+    [timeline, leaderOf]
+  );
+  const [votePage, setVotePage] = useState(0);
+  useEffect(() => setVotePage(0), [epoch, address]);
+  const votePages = Math.max(1, Math.ceil(votes.length / VOTES_PAGE));
+  const pageVotes = votes.slice(
+    votePage * VOTES_PAGE,
+    (votePage + 1) * VOTES_PAGE
+  );
+  const [highlight, setHighlight] = useState<number | null>(null);
   const byRegion = useMemo(
     () => (byLeader && geo ? divergenceByRegion(byLeader, geo) : null),
     [byLeader, geo]
@@ -100,14 +129,19 @@ const ValidatorNetwork = () => {
   const handoffs: RegionHandoff[] = useMemo(() => {
     const mine = producer?.slotDuration?.handoffByRegion;
     const cluster = producerBoard?.cluster?.slotDuration?.handoffByRegion;
+    // A slot, that epoch: the cluster's pace within leader windows.
+    const slotMs =
+      producerBoard?.cluster?.slotDuration?.inWindow?.p50Ms ?? null;
     if (!mine) return [];
     return REGIONS.filter(r => (mine[r]?.count ?? 0) > 0).map(r => ({
       region: r,
       count: mine[r]!.count,
       p50Ms: mine[r]!.p50Ms,
       expectedP50Ms: mine[r]!.expectedP50Ms,
-      excessP50Ms: mine[r]!.excessP50Ms,
-      clusterExcessP50Ms: cluster?.[r]?.excessP50Ms ?? null
+      // Extra delays: over the floor, less one slot.
+      excessP50Ms: extraDelay(mine[r]!.excessP50Ms, slotMs),
+      clusterExcessP50Ms: extraDelay(cluster?.[r]?.excessP50Ms, slotMs),
+      slotMs
     }));
   }, [producer, producerBoard]);
 
@@ -222,7 +256,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Handoffs: a line from each region its previous leaders were in, as thick as how many handoffs, green when its time over the network floor is about the cluster's from the same region (within 5%), amber and red when slower. Divergent votes: the leaders whose slots it voted against the chain on, sized by how many, red where it's 5% or more of their slots."
+              info="Handoffs: each region its previous leaders were in, with a line as thick as how many handoffs - hover one for its figures, colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - each a line from that slot's leader to it (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out."
               aside={
                 handoffs.length ? (
                   <ButtonGroup size="sm">
@@ -254,9 +288,100 @@ const ValidatorNetwork = () => {
                 self={node}
                 mode={view}
                 handoffs={handoffs}
-                leaders={byLeader}
+                votes={pageVotes}
+                highlight={highlight}
+                onHighlight={setHighlight}
                 nameOf={nameOf}
               />
+              {view === 'divergent' &&
+                (votes.length === 0 ? (
+                  <p className="fs-9 text-body-tertiary mt-2 mb-0">
+                    {timeline
+                      ? 'No divergent votes this epoch: every vote agreed with the chain.'
+                      : 'Loading its votes…'}
+                  </p>
+                ) : (
+                  <>
+                    <Table
+                      size="sm"
+                      className="data-table compact-rows fs-9 mt-2 mb-0"
+                    >
+                      <thead>
+                        <tr>
+                          <th>Slot</th>
+                          <th>Leader</th>
+                          <th className="d-none d-sm-table-cell">Its vote</th>
+                          <th
+                            className="text-end"
+                            title="The network floor between the leader and it: the fibre-speed distance (~200 km/ms)"
+                          >
+                            Floor
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageVotes.map(v => {
+                          const from = v.leader
+                            ? coord(geo.get(v.leader))
+                            : null;
+                          const to = coord(me);
+                          const floor =
+                            from && to ? fibreMs(distanceKm(from, to)) : null;
+                          const k = DIVERGENCE[v.kind];
+                          return (
+                            <tr
+                              key={v.slot}
+                              onMouseEnter={() => setHighlight(v.slot)}
+                              onMouseLeave={() => setHighlight(null)}
+                              className={
+                                highlight === v.slot ? 'bg-body-highlight' : ''
+                              }
+                            >
+                              <td className="font-monospace">
+                                <Link to={`/slot/${v.slot}`}>
+                                  {v.slot.toLocaleString()}
+                                </Link>
+                              </td>
+                              <td
+                                className="text-truncate"
+                                style={{ maxWidth: 180 }}
+                              >
+                                {v.leader ? nameOf(v.leader) : '—'}
+                                <span
+                                  className={`d-sm-none fs-10 text-${k.tone} ms-1`}
+                                >
+                                  {k.label}
+                                </span>
+                              </td>
+                              <td
+                                className={`d-none d-sm-table-cell text-${k.tone}`}
+                              >
+                                {k.label}
+                              </td>
+                              <td className="text-end font-monospace text-body-tertiary">
+                                {floor != null
+                                  ? `${Math.round(floor)} ms`
+                                  : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                    {votePages > 1 && (
+                      <Pager
+                        page={votePage}
+                        pages={votePages}
+                        total={votes.length}
+                        pageSize={VOTES_PAGE}
+                        shown={pageVotes.length}
+                        onPrev={() => setVotePage(p => p - 1)}
+                        onNext={() => setVotePage(p => p + 1)}
+                        onPage={setVotePage}
+                      />
+                    )}
+                  </>
+                ))}
             </SectionCard>
           </Col>
         </Row>
@@ -354,7 +479,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Handoffs Over Time"
               icon="trending-up"
-              info="Its median handoff over the network floor per epoch - from the previous leader, and to the next leader where recorded - against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
+              info="Its handoffs' extra delay per epoch - the median less one slot and the network floor; about 0 is as fast as physics allows - from the previous leader, and to the next leader where recorded, against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
             >
               <HandoffTrend
                 pace={paceHistory}

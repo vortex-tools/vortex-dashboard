@@ -7,6 +7,7 @@ import {
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
+import { extraDelay, signedMs } from 'helpers/network';
 import { useAppContext } from 'providers/AppProvider';
 import { ValidatorPace } from 'providers/vortex-schemas';
 import { useMemo } from 'react';
@@ -23,7 +24,8 @@ const ms = (v: number | null | undefined) =>
   v == null ? '—' : `${Math.round(v).toLocaleString('en-US')} ms`;
 
 /**
- * Its handoffs over the network floor per epoch (/validators/pace),
+ * Its handoffs' extra delay per epoch (/validators/pace: over the
+ * network floor, less that epoch's slot),
  * oldest first: in (the previous leader to it), out (it to the next
  * leader, where recorded) and the cluster's - so a move or a provider
  * change shows as a step. `onPick` opens an epoch.
@@ -47,19 +49,25 @@ const HandoffTrend = ({
     [pace]
   );
   const hasOut = rows.some(r => r.slotDuration?.handoffOutExcessP50Ms != null);
+  // Extra delay: over the floor less that epoch's slot (the cluster's
+  // pace within windows).
+  const extra = (r: (typeof rows)[number], v: number | null | undefined) =>
+    extraDelay(v, r.cluster?.inWindow?.p50Ms);
   const option = useMemo(() => {
     const series = [
       {
         name: 'From previous leader',
         color: getThemeColor('primary'),
-        data: rows.map(r => r.slotDuration?.handoffExcessP50Ms ?? null)
+        data: rows.map(r => extra(r, r.slotDuration?.handoffExcessP50Ms))
       },
       ...(hasOut
         ? [
             {
               name: 'To next leader',
               color: getThemeColor('info'),
-              data: rows.map(r => r.slotDuration?.handoffOutExcessP50Ms ?? null)
+              data: rows.map(r =>
+                extra(r, r.slotDuration?.handoffOutExcessP50Ms)
+              )
             }
           ]
         : []),
@@ -67,7 +75,7 @@ const HandoffTrend = ({
         name: 'Cluster',
         color: getThemeColor('secondary'),
         dashed: true,
-        data: rows.map(r => r.cluster?.handoffExcessP50Ms ?? null)
+        data: rows.map(r => extra(r, r.cluster?.handoffExcessP50Ms))
       }
     ];
     return {
@@ -91,14 +99,14 @@ const HandoffTrend = ({
           if (!r) return '';
           const d = r.slotDuration;
           return [
-            `<b>Epoch ${r.epoch}</b>${r.complete ? '' : ' (so far)'} · over the network floor`,
-            `From previous leader ${ms(d?.handoffExcessP50Ms)} (${(d?.handoff?.count ?? 0).toLocaleString()} handoffs)`,
+            `<b>Epoch ${r.epoch}</b>${r.complete ? '' : ' (so far)'} · extra delay`,
+            `From previous leader ${signedMs(extra(r, d?.handoffExcessP50Ms))} (${(d?.handoff?.count ?? 0).toLocaleString()} handoffs)`,
             ...(d?.handoffOutExcessP50Ms != null
               ? [
-                  `To next leader ${ms(d.handoffOutExcessP50Ms)} (${(d.handoffOut?.count ?? 0).toLocaleString()})`
+                  `To next leader ${signedMs(extra(r, d.handoffOutExcessP50Ms))} (${(d.handoffOut?.count ?? 0).toLocaleString()})`
                 ]
               : []),
-            `Cluster ${ms(r.cluster?.handoffExcessP50Ms)}`
+            `Cluster ${signedMs(extra(r, r.cluster?.handoffExcessP50Ms))}`
           ].join('<br/>');
         }
       },
@@ -130,6 +138,7 @@ const HandoffTrend = ({
         data: s.data
       }))
     };
+    // extra reads rows' own fields.
   }, [rows, hasOut, epoch, getThemeColor]);
   if (rows.length < 2) return null;
   return (

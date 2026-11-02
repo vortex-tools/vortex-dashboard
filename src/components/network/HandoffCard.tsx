@@ -1,6 +1,12 @@
 import SectionCard from 'components/common/SectionCard';
 import { ProducerRow, ms } from 'components/validator/SkipCausesCard';
-import { REGIONS, REGION_NAME } from 'helpers/network';
+import {
+  REGIONS,
+  REGION_NAME,
+  delayTone,
+  extraDelay,
+  signedMs
+} from 'helpers/network';
 import { ProducerLeaderboard } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
 
@@ -13,11 +19,9 @@ const about = (s: Stat) =>
     ? `${s.count.toLocaleString()} handoffs · 90th percentile ${ms(s.p90Ms)}`
     : undefined;
 
-/** Over the floor against the cluster's: red when 25%+ slower. */
+/** An extra delay against the cluster's: red when 40+ ms more. */
 const slow = (mine: Num, theirs: Num) =>
-  mine != null && theirs != null && theirs > 0 && mine / theirs > 1.25
-    ? ' text-danger'
-    : '';
+  delayTone(mine, theirs) === 'danger' ? ' text-danger' : '';
 
 /**
  * Its handoffs for an epoch, kept to a phone's width: in (the previous
@@ -39,6 +43,10 @@ const HandoffCard = ({
   const it = pace?.handoff;
   if (!record || !pace || !it) return null;
   const cluster = board?.cluster?.slotDuration;
+  // A slot that epoch (the cluster's pace within windows): a handoff
+  // spans one, so the extra delay is over the floor less it.
+  const slotMs = cluster?.inWindow?.p50Ms;
+  const extra = (v: Num) => extraDelay(v, slotMs);
   const out = pace.handoffOut;
   const inBy = pace.handoffByRegion;
   const outBy = pace.handoffOutByRegion;
@@ -55,9 +63,9 @@ const HandoffCard = ({
       about(it)
     ],
     [
-      'From previous leader, over the floor',
-      pace.handoffExcessP50Ms,
-      cluster?.handoffExcessP50Ms,
+      'From previous leader, extra delay',
+      extra(pace.handoffExcessP50Ms),
+      extra(cluster?.handoffExcessP50Ms),
       undefined
     ],
     ...(out
@@ -69,9 +77,9 @@ const HandoffCard = ({
             about(out)
           ],
           [
-            'To next leader, over the floor',
-            pace.handoffOutExcessP50Ms,
-            cluster?.handoffExcessP50Ms,
+            'To next leader, extra delay',
+            extra(pace.handoffOutExcessP50Ms),
+            extra(cluster?.handoffExcessP50Ms),
             undefined
           ]
         ] as Array<[string, Num, Num, string | undefined]>)
@@ -81,7 +89,7 @@ const HandoffCard = ({
     <SectionCard
       title="Handoffs"
       icon="shuffle"
-      info="From previous leader: its first block after the previous leader's last. To next leader: the next leader's first block after its last. Each includes the network between the two; over the floor takes out the fibre-speed distance between them (~200 km/ms), so a validator far from the rest compares fairly. By region: over the floor, by where the other leader was, against the cluster's handoffs from that region. Hover a figure for its count and 90th percentile."
+      info="From previous leader: its first block after the previous leader's last. To next leader: the next leader's first block after its last. A handoff spans the receiving leader's whole slot (~200 ms, building its block) plus the trip between the two, so the extra delay is the median less one slot (the cluster's pace within leader windows) and the network floor (the fibre-speed distance, ~200 km/ms): about 0 is as fast as physics allows. By region: by where the other leader was, against the cluster's handoffs from there. Hover a figure for its count, median and floor."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
@@ -99,10 +107,10 @@ const HandoffCard = ({
                 className={`text-end font-monospace${slow(mine, theirs)}`}
                 title={title}
               >
-                {ms(mine)}
+                {label.endsWith('extra delay') ? signedMs(mine) : ms(mine)}
               </td>
               <td className="text-end font-monospace text-body-tertiary">
-                {ms(theirs)}
+                {label.endsWith('extra delay') ? signedMs(theirs) : ms(theirs)}
               </td>
             </tr>
           ))}
@@ -111,7 +119,7 @@ const HandoffCard = ({
       {regions.length > 0 ? (
         <>
           <h6 className="fs-10 text-uppercase text-body-tertiary mt-3 mb-2">
-            Over the floor, by region
+            Extra delay, by region
           </h6>
           <Table size="sm" className="data-table compact-rows fs-9 mb-0">
             <thead>
@@ -143,34 +151,36 @@ const HandoffCard = ({
               {regions.map(r => {
                 const i = inBy?.[r];
                 const o = outBy?.[r];
-                const c = cluster?.handoffByRegion?.[r]?.excessP50Ms;
+                const c = extra(cluster?.handoffByRegion?.[r]?.excessP50Ms);
+                const ie = extra(i?.excessP50Ms);
+                const oe = extra(o?.excessP50Ms);
                 return (
                   <tr key={r}>
                     <td className="text-nowrap">{REGION_NAME[r]}</td>
                     <td
-                      className={`text-end font-monospace${slow(i?.excessP50Ms, c)}`}
+                      className={`text-end font-monospace${slow(ie, c)}`}
                       title={
                         i
                           ? `${i.count.toLocaleString()} handoffs · median ${ms(i.p50Ms)} · network floor ${ms(i.expectedP50Ms)}`
                           : undefined
                       }
                     >
-                      {ms(i?.excessP50Ms)}
+                      {signedMs(ie)}
                     </td>
                     {outBy && (
                       <td
-                        className={`text-end font-monospace${slow(o?.excessP50Ms, c)}`}
+                        className={`text-end font-monospace${slow(oe, c)}`}
                         title={
                           o
                             ? `${o.count.toLocaleString()} handoffs · median ${ms(o.p50Ms)} · network floor ${ms(o.expectedP50Ms)}`
                             : undefined
                         }
                       >
-                        {ms(o?.excessP50Ms)}
+                        {signedMs(oe)}
                       </td>
                     )}
                     <td className="text-end font-monospace text-body-tertiary">
-                      {ms(c)}
+                      {signedMs(c)}
                     </td>
                   </tr>
                 );
