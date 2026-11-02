@@ -7,6 +7,7 @@ import {
   DIVERGENCE,
   DivergentVote,
   HostMove,
+  routeKey,
   REGION_NAME,
   delayTone,
   signedMs,
@@ -98,10 +99,10 @@ const NetworkMap = ({
   onHighlight: (slot: number | null) => void;
   /** Its host moves (the Hosts view), newest first. */
   moves?: HostMove[];
-  /** The move highlighted (its row hovered: an index into moves), and to
-   *  set it from an arrow. */
-  highlightMove?: number | null;
-  onHighlightMove?: (i: number | null) => void;
+  /** The route highlighted (routeKey: its rows or an arrow hovered), and
+   *  to set it from an arrow. */
+  highlightMove?: string | null;
+  onHighlightMove?: (route: string | null) => void;
   nameOf: (node: string) => string;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
@@ -266,22 +267,27 @@ const NetworkMap = ({
         : [];
     // Hosts: each place it ran from, and an arrow per move between two
     // (a move within one place can't be drawn: it's in the list).
+    // One arrow per direction of each route (repeats drawn once), keyed
+    // by the route so it highlights with every row of it.
     const arrows =
       mode === 'hosts'
-        ? moves
-            .map((m, i) => ({ ...m, i }))
-            .filter(
-              (
-                m
-              ): m is HostMove & {
-                i: number;
-                from: [number, number];
-                to: [number, number];
-              } =>
-                !!m.from &&
-                !!m.to &&
-                (m.from[0] !== m.to[0] || m.from[1] !== m.to[1])
-            )
+        ? [
+            ...new Map(
+              moves
+                .filter(
+                  (
+                    m
+                  ): m is HostMove & {
+                    from: [number, number];
+                    to: [number, number];
+                  } =>
+                    !!m.from &&
+                    !!m.to &&
+                    (m.from[0] !== m.to[0] || m.from[1] !== m.to[1])
+                )
+                .map(m => [`${m.from}>${m.to}`, { ...m, route: routeKey(m) }])
+            ).values()
+          ]
         : [];
     const places =
       mode === 'hosts'
@@ -564,15 +570,15 @@ const NetworkMap = ({
             }
           },
           data: arrows.map(m => ({
-            name: String(m.i),
+            name: m.route,
             coords: [m.from, m.to],
             lineStyle: {
               color: getThemeColor(
                 m.kind === 'failover' ? 'warning' : 'primary'
               ),
-              width: highlightMove === m.i ? 3.5 : 2,
+              width: highlightMove === m.route ? 3.5 : 2,
               opacity:
-                highlightMove == null || highlightMove === m.i ? 0.9 : 0.15
+                highlightMove == null || highlightMove === m.route ? 0.9 : 0.15
             }
           }))
         },
@@ -735,7 +741,7 @@ const NetworkMap = ({
               // Mid-drag: a redraw would stop the pan.
               if (p.event?.event?.buttons) return;
               if ((p as { seriesName?: string }).seriesName === 'moves') {
-                onHighlightMove?.(Number(p.data?.name));
+                onHighlightMove?.(p.data?.name ?? null);
                 return;
               }
               if (

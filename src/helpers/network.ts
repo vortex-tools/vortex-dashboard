@@ -334,3 +334,11 @@ export const hostMoves = (data: {
       .map(m => move(m.epoch, null, m.kind, m.before, m.after))
   ].sort((a, b) => b.epoch - a.epoch || (b.slot ?? 0) - (a.slot ?? 0));
 };
+
+/** A move's route between two places, either way round, so a failover
+ *  and its failback (and every repeat) share it. */
+export const routeKey = (m: Pick<HostMove, 'from' | 'to'>) => {
+  const k = (c: [number, number] | null) =>
+    c ? `${c[0].toFixed(2)},${c[1].toFixed(2)}` : '?';
+  return [k(m.from), k(m.to)].sort().join('|');
+};

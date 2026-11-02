@@ -20,6 +20,7 @@ import {
   divergenceByLeader,
   extraDelay,
   hostMoves,
+  routeKey,
   divergenceByRegion,
   networkShares,
   regionOf
@@ -182,8 +183,9 @@ const ValidatorNetwork = () => {
   // The map and the list show the same moves: the latest few, or all.
   const [allMoves, setAllMoves] = useState(false);
   const shownMoves = allMoves ? moves : moves.slice(0, HOST_MOVES_SHOWN);
-  // The move hovered (a row or its arrow), highlighted on both.
-  const [hoverMove, setHoverMove] = useState<number | null>(null);
+  // The route hovered (a row or an arrow): its arrows and every row of
+  // it (a failover pair's repeats) highlighted.
+  const [hoverMove, setHoverMove] = useState<string | null>(null);
   // The views it has data for.
   const views = (
     [
@@ -341,10 +343,10 @@ const ValidatorNetwork = () => {
                     {shownMoves.map((m, i) => (
                       <tr
                         key={i}
-                        onMouseEnter={() => setHoverMove(i)}
+                        onMouseEnter={() => setHoverMove(routeKey(m))}
                         onMouseLeave={() => setHoverMove(null)}
                         className={
-                          hoverMove === i
+                          hoverMove != null && hoverMove === routeKey(m)
                             ? 'bg-body-highlight'
                             : m.epoch === epoch
                               ? 'fw-semibold'
