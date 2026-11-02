@@ -225,20 +225,18 @@ const ValidatorNetwork = () => {
     row?: number;
     route: string;
   } | null>(null);
-  // The views it has data for.
-  // A view counts until its data says otherwise: while it loads, the
-  // picked view stays (dropping to another and coming back looked like a
-  // snap back to Leader handoffs).
-  const views = (
-    [
-      ['handoffs', 'Leader handoffs', !producerBoard || handoffs.length > 0],
-      ['divergent', 'Divergent votes', !timeline || votes.length > 0],
-      ['hosts', 'Hosts', !hostData || moves.length > 0]
-    ] as Array<[PageView, string, boolean]>
-  ).filter(([, , has]) => has);
-  const view: PageView = views.some(([k]) => k === mode)
+  // Every view, disabled when it has no data. A view counts until its
+  // data says otherwise: while it loads, the picked view stays (dropping
+  // to another and coming back looked like a snap back to Leader
+  // handoffs).
+  const views = [
+    ['handoffs', 'Leader handoffs', !producerBoard || handoffs.length > 0],
+    ['divergent', 'Divergent votes', !timeline || votes.length > 0],
+    ['hosts', 'Hosts', !hostData || moves.length > 0]
+  ] as Array<[PageView, string, boolean]>;
+  const view: PageView = views.some(([k, , has]) => k === mode && has)
     ? mode
-    : (views[0]?.[0] ?? 'handoffs');
+    : (views.find(([, , has]) => has)?.[0] ?? 'handoffs');
   const mapMode: MapMode = view;
   const isVotes = mapMode === 'divergent';
   // The tab's votes (skipped blocks or missed votes), in the table's
@@ -386,30 +384,29 @@ const ValidatorNetwork = () => {
               icon="globe"
               info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less its first block (~144 ms: Agave ends it 56 ms before its slot is up) and the direct network floor (the fibre-speed distance straight between them) - against the cluster's on the same route. By region only the direct floor is recorded per validator, so these run higher than the overall Extra, which is against the notarization round the next leader waits for: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
-                views.length > 1 ? (
-                  <ButtonGroup
-                    size="sm"
-                    // Full-size buttons, set into the header's padding
-                    // (12 px above the ~16 px title row, 8 below): centered,
-                    // and the header no taller than Where It Runs'.
-                    style={{ margin: '-8.5px 0 -4.5px' }}
-                  >
-                    {views.map(([k, label]) => (
-                      <ToggleButton
-                        key={k}
-                        id={`network-map-${k}`}
-                        type="radio"
-                        name="network-map"
-                        variant="soft-secondary"
-                        value={k}
-                        checked={view === k}
-                        onChange={() => setMode(k)}
-                      >
-                        {label}
-                      </ToggleButton>
-                    ))}
-                  </ButtonGroup>
-                ) : undefined
+                <ButtonGroup
+                  size="sm"
+                  // Full-size buttons, set into the header's padding
+                  // (12 px above the ~16 px title row, 8 below): centered,
+                  // and the header no taller than Where It Runs'.
+                  style={{ margin: '-8.5px 0 -4.5px' }}
+                >
+                  {views.map(([k, label, has]) => (
+                    <ToggleButton
+                      key={k}
+                      id={`network-map-${k}`}
+                      type="radio"
+                      name="network-map"
+                      variant="soft-secondary"
+                      value={k}
+                      checked={view === k}
+                      disabled={!has}
+                      onChange={() => setMode(k)}
+                    >
+                      {label}
+                    </ToggleButton>
+                  ))}
+                </ButtonGroup>
               }
             >
               <NetworkMap
