@@ -236,12 +236,17 @@ export const regionCenter = (
   return w ? [lon / w, lat / w] : null;
 };
 
+/** Agave ends a window's first block this long before its slot is up
+ *  (core/src/block_creation_loop.rs block_timeout: BLOCK_PRODUCTION_BUFFER
+ *  50 + TIME_TO_COMPLETE_BLOCK_BROADCAST 6), so a handoff holds one slot
+ *  less this of block building. */
+export const FIRST_BLOCK_EARLY_MS = 56;
+
 /**
- * A handoff's extra delay: its time over the network floor less one slot.
- * A handoff spans the next leader's whole slot (it still builds its block,
- * ~200 ms) plus the trip between the two, so median − slot − floor is
- * what's left: ~0 is as fast as physics allows. `slotMs` is the cluster's
- * pace within leader windows that epoch.
+ * A handoff's extra delay: its time over the network floor less the next
+ * leader's block building - one slot (`slotMs`, the cluster's pace within
+ * leader windows that epoch) less FIRST_BLOCK_EARLY_MS, the API's
+ * handoffBuildMs. The API's own figure wins when it has one.
  */
 export const extraDelay = (
   overFloorMs: number | null | undefined,
@@ -253,7 +258,7 @@ export const extraDelay = (
     ? apiExtra
     : overFloorMs == null || slotMs == null
       ? null
-      : overFloorMs - slotMs;
+      : overFloorMs - (slotMs - FIRST_BLOCK_EARLY_MS);
 
 /** "+17 ms" / "−2 ms" / "—". */
 export const signedMs = (v: number | null | undefined) => {
