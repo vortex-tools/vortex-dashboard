@@ -1,5 +1,63 @@
 import * as echarts from 'echarts/core';
+import type { Region } from 'helpers/network';
 import { ValidatorGeo } from 'providers/vortex-schemas';
+
+/** Countries whose shape's middle would put them in the wrong group
+ *  (France with French Guiana, Russia spanning to the Pacific), set to the
+ *  continent IP geolocation gives them. */
+const REGION_OF_COUNTRY: Record<string, Region> = {
+  France: 'europe',
+  Russia: 'europe',
+  Turkey: 'asia',
+  Cyprus: 'asia',
+  'N. Cyprus': 'asia',
+  Georgia: 'asia',
+  Armenia: 'asia',
+  Azerbaijan: 'asia',
+  Kazakhstan: 'asia',
+  Eritrea: 'other',
+  'Papua New Guinea': 'other',
+  'Solomon Is.': 'other',
+  Greenland: 'northAmerica',
+  'Fr. S. Antarctic Lands': 'other'
+};
+
+/** A country's region group, from the middle of its outline's box:
+ *  the Americas split at 7° N, Europe north of 36° up to 45° E, Africa
+ *  and Oceania with the rest of the world as 'other', and Asia. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const regionOfShape = (f: any): Region => {
+  const name = f.properties?.name as string;
+  if (REGION_OF_COUNTRY[name]) return REGION_OF_COUNTRY[name];
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const walk = (c: any) => {
+    if (typeof c[0] === 'number') {
+      x0 = Math.min(x0, c[0]);
+      x1 = Math.max(x1, c[0]);
+      y0 = Math.min(y0, c[1]);
+      y1 = Math.max(y1, c[1]);
+    } else c.forEach(walk);
+  };
+  walk(f.geometry?.coordinates ?? []);
+  const lon = (x0 + x1) / 2;
+  const lat = (y0 + y1) / 2;
+  if (lon < -25) return lat > 7 ? 'northAmerica' : 'other';
+  if (lat >= 36 && lon < 45) return 'europe';
+  if (lon >= -20 && lon < 52 && lat < 37 && (lon < 35 || lat < 12))
+    return 'other';
+  if (lon > 110 && lat < -10) return 'other';
+  return 'asia';
+};
+
+/** The world map's countries by region group (filled by loadWorld). */
+export const countryRegions = new Map<string, Region>();
+/** Each region group's outline as lines of [lon, lat] (filled by
+ *  loadWorld). */
+export const regionOutlines = new Map<Region, number[][][]>();
 
 // The world outline (Natural Earth 110m via world-atlas), loaded on first
 // use so only this page pays for it.
@@ -14,7 +72,7 @@ export const loadWorld = () =>
       // is reloading the page and the imports resolve to nothing - wait
       // for the reload rather than fail on them.
       if (!topo || !topojson) return new Promise<never>(() => {});
-      const { feature } = topojson;
+      const { feature, mesh } = topojson;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const t = (topo as any).default ?? topo;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,8 +102,44 @@ export const loadWorld = () =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (f: any) => f.properties?.name !== 'Antarctica'
       );
+      // Each country's region group, for drawing regions as one shape.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const f of geojson.features as any[])
+        if (f.properties?.name)
+          countryRegions.set(f.properties.name, regionOfShape(f));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       echarts.registerMap('world', geojson as any);
+      // Each region's outline: its coast and its borders with other
+      // regions (arcs between its countries left out), split where a line
+      // crosses the antimeridian.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const reg = (g: any) =>
+        g?.properties?.name && g.properties.name !== 'Antarctica'
+          ? countryRegions.get(g.properties.name)
+          : undefined;
+      for (const r of ['northAmerica', 'europe', 'asia', 'other'] as Region[]) {
+        const m = mesh(
+          t,
+          t.objects.countries,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (x: any, y: any) =>
+            (reg(x) === r || reg(y) === r) && (x === y || reg(x) !== reg(y))
+        );
+        const lines: number[][][] = [];
+        for (const line of m.coordinates as number[][][]) {
+          let cur: number[][] = [];
+          for (const pt of line) {
+            const prev = cur[cur.length - 1];
+            if (prev && Math.abs(pt[0] - prev[0]) > 180) {
+              if (cur.length > 1) lines.push(cur);
+              cur = [];
+            }
+            cur.push(pt);
+          }
+          if (cur.length > 1) lines.push(cur);
+        }
+        regionOutlines.set(r, lines);
+      }
     })
     .catch(e => {
       // Let a later call retry (e.g. after a deploy replaced the chunk).

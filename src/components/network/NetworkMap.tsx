@@ -9,7 +9,12 @@ import {
   Region,
   regionCenter
 } from 'helpers/network';
-import { coord, loadWorld } from 'helpers/worldMap';
+import {
+  countryRegions,
+  coord,
+  loadWorld,
+  regionOutlines
+} from 'helpers/worldMap';
 import { useAppContext } from 'providers/AppProvider';
 import { ValidatorGeo } from 'providers/vortex-schemas';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -51,9 +56,11 @@ const DIVERGENT_RED = 0.05;
 
 /**
  * Where a validator sits in the network, for one epoch - kept sparse: it,
- * pulsing, and either its handoffs (a line from each region its previous
- * leaders were in, as thick as how many, colored by its time over the
- * network floor against the cluster's from the same region) or the
+ * pulsing, and either its handoffs (each region its previous leaders were
+ * in drawn as one shape with a small label - region, time over the
+ * network floor - and a line to it as thick as how many; hovered, the
+ * label opens and the region, line and label take its tone against the
+ * cluster's from the same region) or the
  * leaders it diverged on (sized by how many votes, amber or red by the
  * rate).
  */
@@ -96,6 +103,9 @@ const NetworkMap = ({
   }, []);
   const height =
     width != null ? Math.round(Math.min(380, width / ASPECT)) : 300;
+  // The region under the pointer (its shape, label or line): expanded and
+  // colored.
+  const [hover, setHover] = useState<Region | null>(null);
 
   const option = useMemo(() => {
     const me = coord(geo.get(self));
@@ -133,43 +143,141 @@ const NetworkMap = ({
             .sort((a, b) => a.d.divergent - b.d.divergent)
         : [];
     const maxDivergent = Math.max(1, ...leaderDots.map(x => x.d.divergent));
+    // Handoffs: each region with any drawn as one shape (its countries a
+    // tint, no borders between them); hovered, in its tone.
+    const shown = new Map(lines.map(x => [x.h.region, x.h]));
+    const regions =
+      mode === 'handoffs'
+        ? [...countryRegions]
+            .filter(([, r]) => shown.has(r))
+            .map(([name, r]) => {
+              const h = shown.get(r)!;
+              if (hover !== r) return null;
+              const fill = echarts.color.modifyAlpha(
+                tone(h.excessP50Ms, h.clusterExcessP50Ms),
+                0.3
+              );
+              return { name, itemStyle: { areaColor: fill } };
+            })
+            .filter(Boolean)
+        : [];
+    // The outline of each region with handoffs; hovered, in its tone.
+    const outlines =
+      mode === 'handoffs'
+        ? [...shown].flatMap(([r, h]) =>
+            (regionOutlines.get(r) ?? []).map(coords => ({
+              coords,
+              lineStyle: {
+                color:
+                  hover === r
+                    ? tone(h.excessP50Ms, h.clusterExcessP50Ms)
+                    : getThemeColor(isDark ? 'gray-600' : 'gray-400'),
+                width: hover === r ? 1.5 : 1,
+                opacity: 1
+              }
+            }))
+          )
+        : [];
+    // Its label: small (region, over the floor) until hovered, then the
+    // whole story.
+    const label = (h: RegionHandoff) =>
+      hover === h.region
+        ? [
+            `{b|From ${REGION_NAME[h.region]}} · ${h.count.toLocaleString()} handoffs`,
+            `Median ${ms(h.p50Ms)} · floor ${ms(h.expectedP50Ms)}`,
+            `Over the floor {b|${ms(h.excessP50Ms)}} · cluster ${ms(h.clusterExcessP50Ms)}`
+          ].join('\n')
+        : `{b|${REGION_NAME[h.region]}} ${ms(h.excessP50Ms)}`;
     return {
       animation: false,
       tooltip: { trigger: 'item', confine: true },
       geo: {
         map: 'world',
         roam: false,
-        silent: true,
+        // Hovering a region's countries opens its label.
+        silent: mode !== 'handoffs',
+        tooltip: { show: false },
+        regions,
         layoutCenter: ['50%', '50%'],
         layoutSize:
           width != null ? Math.min(width - 8, (height - 8) * ASPECT) : '100%',
         itemStyle: {
           areaColor: getThemeColor(isDark ? 'body-highlight-bg' : 'gray-100'),
-          borderColor: getThemeColor('border-color'),
+          // Handoffs: no borders between countries, so the regions'
+          // outlines read as the shapes.
+          borderColor:
+            mode === 'handoffs'
+              ? getThemeColor(isDark ? 'body-highlight-bg' : 'gray-100')
+              : getThemeColor('border-color'),
           borderWidth: 0.5
         },
         emphasis: { disabled: true }
       },
       series: [
+        // The outlines of the regions with handoffs.
+        {
+          type: 'lines',
+          coordinateSystem: 'geo',
+          polyline: true,
+          silent: true,
+          z: 3,
+          data: outlines
+        },
         {
           type: 'lines',
           coordinateSystem: 'geo',
           zlevel: 1,
-          lineStyle: { curveness: 0.25, opacity: 0.85 },
-          tooltip: {
-            formatter: (p: { dataIndex: number }) => {
-              const h = lines[p.dataIndex]?.h;
-              return h
-                ? `<b>From ${REGION_NAME[h.region]}</b> · ${h.count.toLocaleString()} handoffs<br/>Median ${ms(h.p50Ms)} · network floor ${ms(h.expectedP50Ms)}<br/>Over the floor ${ms(h.excessP50Ms)} (cluster ${ms(h.clusterExcessP50Ms)})`
-                : '';
-            }
-          },
+          name: 'lines',
+          lineStyle: { curveness: 0.25 },
+          tooltip: { show: false },
+          emphasis: { disabled: true },
           data: lines.map(({ h, from }) => ({
+            name: h.region,
             coords: [from, me],
             lineStyle: {
               width: 1.5 + (3 * h.count) / maxCount,
-              color: tone(h.excessP50Ms, h.clusterExcessP50Ms)
+              color:
+                hover === h.region
+                  ? tone(h.excessP50Ms, h.clusterExcessP50Ms)
+                  : getThemeColor(isDark ? 'gray-500' : 'gray-400'),
+              opacity: hover && hover !== h.region ? 0.35 : 0.9
             }
+          }))
+        },
+        // Each region's label, at the middle of its validators.
+        {
+          type: 'scatter',
+          coordinateSystem: 'geo',
+          name: 'labels',
+          zlevel: 3,
+          symbolSize: 6,
+          tooltip: { show: false },
+          emphasis: { disabled: true },
+          data: lines.map(({ h, from }) => ({
+            name: h.region,
+            value: from,
+            itemStyle: {
+              color: tone(h.excessP50Ms, h.clusterExcessP50Ms)
+            },
+            label: {
+              show: true,
+              position: 'top',
+              distance: 6,
+              formatter: label(h),
+              fontSize: 10,
+              lineHeight: 14,
+              color: getThemeColor('body-color'),
+              backgroundColor: getThemeColor('body-bg'),
+              borderColor:
+                hover === h.region
+                  ? tone(h.excessP50Ms, h.clusterExcessP50Ms)
+                  : getThemeColor('border-color'),
+              borderWidth: 1,
+              borderRadius: 4,
+              padding: hover === h.region ? [4, 6] : [2, 5],
+              rich: { b: { fontWeight: 'bold', fontSize: 10 } }
+            },
+            z: hover === h.region ? 10 : 1
           }))
         },
         {
@@ -209,9 +317,11 @@ const NetworkMap = ({
       ]
     };
   }, [
+    ready,
     geo,
     self,
     mode,
+    hover,
     handoffs,
     leaders,
     nameOf,
@@ -229,6 +339,21 @@ const NetworkMap = ({
           option={option}
           notMerge
           style={{ height, width: '100%' }}
+          onEvents={{
+            // A region's shape, label or line under the pointer.
+            mouseover: (p: {
+              componentType?: string;
+              name?: string;
+              data?: { name?: string };
+            }) => {
+              const r =
+                p.componentType === 'geo'
+                  ? countryRegions.get(p.name ?? '')
+                  : (p.data?.name as Region | undefined);
+              if (r && handoffs.some(h => h.region === r)) setHover(r);
+            },
+            globalout: () => setHover(null)
+          }}
         />
       )}
     </div>
