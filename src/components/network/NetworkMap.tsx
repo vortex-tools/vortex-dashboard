@@ -212,7 +212,15 @@ const NetworkMap = ({
       /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
     []
   );
-  const [hint, setHint] = useState(false);
+  const [hint, setHintState] = useState<string | null>(null);
+  const setHint = (on: boolean) =>
+    setHintState(
+      on
+        ? coarse
+          ? 'Touch and hold to move the map; pinch to zoom'
+          : `Hold ${isMac ? '⌘' : 'Ctrl'} and scroll to zoom`
+        : null
+    );
   useEffect(() => {
     const el = boxRef.current;
     if (!el || coarse) return;
@@ -268,6 +276,112 @@ const NetworkMap = ({
       el.removeEventListener('wheel', onWheel);
       clearTimeout(timer);
       cancelAnimationFrame(frame);
+    };
+  }, [coarse, ready]);
+  // Touch: a swipe is the page's (it scrolls); holding still for a moment
+  // first picks the map up, then the finger pans it. Two fingers pinch.
+  // Moves go straight to the chart (no React redraw mid-gesture); one
+  // redraw at the end puts the labels where the map now is.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || !coarse || !ready) return;
+    const HOLD_MS = 280;
+    const SLOP = 8;
+    let mode: 'idle' | 'waiting' | 'pan' | 'pinch' = 'idle';
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let start: [number, number] = [0, 0];
+    let last: [number, number] = [0, 0];
+    let pinch = { dist: 1, zoom: 1 };
+    let hintTimer: ReturnType<typeof setTimeout> | undefined;
+    const apply = () =>
+      chartRef.current?.getEchartsInstance().setOption({
+        geo: [
+          {
+            zoom: viewRef.current.zoom,
+            ...(viewRef.current.center
+              ? { center: viewRef.current.center }
+              : {})
+          }
+        ]
+      });
+    const spread = (t: TouchList) =>
+      Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onStart = (e: TouchEvent) => {
+      clearTimeout(timer);
+      if (e.touches.length === 2) {
+        mode = 'pinch';
+        pinch = { dist: spread(e.touches), zoom: viewRef.current.zoom };
+        return;
+      }
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      start = last = [t.clientX, t.clientY];
+      mode = 'waiting';
+      timer = setTimeout(() => {
+        if (mode !== 'waiting') return;
+        mode = 'pan';
+        setPanning(true);
+        navigator.vibrate?.(8);
+      }, HOLD_MS);
+    };
+    const onMove = (e: TouchEvent) => {
+      const inst = chartRef.current?.getEchartsInstance();
+      if (mode === 'waiting') {
+        const t = e.touches[0];
+        // Moved before the hold: a scroll, the page's.
+        if (Math.hypot(t.clientX - start[0], t.clientY - start[1]) > SLOP) {
+          clearTimeout(timer);
+          mode = 'idle';
+          setHint(true);
+          clearTimeout(hintTimer);
+          hintTimer = setTimeout(() => setHint(false), 1600);
+        }
+        return;
+      }
+      if (!inst || (mode !== 'pan' && mode !== 'pinch')) return;
+      e.preventDefault();
+      if (mode === 'pinch' && e.touches.length === 2) {
+        viewRef.current = {
+          ...viewRef.current,
+          zoom: Math.min(
+            MAX_ZOOM,
+            Math.max(1, (pinch.zoom * spread(e.touches)) / pinch.dist)
+          )
+        };
+        apply();
+        return;
+      }
+      const t = e.touches[0];
+      const box = el.getBoundingClientRect();
+      const d = [t.clientX - last[0], t.clientY - last[1]];
+      last = [t.clientX, t.clientY];
+      const c = inst.convertFromPixel({ geoIndex: 0 }, [
+        box.width / 2 - d[0],
+        box.height / 2 - d[1]
+      ]) as [number, number] | undefined;
+      if (!c) return;
+      viewRef.current = { ...viewRef.current, center: c };
+      apply();
+    };
+    const onEnd = (e: TouchEvent) => {
+      clearTimeout(timer);
+      if (e.touches.length) return;
+      const moved = mode === 'pan' || mode === 'pinch';
+      mode = 'idle';
+      setPanning(false);
+      if (moved) setViewTick(t => t + 1);
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    el.addEventListener('touchcancel', onEnd);
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+      clearTimeout(timer);
+      clearTimeout(hintTimer);
     };
   }, [coarse, ready]);
   const zoomBy = (f: number) => {
@@ -493,8 +607,9 @@ const NetworkMap = ({
       geo: {
         map: 'world',
         // Desktop: drag pans, and only Ctrl / ⌘ + scroll zooms (a plain
-        // scroll moves the page; handled below). Touch: pinch and drag.
-        roam: coarse ? true : 'move',
+        // scroll moves the page; handled below). Touch: handled below too -
+        // a swipe scrolls the page, touch-and-hold pans, a pinch zooms.
+        roam: coarse ? false : 'move',
         zoom: view.zoom,
         ...(view.center ? { center: view.center } : {}),
         scaleLimit: { min: 1, max: MAX_ZOOM },
@@ -733,14 +848,21 @@ const NetworkMap = ({
                           me
                         ]
                       : [];
+                  // Shorter on a phone-width map.
+                  const narrow = (width ?? 999) < 560;
+                  const f = Math.round(floor);
                   const text =
                     leg === 'vote'
-                      ? `{b|Its vote → reward leader}\nfloor ${Math.round(floor)} ms`
-                      : hops.length && !waypoints
-                        ? `{b|Block → this validator, via Turbine}\nup to ~${hi} ms · floor ${Math.round(floor)} ms`
-                        : hops.length
-                          ? `{b|Block → this validator, via Turbine}\nfloor ${Math.round(floor)} ms · ${pathText} ms by its paths`
-                          : `{b|Block → this validator}\nfloor ${Math.round(floor)} ms`;
+                      ? narrow
+                        ? `{b|Vote → reward leader}\nfloor ${f} ms`
+                        : `{b|Its vote → reward leader}\nfloor ${f} ms`
+                      : !hops.length
+                        ? `{b|Block → this validator}\nfloor ${f} ms`
+                        : narrow
+                          ? `{b|Block, via Turbine}\nfloor ${f} · ${!waypoints ? `up to ~${hi}` : pathText} ms`
+                          : !waypoints
+                            ? `{b|Block → this validator, via Turbine}\nup to ~${hi} ms · floor ${f} ms`
+                            : `{b|Block → this validator, via Turbine}\nfloor ${f} ms · ${pathText} ms by its paths`;
                   // On its drawn arrow: the vote's (it to the leader), a
                   // block's last leg (into it), or the straight one.
                   const [from, to]: Array<[number, number]> =
@@ -781,7 +903,7 @@ const NetworkMap = ({
             // The block's above the producer in the north, below in the
             // south; the vote's on the outside of its arrow's swing -
             // below a curve that bends down, above one that bends up.
-            const pos =
+            const pref =
               x.leg === 'vote'
                 ? x.value[1] < x.chordLat
                   ? 'bottom'
@@ -789,12 +911,92 @@ const NetworkMap = ({
                 : hemiSide(x.value);
             // The block's well clear of the producer's dot; the vote's
             // just off its line.
+            const dist = x.leg === 'vote' ? 5 : 16;
+            // Where the chart is up, place by pixels: each label's box
+            // (estimated from its text) nudged inside the map, and a vote
+            // label that would sit on the block's taken to its other side.
+            const box = (y: typeof x, side: 'top' | 'bottom') => {
+              const p = inst?.convertToPixel({ geoIndex: 0 }, y.value) as
+                | [number, number]
+                | undefined;
+              if (!p) return null;
+              const lines = String(y.label.formatter)
+                .replace(/\{b\||\}/g, '')
+                .split('\n');
+              const w = Math.max(...lines.map(l => l.length)) * 5.6 + 12;
+              const h = lines.length * 13 + 6;
+              const d = y.leg === 'vote' ? 5 : 16;
+              const top = side === 'top' ? p[1] - d - h : p[1] + d;
+              const left = p[0] - w / 2;
+              // Kept 4 px inside the chart's sides.
+              const W = width ?? 0;
+              const dx =
+                W && left < 4
+                  ? 4 - left
+                  : W && left + w > W - 4
+                    ? W - 4 - (left + w)
+                    : 0;
+              return { left: left + dx, top, w, h, dx };
+            };
+            const hit = (
+              a: ReturnType<typeof box>,
+              b: ReturnType<typeof box>
+            ) =>
+              !!a &&
+              !!b &&
+              a.left < b.left + b.w &&
+              b.left < a.left + a.w &&
+              a.top < b.top + b.h &&
+              b.top < a.top + a.h;
+            // Off the map's top or bottom edge: the other side.
+            const out = (q: ReturnType<typeof box>) =>
+              !!q && (q.top < 2 || q.top + q.h > height - 2);
+            const edgeFix = (y: typeof x, side: 'top' | 'bottom') => {
+              const flip = side === 'top' ? 'bottom' : 'top';
+              return out(box(y, side)) && !out(box(y, flip)) ? flip : side;
+            };
+            let pos: 'top' | 'bottom' = edgeFix(x, pref);
+            let shift = 0;
+            const block = all.find(y => y.leg === 'block');
+            if (x.leg === 'vote' && block && block !== x) {
+              const bb = box(block, edgeFix(block, hemiSide(block.value)));
+              // Clear of the block's label: its preferred side, the other,
+              // then either nudged sideways past it - the first that fits
+              // inside the map.
+              const W = width ?? 0;
+              const tries: Array<['top' | 'bottom', number]> = [];
+              for (const side of [
+                pos,
+                pos === 'top' ? 'bottom' : 'top'
+              ] as const) {
+                const v = box(x, side);
+                if (!v || out(v)) continue;
+                tries.push([side, 0]);
+                if (bb) {
+                  tries.push([side, bb.left + bb.w + 6 - v.left]);
+                  tries.push([side, bb.left - 6 - (v.left + v.w)]);
+                }
+              }
+              const fits = tries.find(([side, sh]) => {
+                const v = box(x, side);
+                if (!v) return false;
+                const moved = { ...v, left: v.left + sh };
+                return (
+                  !hit(moved, bb) &&
+                  (!W || (moved.left >= 2 && moved.left + moved.w <= W - 2))
+                );
+              });
+              if (fits) [pos, shift] = fits;
+            }
+            const mine = box(x, pos);
+            const dxAll = (mine?.dx ?? 0) + shift;
             return {
               ...x,
               label: {
                 ...x.label,
                 position: pos,
-                distance: x.leg === 'vote' ? 5 : 16
+                distance: dist,
+                ...(dxAll ? { offset: [dxAll, 0] } : {})
               }
             };
           })
@@ -1048,7 +1250,7 @@ const NetworkMap = ({
           className="position-absolute top-50 start-50 translate-middle px-3 py-2 rounded bg-body border shadow-sm fs-9"
           style={{ zIndex: 3, pointerEvents: 'none' }}
         >
-          Hold {isMac ? '⌘' : 'Ctrl'} and scroll to zoom
+          {hint}
         </div>
       )}
       {ready && (

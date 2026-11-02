@@ -389,8 +389,7 @@ const ProducerWindowsTable = ({
       size="sm"
       // Set into the header's padding (12 px above the ~16 px title
       // row, 8 below): centered, and the header no taller.
-      style={card ? { margin: '-8.5px 0 -4.5px' } : undefined}
-      className="w-auto"
+      className={`w-auto${card ? ' vx-header-control' : ''}`}
       value={filter}
       onChange={e => {
         setFilter(e.target.value as WindowsFilter);

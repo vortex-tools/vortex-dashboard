@@ -438,7 +438,7 @@ const ValidatorNetwork = () => {
                   // Full-size buttons, set into the header's padding
                   // (12 px above the ~16 px title row, 8 below): centered,
                   // and the header no taller than Where It Runs'.
-                  style={{ margin: '-8.5px 0 -4.5px' }}
+                  className="vx-header-control"
                 >
                   {views.map(([k, label, has]) => (
                     <ToggleButton
@@ -479,6 +479,7 @@ const ValidatorNetwork = () => {
               />
               {view === 'hosts' && (
                 <Table
+                  responsive
                   size="sm"
                   className="data-table compact-rows fs-9 mt-2 mb-0"
                 >
@@ -574,6 +575,7 @@ const ValidatorNetwork = () => {
                 ) : (
                   <>
                     <Table
+                      responsive
                       size="sm"
                       className="data-table compact-rows fs-9 mt-2 mb-0"
                     >

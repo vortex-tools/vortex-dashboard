@@ -618,3 +618,12 @@ th.leaderboard-sticky-col {
 .vx-map-pan .btn {
   cursor: pointer !important;
 }
+
+// A full-size control in a card header, set into its padding so the
+// header is no taller than its neighbours'. On a phone the header wraps
+// it under the title, where it keeps its own space instead.
+@include media-breakpoint-up(sm) {
+  .vx-header-control {
+    margin: -8.5px 0 -4.5px;
+  }
+}
