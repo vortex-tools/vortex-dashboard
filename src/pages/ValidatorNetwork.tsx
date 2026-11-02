@@ -36,7 +36,14 @@ import useRecordBoards from 'hooks/useRecordBoards';
 import { geoAsOf, placeOf, useValidatorGeoAt } from 'hooks/useValidatorGeo';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
+import {
+  ButtonGroup,
+  Col,
+  Form,
+  Row,
+  Table,
+  ToggleButton
+} from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router';
 
 /** The map's views: handoffs, its divergent votes in two kinds, hosts. */
@@ -46,6 +53,8 @@ type VoteSort = 'slot' | 'producer' | 'reward' | 'vote';
 
 /** Where the map's last-picked view is kept (this browser). */
 const MAP_VIEW_KEY = 'vx-network-map-view';
+/** Whether the divergent votes map draws Turbine's waypoints. */
+const WAYPOINTS_KEY = 'vx-network-turbine-waypoints';
 
 /** Divergent votes on the map at a time. */
 const VOTES_PAGE = 10;
@@ -135,6 +144,23 @@ const ValidatorNetwork = () => {
   // A vote clicked (on the map or its row) stays shown until another
   // click; a hover shows its own meanwhile.
   const [pinned, setPinned] = useState<number | null>(null);
+  // Turbine's waypoints on the block's route, or one bundled arrow;
+  // remembered per browser.
+  const [waypoints, setWaypointsState] = useState(() => {
+    try {
+      return localStorage.getItem(WAYPOINTS_KEY) !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  const setWaypoints = (on: boolean) => {
+    setWaypointsState(on);
+    try {
+      localStorage.setItem(WAYPOINTS_KEY, on ? 'on' : 'off');
+    } catch {
+      // storage blocked: this page keeps it
+    }
+  };
   const highlight = hoverSlot ?? pinned;
   const pick = (slot: number | null) =>
     setPinned(p => (slot == null || p === slot ? null : slot));
@@ -447,6 +473,7 @@ const ValidatorNetwork = () => {
                   setHoverMove(route ? { route } : null)
                 }
                 onPick={pick}
+                waypoints={waypoints}
                 onPickMove={route => pickMove(route ? { route } : null)}
                 nameOf={nameOf}
               />
@@ -700,6 +727,17 @@ const ValidatorNetwork = () => {
                       <span>
                         Hover a row, dot or route to see it; click to keep it.
                       </span>
+                      {turbine && (
+                        <Form.Check
+                          type="switch"
+                          id="network-turbine-waypoints"
+                          className="mb-0"
+                          checked={waypoints}
+                          onChange={e => setWaypoints(e.target.checked)}
+                          label="Turbine waypoints"
+                          title="Off: the block's paths as one arrow, labeled with the slowest path's floor"
+                        />
+                      )}
                       {turbine && (
                         <span className="w-100">
                           Estimated Turbine paths: the leader sends each shred

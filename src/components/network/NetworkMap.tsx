@@ -56,6 +56,11 @@ export type RegionHandoff = {
   slotMs: number | null;
 };
 
+/** Where a map label goes: above its point in the northern hemisphere,
+ *  below it in the southern (toward the map's middle). */
+const hemiSide = (at: [number, number]) =>
+  at[1] < 0 ? ('bottom' as const) : ('top' as const);
+
 /** The middle of an ECharts `lines` curve from a to b (lon/lat), as the
  *  series draws it: a quadratic whose control point sits off the chord by
  *  `curveness` x its length, on screen (where latitude runs down). */
@@ -114,6 +119,7 @@ const NetworkMap = ({
   onHighlightMove,
   onPick,
   onPickMove,
+  waypoints = true,
   nameOf
 }: {
   geo: Map<string, ValidatorGeo>;
@@ -139,6 +145,10 @@ const NetworkMap = ({
    *  empty map lets it go); the same for a host arrow. */
   onPick?: (slot: number | null) => void;
   onPickMove?: (route: string | null) => void;
+  /** Divergent votes: draw the block's Turbine paths through each
+   *  continent's root (labeled); off, one arrow with the slowest path's
+   *  floor. */
+  waypoints?: boolean;
   nameOf: (node: string) => string;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
@@ -591,7 +601,8 @@ const NetworkMap = ({
                 // vote goes straight to the reward leader (solid).
                 type: leg === 'block' ? 'dotted' : 'solid'
               });
-              if (leg === 'vote' || !turbine || !me)
+              // Waypoints off: the block's paths bundled into one arrow.
+              if (leg === 'vote' || !turbine || !me || !waypoints)
                 return [
                   {
                     coords: leg === 'block' ? [c, me] : [me, c],
@@ -682,9 +693,11 @@ const NetworkMap = ({
                   const text =
                     leg === 'vote'
                       ? `{b|Its vote → reward leader}\nfloor ${Math.round(floor)} ms`
-                      : hops.length
-                        ? `{b|Block → this validator, via Turbine}\nfloor ${Math.round(floor)} ms · ${pathText} ms by its paths`
-                        : `{b|Block → this validator}\nfloor ${Math.round(floor)} ms`;
+                      : hops.length && !waypoints
+                        ? `{b|Block → this validator, via Turbine}\nup to ~${hi} ms · floor ${Math.round(floor)} ms`
+                        : hops.length
+                          ? `{b|Block → this validator, via Turbine}\nfloor ${Math.round(floor)} ms · ${pathText} ms by its paths`
+                          : `{b|Block → this validator}\nfloor ${Math.round(floor)} ms`;
                   // On its drawn arrow: the vote's (it to the leader), a
                   // block's last leg (into it), or the straight one.
                   const [from, to]: Array<[number, number]> =
@@ -698,6 +711,7 @@ const NetworkMap = ({
                       // A block's by its producer (where its route
                       // starts); a vote's on its arrow.
                       value: leg === 'block' ? c : curveMid(from, to, 0.2),
+                      leg,
                       label: {
                         show: true,
                         distance: 4,
@@ -718,14 +732,21 @@ const NetworkMap = ({
                 })
             : []
           ).map((x, _, all) => {
-            const higher = all.every(y => y === x || x.value[1] >= y.value[1]);
-            return {
-              ...x,
-              label: {
-                ...x.label,
-                position: all.length < 2 ? 'inside' : higher ? 'top' : 'bottom'
-              }
-            };
+            // Above its point in the north, below in the south; a vote's
+            // label close to the block's takes the other side of it.
+            const block = all.find(y => y !== x && y.leg === 'block');
+            const pos =
+              x.leg === 'vote' &&
+              block &&
+              Math.hypot(
+                block.value[0] - x.value[0],
+                block.value[1] - x.value[1]
+              ) < 25
+                ? hemiSide(block.value) === 'top'
+                  ? 'bottom'
+                  : 'top'
+                : hemiSide(x.value);
+            return { ...x, label: { ...x.label, position: pos, distance: 6 } };
           })
         },
         // The hovered block's Turbine waypoints: each continent's root
@@ -749,7 +770,7 @@ const NetworkMap = ({
             borderWidth: 1.5
           },
           data:
-            me && turbine
+            me && turbine && waypoints
               ? legs
                   .filter(x => x.v.slot === highlight && x.leg === 'block')
                   .flatMap(({ c }) => {
@@ -765,8 +786,8 @@ const NetworkMap = ({
                       detail,
                       label: {
                         show: true,
-                        position: 'bottom' as const,
-                        distance: 3,
+                        position: hemiSide(value),
+                        distance: 6,
                         formatter: text,
                         fontSize: 9,
                         lineHeight: 11,
@@ -924,6 +945,7 @@ const NetworkMap = ({
     highlight,
     moves,
     turbine,
+    waypoints,
     highlightMove,
     nameOf,
     getThemeColor,
