@@ -324,12 +324,14 @@ const NetworkMap = ({
           })
         : [];
     // A block's Turbine paths from its producer: through each continent's
-    // root, but the producer's own continent's goes straight (a root near
-    // the producer adds next to nothing, and its waypoint would crowd it).
+    // root, but the producer's own continent's and this validator's go
+    // straight (a root next to either adds next to nothing, and its
+    // waypoint would crowd that dot).
     const turbinePaths = (node: string, c: [number, number]) =>
       turbine
         ? turbine.paths.map(p =>
-            p.region === regionOf(geo.get(node))
+            p.region === regionOf(geo.get(node)) ||
+            p.region === regionOf(geo.get(self))
               ? { ...p, root: c, local: true }
               : { ...p, local: false }
           )
@@ -764,7 +766,11 @@ const NetworkMap = ({
                   ? 'bottom'
                   : 'top'
                 : hemiSide(x.value);
-            return { ...x, label: { ...x.label, position: pos, distance: 6 } };
+            // Well clear of its dot (the producer's, for a block).
+            return {
+              ...x,
+              label: { ...x.label, position: pos, distance: 16 }
+            };
           })
         },
         // The hovered block's Turbine waypoints: each continent's root
