@@ -671,11 +671,12 @@ const ValidatorNetwork = () => {
                       <span>Hover a row for its route.</span>
                       {turbine && (
                         <span className="w-100">
-                          Estimated Turbine path: the leader sends each shred to
-                          one root, drawn by stake, so it changes shred to shred
-                          (the three heaviest data centers are drawn). This
-                          validator is #{turbine.rank.toLocaleString()} by
-                          stake, so{' '}
+                          Estimated Turbine paths: the leader sends each shred
+                          to one root, drawn by stake, so it changes shred to
+                          shred - a path through each continent&apos;s heaviest
+                          data center is drawn, heavier the more of the stake is
+                          there. This validator is #
+                          {turbine.rank.toLocaleString()} by stake, so{' '}
                           {turbine.layer === 1
                             ? `in layer 1 (the top ${TURBINE_FANOUT}): a shred reaches it from the root, 2 hops from the leader.`
                             : `in layer 2 (below the top ${TURBINE_FANOUT}): a shred reaches it through a layer-1 node, 3 hops from the leader.`}{' '}

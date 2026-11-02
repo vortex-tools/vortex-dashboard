@@ -583,25 +583,28 @@ const NetworkMap = ({
                     lineStyle: style(2.5, 0.95)
                   }
                 ];
-              // The estimated Turbine path: the producer to the likely
-              // roots (thin: one per shred, stake-weighted), the heaviest
-              // root on to it - straight (layer 1) or through a relay
-              // (layer 2).
-              const [root] = turbine.roots;
+              // The estimated Turbine paths: the producer to a root in each
+              // continent group, on to it - straight (layer 1) or through
+              // its nearby relay (layer 2) - heavier the likelier the root.
+              const via = turbine.layer === 2 ? turbine.via : null;
+              const w = (share: number) => ({
+                width: 1 + 1.5 * share,
+                opacity: 0.4 + 0.55 * share
+              });
               return [
-                ...turbine.roots.map(r => ({
-                  coords: [c, r],
-                  lineStyle: style(
-                    r === root ? 2 : 1.2,
-                    r === root ? 0.9 : 0.45
-                  )
-                })),
-                ...(turbine.layer === 2 && turbine.via
-                  ? [
-                      { coords: [root, turbine.via], lineStyle: style(2, 0.9) },
-                      { coords: [turbine.via, me], lineStyle: style(2, 0.9) }
-                    ]
-                  : [{ coords: [root, me], lineStyle: style(2, 0.9) }])
+                ...turbine.paths.flatMap(({ root, share }) => {
+                  const { width, opacity } = w(share);
+                  return [
+                    { coords: [c, root], lineStyle: style(width, opacity) },
+                    {
+                      coords: [root, via ?? me],
+                      lineStyle: style(width, opacity)
+                    }
+                  ];
+                }),
+                ...(via
+                  ? [{ coords: [via, me], lineStyle: style(2.5, 0.95) }]
+                  : [])
               ];
             })
         },
@@ -625,10 +628,34 @@ const NetworkMap = ({
                   const floor = fibreMs(distanceKm(c, me));
                   // Its own block: no trip.
                   if (floor < 1) return [];
+                  // Along each continent's path: producer, root, (relay,)
+                  // it - the label gives their range.
+                  const pathsMs =
+                    leg === 'block' && turbine
+                      ? turbine.paths.map(({ root }) => {
+                          const hops: Array<[number, number]> = [
+                            c,
+                            root,
+                            ...(turbine.layer === 2 && turbine.via
+                              ? [turbine.via]
+                              : []),
+                            me
+                          ];
+                          return hops
+                            .slice(1)
+                            .reduce(
+                              (a, h, i) => a + fibreMs(distanceKm(hops[i], h)),
+                              0
+                            );
+                        })
+                      : [];
+                  const lo = Math.round(Math.min(...pathsMs));
+                  const hi = Math.round(Math.max(...pathsMs));
+                  const pathText = lo === hi ? `~${lo}` : `~${lo}–${hi}`;
+                  // The arrow into it: from the likeliest root (or relay).
                   const hops: Array<[number, number]> =
                     leg === 'block' && turbine
                       ? [
-                          c,
                           turbine.roots[0],
                           ...(turbine.layer === 2 && turbine.via
                             ? [turbine.via]
@@ -636,17 +663,11 @@ const NetworkMap = ({
                           me
                         ]
                       : [];
-                  const pathMs = hops
-                    .slice(1)
-                    .reduce(
-                      (a, h, i) => a + fibreMs(distanceKm(hops[i], h)),
-                      0
-                    );
                   const text =
                     leg === 'vote'
                       ? `{b|Its vote → reward leader}\nfloor ${Math.round(floor)} ms`
                       : hops.length
-                        ? `{b|Block → this validator, via Turbine}\nfloor ${Math.round(floor)} ms · ~${Math.round(pathMs)} ms by its path`
+                        ? `{b|Block → this validator, via Turbine}\nfloor ${Math.round(floor)} ms · ${pathText} ms by its paths`
                         : `{b|Block → this validator}\nfloor ${Math.round(floor)} ms`;
                   // On its drawn arrow: the vote's (it to the leader), a
                   // block's last leg (into it), or the straight one.

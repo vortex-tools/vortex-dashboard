@@ -478,8 +478,11 @@ export const clusterExtra = (
 export const TURBINE_FANOUT = 200;
 
 export type TurbineEstimate = {
-  /** The stake-heaviest data centers: where a shred's root most likely is
-   *  (it's drawn per shred, stake-weighted). */
+  /** A shred's root, per continent group: its stake-heaviest data center
+   *  and the group's share of stake (the chance a shred's root is there -
+   *  it's drawn per shred, stake-weighted), most likely first. */
+  paths: Array<{ region: Region; root: [number, number]; share: number }>;
+  /** The paths' roots, most likely first. */
   roots: Array<[number, number]>;
   /** 1: it's among the top TURBINE_FANOUT by stake - a shred reaches it
    *  from the root (2 hops); 2: through another node first (3 hops). */
@@ -508,22 +511,45 @@ export const turbineEstimate = (
       : null;
   if (!myC) return null;
   // Data centers (a provider in a city), by stake.
-  const dcs = new Map<string, { stake: number; lon: number; lat: number }>();
+  const dcs = new Map<
+    string,
+    { stake: number; lon: number; lat: number; region: Region }
+  >();
   for (const v of geo.values()) {
     const g = v.geo;
     if (g?.longitude == null || g.latitude == null) continue;
     const k = `${g.asn ?? '?'}:${g.city ?? `${g.longitude},${g.latitude}`}`;
-    const d = dcs.get(k) ?? { stake: 0, lon: 0, lat: 0 };
+    const d = dcs.get(k) ?? { stake: 0, lon: 0, lat: 0, region: regionOf(v) };
     const w = Math.max(v.activatedStake, 1);
     d.stake += w;
     d.lon += g.longitude * w;
     d.lat += g.latitude * w;
     dcs.set(k, d);
   }
-  const ranked = [...dcs.values()]
-    .sort((a, b) => b.stake - a.stake)
-    .map(d => [d.lon / d.stake, d.lat / d.stake] as [number, number]);
-  const roots = ranked.slice(0, 3);
+  const sorted = [...dcs.values()].sort((a, b) => b.stake - a.stake);
+  const ranked = sorted.map(
+    d => [d.lon / d.stake, d.lat / d.stake] as [number, number]
+  );
+  // Each continent group's heaviest data center, with the group's share.
+  const total = sorted.reduce((a, d) => a + d.stake, 0);
+  const paths = REGIONS.filter(g => g !== 'unknown')
+    .map(g => {
+      const inG = sorted.filter(d => d.region === g);
+      const top = inG[0];
+      return top
+        ? {
+            region: g,
+            root: [top.lon / top.stake, top.lat / top.stake] as [
+              number,
+              number
+            ],
+            share: total ? inG.reduce((a, d) => a + d.stake, 0) / total : 0
+          }
+        : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x && x.share >= 0.01)
+    .sort((a, b) => b.share - a.share);
+  const roots = paths.map(x => x.root);
   const byStake = [...geo.values()]
     .filter(v => v.geo?.longitude != null)
     .sort((a, b) => b.activatedStake - a.activatedStake);
@@ -538,5 +564,5 @@ export const turbineEstimate = (
       ? (ranked.slice(1, 12).sort((a, b) => dist(a, myC) - dist(b, myC))[0] ??
         null)
       : null;
-  return { roots, layer, via, rank };
+  return { paths, roots, layer, via, rank };
 };
