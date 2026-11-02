@@ -63,7 +63,7 @@ const RecentLeadersTable = ({
           <th
             className="text-end"
             style={{ width: '6rem' }}
-            title="From the previous leader's last block to this leader's first, by the two producers' block times: a slot (~200 ms) plus the network between them. * when this leader's first slot was skipped (the gap includes it). Each links to the leader's Network tab."
+            title={`From the previous leader's last block to this leader's first, by the two producers' block times: a slot (~200 ms) plus the network between them. * when this leader's first slot was skipped (the gap includes it).${NETWORK_TAB ? " Each links to the leader's Network tab." : ''}`}
           >
             Handoff
           </th>
