@@ -305,11 +305,8 @@ const StakePools = () => {
   );
   const hidden = allPools.length - pools.length;
   // Stake pools (as the Kind column labels them: mSOL is one, Marinade's
-  // direct delegations and SFDP aren't) spread over many validators.
+  // direct delegations and SFDP aren't).
   const isPool = (p: PoolSummary) => kindOf(p.kind, p.name) === KIND.pool;
-  const multi = allPools.filter(
-    p => isPool(p) && p.validators >= MIN_VALIDATORS
-  );
   // Shown once the API gives each pool's median delegation.
   const showMedian = allPools.some(p => p.medianStake != null);
   // And once it gives their fees.
@@ -364,7 +361,7 @@ const StakePools = () => {
       ) : (
         <div className="d-flex flex-column gap-3">
           <div className="row g-3">
-            <div className="col-6 col-lg-3">
+            <div className="col-12 col-lg-4">
               <StatCard
                 label="Pooled Stake"
                 value={compactSol(total)}
@@ -379,7 +376,7 @@ const StakePools = () => {
                 }
               />
             </div>
-            <div className="col-6 col-lg-3">
+            <div className="col-6 col-lg-4">
               <StatCard
                 label="Stake Pools"
                 value={allPools.filter(isPool).length.toLocaleString()}
@@ -388,7 +385,7 @@ const StakePools = () => {
                 )} delegated`}
               />
             </div>
-            <div className="col-6 col-lg-3">
+            <div className="col-6 col-lg-4">
               <StatCard
                 label="SFDP"
                 value={compactSol(stakeOf('sfdp'))}
@@ -398,16 +395,6 @@ const StakePools = () => {
                     ? poolPath(allPools.find(p => p.kind === 'sfdp')!.name)
                     : undefined
                 }
-              />
-            </div>
-            <div className="col-6 col-lg-3">
-              <StatCard
-                label="Multi-validator Pools"
-                value={multi.length.toLocaleString()}
-                wrapSublabel
-                sublabel={`stake pools delegating to ${MIN_VALIDATORS}+ validators · ${compactSol(
-                  multi.reduce((a, p) => a + p.stake, 0)
-                )}`}
               />
             </div>
           </div>
