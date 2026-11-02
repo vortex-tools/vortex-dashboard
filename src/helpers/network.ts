@@ -481,7 +481,13 @@ export type TurbineEstimate = {
   /** A shred's root, per continent group: its stake-heaviest data center
    *  and the group's share of stake (the chance a shred's root is there -
    *  it's drawn per shred, stake-weighted), most likely first. */
-  paths: Array<{ region: Region; root: [number, number]; share: number }>;
+  paths: Array<{
+    region: Region;
+    root: [number, number];
+    share: number;
+    /** The root's city, for its label. */
+    city: string | null;
+  }>;
   /** The paths' roots, most likely first. */
   roots: Array<[number, number]>;
   /** 1: it's among the top TURBINE_FANOUT by stake - a shred reaches it
@@ -513,13 +519,25 @@ export const turbineEstimate = (
   // Data centers (a provider in a city), by stake.
   const dcs = new Map<
     string,
-    { stake: number; lon: number; lat: number; region: Region }
+    {
+      stake: number;
+      lon: number;
+      lat: number;
+      region: Region;
+      city: string | null;
+    }
   >();
   for (const v of geo.values()) {
     const g = v.geo;
     if (g?.longitude == null || g.latitude == null) continue;
     const k = `${g.asn ?? '?'}:${g.city ?? `${g.longitude},${g.latitude}`}`;
-    const d = dcs.get(k) ?? { stake: 0, lon: 0, lat: 0, region: regionOf(v) };
+    const d = dcs.get(k) ?? {
+      stake: 0,
+      lon: 0,
+      lat: 0,
+      region: regionOf(v),
+      city: g.city ?? null
+    };
     const w = Math.max(v.activatedStake, 1);
     d.stake += w;
     d.lon += g.longitude * w;
@@ -543,7 +561,8 @@ export const turbineEstimate = (
               number,
               number
             ],
-            share: total ? inG.reduce((a, d) => a + d.stake, 0) / total : 0
+            share: total ? inG.reduce((a, d) => a + d.stake, 0) / total : 0,
+            city: top.city
           }
         : null;
     })

@@ -679,7 +679,9 @@ const NetworkMap = ({
                         : [c, me];
                   return [
                     {
-                      value: curveMid(from, to, 0.2),
+                      // A block's by its producer (where its route
+                      // starts); a vote's on its arrow.
+                      value: leg === 'block' ? c : curveMid(from, to, 0.2),
                       label: {
                         show: true,
                         distance: 4,
@@ -709,6 +711,68 @@ const NetworkMap = ({
               }
             };
           })
+        },
+        // The hovered block's Turbine waypoints: each continent's root
+        // (and a layer-2 relay), labeled with its share of shreds and the
+        // two legs' floors through it.
+        {
+          type: 'scatter',
+          coordinateSystem: 'geo',
+          zlevel: 2,
+          name: 'turbineHops',
+          silent: true,
+          symbolSize: 5,
+          itemStyle: {
+            color: getThemeColor('body-bg'),
+            borderColor: getThemeColor(ROLE_COLOR.block),
+            borderWidth: 1.5
+          },
+          data:
+            me && turbine
+              ? legs
+                  .filter(x => x.v.slot === highlight && x.leg === 'block')
+                  .flatMap(({ c }) => {
+                    if (fibreMs(distanceKm(c, me)) < 1) return [];
+                    const via = turbine.layer === 2 ? turbine.via : null;
+                    const end = via ?? me;
+                    const hop = (value: [number, number], text: string) => ({
+                      value,
+                      label: {
+                        show: true,
+                        position: 'bottom' as const,
+                        distance: 3,
+                        formatter: text,
+                        fontSize: 9,
+                        lineHeight: 11,
+                        color: getThemeColor('body-color'),
+                        backgroundColor: getThemeColor('body-bg'),
+                        borderColor: getThemeColor('border-color'),
+                        borderWidth: 1,
+                        borderRadius: 3,
+                        padding: [1, 4],
+                        rich: { b: { fontWeight: 'bold', fontSize: 9 } }
+                      }
+                    });
+                    const legMs = (a: [number, number], b: [number, number]) =>
+                      Math.round(fibreMs(distanceKm(a, b)));
+                    return [
+                      ...turbine.paths.map(p =>
+                        hop(
+                          p.root,
+                          `{b|${p.city ?? REGION_NAME[p.region]}} root · ${Math.round(p.share * 100)}% of shreds\n${legMs(c, p.root)} + ${legMs(p.root, end)} ms`
+                        )
+                      ),
+                      ...(via
+                        ? [
+                            hop(
+                              via,
+                              `{b|Relay} (layer 2)\n${legMs(via, me)} ms on`
+                            )
+                          ]
+                        : [])
+                    ];
+                  })
+              : []
         },
         // Every producer and reward leader of the page's votes, by role;
         // the hovered vote's on top, the rest faint while one is hovered.
