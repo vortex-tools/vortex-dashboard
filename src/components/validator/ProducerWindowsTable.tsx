@@ -22,6 +22,8 @@ import { Link } from 'react-router';
 import useLiveWindows, { when } from 'hooks/useLiveWindows';
 
 const PAGE = PRODUCTION_WINDOWS_PAGE;
+/** A handoff slower than this (ms) is tinted, as on Cluster Status. */
+const SLOW_HANDOFF_MS = 300;
 // Slot outcomes that are known (else the slot is still ahead).
 const DECIDED = ['block', 'skipped', 'noData'];
 // A block that carried less than this share of the online stake is thin
@@ -395,6 +397,12 @@ const ProducerWindowsTable = ({
             >
               Inclusion
             </th>
+            <th
+              className="text-end d-none d-sm-table-cell"
+              title="From the previous leader's last block to its first, by the two producers' block times: its first block (~144 ms) plus the wait for the previous block. Blank after a skip, with a clamped block time, or until the slot is classified."
+            >
+              Handoff
+            </th>
             {current && (
               <th className="text-end d-none d-sm-table-cell">When</th>
             )}
@@ -437,6 +445,9 @@ const ProducerWindowsTable = ({
                     );
                   })}
                 </div>
+              </td>
+              <td className="text-end text-body-tertiary d-none d-sm-table-cell">
+                —
               </td>
               <td className="text-end text-body-tertiary d-none d-sm-table-cell">
                 —
@@ -485,6 +496,21 @@ const ProducerWindowsTable = ({
               <td className="text-end font-monospace d-none d-sm-table-cell">
                 {pct(windowInclusion(w))}
               </td>
+              <td className="text-end font-monospace text-nowrap d-none d-sm-table-cell">
+                {w.slots[0]?.slotMs != null ? (
+                  <span
+                    className={
+                      w.slots[0].slotMs > SLOW_HANDOFF_MS
+                        ? 'text-warning-emphasis'
+                        : undefined
+                    }
+                  >
+                    {Math.round(w.slots[0].slotMs)} ms
+                  </span>
+                ) : (
+                  <span className="text-body-tertiary">—</span>
+                )}
+              </td>
               {current && (
                 <td className="text-end text-nowrap text-body-tertiary d-none d-sm-table-cell">
                   {liveWin.slotNow != null
@@ -499,7 +525,7 @@ const ProducerWindowsTable = ({
           {!shown.length && !liveRows.length && (
             <tr>
               <td
-                colSpan={current ? 4 : 3}
+                colSpan={current ? 5 : 4}
                 className="text-center text-body-tertiary py-3"
               >
                 {filter === 'all'

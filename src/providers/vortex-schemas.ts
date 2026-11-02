@@ -1891,7 +1891,11 @@ export const productionWindowsSchema = z.object({
             .number()
             .nullable()
             .optional()
-            .catch(undefined)
+            .catch(undefined),
+          // The block's duration from producer timestamps: on a window's
+          // first slot the handoff from the previous leader. null until
+          // classified, after a skip or a clamped time.
+          slotMs: z.number().nullable().optional().catch(undefined)
         })
       )
     })
