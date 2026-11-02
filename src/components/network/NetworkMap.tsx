@@ -76,7 +76,8 @@ const MAX_ZOOM = 8;
  * the region, line and label take its tone against the cluster's from
  * the same region) or a page of its divergent votes - every block producer
  * (blue) and reward leader (amber) as a dot, and the hovered vote's route
- * as two arrows: producer to it, it to the reward leader.
+ * as two arrows: producer to it (dotted: a block fans out through Turbine,
+ * relayed), it to the reward leader (solid: a vote is sent straight).
  */
 const NetworkMap = ({
   geo,
@@ -540,7 +541,10 @@ const NetworkMap = ({
               lineStyle: {
                 color: getThemeColor(ROLE_COLOR[leg]),
                 width: 2.5,
-                opacity: 0.95
+                opacity: 0.95,
+                // A block isn't sent straight: its shreds fan out through
+                // Turbine, relayed on the way (dotted). A vote is (solid).
+                type: leg === 'block' ? 'dotted' : 'solid'
               }
             }))
         },
@@ -556,7 +560,7 @@ const NetworkMap = ({
             formatter: (p: { dataIndex: number }) => {
               const x = dots[p.dataIndex];
               return x
-                ? `<b>${nameOf(x.node)}</b> · ${x.leg === 'block' ? 'block producer' : 'reward leader'}<br/>Slot ${x.v.slot.toLocaleString()} · ${DIVERGENCE[x.v.kind].label}`
+                ? `<b>${nameOf(x.node)}</b> · ${x.leg === 'block' ? 'block producer (its block reaches it through Turbine)' : 'reward leader (its vote goes straight to it)'}<br/>Slot ${x.v.slot.toLocaleString()} · ${DIVERGENCE[x.v.kind].label}`
                 : '';
             }
           },

@@ -374,7 +374,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Skipped blocks and Missed votes: its votes that disagreed with the chain (a skip on a block that made it, or notarize on one that didn't) and those never counted, ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - an arrow from the producer to it (the block's trip) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Skipped blocks and Missed votes: its votes that disagreed with the chain (a skip on a block that made it, or notarize on one that didn't) and those never counted, ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
                   <ButtonGroup
@@ -535,7 +535,7 @@ const ValidatorNetwork = () => {
                               [
                                 'producer',
                                 'Block producer',
-                                "The slot's leader, whose block it voted on; sorts by its network floor",
+                                "The slot's leader, whose block it voted on. Its block reaches this validator through Turbine (shreds relayed on the way), so the floor is a minimum. Sorts by it",
                                 ''
                               ],
                               [
@@ -651,14 +651,17 @@ const ValidatorNetwork = () => {
                           className="d-inline-block rounded-circle align-middle me-1 bg-info"
                           style={{ width: 8, height: 8 }}
                         />
-                        Block producer: whose block it voted on
+                        Block producer: whose block it voted on - dotted, its
+                        block reaches it through Turbine (relayed shreds), so
+                        the floor shown is a minimum
                       </span>
                       <span>
                         <span
                           className="d-inline-block rounded-circle align-middle me-1 bg-warning"
                           style={{ width: 8, height: 8 }}
                         />
-                        Reward leader: slot + 8, where its vote had to arrive
+                        Reward leader: slot + 8, where its vote had to arrive -
+                        solid, a vote is sent straight to it
                       </span>
                       <span>Hover a row for its route.</span>
                     </div>
