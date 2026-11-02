@@ -126,7 +126,14 @@ export const loadWorld = () =>
             (reg(x) === r || reg(y) === r) && (x === y || reg(x) !== reg(y))
         );
         const lines: number[][][] = [];
-        for (const line of m.coordinates as number[][][]) {
+        // Russia's far east and Fiji wrap past 180° W; the base map draws
+        // them east of 180 (fixRing), so their outlines go there too.
+        // (North America's Aleutians stay west.)
+        const wraps = r === 'europe' || r === 'other';
+        for (const raw of m.coordinates as number[][][]) {
+          const line = wraps
+            ? raw.map(([x, y]) => [x < -150 ? x + 360 : x, y])
+            : raw;
           let cur: number[][] = [];
           for (const pt of line) {
             const prev = cur[cur.length - 1];

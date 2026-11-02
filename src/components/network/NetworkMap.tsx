@@ -7,7 +7,8 @@ import {
   LeaderDivergence,
   REGION_NAME,
   Region,
-  regionCenter
+  regionCenter,
+  regionOf
 } from 'helpers/network';
 import {
   countryRegions,
@@ -48,6 +49,9 @@ const ms = (v: number | null | undefined) =>
 const pct = (x: number) =>
   `${(x * 100).toLocaleString('en-US', { maximumFractionDigits: x < 0.01 ? 2 : 1 })}%`;
 
+/** Degrees of the grid the hovered region's validators are grouped on. */
+const GRID = 3;
+
 /** Slower than the cluster by this much (over the floor): amber, then
  *  red. */
 const SLOWER = [1.05, 1.25];
@@ -58,9 +62,10 @@ const DIVERGENT_RED = 0.05;
  * Where a validator sits in the network, for one epoch - kept sparse: it,
  * pulsing, and either its handoffs (each region its previous leaders were
  * in drawn as one shape with a small label - region, time over the
- * network floor - and a line to it as thick as how many; hovered, the
- * label opens and the region, line and label take its tone against the
- * cluster's from the same region) or the
+ * network floor - and a line to it as thick as how many; hovered, its
+ * validators show as dots grouped by place, its figures in a corner, and
+ * the region, line and label take its tone against the cluster's from
+ * the same region) or the
  * leaders it diverged on (sized by how many votes, amber or red by the
  * rate).
  */
@@ -178,16 +183,47 @@ const NetworkMap = ({
             }))
           )
         : [];
+    // The hovered region's validators, grouped by place (a ~3° grid),
+    // each group a dot sized by its stake.
+    const total = [...geo.values()].reduce((a, v) => a + v.activatedStake, 0);
+    const groups =
+      mode === 'handoffs' && hover
+        ? [
+            ...[...geo.values()]
+              .filter(v => regionOf(v) === hover && coord(v))
+              .reduce((m, v) => {
+                const [lon, lat] = coord(v)!;
+                const k = `${Math.round(lon / GRID)}:${Math.round(lat / GRID)}`;
+                const g = m.get(k) ?? {
+                  lon: 0,
+                  lat: 0,
+                  stake: 0,
+                  count: 0,
+                  places: new Map<string, number>()
+                };
+                const w = Math.max(v.activatedStake, 1);
+                g.lon += lon * w;
+                g.lat += lat * w;
+                g.stake += w;
+                g.count++;
+                const place = v.geo?.city ?? v.geo?.country ?? '';
+                g.places.set(place, (g.places.get(place) ?? 0) + 1);
+                return m.set(k, g);
+              }, new Map<string, { lon: number; lat: number; stake: number; count: number; places: Map<string, number> }>())
+              .values()
+          ].map(g => ({
+            ...g,
+            c: [g.lon / g.stake, g.lat / g.stake] as [number, number],
+            // The group's largest place names it.
+            name: [...g.places].sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+          }))
+        : [];
+    const maxGroup = Math.max(1, ...groups.map(g => g.stake));
+    const hovered = hover ? shown.get(hover) : undefined;
     // Its label: small (region, over the floor) until hovered, then the
     // whole story.
     const label = (h: RegionHandoff) =>
-      hover === h.region
-        ? [
-            `{b|From ${REGION_NAME[h.region]}} · ${h.count.toLocaleString()} handoffs`,
-            `Median ${ms(h.p50Ms)} · floor ${ms(h.expectedP50Ms)}`,
-            `Over the floor {b|${ms(h.excessP50Ms)}} · cluster ${ms(h.clusterExcessP50Ms)}`
-          ].join('\n')
-        : `{b|${REGION_NAME[h.region]}} ${ms(h.excessP50Ms)}`;
+      `{b|${REGION_NAME[h.region]}} ${ms(h.excessP50Ms)}`;
     return {
       animation: false,
       tooltip: { trigger: 'item', confine: true },
@@ -244,6 +280,35 @@ const NetworkMap = ({
             }
           }))
         },
+        // The hovered region's validators, grouped.
+        {
+          type: 'scatter',
+          coordinateSystem: 'geo',
+          name: 'groups',
+          zlevel: 2,
+          emphasis: { disabled: true },
+          symbolSize: (v: number[]) => 4 + 16 * Math.sqrt(v[2] / maxGroup),
+          tooltip: {
+            formatter: (p: { dataIndex: number }) => {
+              const g = groups[p.dataIndex];
+              return g
+                ? `<b>${g.name || 'Unknown place'}</b>${g.places.size > 1 ? ` and nearby` : ''}<br/>${g.count.toLocaleString()} validator${g.count === 1 ? '' : 's'} · ${pct(total ? g.stake / total : 0)} of stake`
+                : '';
+            }
+          },
+          data: groups.map(g => ({
+            name: hover,
+            value: [...g.c, g.stake],
+            itemStyle: {
+              color: hovered
+                ? tone(hovered.excessP50Ms, hovered.clusterExcessP50Ms)
+                : getThemeColor('secondary'),
+              opacity: 0.6,
+              borderColor: getThemeColor('body-bg'),
+              borderWidth: 1
+            }
+          }))
+        },
         // Each region's label, at the middle of its validators.
         {
           type: 'scatter',
@@ -274,7 +339,7 @@ const NetworkMap = ({
                   : getThemeColor('border-color'),
               borderWidth: 1,
               borderRadius: 4,
-              padding: hover === h.region ? [4, 6] : [2, 5],
+              padding: [2, 5],
               rich: { b: { fontWeight: 'bold', fontSize: 10 } }
             },
             z: hover === h.region ? 10 : 1
@@ -331,8 +396,32 @@ const NetworkMap = ({
     height
   ]);
 
+  // The hovered region's whole story, in a corner (on the map it would
+  // cover the region's own dots).
+  const open =
+    mode === 'handoffs' && hover
+      ? handoffs.find(h => h.region === hover)
+      : undefined;
   return (
-    <div ref={boxRef} style={{ height }}>
+    <div ref={boxRef} className="position-relative" style={{ height }}>
+      {open && (
+        <div
+          className="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded border bg-body fs-10 lh-sm"
+          style={{ zIndex: 2, pointerEvents: 'none' }}
+        >
+          <div className="fw-bold">
+            From {REGION_NAME[open.region]} · {open.count.toLocaleString()}{' '}
+            handoffs
+          </div>
+          <div>
+            Median {ms(open.p50Ms)} · network floor {ms(open.expectedP50Ms)}
+          </div>
+          <div>
+            Over the floor <b>{ms(open.excessP50Ms)}</b> · cluster{' '}
+            {ms(open.clusterExcessP50Ms)}
+          </div>
+        </div>
+      )}
       {ready && width != null && (
         <ReactEChartsCore
           echarts={echarts}
