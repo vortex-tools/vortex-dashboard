@@ -10,7 +10,7 @@ import {
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
-import HostChangesCard from 'components/validator/HostChangesCard';
+import NetworkSummaryCard from 'components/network/NetworkSummaryCard';
 import GovernanceCard from 'components/validator/GovernanceCard';
 import StatCard from 'components/common/StatCard';
 import ValidatorProduction from 'components/validator/ValidatorProduction';
@@ -741,8 +741,10 @@ const ValidatorOverview = () => {
             </Col>
             {nodeAddress && (
               <Col xs={12} lg={6}>
-                <HostChangesCard
+                <NetworkSummaryCard
+                  address={address ?? nodeAddress}
                   identity={nodeAddress}
+                  voteKey={voteAddress ?? null}
                   currentEpoch={currentEpoch}
                 />
               </Col>

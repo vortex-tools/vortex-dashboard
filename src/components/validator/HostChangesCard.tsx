@@ -115,10 +115,13 @@ const eventWhat = (e: Event) => {
  */
 const HostChangesCard = ({
   identity,
-  currentEpoch
+  currentEpoch,
+  bare = false
 }: {
   identity: string;
   currentEpoch: number | null;
+  /** Its content without the card (inside another, e.g. Network). */
+  bare?: boolean;
 }) => {
   const context = useContext(VortexDataContext);
   const fetchData = context?.hostChangesState.fetchData;
@@ -169,12 +172,8 @@ const HostChangesCard = ({
     (a, b) => b.epochs.size - a.epochs.size
   )[0];
 
-  return (
-    <SectionCard
-      title="Infrastructure"
-      icon="server"
-      info="Where this validator runs (provider and city, from gossip): this epoch's failovers, moves and upgrades, and its past moves to new hosts."
-    >
+  const body = (
+    <>
       {/* Where gossip has it now (else the latest epoch's record); while a
           fresh failover is still being confirmed, says so. */}
       {(live || latest) && (
@@ -327,6 +326,17 @@ const HostChangesCard = ({
           )}
         </>
       )}
+    </>
+  );
+  return bare ? (
+    body
+  ) : (
+    <SectionCard
+      title="Infrastructure"
+      icon="server"
+      info="Where this validator runs (provider and city, from gossip): this epoch's failovers, moves and upgrades, and its past moves to new hosts."
+    >
+      {body}
     </SectionCard>
   );
 };
