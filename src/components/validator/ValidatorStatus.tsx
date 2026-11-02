@@ -1193,7 +1193,10 @@ export const useValidatorNotices = (
       !isSfdpCheck(c.id) &&
       !RETIRED_CHECKS.has(c.id) &&
       c.status !== 'ok' &&
-      !(c.id === 'bam_boost' && (unclaimedBoost || !boostDue))
+      !(c.id === 'bam_boost' && (unclaimedBoost || !boostDue)) &&
+      // Not geolocated: a node with no address on record, which its other
+      // notices already show as down - nothing to say about concentration.
+      !(c.id === 'concentration' && (c.status === 'unknown' || !status.geo))
     )
       notices.push({
         id: `check-${c.id}`,
