@@ -112,6 +112,8 @@ const NetworkMap = ({
   turbine = null,
   highlightMove = null,
   onHighlightMove,
+  onPick,
+  onPickMove,
   nameOf
 }: {
   geo: Map<string, ValidatorGeo>;
@@ -133,6 +135,10 @@ const NetworkMap = ({
    *  and to set it from an arrow. */
   highlightMove?: string | null;
   onHighlightMove?: (route: string | null) => void;
+  /** A click on a vote's dot or route keeps it shown (null: a click on
+   *  empty map lets it go); the same for a host arrow. */
+  onPick?: (slot: number | null) => void;
+  onPickMove?: (route: string | null) => void;
   nameOf: (node: string) => string;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
@@ -174,6 +180,13 @@ const NetworkMap = ({
   // A button down on the map: the closed-hand cursor (CSS only; the chart
   // isn't redrawn for it).
   const [panning, setPanning] = useState(false);
+  // Over something clickable (a vote's dot or route, a host arrow): a
+  // pointer rather than the grab hand.
+  const [pointing, setPointing] = useState(false);
+  // Where the button went down, so a drag's release isn't a click.
+  const downAt = useRef<[number, number] | null>(null);
+  // An item took the click (ECharts' handler runs before the box's).
+  const itemClicked = useRef(false);
   // Touch screens pinch to zoom; a mouse or trackpad zooms with Ctrl / ⌘ +
   // scroll (a trackpad pinch sends that too), and a plain scroll scrolls
   // the page - with a hint, briefly.
@@ -564,7 +577,9 @@ const NetworkMap = ({
           lineStyle: { curveness: 0.2 },
           symbol: ['none', 'arrow'],
           symbolSize: 9,
-          silent: true,
+          // Hoverable and clickable (it keeps the route), no tooltip.
+          tooltip: { show: false },
+          emphasis: { disabled: true },
           data: legs
             .filter(x => x.v.slot === highlight)
             .flatMap(({ leg, c }) => {
@@ -607,6 +622,7 @@ const NetworkMap = ({
                   : [])
               ];
             })
+            .map(d => ({ ...d, name: String(highlight) }))
         },
         // The hovered route's legs, labeled at their middles (level, so
         // they read): what each trip is and its floor - the fibre-speed
@@ -905,14 +921,33 @@ const NetworkMap = ({
   return (
     <div
       ref={boxRef}
-      className={`position-relative vx-map-pan${panning ? ' vx-map-panning' : ''}`}
+      className={`position-relative vx-map-pan${pointing ? ' vx-map-pointing' : ''}${panning ? ' vx-map-panning' : ''}`}
       style={{ height }}
       onPointerDown={e => {
+        downAt.current = [e.clientX, e.clientY];
         // Not on the zoom buttons.
         if (!(e.target as HTMLElement).closest('.btn')) setPanning(true);
       }}
       onPointerUp={() => setPanning(false)}
-      onPointerLeave={() => setPanning(false)}
+      // A click on empty map (not a drag, not the buttons) lets a kept
+      // route go.
+      onClick={e => {
+        const d = downAt.current;
+        const moved = !!d && Math.hypot(e.clientX - d[0], e.clientY - d[1]) > 4;
+        if (
+          !itemClicked.current &&
+          !moved &&
+          !(e.target as HTMLElement).closest('.btn')
+        ) {
+          onPick?.(null);
+          onPickMove?.(null);
+        }
+        itemClicked.current = false;
+      }}
+      onPointerLeave={() => {
+        setPanning(false);
+        setPointing(false);
+      }}
     >
       {hint && (
         <div
@@ -996,6 +1031,7 @@ const NetworkMap = ({
               // Mid-drag: a redraw would stop the pan.
               if (p.event?.event?.buttons) return;
               if ((p as { seriesName?: string }).seriesName === 'moves') {
+                setPointing(true);
                 onHighlightMove?.(p.data?.name ?? null);
                 return;
               }
@@ -1003,6 +1039,7 @@ const NetworkMap = ({
                 (p as { seriesName?: string }).seriesName === 'paths' ||
                 (p as { seriesName?: string }).seriesName === 'leaders'
               ) {
+                setPointing(true);
                 onHighlight(Number(p.data?.name));
                 return;
               }
@@ -1015,7 +1052,14 @@ const NetworkMap = ({
             // Off a leader dot or a host arrow: its highlight goes too (it
             // only lasts while the pointer is on it).
             mouseout: (p: { seriesName?: string; componentType?: string }) => {
-              if (p.seriesName === 'leaders') onHighlight(null);
+              if (
+                p.seriesName === 'leaders' ||
+                p.seriesName === 'paths' ||
+                p.seriesName === 'moves'
+              )
+                setPointing(false);
+              if (p.seriesName === 'leaders' || p.seriesName === 'paths')
+                onHighlight(null);
               else if (p.seriesName === 'moves') onHighlightMove?.(null);
               // Off a region's countries, label or line: no stickiness
               // (moving to another of its countries hovers it again).
@@ -1026,6 +1070,19 @@ const NetworkMap = ({
                 p.seriesName === 'groups'
               )
                 setHover(null);
+            },
+            // A click on a dot, route or arrow keeps it shown.
+            click: (p: { seriesName?: string; data?: { name?: string } }) => {
+              if (p.seriesName === 'moves') {
+                itemClicked.current = true;
+                onPickMove?.(p.data?.name ?? null);
+              } else if (
+                p.seriesName === 'leaders' ||
+                p.seriesName === 'paths'
+              ) {
+                itemClicked.current = true;
+                onPick?.(Number(p.data?.name));
+              }
             },
             globalout: () => {
               setHover(null);

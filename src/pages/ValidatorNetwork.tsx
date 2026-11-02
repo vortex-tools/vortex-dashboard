@@ -131,7 +131,13 @@ const ValidatorNetwork = () => {
     key: 'slot',
     desc: true
   });
-  const [highlight, setHighlight] = useState<number | null>(null);
+  const [hoverSlot, setHighlight] = useState<number | null>(null);
+  // A vote clicked (on the map or its row) stays shown until another
+  // click; a hover shows its own meanwhile.
+  const [pinned, setPinned] = useState<number | null>(null);
+  const highlight = hoverSlot ?? pinned;
+  const pick = (slot: number | null) =>
+    setPinned(p => (slot == null || p === slot ? null : slot));
   const byRegion = useMemo(
     () => (byLeader && geo ? divergenceByRegion(byLeader, geo) : null),
     [byLeader, geo]
@@ -221,10 +227,27 @@ const ValidatorNetwork = () => {
   const shownMoves = allMoves ? moves : moves.slice(0, HOST_MOVES_SHOWN);
   // The move hovered: a row (it and its arrow), or an arrow (it and every
   // row going that way).
-  const [hoverMove, setHoverMove] = useState<{
+  const [hoverMoveState, setHoverMove] = useState<{
     row?: number;
     route: string;
   } | null>(null);
+  // A move clicked (a row or an arrow) stays shown, as a vote does.
+  const [pinnedMove, setPinnedMove] = useState<{
+    row?: number;
+    route: string;
+  } | null>(null);
+  const hoverMove = hoverMoveState ?? pinnedMove;
+  const sameMove = (
+    a: { row?: number; route: string } | null,
+    b: { row?: number; route: string }
+  ) => !!a && a.route === b.route && a.row === b.row;
+  const pickMove = (m: { row?: number; route: string } | null) =>
+    setPinnedMove(p => (m == null || sameMove(p, m) ? null : m));
+  // Another validator, epoch or view: nothing kept.
+  useEffect(() => {
+    setPinned(null);
+    setPinnedMove(null);
+  }, [node, epoch, mode, votePage]);
   // Every view, disabled when it has no data. A view counts until its
   // data says otherwise: while it loads, the picked view stays (dropping
   // to another and coming back looked like a snap back to Leader
@@ -423,6 +446,8 @@ const ValidatorNetwork = () => {
                 onHighlightMove={route =>
                   setHoverMove(route ? { route } : null)
                 }
+                onPick={pick}
+                onPickMove={route => pickMove(route ? { route } : null)}
                 nameOf={nameOf}
               />
               {view === 'hosts' && (
@@ -445,17 +470,19 @@ const ValidatorNetwork = () => {
                           setHoverMove({ row: i, route: routeKey(m) })
                         }
                         onMouseLeave={() => setHoverMove(null)}
+                        onClick={() => pickMove({ row: i, route: routeKey(m) })}
                         className={m.epoch === epoch ? 'fw-semibold' : ''}
-                        style={
+                        style={{
+                          cursor: 'pointer',
                           // A row hovered: the others fade; an arrow: every
                           // row of other directions does.
-                          hoverMove &&
+                          ...(hoverMove &&
                           !(hoverMove.row != null
                             ? hoverMove.row === i
                             : hoverMove.route === routeKey(m))
                             ? { opacity: 0.35 }
-                            : undefined
-                        }
+                            : {})
+                        }}
                       >
                         <td className="text-nowrap">
                           <Link to={recordPath(address, m.epoch, 'network')}>
@@ -619,11 +646,13 @@ const ValidatorNetwork = () => {
                               key={v.slot}
                               onMouseEnter={() => setHighlight(v.slot)}
                               onMouseLeave={() => setHighlight(null)}
-                              style={
-                                highlight != null && highlight !== v.slot
+                              onClick={() => pick(v.slot)}
+                              style={{
+                                cursor: 'pointer',
+                                ...(highlight != null && highlight !== v.slot
                                   ? { opacity: 0.35 }
-                                  : undefined
-                              }
+                                  : {})
+                              }}
                             >
                               <td>
                                 <Link
@@ -668,7 +697,9 @@ const ValidatorNetwork = () => {
                         Reward leader: slot + 8, where its vote had to arrive -
                         solid, a vote is sent straight to it
                       </span>
-                      <span>Hover a row for its route.</span>
+                      <span>
+                        Hover a row, dot or route to see it; click to keep it.
+                      </span>
                       {turbine && (
                         <span className="w-100">
                           Estimated Turbine paths: the leader sends each shred

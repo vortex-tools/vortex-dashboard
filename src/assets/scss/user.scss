@@ -606,6 +606,11 @@ th.leaderboard-sticky-col {
 .vx-map-pan * {
   cursor: grab !important;
 }
+// Over a dot, route or arrow it can click.
+.vx-map-pan.vx-map-pointing,
+.vx-map-pan.vx-map-pointing * {
+  cursor: pointer !important;
+}
 .vx-map-pan.vx-map-panning,
 .vx-map-pan.vx-map-panning * {
   cursor: grabbing !important;
