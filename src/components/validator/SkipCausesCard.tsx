@@ -12,21 +12,21 @@ const CAUSES: Array<[keyof Causes, string, string]> = [
   [
     'lateBlock',
     'Late block',
-    'Its block was produced and notarized by 1%+ of stake, but the skip won.'
+    'Its block arrived, but too late: some stake (1%+) notarized it, and the cluster skipped the slot anyway.'
   ],
-  ['noBlock', 'No block', 'No block of it reached the cluster in time.'],
+  ['noBlock', 'No block', 'The cluster never received a block for the slot.'],
   [
     'staleParent',
     'Wrong parent',
-    'Its block was built on a parent the cluster had moved past.'
+    'Its block built on a block the cluster had already moved past.'
   ],
-  ['duplicate', 'Duplicate', 'It sent more than one version of the block.'],
+  ['duplicate', 'Duplicate', 'It produced two different blocks for the slot.'],
   [
     'offline',
     'Offline',
-    'It wasn’t voting itself (a run of 32+ missed slots).'
+    "It wasn't voting at the time (part of a run of 32+ missed slots)."
   ],
-  ['unknown', 'Unknown', 'No record of the slot to tell from.']
+  ['unknown', 'Unknown', 'No record of the slot to tell why.']
 ];
 
 export const ms = (v: number | null | undefined) =>
