@@ -33,16 +33,22 @@ export const regionOf = (g: ValidatorGeo | undefined): Region => {
         : 'other';
 };
 
-/** Divergent kinds that point at latency: its vote came too late for a
- *  block that made the chain (a skip, or no vote at all). */
-export const LATENCY_KINDS = new Set<Divergence>(['late-skip', 'missed-block']);
+/** Its divergent votes in two kinds: a vote that disagreed with the chain
+ *  (skip on a block that made it, notarize on one that didn't), and no
+ *  vote counted at all. */
+export const SKIPPED_KINDS = new Set<Divergence>([
+  'late-skip',
+  'notarized-skipped'
+]);
+export const isSkipped = (k: Divergence) => SKIPPED_KINDS.has(k);
 
 export type LeaderDivergence = {
   /** Its slots this validator could vote on (ingested, offline runs out). */
   slots: number;
   divergent: number;
-  /** Of those, the latency kinds. */
-  late: number;
+  /** Of those: skip / notarize votes against the chain, and misses. */
+  skipped: number;
+  missed: number;
 };
 
 /**
@@ -122,7 +128,8 @@ export const divergenceByLeader = (
   const out = new Map<string, LeaderDivergence>();
   const of = (leader: string) => {
     let d = out.get(leader);
-    if (!d) out.set(leader, (d = { slots: 0, divergent: 0, late: 0 }));
+    if (!d)
+      out.set(leader, (d = { slots: 0, divergent: 0, skipped: 0, missed: 0 }));
     return d;
   };
   for (let i = 0; i < codes.length; i++) {
@@ -137,7 +144,8 @@ export const divergenceByLeader = (
     if (!leader) continue;
     const s = of(leader);
     s.divergent++;
-    if (LATENCY_KINDS.has(d.kind)) s.late++;
+    if (isSkipped(d.kind)) s.skipped++;
+    else s.missed++;
   }
   return out;
 };
@@ -150,10 +158,17 @@ export const divergenceByRegion = (
   const out = new Map<Region, LeaderDivergence & { leaders: number }>();
   for (const [leader, d] of byLeader) {
     const r = regionOf(geo.get(leader));
-    const s = out.get(r) ?? { slots: 0, divergent: 0, late: 0, leaders: 0 };
+    const s = out.get(r) ?? {
+      slots: 0,
+      divergent: 0,
+      skipped: 0,
+      missed: 0,
+      leaders: 0
+    };
     s.slots += d.slots;
     s.divergent += d.divergent;
-    s.late += d.late;
+    s.skipped += d.skipped;
+    s.missed += d.missed;
     s.leaders++;
     out.set(r, s);
   }

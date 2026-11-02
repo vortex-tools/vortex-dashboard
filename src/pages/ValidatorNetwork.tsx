@@ -17,6 +17,8 @@ import {
   REGIONS,
   REGION_NAME,
   divergentVotes,
+  DivergentVote,
+  isSkipped,
   divergenceByLeader,
   extraDelay,
   hostMoves,
@@ -33,6 +35,11 @@ import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ButtonGroup, Col, Row, Table, ToggleButton } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router';
+
+/** The map's views: handoffs, its divergent votes in two kinds, hosts. */
+type PageView = 'handoffs' | 'skipped' | 'missed' | 'hosts';
+/** What the votes table sorts by. */
+type VoteSort = 'slot' | 'producer' | 'reward' | 'vote';
 
 /** Where the map's last-picked view is kept (this browser). */
 const MAP_VIEW_KEY = 'vx-network-map-view';
@@ -116,12 +123,11 @@ const ValidatorNetwork = () => {
     [timeline, leaderOf]
   );
   const [votePage, setVotePage] = useState(0);
-  useEffect(() => setVotePage(0), [epoch, address]);
-  const votePages = Math.max(1, Math.ceil(votes.length / VOTES_PAGE));
-  const pageVotes = votes.slice(
-    votePage * VOTES_PAGE,
-    (votePage + 1) * VOTES_PAGE
-  );
+  // The votes table's order (slot newest first by default).
+  const [voteSort, setVoteSort] = useState<{ key: VoteSort; desc: boolean }>({
+    key: 'slot',
+    desc: true
+  });
   const [highlight, setHighlight] = useState<number | null>(null);
   const byRegion = useMemo(
     () => (byLeader && geo ? divergenceByRegion(byLeader, geo) : null),
@@ -173,15 +179,19 @@ const ValidatorNetwork = () => {
   const navigate = useNavigate();
 
   // The map view last picked, kept across validators and visits.
-  const [mode, setModeState] = useState<MapMode>(() => {
+  const [mode, setModeState] = useState<PageView>(() => {
     try {
       const v = localStorage.getItem(MAP_VIEW_KEY);
-      return v === 'divergent' || v === 'hosts' ? v : 'handoffs';
+      return v === 'skipped' || v === 'missed' || v === 'hosts'
+        ? v
+        : v === 'divergent'
+          ? 'missed'
+          : 'handoffs';
     } catch {
       return 'handoffs';
     }
   });
-  const setMode = (m: MapMode) => {
+  const setMode = (m: PageView) => {
     setModeState(m);
     try {
       localStorage.setItem(MAP_VIEW_KEY, m);
@@ -211,12 +221,58 @@ const ValidatorNetwork = () => {
   // The views it has data for.
   const views = (
     [
-      ['handoffs', 'Handoffs', handoffs.length > 0],
-      ['divergent', 'Divergent votes', true],
+      ['handoffs', 'Leader handoffs', handoffs.length > 0],
+      ['skipped', 'Skipped blocks', true],
+      ['missed', 'Missed votes', true],
       ['hosts', 'Hosts', moves.length > 0]
-    ] as Array<[MapMode, string, boolean]>
+    ] as Array<[PageView, string, boolean]>
   ).filter(([, , has]) => has);
-  const view: MapMode = views.some(([k]) => k === mode) ? mode : views[0][0];
+  const view: PageView = views.some(([k]) => k === mode) ? mode : views[0][0];
+  const mapMode: MapMode =
+    view === 'skipped' || view === 'missed' ? 'divergent' : view;
+  const isVotes = mapMode === 'divergent';
+  // The tab's votes (skipped blocks or missed votes), in the table's
+  // order, a page at a time on the map. A leader's floor (to this
+  // validator) sorts its column.
+  const me0 = node ? coord(geo?.get(node)) : null;
+  const floorTo = useCallback(
+    (n: string | null) => {
+      const c = n ? coord(geo?.get(n)) : null;
+      return c && me0 ? fibreMs(distanceKm(c, me0)) : null;
+    },
+    [geo, me0]
+  );
+  const tabVotes = useMemo(() => {
+    const list = votes.filter(v =>
+      view === 'skipped' ? isSkipped(v.kind) : !isSkipped(v.kind)
+    );
+    const key = (v: DivergentVote): number | string =>
+      voteSort.key === 'slot'
+        ? v.slot
+        : voteSort.key === 'producer'
+          ? (floorTo(v.leader) ?? -1)
+          : voteSort.key === 'reward'
+            ? (floorTo(v.payer) ?? -1)
+            : DIVERGENCE[v.kind].label;
+    return [...list].sort((a, b) => {
+      const x = key(a);
+      const y = key(b);
+      const c = x < y ? -1 : x > y ? 1 : b.slot - a.slot;
+      return voteSort.desc ? -c : c;
+    });
+  }, [votes, view, voteSort, floorTo]);
+  useEffect(() => setVotePage(0), [epoch, address, view, voteSort]);
+  const votePages = Math.max(1, Math.ceil(tabVotes.length / VOTES_PAGE));
+  const pageVotes = tabVotes.slice(
+    votePage * VOTES_PAGE,
+    (votePage + 1) * VOTES_PAGE
+  );
+  const sortBy = (key: VoteSort) =>
+    setVoteSort(s =>
+      s.key === key ? { key, desc: !s.desc } : { key, desc: key === 'slot' }
+    );
+  const sortMark = (key: VoteSort) =>
+    voteSort.key === key ? (voteSort.desc ? ' ↓' : ' ↑') : '';
 
   const body = () => {
     if (unavailable)
@@ -314,7 +370,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its votes that disagreed with the chain, newest first, ten at a time - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - an arrow from the producer to it (the block's trip) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Skipped blocks and Missed votes: its votes that disagreed with the chain (a skip on a block that made it, or notarize on one that didn't) and those never counted, ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - an arrow from the producer to it (the block's trip) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
                   <ButtonGroup size="sm">
@@ -339,7 +395,7 @@ const ValidatorNetwork = () => {
               <NetworkMap
                 geo={geo}
                 self={node}
-                mode={view}
+                mode={mapMode}
                 handoffs={handoffs}
                 votes={pageVotes}
                 highlight={highlight}
@@ -371,17 +427,16 @@ const ValidatorNetwork = () => {
                           setHoverMove({ row: i, route: routeKey(m) })
                         }
                         onMouseLeave={() => setHoverMove(null)}
-                        className={
-                          // A row hovered: itself; an arrow: every row
-                          // of that direction.
+                        className={m.epoch === epoch ? 'fw-semibold' : ''}
+                        style={
+                          // A row hovered: the others fade; an arrow: every
+                          // row of other directions does.
                           hoverMove &&
-                          (hoverMove.row != null
+                          !(hoverMove.row != null
                             ? hoverMove.row === i
                             : hoverMove.route === routeKey(m))
-                            ? 'bg-body-highlight'
-                            : m.epoch === epoch
-                              ? 'fw-semibold'
-                              : ''
+                            ? { opacity: 0.35 }
+                            : undefined
                         }
                       >
                         <td className="text-nowrap">
@@ -439,12 +494,14 @@ const ValidatorNetwork = () => {
                   </button>
                 </div>
               )}
-              {view === 'divergent' &&
-                (votes.length === 0 ? (
+              {isVotes &&
+                (tabVotes.length === 0 ? (
                   <p className="fs-9 text-body-tertiary mt-2 mb-0">
-                    {timeline
-                      ? 'No divergent votes this epoch: every vote agreed with the chain.'
-                      : 'Loading its votes…'}
+                    {!timeline
+                      ? 'Loading its votes…'
+                      : view === 'skipped'
+                        ? 'No skipped blocks this epoch: it never voted against a block that made the chain.'
+                        : 'No missed votes this epoch (offline runs aside).'}
                   </p>
                 ) : (
                   <>
@@ -454,14 +511,51 @@ const ValidatorNetwork = () => {
                     >
                       <thead>
                         <tr>
-                          <th>Slot</th>
-                          <th title="The slot's leader, whose block it voted on (solid line)">
-                            Block producer
-                          </th>
-                          <th title="Slot + 8's leader, whose block carries the slot's reward certificate - where its vote had to arrive (dashed line)">
-                            Reward leader
-                          </th>
-                          <th className="d-none d-sm-table-cell">Its vote</th>
+                          {(
+                            [
+                              [
+                                'slot',
+                                voteSort.key !== 'slot'
+                                  ? 'Slot'
+                                  : voteSort.desc
+                                    ? 'Slot (newest)'
+                                    : 'Slot (oldest)',
+                                undefined,
+                                ''
+                              ],
+                              [
+                                'producer',
+                                'Block producer',
+                                "The slot's leader, whose block it voted on; sorts by its network floor",
+                                ''
+                              ],
+                              [
+                                'reward',
+                                'Reward leader',
+                                "Slot + 8's leader, whose block carries the slot's reward certificate - where its vote had to arrive; sorts by its network floor",
+                                ''
+                              ],
+                              [
+                                'vote',
+                                'Its vote',
+                                undefined,
+                                'd-none d-sm-table-cell'
+                              ]
+                            ] as Array<
+                              [VoteSort, string, string | undefined, string]
+                            >
+                          ).map(([key, label, title, cls]) => (
+                            <th
+                              key={key}
+                              role="button"
+                              className={`text-nowrap ${cls}`}
+                              title={title}
+                              onClick={() => sortBy(key)}
+                            >
+                              {label}
+                              {key === 'slot' ? '' : sortMark(key)}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
@@ -511,8 +605,10 @@ const ValidatorNetwork = () => {
                               key={v.slot}
                               onMouseEnter={() => setHighlight(v.slot)}
                               onMouseLeave={() => setHighlight(null)}
-                              className={
-                                highlight === v.slot ? 'bg-body-highlight' : ''
+                              style={
+                                highlight != null && highlight !== v.slot
+                                  ? { opacity: 0.35 }
+                                  : undefined
                               }
                             >
                               <td>
@@ -561,7 +657,7 @@ const ValidatorNetwork = () => {
                       <Pager
                         page={votePage}
                         pages={votePages}
-                        total={votes.length}
+                        total={tabVotes.length}
                         pageSize={VOTES_PAGE}
                         shown={pageVotes.length}
                         onPrev={() => setVotePage(p => p - 1)}
@@ -579,7 +675,7 @@ const ValidatorNetwork = () => {
             {producer?.slotDuration?.handoff ? (
               <HandoffCard record={producer} board={producerBoard} />
             ) : (
-              <SectionCard title="Handoffs" icon="shuffle">
+              <SectionCard title="Leader Handoffs" icon="shuffle">
                 {producerBoard ? (
                   <UntrackedState>
                     No handoffs into its leader windows this epoch.
@@ -594,7 +690,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Divergent Votes by Region"
               icon="git-branch"
-              info="Its votes that disagreed with the chain, by where that slot's leader was: of the slots it voted on (runs of 32+ consecutive misses, when it wasn't voting at all, left out). Too late: a block that made the chain, which it voted skip on or never voted on - most often a block that reached it late."
+              info="Its votes that disagreed with the chain, by where that slot's leader was, of the slots it voted on (runs of 32+ consecutive misses, when it wasn't voting at all, left out). Skipped blocks: it voted skip on a block that made the chain (or notarized one that didn't) - most often a block that reached it late. Missed votes: no vote of its was counted - not cast, or too late for the reward certificate."
             >
               {!byRegion ? (
                 <DelayedSpinner loading label="Loading its votes…" />
@@ -609,14 +705,24 @@ const ValidatorNetwork = () => {
                       <tr>
                         <th>Leader in</th>
                         <th className="text-end">Slots</th>
-                        <th className="text-end">Divergent</th>
                         <th
                           className="text-end"
-                          title="A block that made the chain, which it voted skip on or never voted on"
+                          title="It voted skip on a block that made the chain (or notarize on one that didn't)"
                         >
-                          Too late
+                          Skipped blocks
                         </th>
-                        <th className="text-end">Rate</th>
+                        <th
+                          className="text-end"
+                          title="No vote of its was counted (offline runs left out)"
+                        >
+                          Missed votes
+                        </th>
+                        <th
+                          className="text-end"
+                          title="Both, of the slots it voted on"
+                        >
+                          Rate
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -635,10 +741,10 @@ const ValidatorNetwork = () => {
                               {d.slots.toLocaleString()}
                             </td>
                             <td className="text-end font-monospace">
-                              {d.divergent.toLocaleString()}
+                              {d.skipped.toLocaleString()}
                             </td>
                             <td className="text-end font-monospace">
-                              {d.late.toLocaleString()}
+                              {d.missed.toLocaleString()}
                             </td>
                             <td
                               className={`text-end font-monospace${d.divergent / d.slots >= 0.05 ? ' text-danger' : ''}`}
@@ -666,7 +772,7 @@ const ValidatorNetwork = () => {
             e => e.slotDuration?.handoffExcessP50Ms != null
           ).length >= 2 && (
             <SectionCard
-              title="Handoffs Over Time"
+              title="Leader Handoffs Over Time"
               icon="trending-up"
               info="Its handoffs' extra delay per epoch - the median less one slot and the network floor; about 0 is as fast as physics allows - from the previous leader, and to the next leader where recorded, against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
             >
