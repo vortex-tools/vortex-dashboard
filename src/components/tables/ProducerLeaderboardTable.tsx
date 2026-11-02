@@ -1,4 +1,4 @@
-import { delayTone, extraDelay, signedMs } from 'helpers/network';
+import { delayTone, handoffExtra, signedMs } from 'helpers/network';
 import { ColumnDef } from '@tanstack/react-table';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import AdvanceTable from 'components/base/AdvanceTable';
@@ -249,15 +249,10 @@ export const createProducerLeaderboardColumns = (
   ),
   num(
     'handoff',
-    <span title="Leader handoffs' extra delay: the median from the previous leader's last block to its first, less one slot (the cluster's pace within windows) and the network floor between the two (a lower bound - the next leader starts only once the previous block is notarized, a round of the cluster's votes). About 0 is as fast as physics allows. Each opens the validator's Network tab.">
+    <span title="Leader handoffs' extra delay: the median from the previous leader's last block to its first, less its own first block (a slot less 56 ms) and the notarization floor: the previous block reaching the voters and 60% of stake's votes reaching it, at fibre speed - the next leader starts only then. What's left is replay, vote processing and the model's error; compare with the cluster's. Each opens the validator's Network tab.">
       Handoff
     </span>,
-    r =>
-      extraDelay(
-        r.slotDuration?.handoffExcessP50Ms,
-        clusterSlotMs,
-        r.slotDuration?.handoffExtraP50Ms
-      ),
+    r => handoffExtra(r.slotDuration, clusterSlotMs).extra,
     (v, r) => {
       const tone = isCluster(r) ? null : delayTone(v, clusterHandoffExtra);
       const cls =

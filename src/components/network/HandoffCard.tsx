@@ -6,6 +6,7 @@ import {
   clusterExtra,
   delayTone,
   extraDelay,
+  handoffExtra,
   signedMs
 } from 'helpers/network';
 import { ProducerLeaderboard } from 'providers/vortex-schemas';
@@ -17,6 +18,8 @@ type Side = {
   p50Ms: number | null;
   p90Ms: number | null;
   expectedP50Ms?: number | null;
+  /** The floor's kind, for the hover. */
+  floorLabel?: string;
 } | null;
 
 /** "1,367 handoffs · 90th percentile 323 ms · network floor 39 ms", for a
@@ -26,7 +29,8 @@ const about = (s: Side) =>
     ? [
         `${s.count.toLocaleString()} handoffs`,
         s.p90Ms != null && `90th percentile ${ms(s.p90Ms)}`,
-        s.expectedP50Ms != null && `network floor ${ms(s.expectedP50Ms)}`
+        s.expectedP50Ms != null &&
+          `${s.floorLabel ?? 'direct floor'} ${ms(s.expectedP50Ms)}`
       ]
         .filter(Boolean)
         .join(' · ')
@@ -39,10 +43,11 @@ const slow = (mine: Num, theirs: Num) =>
 /**
  * Its handoffs for an epoch in one phone-width table: all of them, then by
  * where the other leader was - the median from the previous leader, its
- * extra delay (the median less one slot and the network floor: ~0 is the
- * physical limit), the extra delay to the next leader where the API has
- * it, and the cluster's extra delay (from that region). Counts, 90th
- * percentiles and floors on hover.
+ * extra delay (the median less its first block and the floor: the
+ * notarization floor for All, the direct one by region, where only the
+ * cluster has notarization floors), the extra delay to the next leader
+ * where the API has it, and the cluster's on the same basis. Counts,
+ * 90th percentiles and floors on hover.
  */
 const HandoffCard = ({
   record,
@@ -62,6 +67,9 @@ const HandoffCard = ({
   const inBy = pace.handoffByRegion;
   const outBy = pace.handoffOutByRegion;
   const hasOut = !!out;
+  const allIn = handoffExtra(pace, slotMs);
+  const allOut = handoffExtra(pace, slotMs, 'out');
+  const label = (n: boolean) => (n ? 'notarization floor' : 'direct floor');
   type Row = {
     key: string;
     label: string;
@@ -79,25 +87,21 @@ const HandoffCard = ({
       key: 'all',
       label: 'All',
       median: it.p50Ms,
-      inSide: { ...it, expectedP50Ms: pace.handoffExpectedP50Ms },
-      extraIn: extraDelay(
-        pace.handoffExcessP50Ms,
-        slotMs,
-        pace.handoffExtraP50Ms
-      ),
+      inSide: {
+        ...it,
+        expectedP50Ms: allIn.floorMs,
+        floorLabel: label(allIn.notarized)
+      },
+      extraIn: allIn.extra,
       outSide: out
-        ? { ...out, expectedP50Ms: pace.handoffOutExpectedP50Ms }
+        ? {
+            ...out,
+            expectedP50Ms: allOut.floorMs,
+            floorLabel: label(allOut.notarized)
+          }
         : null,
-      extraOut: extraDelay(
-        pace.handoffOutExcessP50Ms,
-        slotMs,
-        pace.handoffOutExtraP50Ms
-      ),
-      clusterExtra: extraDelay(
-        cluster?.handoffExcessP50Ms,
-        slotMs,
-        cluster?.handoffExtraP50Ms
-      )
+      extraOut: allOut.extra,
+      clusterExtra: handoffExtra(cluster, slotMs).extra
     },
     ...REGIONS.filter(
       r =>
@@ -126,7 +130,7 @@ const HandoffCard = ({
     <SectionCard
       title="Leader Handoffs"
       icon="shuffle"
-      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff spans the receiving leader's whole slot (~200 ms, building its block) plus the trip between the two, so the extra delay is the median less one slot (the cluster's pace within leader windows) and the network floor: the fibre-speed distance (~200 km/ms) straight between the two. That's a lower bound: the shreds do come straight from the previous leader (Agave 4.2+ sends the next window's leader a direct copy as well as Turbine's), but the next leader starts only once the previous block is notarized - a round of the cluster's votes - so most of the extra delay is that trip. By region: by where the other leader was; the cluster's from that region. Hover a figure for its count, 90th percentile and floor."
+      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the extra delay (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the direct floor (the distance straight between the two) on both sides, as only the cluster has notarization floors by region - so these run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
@@ -140,7 +144,7 @@ const HandoffCard = ({
             </th>
             <th
               className="text-end"
-              title="Its extra delay from the previous leader: the median less one slot and the network floor"
+              title="Its extra delay from the previous leader: the median less its first block and the floor (notarization for All, direct by region)"
             >
               Extra
             </th>

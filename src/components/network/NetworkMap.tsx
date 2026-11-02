@@ -5,6 +5,7 @@ import { GeoComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import {
   DIVERGENCE,
+  FIRST_BLOCK_EARLY_MS,
   DivergentVote,
   HostMove,
   TurbineEstimate,
@@ -45,7 +46,7 @@ export type RegionHandoff = {
   count: number;
   p50Ms: number | null;
   expectedP50Ms: number | null;
-  /** Its extra delay: over the network floor, less one slot. */
+  /** Its extra delay: over the direct floor, less its first block. */
   excessP50Ms: number | null;
   /** The cluster's over-the-floor for handoffs from the same region. */
   clusterExcessP50Ms: number | null;
@@ -777,8 +778,12 @@ const NetworkMap = ({
             handoffs
           </div>
           <div>
-            Median {ms(open.p50Ms)}: a slot {ms(open.slotMs)}, network floor{' '}
-            {ms(open.expectedP50Ms)}, <b>{signedMs(open.excessP50Ms)}</b> extra
+            Median {ms(open.p50Ms)}: its block{' '}
+            {ms(
+              open.slotMs != null ? open.slotMs - FIRST_BLOCK_EARLY_MS : null
+            )}
+            , direct floor {ms(open.expectedP50Ms)},{' '}
+            <b>{signedMs(open.excessP50Ms)}</b> extra
           </div>
           <div className="text-body-tertiary">
             Cluster on this route: {signedMs(open.clusterExcessP50Ms)} extra

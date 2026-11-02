@@ -1534,6 +1534,23 @@ export const slotDurationSchema = z.object({
   handoffExcessP50Ms: z.number().nullable().optional().catch(null),
   // The excess less the epoch's slot (see handoffRegionsSchema).
   handoffExtraP50Ms: z.number().nullable().optional().catch(null),
+  // A window's first block: the cluster's inWindow p50 less 56 ms (Agave
+  // ends it early); every *ExtraP50Ms is its excess less this.
+  handoffBuildMs: z.number().nullable().optional().catch(null),
+  // Against the notarization floor (the previous block reaching the
+  // voters, then 60% of stake's votes reaching the next leader: the
+  // critical path while Fast Leader Handover is off) and the Turbine
+  // floor. null until recorded; by region / route on the cluster row.
+  handoffNotarizationExpectedP50Ms: z
+    .number()
+    .nullable()
+    .optional()
+    .catch(null),
+  handoffNotarizationExcessP50Ms: z.number().nullable().optional().catch(null),
+  handoffNotarizationExtraP50Ms: z.number().nullable().optional().catch(null),
+  handoffTurbineExpectedP50Ms: z.number().nullable().optional().catch(null),
+  handoffTurbineExcessP50Ms: z.number().nullable().optional().catch(null),
+  handoffTurbineExtraP50Ms: z.number().nullable().optional().catch(null),
   region: z.string().nullable().optional().catch(null),
   // The other direction: the next leader's first block after its last
   // block of a window, overall and by the next leader's region. null on
@@ -1547,6 +1564,21 @@ export const slotDurationSchema = z.object({
   handoffOutExpectedP50Ms: z.number().nullable().optional().catch(null),
   handoffOutExcessP50Ms: z.number().nullable().optional().catch(null),
   handoffOutExtraP50Ms: z.number().nullable().optional().catch(null),
+  handoffOutNotarizationExpectedP50Ms: z
+    .number()
+    .nullable()
+    .optional()
+    .catch(null),
+  handoffOutNotarizationExcessP50Ms: z
+    .number()
+    .nullable()
+    .optional()
+    .catch(null),
+  handoffOutNotarizationExtraP50Ms: z
+    .number()
+    .nullable()
+    .optional()
+    .catch(null),
   // The cluster row only: handoffs by route (the previous leader's region
   // to the next one's), so a producer's figures from a region compare with
   // the cluster's on the same route. null on producer rows; absent on

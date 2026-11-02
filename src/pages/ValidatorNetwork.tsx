@@ -154,7 +154,8 @@ const ValidatorNetwork = () => {
       count: mine[r]!.count,
       p50Ms: mine[r]!.p50Ms,
       expectedP50Ms: mine[r]!.expectedP50Ms,
-      // Extra delays: over the floor, less one slot.
+      // Extra delays: over the direct floor, less its first block (the
+      // notarization floor isn't recorded by region per producer).
       excessP50Ms: extraDelay(
         mine[r]!.excessP50Ms,
         slotMs,
@@ -383,7 +384,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Map"
               icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance straight between them; a lower bound, as the next leader starts only once the previous block is notarized - a round of the cluster's votes) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less its first block (~144 ms: Agave ends it 56 ms before its slot is up) and the direct network floor (the fibre-speed distance straight between them) - against the cluster's on the same route. By region only the direct floor is recorded per validator, so these run higher than the overall Extra, which is against the notarization round the next leader waits for: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
                   <ButtonGroup
@@ -807,7 +808,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Leader Handoffs Over Time"
               icon="trending-up"
-              info="Its handoffs' extra delay per epoch - the median less one slot and the network floor; about 0 is as fast as physics allows - from the previous leader, and to the next leader where recorded, against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
+              info="Its handoffs' extra delay per epoch - the median less its own first block and the notarization floor (epochs before that was recorded: the direct one) - from the previous leader, and to the next leader where recorded, against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
             >
               <HandoffTrend
                 pace={paceHistory}

@@ -260,6 +260,73 @@ export const extraDelay = (
       ? null
       : overFloorMs - (slotMs - FIRST_BLOCK_EARLY_MS);
 
+type Num = number | null | undefined;
+
+/** A slot-duration row's handoff floors (/epochs/leaderboard/producers,
+ *  /validators/pace): direct and, where recorded, notarization. */
+type HandoffFloors = {
+  handoffExpectedP50Ms?: Num;
+  handoffExcessP50Ms?: Num;
+  handoffExtraP50Ms?: Num;
+  handoffNotarizationExpectedP50Ms?: Num;
+  handoffNotarizationExcessP50Ms?: Num;
+  handoffNotarizationExtraP50Ms?: Num;
+  handoffOutExpectedP50Ms?: Num;
+  handoffOutExcessP50Ms?: Num;
+  handoffOutExtraP50Ms?: Num;
+  handoffOutNotarizationExpectedP50Ms?: Num;
+  handoffOutNotarizationExcessP50Ms?: Num;
+  handoffOutNotarizationExtraP50Ms?: Num;
+};
+
+/**
+ * A row's handoff extra delay, from the previous leader (`in`) or to the
+ * next (`out`): against the notarization floor where the API has it - the
+ * critical path while Fast Leader Handover is off: the previous block
+ * reaching the voters, then 60% of stake's votes reaching the next leader
+ * - else the direct floor (epochs classified before it). `notarized`
+ * says which; `floorMs` is that floor.
+ */
+export const handoffExtra = (
+  d: HandoffFloors | null | undefined,
+  slotMs: Num,
+  dir: 'in' | 'out' = 'in'
+): { extra: number | null; floorMs: number | null; notarized: boolean } => {
+  const n =
+    dir === 'in'
+      ? {
+          floor: d?.handoffNotarizationExpectedP50Ms,
+          excess: d?.handoffNotarizationExcessP50Ms,
+          extra: d?.handoffNotarizationExtraP50Ms
+        }
+      : {
+          floor: d?.handoffOutNotarizationExpectedP50Ms,
+          excess: d?.handoffOutNotarizationExcessP50Ms,
+          extra: d?.handoffOutNotarizationExtraP50Ms
+        };
+  if (n.extra != null || n.excess != null)
+    return {
+      extra: extraDelay(n.excess, slotMs, n.extra),
+      floorMs: n.floor ?? null,
+      notarized: true
+    };
+  return dir === 'in'
+    ? {
+        extra: extraDelay(d?.handoffExcessP50Ms, slotMs, d?.handoffExtraP50Ms),
+        floorMs: d?.handoffExpectedP50Ms ?? null,
+        notarized: false
+      }
+    : {
+        extra: extraDelay(
+          d?.handoffOutExcessP50Ms,
+          slotMs,
+          d?.handoffOutExtraP50Ms
+        ),
+        floorMs: d?.handoffOutExpectedP50Ms ?? null,
+        notarized: false
+      };
+};
+
 /** "+17 ms" / "−2 ms" / "—". */
 export const signedMs = (v: number | null | undefined) => {
   if (v == null) return '—';

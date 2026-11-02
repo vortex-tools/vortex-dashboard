@@ -1,7 +1,7 @@
 import SectionCard from 'components/common/SectionCard';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import HostChangesCard from 'components/validator/HostChangesCard';
-import { delayTone, extraDelay, signedMs } from 'helpers/network';
+import { delayTone, handoffExtra, signedMs } from 'helpers/network';
 import useConsensus from 'hooks/useConsensus';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useContext, useEffect } from 'react';
@@ -39,20 +39,8 @@ const NetworkSummaryCard = ({
   // The latest finished epoch with handoffs.
   const latest = pace?.epochs.find(e => e.complete && e.slotDuration?.handoff);
   const slotMs = latest?.cluster?.inWindow?.p50Ms;
-  const mine = latest
-    ? extraDelay(
-        latest.slotDuration?.handoffExcessP50Ms,
-        slotMs,
-        latest.slotDuration?.handoffExtraP50Ms
-      )
-    : null;
-  const theirs = latest
-    ? extraDelay(
-        latest.cluster?.handoffExcessP50Ms,
-        slotMs,
-        latest.cluster?.handoffExtraP50Ms
-      )
-    : null;
+  const mine = latest ? handoffExtra(latest.slotDuration, slotMs).extra : null;
+  const theirs = latest ? handoffExtra(latest.cluster, slotMs).extra : null;
   const geo = status?.geo;
   const c = status?.concentration;
   const tone = delayTone(mine, theirs);
@@ -61,7 +49,7 @@ const NetworkSummaryCard = ({
     <SectionCard
       title="Network"
       icon="globe"
-      info="Where it runs and how its leader handoffs compare with the cluster's - extra delay: the median handoff less one slot and the network floor between the two leaders (about 0 is as fast as physics allows) - then its host history. The Network tab has the map, handoffs by region and its divergent votes."
+      info="Where it runs and how its leader handoffs compare with the cluster's - extra delay: the median handoff less its own first block and the notarization round it waits for (the previous block reaching the voters, their votes reaching it), against the cluster's - then its host history. The Network tab has the map, handoffs by region and its divergent votes."
       linkTo={
         alpenglowActive ? recordPath(address, null, 'network') : undefined
       }
