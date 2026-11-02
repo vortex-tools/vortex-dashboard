@@ -778,6 +778,12 @@ const NetworkMap = ({
                   : (p.data?.name as Region | undefined);
               if (r && handoffs.some(h => h.region === r)) setHover(r);
             },
+            // Off a leader dot or a host arrow: its highlight goes too (it
+            // only lasts while the pointer is on it).
+            mouseout: (p: { seriesName?: string }) => {
+              if (p.seriesName === 'leaders') onHighlight(null);
+              else if (p.seriesName === 'moves') onHighlightMove?.(null);
+            },
             globalout: () => {
               setHover(null);
               onHighlight(null);

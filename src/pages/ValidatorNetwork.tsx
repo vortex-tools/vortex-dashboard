@@ -373,7 +373,12 @@ const ValidatorNetwork = () => {
               info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its extra delay - the median handoff less one slot (~200 ms: the next leader building its block) and the network floor (the fibre-speed distance) - against the cluster's from that region: green within 10 ms, amber up to 40 ms more, red beyond. Skipped blocks and Missed votes: its votes that disagreed with the chain (a skip on a block that made it, or notarize on one that didn't) and those never counted, ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - an arrow from the producer to it (the block's trip) and from it to the reward leader (its vote's trip). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss; blue: notarized a skipped block). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
               aside={
                 views.length > 1 ? (
-                  <ButtonGroup size="sm">
+                  <ButtonGroup
+                    size="sm"
+                    // Full-size buttons into the header's own padding: as
+                    // tall as fits, the header as low as Where It Runs'.
+                    style={{ margin: '-7px 0' }}
+                  >
                     {views.map(([k, label]) => (
                       <ToggleButton
                         key={k}
@@ -381,9 +386,6 @@ const ValidatorNetwork = () => {
                         type="radio"
                         name="network-map"
                         variant="soft-secondary"
-                        // No vertical padding: the header stays as low as
-                        // its neighbours' (Where It Runs).
-                        className="py-0 lh-sm"
                         value={k}
                         checked={view === k}
                         onChange={() => setMode(k)}
