@@ -769,9 +769,14 @@ const NetworkMap = ({
                         distance: 3,
                         formatter: text,
                         fontSize: 9,
-                        color: getThemeColor('tertiary-color'),
-                        textBorderColor: getThemeColor('body-bg'),
-                        textBorderWidth: 2
+                        lineHeight: 11,
+                        color: getThemeColor('body-color'),
+                        backgroundColor: getThemeColor('body-bg'),
+                        borderColor: getThemeColor('border-color'),
+                        borderWidth: 1,
+                        borderRadius: 3,
+                        padding: [1, 4],
+                        rich: { b: { fontWeight: 'bold', fontSize: 9 } }
                       }
                     });
                     const legMs = (a: [number, number], b: [number, number]) =>
@@ -779,17 +784,24 @@ const NetworkMap = ({
                     return [
                       ...turbine.paths.map(p => {
                         const city = p.city?.split(' am ')[0] ?? null;
+                        // What going through this root adds over the
+                        // straight line: the path's floor less the direct.
+                        const added =
+                          legMs(c, p.root) +
+                          legMs(p.root, end) +
+                          (via ? legMs(via, me) : 0) -
+                          legMs(c, me);
                         return hop(
                           p.root,
-                          `${city ?? REGION_NAME[p.region]} ${Math.round(p.share * 100)}%`,
-                          `<b>${p.city ?? REGION_NAME[p.region]}</b> · a Turbine root (${REGION_NAME[p.region]})<br/>${Math.round(p.share * 100)}% of shreds start here (its share of stake)<br/>Producer → here ${legMs(c, p.root)} ms · here → ${via ? 'the relay' : 'it'} ${legMs(p.root, end)} ms`
+                          `{b|${city ?? REGION_NAME[p.region]}} +${Math.max(0, added)} ms`,
+                          `<b>${p.city ?? REGION_NAME[p.region]}</b> · a Turbine root (${REGION_NAME[p.region]})<br/>${Math.round(p.share * 100)}% of shreds start here (its share of stake)<br/>Producer → here ${legMs(c, p.root)} ms · here → ${via ? 'the relay' : 'it'} ${legMs(p.root, end)} ms: +${Math.max(0, added)} ms over the straight line`
                         );
                       }),
                       ...(via
                         ? [
                             hop(
                               via,
-                              'Relay',
+                              '{b|Relay}',
                               `<b>Relay</b> · layer 2: a layer-1 node passes the shreds on<br/>Relay → it ${legMs(via, me)} ms`
                             )
                           ]
