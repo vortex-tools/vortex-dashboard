@@ -50,14 +50,14 @@ const HandoffTrend = ({
   const option = useMemo(() => {
     const series = [
       {
-        name: 'In',
+        name: 'From previous leader',
         color: getThemeColor('primary'),
         data: rows.map(r => r.slotDuration?.handoffExcessP50Ms ?? null)
       },
       ...(hasOut
         ? [
             {
-              name: 'Out',
+              name: 'To next leader',
               color: getThemeColor('info'),
               data: rows.map(r => r.slotDuration?.handoffOutExcessP50Ms ?? null)
             }
@@ -92,10 +92,10 @@ const HandoffTrend = ({
           const d = r.slotDuration;
           return [
             `<b>Epoch ${r.epoch}</b>${r.complete ? '' : ' (so far)'} · over the network floor`,
-            `In ${ms(d?.handoffExcessP50Ms)} (${(d?.handoff?.count ?? 0).toLocaleString()} handoffs)`,
+            `From previous leader ${ms(d?.handoffExcessP50Ms)} (${(d?.handoff?.count ?? 0).toLocaleString()} handoffs)`,
             ...(d?.handoffOutExcessP50Ms != null
               ? [
-                  `Out ${ms(d.handoffOutExcessP50Ms)} (${(d.handoffOut?.count ?? 0).toLocaleString()})`
+                  `To next leader ${ms(d.handoffOutExcessP50Ms)} (${(d.handoffOut?.count ?? 0).toLocaleString()})`
                 ]
               : []),
             `Cluster ${ms(r.cluster?.handoffExcessP50Ms)}`

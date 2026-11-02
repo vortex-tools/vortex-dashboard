@@ -354,7 +354,7 @@ const ValidatorNetwork = () => {
             <SectionCard
               title="Handoffs Over Time"
               icon="trending-up"
-              info="Its median handoff over the network floor per epoch - in (from the previous leader), out (to the next leader, where recorded) - against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
+              info="Its median handoff over the network floor per epoch - from the previous leader, and to the next leader where recorded - against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
             >
               <HandoffTrend
                 pace={paceHistory}

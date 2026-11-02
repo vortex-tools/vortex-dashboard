@@ -52,6 +52,9 @@ const pct = (x: number) =>
 /** Degrees of the grid the hovered region's validators are grouped on. */
 const GRID = 3;
 
+/** How far the map zooms in. */
+const MAX_ZOOM = 8;
+
 /** Slower than the cluster by this much (over the floor): amber, then
  *  red. */
 const SLOWER = [1.05, 1.25];
@@ -111,6 +114,18 @@ const NetworkMap = ({
   // The region under the pointer (its shape, label or line): expanded and
   // colored.
   const [hover, setHover] = useState<Region | null>(null);
+  // Zoom and pan (scroll / pinch / drag, or the buttons): kept here so a
+  // hover's redraw doesn't reset them.
+  const chartRef = useRef<ReactEChartsCore>(null);
+  const [view, setView] = useState<{
+    zoom: number;
+    center?: [number, number];
+  }>({ zoom: 1 });
+  const zoomBy = (f: number) =>
+    setView(v => ({
+      ...v,
+      zoom: Math.min(MAX_ZOOM, Math.max(1, v.zoom * f))
+    }));
 
   const option = useMemo(() => {
     const me = coord(geo.get(self));
@@ -229,9 +244,12 @@ const NetworkMap = ({
       tooltip: { trigger: 'item', confine: true },
       geo: {
         map: 'world',
-        roam: false,
+        roam: true,
+        zoom: view.zoom,
+        ...(view.center ? { center: view.center } : {}),
+        scaleLimit: { min: 1, max: MAX_ZOOM },
         // Hovering a region's countries opens its label.
-        silent: mode !== 'handoffs',
+        silent: false,
         tooltip: { show: false },
         regions,
         layoutCenter: ['50%', '50%'],
@@ -383,6 +401,7 @@ const NetworkMap = ({
     };
   }, [
     ready,
+    view,
     geo,
     self,
     mode,
@@ -404,6 +423,40 @@ const NetworkMap = ({
       : undefined;
   return (
     <div ref={boxRef} className="position-relative" style={{ height }}>
+      {ready && (
+        <div
+          className="position-absolute top-0 end-0 m-2 btn-group-vertical btn-group-sm"
+          style={{ zIndex: 2 }}
+        >
+          <button
+            type="button"
+            className="btn btn-soft-secondary px-2 py-0"
+            aria-label="Zoom in"
+            onClick={() => zoomBy(1.5)}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="btn btn-soft-secondary px-2 py-0"
+            aria-label="Zoom out"
+            onClick={() => zoomBy(1 / 1.5)}
+          >
+            −
+          </button>
+          {(view.zoom > 1 || view.center) && (
+            <button
+              type="button"
+              className="btn btn-soft-secondary px-2 py-0 fs-10"
+              aria-label="Reset the map"
+              title="Back to the whole world"
+              onClick={() => setView({ zoom: 1 })}
+            >
+              ⟲
+            </button>
+          )}
+        </div>
+      )}
       {open && (
         <div
           className="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded border bg-body fs-10 lh-sm"
@@ -424,6 +477,7 @@ const NetworkMap = ({
       )}
       {ready && width != null && (
         <ReactEChartsCore
+          ref={chartRef}
           echarts={echarts}
           option={option}
           notMerge
@@ -441,7 +495,17 @@ const NetworkMap = ({
                   : (p.data?.name as Region | undefined);
               if (r && handoffs.some(h => h.region === r)) setHover(r);
             },
-            globalout: () => setHover(null)
+            globalout: () => setHover(null),
+            // Scroll, pinch or drag: keep where it is.
+            georoam: () => {
+              const g = (
+                chartRef.current?.getEchartsInstance().getOption() as {
+                  geo?: Array<{ zoom?: number; center?: [number, number] }>;
+                }
+              )?.geo?.[0];
+              if (g)
+                setView({ zoom: g.zoom ?? 1, center: g.center ?? undefined });
+            }
           }}
         />
       )}

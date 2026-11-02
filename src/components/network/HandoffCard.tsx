@@ -48,18 +48,28 @@ const HandoffCard = ({
       ((inBy?.[r]?.count ?? 0) > 0 || (outBy?.[r]?.count ?? 0) > 0)
   );
   const rows: Array<[string, Num, Num, string | undefined]> = [
-    ['In, median', it.p50Ms, cluster?.handoff?.p50Ms, about(it)],
     [
-      'In, over the floor',
+      'From previous leader, median',
+      it.p50Ms,
+      cluster?.handoff?.p50Ms,
+      about(it)
+    ],
+    [
+      'From previous leader, over the floor',
       pace.handoffExcessP50Ms,
       cluster?.handoffExcessP50Ms,
       undefined
     ],
     ...(out
       ? ([
-          ['Out, median', out.p50Ms, cluster?.handoff?.p50Ms, about(out)],
           [
-            'Out, over the floor',
+            'To next leader, median',
+            out.p50Ms,
+            cluster?.handoff?.p50Ms,
+            about(out)
+          ],
+          [
+            'To next leader, over the floor',
             pace.handoffOutExcessP50Ms,
             cluster?.handoffExcessP50Ms,
             undefined
@@ -71,7 +81,7 @@ const HandoffCard = ({
     <SectionCard
       title="Handoffs"
       icon="shuffle"
-      info="In: from the previous leader's last block to its first. Out: from its last block to the next leader's first. Each includes the network between the two; over the floor takes out the fibre-speed distance between them (~200 km/ms), so a validator far from the rest compares fairly. By region: over the floor, by where the other leader was, against the cluster's handoffs from that region. Hover a figure for its count and 90th percentile."
+      info="From previous leader: its first block after the previous leader's last. To next leader: the next leader's first block after its last. Each includes the network between the two; over the floor takes out the fibre-speed distance between them (~200 km/ms), so a validator far from the rest compares fairly. By region: over the floor, by where the other leader was, against the cluster's handoffs from that region. Hover a figure for its count and 90th percentile."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
@@ -109,16 +119,16 @@ const HandoffCard = ({
                 <th />
                 <th
                   className="text-end"
-                  title="From a previous leader in this region"
+                  title="Its handoffs from a previous leader in this region"
                 >
-                  In
+                  From
                 </th>
                 {outBy && (
                   <th
                     className="text-end"
-                    title="To a next leader in this region"
+                    title="Its handoffs to a next leader in this region"
                   >
-                    Out
+                    To
                   </th>
                 )}
                 <th
