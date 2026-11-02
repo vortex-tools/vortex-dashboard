@@ -48,7 +48,7 @@ export type RegionHandoff = {
   count: number;
   p50Ms: number | null;
   expectedP50Ms: number | null;
-  /** Its extra delay: over the direct floor, less its first block. */
+  /** Its overhead: over the direct floor, less its first block. */
   excessP50Ms: number | null;
   /** The cluster's over-the-floor for handoffs from the same region. */
   clusterExcessP50Ms: number | null;
@@ -874,10 +874,10 @@ const NetworkMap = ({
               open.slotMs != null ? open.slotMs - FIRST_BLOCK_EARLY_MS : null
             )}
             , direct floor {ms(open.expectedP50Ms)},{' '}
-            <b>{signedMs(open.excessP50Ms)}</b> extra
+            <b>{signedMs(open.excessP50Ms)}</b> overhead
           </div>
           <div className="text-body-tertiary">
-            Cluster on this route: {signedMs(open.clusterExcessP50Ms)} extra
+            Cluster on this route: {signedMs(open.clusterExcessP50Ms)} overhead
           </div>
         </div>
       )}

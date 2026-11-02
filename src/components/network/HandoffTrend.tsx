@@ -24,7 +24,7 @@ const ms = (v: number | null | undefined) =>
   v == null ? '—' : `${Math.round(v).toLocaleString('en-US')} ms`;
 
 /**
- * Its handoffs' extra delay per epoch (/validators/pace: against the
+ * Its handoffs' overhead per epoch (/validators/pace: against the
  * notarization floor, less its first block),
  * oldest first: in (the previous leader to it), out (it to the next
  * leader, where recorded) and the cluster's - so a move or a provider
@@ -49,7 +49,7 @@ const HandoffTrend = ({
     [pace]
   );
   const hasOut = rows.some(r => r.slotDuration?.handoffOutExcessP50Ms != null);
-  // Extra delay against that epoch's notarization floor (or the direct
+  // Overhead against that epoch's notarization floor (or the direct
   // one before it was recorded).
   const extra = (
     r: (typeof rows)[number],
@@ -100,7 +100,7 @@ const HandoffTrend = ({
           if (!r) return '';
           const d = r.slotDuration;
           return [
-            `<b>Epoch ${r.epoch}</b>${r.complete ? '' : ' (so far)'} · extra delay`,
+            `<b>Epoch ${r.epoch}</b>${r.complete ? '' : ' (so far)'} · overhead`,
             `From previous leader ${signedMs(extra(r, d))} (${(d?.handoff?.count ?? 0).toLocaleString()} handoffs)`,
             ...(d?.handoffOutExcessP50Ms != null
               ? [

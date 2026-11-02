@@ -36,16 +36,16 @@ const about = (s: Side) =>
         .join(' · ')
     : undefined;
 
-/** An extra delay against the cluster's: red when 40+ ms more. */
+/** An overhead against the cluster's: red when 40+ ms more. */
 const slow = (mine: Num, theirs: Num) =>
   delayTone(mine, theirs) === 'danger' ? ' text-danger' : '';
 
 /**
  * Its handoffs for an epoch in one phone-width table: all of them, then by
  * where the other leader was - the median from the previous leader, its
- * extra delay (the median less its first block and the floor: the
+ * overhead (the median less its first block and the floor: the
  * notarization floor for All, the direct one by region, where only the
- * cluster has notarization floors), the extra delay to the next leader
+ * cluster has notarization floors), the overhead to the next leader
  * where the API has it, and the cluster's on the same basis. Counts,
  * 90th percentiles and floors on hover.
  */
@@ -61,7 +61,7 @@ const HandoffCard = ({
   if (!record || !pace || !it) return null;
   const cluster = board?.cluster?.slotDuration;
   // A slot that epoch (the cluster's pace within windows), for APIs that
-  // don't give the extra delay themselves.
+  // don't give the overhead themselves.
   const slotMs = cluster?.inWindow?.p50Ms;
   const out = pace.handoffOut;
   const inBy = pace.handoffByRegion;
@@ -130,7 +130,7 @@ const HandoffCard = ({
     <SectionCard
       title="Leader Handoffs"
       icon="shuffle"
-      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the extra delay (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the direct floor (the distance straight between the two) on both sides, as only the cluster has notarization floors by region - so these run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
+      info="From the previous leader: its first block after the previous leader's last. To the next leader: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the overhead (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the direct floor (the distance straight between the two) on both sides, as only the cluster has notarization floors by region - so these run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
     >
       <Table size="sm" className="data-table compact-rows fs-9 mb-0">
         <thead>
@@ -144,21 +144,18 @@ const HandoffCard = ({
             </th>
             <th
               className="text-end"
-              title="Its extra delay from the previous leader: the median less its first block and the floor (notarization for All, direct by region)"
+              title="Its overhead from the previous leader: the median less its first block and the floor (notarization for All, direct by region)"
             >
-              Extra
+              Overhead
             </th>
             {hasOut && (
-              <th
-                className="text-end"
-                title="Its extra delay to the next leader"
-              >
+              <th className="text-end" title="Its overhead to the next leader">
                 To next
               </th>
             )}
             <th
               className="text-end text-body-tertiary"
-              title="The cluster's extra delay on the same route: from that region to this validator's"
+              title="The cluster's overhead on the same route: from that region to this validator's"
             >
               Cluster
             </th>

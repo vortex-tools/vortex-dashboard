@@ -243,7 +243,7 @@ export const regionCenter = (
 export const FIRST_BLOCK_EARLY_MS = 56;
 
 /**
- * A handoff's extra delay: its time over the network floor less the next
+ * A handoff's overhead: its time over the network floor less the next
  * leader's block building - one slot (`slotMs`, the cluster's pace within
  * leader windows that epoch) less FIRST_BLOCK_EARLY_MS, the API's
  * handoffBuildMs. The API's own figure wins when it has one.
@@ -280,7 +280,7 @@ type HandoffFloors = {
 };
 
 /**
- * A row's handoff extra delay, from the previous leader (`in`) or to the
+ * A row's handoff overhead, from the previous leader (`in`) or to the
  * next (`out`): against the notarization floor where the API has it - the
  * critical path while Fast Leader Handover is off: the previous block
  * reaching the voters, then 60% of stake's votes reaching the next leader
@@ -334,7 +334,7 @@ export const signedMs = (v: number | null | undefined) => {
   return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r).toLocaleString('en-US')} ms`;
 };
 
-/** How an extra delay compares with the cluster's: green within 10 ms,
+/** How an overhead compares with the cluster's: green within 10 ms,
  *  amber to 40 ms more, red beyond (differences: these sit near zero). */
 export const delayTone = (
   mine: number | null | undefined,
@@ -439,7 +439,7 @@ export const routeKey = (m: Pick<HostMove, 'from' | 'to'>) => {
 };
 
 /**
- * The cluster's extra delay to compare a producer's handoffs with: on the
+ * The cluster's overhead to compare a producer's handoffs with: on the
  * same route (from -> to) where the API has routes, else the cluster's
  * from that region (which mixes every destination: most handoffs from a
  * region go elsewhere, so its floor reads far longer than a same-region

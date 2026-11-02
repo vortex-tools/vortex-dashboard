@@ -13,7 +13,7 @@ const pct = (x: number) =>
 /**
  * The Overview's way into the Network tab: where it runs (place, provider,
  * its provider's and data center's share of stake), its leader handoffs'
- * extra delay against the cluster's (the latest finished epoch, from
+ * overhead against the cluster's (the latest finished epoch, from
  * /validators/pace), then its host history (the Infrastructure card's).
  */
 const NetworkSummaryCard = ({
@@ -49,7 +49,7 @@ const NetworkSummaryCard = ({
     <SectionCard
       title="Network"
       icon="globe"
-      info="Where it runs and how its leader handoffs compare with the cluster's - extra delay: the median handoff less its own first block and the notarization round it waits for (the previous block reaching the voters, their votes reaching it), against the cluster's - then its host history. The Network tab has the map, handoffs by region and its divergent votes."
+      info="Where it runs and how its leader handoffs compare with the cluster's - overhead: the median handoff less its own first block and the notarization round it waits for (the previous block reaching the voters, their votes reaching it), against the cluster's - then its host history. The Network tab has the map, handoffs by region and its divergent votes."
       linkTo={
         alpenglowActive ? recordPath(address, null, 'network') : undefined
       }
@@ -94,7 +94,7 @@ const NetworkSummaryCard = ({
                   >
                     {signedMs(mine)}
                   </span>{' '}
-                  extra
+                  overhead
                   <span className="text-body-tertiary">
                     {' '}
                     · cluster {signedMs(theirs)} · epoch {latest.epoch}

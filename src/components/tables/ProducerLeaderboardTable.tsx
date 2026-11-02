@@ -92,9 +92,9 @@ export const createProducerLeaderboardColumns = (
   scores: Map<string, ProducerScore> = new Map(),
   minSlots = 20,
   /** The epoch's slot (the cluster's in-window p50), for the handoff
-   *  extra delay on APIs that don't give it. */
+   *  overhead on APIs that don't give it. */
   clusterSlotMs: number | null = null,
-  /** The cluster's handoff extra delay, to tint each producer's by. */
+  /** The cluster's handoff overhead, to tint each producer's by. */
   clusterHandoffExtra: number | null = null
 ): ColumnDef<ProducerLeaderboardRecord>[] => [
   {
@@ -249,7 +249,7 @@ export const createProducerLeaderboardColumns = (
   ),
   num(
     'handoff',
-    <span title="Leader handoffs' extra delay: the median from the previous leader's last block to its first, less its own first block (a slot less 56 ms) and the notarization floor: the previous block reaching the voters and 60% of stake's votes reaching it, at fibre speed - the next leader starts only then. What's left is replay, vote processing and the model's error; compare with the cluster's. Each opens the validator's Network tab.">
+    <span title="Leader handoffs' overhead: the median from the previous leader's last block to its first, less its own first block (a slot less 56 ms) and the notarization floor: the previous block reaching the voters and 60% of stake's votes reaching it, at fibre speed - the next leader starts only then. What's left is replay, vote processing and the model's error; compare with the cluster's. Each opens the validator's Network tab.">
       Handoff
     </span>,
     r => handoffExtra(r.slotDuration, clusterSlotMs).extra,
