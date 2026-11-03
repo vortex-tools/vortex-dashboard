@@ -441,35 +441,14 @@ const Decentralization = () => {
     // flavors are listed under each.
     const flavors = new Map<string, string[]>();
     for (const c of dist.clientIds) {
-      const key = c.family ?? 'none';
-      const list = flavors.get(key) ?? [];
       const f = flavorOf(c.clientId);
-      // Its BAM-connected part names BAM too (see the Flavors below).
-      for (const x of [f, (c.bamStake ?? 0) > 0 ? 'BAM' : null])
-        if (x && !list.includes(x)) list.push(x);
-      if (list.length) flavors.set(key, list);
+      if (!f) continue;
+      const key = c.family ?? 'none';
+      flavors.set(key, [...(flavors.get(key) ?? []), f]);
     }
     // Flavors: block building across families (Harmonic on Agave and on
     // Firedancer together), each row naming the clients it includes.
     const byFlavor = new Map<string, Group & { clients: Set<string> }>();
-    const add = (
-      name: string,
-      family: string | null,
-      validators: number,
-      stake: number
-    ) => {
-      const g = byFlavor.get(name) ?? {
-        key: name,
-        label: name,
-        validators: 0,
-        stake: 0,
-        clients: new Set<string>()
-      };
-      g.validators += validators;
-      g.stake += stake;
-      if (family) g.clients.add(FAMILY_LABELS[family] ?? family);
-      byFlavor.set(name, g);
-    };
     for (const c of dist.clientIds) {
       const known = c.clientId != null && c.clientId in FLAVORS;
       const name = known
@@ -477,16 +456,17 @@ const Decentralization = () => {
         : c.clientId
           ? 'Unrecognized'
           : 'Not in gossip';
-      // A client's BAM-connected part (Jito-Solana with BAM on: the API
-      // counts it under JitoLabs) builds its blocks with BAM - its own
-      // flavor, as before the API folded AgaveBam in.
-      const bamStake = name === 'BAM' ? 0 : Math.min(c.bamStake ?? 0, c.stake);
-      const bamN =
-        name === 'BAM'
-          ? 0
-          : Math.min(c.bamConnectedValidators ?? 0, c.validators);
-      if (bamStake > 0) add('BAM', c.family, bamN, bamStake);
-      add(name, c.family, c.validators - bamN, c.stake - bamStake);
+      const g = byFlavor.get(name) ?? {
+        key: name,
+        label: name,
+        validators: 0,
+        stake: 0,
+        clients: new Set<string>()
+      };
+      g.validators += c.validators;
+      g.stake += c.stake;
+      if (c.family) g.clients.add(FAMILY_LABELS[c.family] ?? c.family);
+      byFlavor.set(name, g);
     }
     const flavorGroups: Group[] = [...byFlavor.values()].map(g => {
       const on = [...g.clients].sort();
