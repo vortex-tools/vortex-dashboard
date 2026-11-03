@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import ValidatorLink from 'components/common/ValidatorLink';
 import {
   createContext,

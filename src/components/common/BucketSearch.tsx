@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { latencyToCredits } from 'helpers/utils';

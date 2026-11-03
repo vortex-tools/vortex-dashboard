@@ -12,7 +12,7 @@ import {
   IDEAL_RECORD_KEY,
   ProducerLeaderboardRecord
 } from 'providers/VortexDataProvider';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { ReactElement } from 'react';
 import { Link } from 'react-router';
 

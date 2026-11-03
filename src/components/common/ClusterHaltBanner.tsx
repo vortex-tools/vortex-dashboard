@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { restartProgress } from 'components/live/RestartCard';
 import { formatDuration } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';

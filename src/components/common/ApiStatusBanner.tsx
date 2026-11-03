@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { retryApiNow, useApiHealth } from 'helpers/apiHealth';
 import { useEffect, useState } from 'react';
 

@@ -1,7 +1,7 @@
 import { DataFreshnessSublabel } from 'components/common/DataFreshness';
 import UntrackedState from 'components/common/UntrackedState';
 import useCluster, { BLOCK_INCOME_UNTRACKED } from 'hooks/useCluster';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import FaIcon from 'components/base/FaIcon';
 import Button from 'components/base/Button';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import EmptyEpochState from 'components/common/EmptyEpochState';

@@ -1,5 +1,5 @@
 import { faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import FaIcon from 'components/base/FaIcon';
 import Button from 'components/base/Button';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ProgressBar, Spinner } from 'react-bootstrap';
@@ -91,10 +91,7 @@ const EpochProgressStrip = ({
             onClick={() => setAuto(a => !a)}
             aria-label={auto ? 'Pause auto-refresh' : 'Resume auto-refresh'}
           >
-            <FontAwesomeIcon
-              icon={auto ? faPause : faPlay}
-              style={{ fontSize: 10 }}
-            />
+            <FaIcon icon={auto ? faPause : faPlay} style={{ fontSize: 10 }} />
           </Button>
         </div>
       </div>

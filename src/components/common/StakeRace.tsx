@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import StakeRaceChart, {
   RACE_FRAME_MS,
   RACE_STEP,

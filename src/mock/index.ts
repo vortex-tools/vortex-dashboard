@@ -8,7 +8,6 @@
  * Add a route: a function of the query string returning the response
  * body (as the API documents it), or null for a 404.
  */
-import axios, { AxiosAdapter } from 'axios';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 
 type Query = URLSearchParams;
@@ -406,31 +405,8 @@ const match = (url: string, params?: Record<string, unknown>) => {
 };
 
 export const install = () => {
-  // The data provider (axios).
-  axios.interceptors.request.use(config => {
-    const m = match(config.url ?? '', config.params);
-    if (m) {
-      const adapter: AxiosAdapter = async cfg => {
-        const data = await m();
-        if (data == null)
-          throw Object.assign(new Error('mock 404'), {
-            isAxiosError: true,
-            config: cfg,
-            response: { status: 404, data: null, headers: {}, config: cfg }
-          });
-        return {
-          data,
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config: cfg
-        };
-      };
-      config.adapter = adapter;
-    }
-    return config;
-  });
-  // The fetch-based helpers (slots, blocks, the health probe).
+  // Every request goes through fetch (getJson, slots, blocks, the
+  // health probe).
   window.fetch = async (input, init) => {
     const url =
       typeof input === 'string'

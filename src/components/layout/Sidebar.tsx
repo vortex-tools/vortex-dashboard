@@ -1,6 +1,6 @@
-import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import FeatherIcon from 'feather-icons-react';
+import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
+import FaIcon from 'components/base/FaIcon';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { capitalize } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { useEffect, useState } from 'react';
@@ -13,7 +13,7 @@ const Icon = ({ icon }: { icon?: string | IconDefinition }) => (
     {typeof icon === 'string' ? (
       <FeatherIcon icon={icon} size={14} />
     ) : icon ? (
-      <FontAwesomeIcon icon={icon} fixedWidth />
+      <FaIcon icon={icon} fixedWidth />
     ) : null}
   </span>
 );

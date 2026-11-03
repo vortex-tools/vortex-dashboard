@@ -1,5 +1,5 @@
 import BackLink from 'components/common/BackLink';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import Badge from 'components/base/Badge';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';

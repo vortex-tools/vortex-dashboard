@@ -3,7 +3,7 @@ import { CLOCK_DETAIL, clockLine, clockVerdict } from 'helpers/producerClock';
 import AddressLine from 'components/common/AddressLine';
 import Badge, { BadgeBg } from 'components/base/Badge';
 import StatCard from 'components/common/StatCard';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import {
   CLIENT_VERDICT_LABEL,
   CLIENT_VERDICT_TEXT,

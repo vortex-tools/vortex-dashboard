@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { ReactNode, useId, useRef, useState } from 'react';
 import { Overlay, Popover } from 'react-bootstrap';
 

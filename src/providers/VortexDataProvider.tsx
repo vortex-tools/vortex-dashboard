@@ -11,7 +11,7 @@ import React, {
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { fetchEpochCurrent } from 'hooks/useIngestion';
 import { MIN_LEADER_SLOTS, PRODUCER_SORT } from 'helpers/consensusBoards';
-import axios from 'axios';
+import { getJson } from 'helpers/http';
 import {
   isTransient,
   retryOnRecovery,
@@ -168,10 +168,9 @@ export const IDEAL_RECORD_KEY = '11111111111111111111111111111111';
 
 export type VoterRecord = number[];
 
-// All endpoints accept GET + query string per /llms.txt. axios sends arrays
-// as repeated keys by default (`?slots=1&slots=2`), which serde_urlencoded
-// on the server does NOT decode — slices that take array params must
-// pre-join them into a comma-separated string before handing them off.
+// All endpoints accept GET + query string per /llms.txt. Array params go
+// comma-joined (getJson): serde_urlencoded on the server does NOT decode
+// repeated keys (`?slots=1&slots=2`).
 /** Retries of a key's transient failure (2 s, 4 s, ... 32 s apart). */
 const TRANSIENT_RETRIES = 6;
 
@@ -181,19 +180,20 @@ const getAndParse = async <T,>(
   schema: z.ZodType<T>,
   timeout = 15000
 ): Promise<T> => {
-  let response;
+  let data;
   try {
-    response = await axios.get(`${API_ENDPOINT}${path}`, { params, timeout });
+    data = await getJson(`${API_ENDPOINT}${path}`, params, timeout);
   } catch (err) {
     noteApiFailure(err);
     throw err;
   }
   noteApiSuccess();
-  return schema.parse(response.data);
+  return schema.parse(data);
 };
 
 const toErrorMessage = (err: unknown): string => {
-  if (axios.isCancel(err)) return 'Request canceled';
+  if (err instanceof Error && err.name === 'AbortError')
+    return 'Request canceled';
   if (err instanceof z.ZodError) return `Invalid response: ${err.message}`;
   if (err instanceof Error) return err.message;
   return 'An unknown error occurred';

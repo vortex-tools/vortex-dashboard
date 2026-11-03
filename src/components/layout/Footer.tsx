@@ -1,5 +1,5 @@
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import FaIcon from 'components/base/FaIcon';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 
 // The API host this build talks to (or the staging picker's).
@@ -25,7 +25,7 @@ const Footer = () => (
         className="text-body-tertiary"
       >
         {apiHost}
-        <FontAwesomeIcon icon={faRobot} className="ms-1" />
+        <FaIcon icon={faRobot} className="ms-1" />
       </a>
       {/* DB-IP Lite's CC BY 4.0 license asks for this credit wherever
           its geolocation (country, continent, city) is shown. */}

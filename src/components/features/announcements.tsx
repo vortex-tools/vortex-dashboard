@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import Badge from 'components/base/Badge';
 import { Announcement } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';

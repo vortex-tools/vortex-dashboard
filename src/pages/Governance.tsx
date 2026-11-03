@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import UntrackedState from 'components/common/UntrackedState';
 import {

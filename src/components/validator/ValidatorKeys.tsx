@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import AddressLine from 'components/common/AddressLine';
 import SectionCard from 'components/common/SectionCard';
 import {

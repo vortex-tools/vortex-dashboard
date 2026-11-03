@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { useAppContext } from 'providers/AppProvider';
 
 /** The top bar's light / dark switch: shows the theme in effect. */

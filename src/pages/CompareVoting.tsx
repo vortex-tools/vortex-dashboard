@@ -3,7 +3,7 @@ import ValidatorLink from 'components/common/ValidatorLink';
 import ChartSkeleton from 'components/common/ChartSkeleton';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import ValidatorSearch from 'components/common/ValidatorSearch';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { hasMissingBlockData } from 'helpers/utils';
 import useRefreshOnce from 'hooks/useRefreshOnce';
 import { useContext, useEffect, useMemo } from 'react';

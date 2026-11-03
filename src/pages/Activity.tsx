@@ -20,7 +20,7 @@ import DelayedSpinner from 'components/common/DelayedSpinner';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { explorerTx } from 'helpers/explorer';
 import useAdvanceTable from 'hooks/useAdvanceTable';
 import useCluster from 'hooks/useCluster';

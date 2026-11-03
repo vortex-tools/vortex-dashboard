@@ -1,5 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import Badge from 'components/base/Badge';

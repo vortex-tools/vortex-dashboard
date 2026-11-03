@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { HttpError, getJson } from 'helpers/http';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { noteApiFailure, noteApiSuccess } from 'helpers/apiHealth';
 import {
@@ -49,19 +49,17 @@ const useValidatorLive = (
         return;
       }
       try {
-        const res = await axios.get(
+        const body = await getJson(
           `${API_ENDPOINT}/consensus/validator/live`,
-          {
-            // The first request asks from slot 0: the API then returns
-            // its maximum, the newest 256 rows (no sinceSlot: only 150),
-            // so the strip starts full.
-            params: { voteKey, sinceSlot: since.current ?? 0 },
-            timeout: 8000
-          }
+          // The first request asks from slot 0: the API then returns its
+          // maximum, the newest 256 rows (no sinceSlot: only 150), so the
+          // strip starts full.
+          { voteKey, sinceSlot: since.current ?? 0 },
+          8000
         );
         noteApiSuccess();
         if (stopped) return;
-        const data = validatorLiveSchema.parse(res.data);
+        const data = validatorLiveSchema.parse(body);
         const { slots: fresh, ...rest } = data;
         setMeta({ ...rest, receivedAt: Date.now() });
         // More than 256 rows since the last poll (a full response that
@@ -85,7 +83,7 @@ const useValidatorLive = (
       } catch (e) {
         noteApiFailure(e);
         if (stopped) return;
-        const code = axios.isAxiosError(e) ? e.response?.status : undefined;
+        const code = e instanceof HttpError ? e.response.status : undefined;
         if (code === 404 && since.current == null) {
           setStatus('notAdmitted');
           return; // not in this epoch's rank map: nothing to poll for

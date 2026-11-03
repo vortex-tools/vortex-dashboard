@@ -4,7 +4,7 @@ import {
   faCommentDots,
   faTerminal
 } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import FaIcon from 'components/base/FaIcon';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { Col, Row } from 'react-bootstrap';
@@ -37,7 +37,7 @@ const Usage = () => {
           className="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle mb-3"
           style={{ width: '4rem', height: '4rem' }}
         >
-          <FontAwesomeIcon icon={faRobot} size="2x" />
+          <FaIcon icon={faRobot} size="2x" />
         </div>
         <h1 className="h2 mb-2">Use Vortex with AI</h1>
         <p
@@ -77,10 +77,7 @@ const Usage = () => {
         <Col xs={12} md={4}>
           <div className="bg-body-emphasis rounded border border-translucent p-3 h-100">
             <div className="d-flex align-items-center mb-2">
-              <FontAwesomeIcon
-                icon={faCommentDots}
-                className="text-primary me-2"
-              />
+              <FaIcon icon={faCommentDots} className="text-primary me-2" />
               <h6 className="mb-0">In a chat</h6>
             </div>
             <p className="text-body-tertiary fs-9 mb-0">
@@ -92,10 +89,7 @@ const Usage = () => {
         <Col xs={12} md={4}>
           <div className="bg-body-emphasis rounded border border-translucent p-3 h-100">
             <div className="d-flex align-items-center mb-2">
-              <FontAwesomeIcon
-                icon={faTerminal}
-                className="text-primary me-2"
-              />
+              <FaIcon icon={faTerminal} className="text-primary me-2" />
               <h6 className="mb-0">In an agent</h6>
             </div>
             <p className="text-body-tertiary fs-9 mb-0">
@@ -107,10 +101,7 @@ const Usage = () => {
         <Col xs={12} md={4}>
           <div className="bg-body-emphasis rounded border border-translucent p-3 h-100">
             <div className="d-flex align-items-center mb-2">
-              <FontAwesomeIcon
-                icon={faBookOpen}
-                className="text-primary me-2"
-              />
+              <FaIcon icon={faBookOpen} className="text-primary me-2" />
               <h6 className="mb-0">Browse the schema</h6>
             </div>
             <p className="text-body-tertiary fs-9 mb-0">

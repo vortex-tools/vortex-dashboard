@@ -1,4 +1,4 @@
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import FaIcon from 'components/base/FaIcon';
 import {
   faChevronLeft,
   faChevronRight
@@ -78,7 +78,7 @@ const Pager = ({
       {extra}
       <Pagination className="mb-0 ms-auto">
         <Pagination.Prev disabled={prevDisabled ?? page <= 0} onClick={onPrev}>
-          <FontAwesomeIcon icon={faChevronLeft} />
+          <FaIcon icon={faChevronLeft} />
         </Pagination.Prev>
         {onPage ? (
           pageWindow(page, pages).map((p, i) =>
@@ -95,7 +95,7 @@ const Pager = ({
           disabled={nextDisabled ?? page >= pages - 1}
           onClick={onNext}
         >
-          <FontAwesomeIcon icon={faChevronRight} />
+          <FaIcon icon={faChevronRight} />
         </Pagination.Next>
       </Pagination>
     </div>

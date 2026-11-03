@@ -3,7 +3,7 @@ import ValidatorLink from 'components/common/ValidatorLink';
 import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { CLIENT_VERDICT_TEXT, clientVerdict } from 'helpers/alpenglowMigration';
 import { formatLamports, formatStakeShare, cityOfKey } from 'helpers/utils';
 import {

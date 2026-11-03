@@ -1,4 +1,4 @@
-import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
 import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';

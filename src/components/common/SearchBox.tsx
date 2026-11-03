@@ -1,5 +1,5 @@
 import { faSearch } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import FaIcon from 'components/base/FaIcon';
 import { InputHTMLAttributes } from 'react';
 
 /**
@@ -12,7 +12,7 @@ const SearchBox = ({
   ...input
 }: InputHTMLAttributes<HTMLInputElement>) => (
   <div className={['search-field', className].filter(Boolean).join(' ')}>
-    <FontAwesomeIcon icon={faSearch} className="search-field-icon" />
+    <FaIcon icon={faSearch} className="search-field-icon" />
     <input
       type="search"
       className="form-control form-control-sm"

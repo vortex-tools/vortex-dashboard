@@ -1,7 +1,7 @@
 import useConsensus from 'hooks/useConsensus';
 import { faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import FeatherIcon from 'feather-icons-react';
+import FaIcon from 'components/base/FaIcon';
+import FeatherIcon from 'components/base/FeatherIcon';
 import Button from 'components/base/Button';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import EmptyEpochState from 'components/common/EmptyEpochState';
@@ -392,7 +392,7 @@ const ClusterVoteStats = () => {
                     autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'
                   }
                 >
-                  <FontAwesomeIcon
+                  <FaIcon
                     icon={autoRefresh ? faPause : faPlay}
                     style={{ fontSize: 10 }}
                   />

@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { Link } from 'react-router';
 
 /** A detail page's way back to its list ("← All feature gates"), at the

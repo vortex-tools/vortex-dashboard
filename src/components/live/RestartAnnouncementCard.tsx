@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import SectionCard from 'components/common/SectionCard';
 import { postedWhen } from 'components/features/announcements';
 import { Announcement } from 'providers/vortex-schemas';

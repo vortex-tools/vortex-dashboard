@@ -28,7 +28,7 @@ import ValidatorStatus, {
   ValidatorAge,
   ValidatorWebsite
 } from 'components/validator/ValidatorStatus';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { formatLamports, hasMissingBlockData } from 'helpers/utils';
 import { isSfdpState } from 'helpers/sfdp';
 import useLiveRefresh from 'hooks/useLiveRefresh';

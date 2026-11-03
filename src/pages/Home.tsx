@@ -2,7 +2,7 @@ import EpochProgressSublabel from 'components/common/EpochProgressSublabel';
 import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';
 import useLiveSlot from 'hooks/useLiveSlot';
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import StatCard from 'components/common/StatCard';
 import SlotStrip from 'components/home/SlotStrip';
 import HomeAnnouncements from 'components/home/HomeAnnouncements';

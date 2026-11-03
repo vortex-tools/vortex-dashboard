@@ -1,4 +1,4 @@
-import FeatherIcon from 'feather-icons-react';
+import FeatherIcon from 'components/base/FeatherIcon';
 import CanonicalValidatorLink from 'components/common/ValidatorLink';
 import BackLink from 'components/common/BackLink';
 import { poolPath } from 'components/pools/pools';

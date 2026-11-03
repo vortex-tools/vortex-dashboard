@@ -1,5 +1,5 @@
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import FeatherIcon from 'feather-icons-react';
+import FaIcon from 'components/base/FaIcon';
+import FeatherIcon from 'components/base/FeatherIcon';
 import Button from 'components/base/Button';
 import EmptyEpochState from 'components/common/EmptyEpochState';
 import ValidatorSearch from 'components/common/ValidatorSearch';
