@@ -99,7 +99,7 @@ export const ARCHIVE = new Set([
 /** Fixed pages: [title, description, crumb name]. */
 export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
   '/': env => [
-    `${solana(env)} validator data under Alpenglow`,
+    `${solana(env)} validator explorer`,
     `How ${solana(env)} validators perform under Alpenglow consensus: vote participation, block production, fees, earnings, stake, decentralization and governance, per validator and per epoch. Free, no account, with a public API.`,
     'Home'
   ],
