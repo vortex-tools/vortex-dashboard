@@ -51,8 +51,20 @@ if (import.meta.env.VITE_DEPLOY_ENV === 'staging' && IS_MOCK_API)
     .finally(render);
 else render();
 
-// Once the first page is up, fetch the other pages' code in the
-// background, so moving between them never waits on a download.
-window.addEventListener('load', () => setTimeout(prefetchPages, 1500), {
-  once: true
-});
+// Once the first page is up and its data is in, fetch the other pages'
+// code in the background, so moving between them never waits on a
+// download - late and idle, so on a slow link it doesn't hold up the first
+// page's own requests. Not at all with Data Saver on.
+const idle = (f: () => void) =>
+  'requestIdleCallback' in window
+    ? window.requestIdleCallback(f, { timeout: 5000 })
+    : setTimeout(f, 0);
+window.addEventListener(
+  'load',
+  () => {
+    const c = (navigator as { connection?: { saveData?: boolean } }).connection;
+    if (c?.saveData) return;
+    setTimeout(() => idle(prefetchPages), 4000);
+  },
+  { once: true }
+);
