@@ -146,8 +146,10 @@ const HandoffCard = ({
       const mine = pace.region;
       // On the notarization floor where its region figures have it (the
       // cluster's on the same basis), else the direct one on both sides.
-      const nIn = hasNotarization(i);
-      const nOut = hasNotarization(o);
+      // No handoffs of its own that way: nothing to match, so the
+      // cluster's goes on the notarization floor where it has one.
+      const nIn = hasNotarization(i) || !i?.count;
+      const nOut = hasNotarization(o) || !o?.count;
       const ein = entryOverhead(i, slotMs, nIn);
       const eout = entryOverhead(o, slotMs, nOut);
       const label = (n: boolean) => (n ? 'notarization floor' : 'direct floor');
