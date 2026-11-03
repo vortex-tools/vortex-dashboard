@@ -1,3 +1,4 @@
+import { takeEarly } from 'helpers/earlyFetch';
 import { noteApiFailure, noteApiSuccess } from 'helpers/apiHealth';
 import { noteIngestTip } from 'helpers/slotContext';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
@@ -62,9 +63,13 @@ const visible = () =>
 const load = () =>
   (store.inflight ??= (async () => {
     try {
-      const res = await fetch(`${API_ENDPOINT}/epochs/current`, {
-        signal: AbortSignal.timeout(5_000)
-      }).catch(e => {
+      // The first read takes the one index.html started.
+      const res = await (
+        takeEarly('/epochs/current') ??
+        fetch(`${API_ENDPOINT}/epochs/current`, {
+          signal: AbortSignal.timeout(5_000)
+        })
+      ).catch(e => {
         noteApiFailure(e);
         throw e;
       });

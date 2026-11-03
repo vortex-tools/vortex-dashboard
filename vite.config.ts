@@ -89,19 +89,57 @@ const buildStamp = (sha: string): Plugin => {
   };
 };
 
+/**
+ * Starts the first API request from the HTML head, before the app's
+ * scripts have downloaded: a preconnect to the API (DNS + TLS while the
+ * bundle loads) and /epochs/current, which everything on the first page
+ * waits for. The app takes that response (hooks/useIngestion via
+ * helpers/earlyFetch) instead of asking again. Skipped on staging when
+ * the API selector has picked another API (the app then asks it itself).
+ */
+const earlyApi = (api: string, staging: boolean): Plugin => ({
+  name: 'vx-early-api',
+  transformIndexHtml: html =>
+    html.replace(
+      '<title>',
+      `<link rel="preconnect" href="${new URL(api).origin}" crossorigin />
+    <script>
+      (function () {
+        try {
+          if (${staging} && localStorage.getItem('vx-api-endpoint')) return;
+        } catch (_) {}
+        var p = fetch(${JSON.stringify(api)} + '/epochs/current');
+        p.catch(function () {});
+        window.vxEarly = { '/epochs/current': p, at: Date.now() };
+      })();
+    </script>
+    <title>`
+    )
+});
+
 export default defineConfig(({ mode }) => {
   // Same VITE_DEPLOY_ENV the app reads, handed to SCSS so the staging build
   // compiles with an orange primary palette (see _user-variables.scss).
   // Build time, because Bootstrap bakes $primary into literal values (button
   // backgrounds etc.) that a runtime CSS-variable override can't reach.
-  const deployEnv = loadEnv(mode, process.cwd(), 'VITE_').VITE_DEPLOY_ENV ?? '';
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const deployEnv = env.VITE_DEPLOY_ENV ?? '';
+  // The API the build talks to, as helpers/apiEndpoint's default.
+  const api =
+    env.VITE_API_BASE_URL ??
+    (mode === 'development' ? 'http://localhost:4000' : 'https://api.vx.tools');
   // testnet.vx.tools is the staging palette recolored pink: compile the
   // staging (orange) SCSS and add the pink twins, which apply under
   // html[data-vx-cluster="testnet"] (set at load for that build).
   const scssEnv = deployEnv === 'testnet' ? 'staging' : deployEnv;
   const sha = gitSha();
   return {
-    plugins: [tsconfigPaths(), react(), buildStamp(sha)],
+    plugins: [
+      tsconfigPaths(),
+      react(),
+      buildStamp(sha),
+      earlyApi(api, deployEnv === 'staging')
+    ],
     // The same commit, for the staging navbar's build link.
     define: { __VX_BUILD__: JSON.stringify(sha) },
     css: {
