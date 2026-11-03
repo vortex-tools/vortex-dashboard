@@ -66,7 +66,7 @@ const OverheadCell = ({
       {signedMs(mine)}
     </span>
     <span className="d-block fs-10 fw-normal text-body-tertiary">
-      cluster {signedMs(cluster)}
+      cluster median {signedMs(cluster)}
     </span>
   </td>
 );
@@ -184,14 +184,14 @@ const HandoffCard = ({
             <th />
             <th
               className="text-end"
-              title="Handoffs from the previous leader to it: its overhead (the median less its first block and the floor - notarization for All, direct by region), the cluster's on the same route below"
+              title="Handoffs from the previous leader to it: its median overhead (each handoff less its first block and the floor), and below it the median over every handoff in the cluster on the same route"
             >
               To it
             </th>
             {hasOut && (
               <th
                 className="text-end"
-                title="Handoffs from it to the next leader: its overhead, the cluster's on the same route below"
+                title="Handoffs from it to the next leader: its median overhead, and below it the median over every handoff in the cluster on the same route"
               >
                 From it
               </th>
