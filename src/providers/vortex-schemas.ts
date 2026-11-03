@@ -2118,7 +2118,11 @@ export const clusterDistributionSchema = z.object({
   clientIds: z.array(
     stakeGroupSchema.extend({
       clientId: z.string().nullable().catch(null),
-      family: z.string().nullable().catch(null)
+      family: z.string().nullable().catch(null),
+      // The part of it connected to BAM (Jito-Solana with BAM on, since
+      // AgaveBam was folded into JitoLabs). Absent on older APIs.
+      bamStake: z.number().nullable().optional().catch(undefined),
+      bamConnectedValidators: z.number().nullable().optional().catch(undefined)
     })
   ),
   dataCenters: z
