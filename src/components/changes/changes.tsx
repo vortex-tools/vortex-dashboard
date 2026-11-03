@@ -33,11 +33,23 @@ export const CHANGE_KIND: Record<
   // Green: its own color, apart from the key changes' info.
   failover: { label: 'Failover', bg: 'success' },
   migration: { label: 'Migration', bg: 'primary' },
-  software: { label: 'Software', bg: 'secondary' }
+  software: { label: 'Software', bg: 'secondary' },
+  // Jito-Solana connecting to BAM, or leaving it (same version).
+  bam: { label: 'BAM', bg: 'info' }
 };
 
 /** The host-change kinds (no transaction, no signer). */
-export const HOST_KINDS = new Set(['failover', 'migration', 'software']);
+export const HOST_KINDS = new Set(['failover', 'migration', 'software', 'bam']);
+
+/** A BAM event as what it did: "BAM connected" / "BAM disconnected". */
+export const bamLabel = (e: { kind: string; bamChange?: string | null }) =>
+  e.kind !== 'bam'
+    ? null
+    : e.bamChange === 'connected'
+      ? 'BAM connected'
+      : e.bamChange === 'disconnected'
+        ? 'BAM disconnected'
+        : null;
 
 /** Versions compared by their numbers, then a release (no suffix) above
  *  its pre-releases: 4.3.2 < 4.4.0-rc.0 < 4.4.0-rc.1 < 4.4.0. */
@@ -204,7 +216,7 @@ export const changeValue = (
     return hostText(
       which === 'new' ? e.after : e.before,
       which === 'new' ? e.before : e.after,
-      e.kind === 'software'
+      e.kind === 'software' || e.kind === 'bam'
     );
   if (e.kind === 'identityWithdraw') {
     if (which === 'old') return null;

@@ -83,6 +83,8 @@ const linesOf = (events: Event[]): Line[] => {
       f &&
       e.kind !== 'software' &&
       f.kind !== 'software' &&
+      e.kind !== 'bam' &&
+      f.kind !== 'bam' &&
       e.before.host != null &&
       f.after.host === e.before.host &&
       f.before.host === e.after.host
@@ -96,6 +98,12 @@ const linesOf = (events: Event[]): Line[] => {
 
 /** "Failover", "Moved", "Upgraded 4.3.1 → 4.3.2", "Client swap". */
 const eventWhat = (e: Event) => {
+  if (e.kind === 'bam')
+    return e.bamChange === 'disconnected'
+      ? 'Left BAM'
+      : e.bamChange === 'connected'
+        ? 'Joined BAM'
+        : 'BAM changed';
   if (e.kind === 'software') {
     if (e.versionChanged && e.before.version && e.after.version)
       return `Upgraded ${e.before.version} → ${e.after.version}`;
@@ -285,7 +293,7 @@ const HostChangesCard = ({
                           {eventWhat(l.e)}
                         </td>
                         <td className="text-body-secondary">
-                          {l.e.kind === 'software'
+                          {l.e.kind === 'software' || l.e.kind === 'bam'
                             ? place(l.e.after)
                             : sameSite(l.e.before, l.e.after)
                               ? `another host at ${place(l.e.after)}`

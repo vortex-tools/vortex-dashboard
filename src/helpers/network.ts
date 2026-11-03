@@ -417,7 +417,7 @@ export const hostMoves = (data: {
     toLabel: sideLabel(after)
   });
   const events = data.events.filter(
-    e => e.kind !== 'software' && e.ipChanged !== false
+    e => e.kind !== 'software' && e.kind !== 'bam' && e.ipChanged !== false
   );
   const firstEventEpoch = events.length
     ? Math.min(...events.map(e => e.epoch))

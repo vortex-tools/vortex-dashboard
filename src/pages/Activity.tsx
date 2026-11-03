@@ -12,6 +12,7 @@ import {
   isBlsChange,
   withdrawalSol,
   isNoopChange,
+  bamLabel,
   softwareLabel,
   voterLabel,
   whenText
@@ -172,11 +173,13 @@ const columns = (
           const label =
             e.kind === 'software'
               ? softwareLabel(e)
-              : e.kind === 'voter'
-                ? voterLabel(e)
-                : p?.role === 'back'
-                  ? 'Failback'
-                  : null;
+              : e.kind === 'bam'
+                ? bamLabel(e)
+                : e.kind === 'voter'
+                  ? voterLabel(e)
+                  : p?.role === 'back'
+                    ? 'Failback'
+                    : null;
           const dimmed = hovered != null && p?.id !== hovered;
           return (
             <>

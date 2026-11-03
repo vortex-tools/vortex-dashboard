@@ -2346,6 +2346,9 @@ export const hostChangesSchema = z.object({
         ipChanged: z.boolean().nullable().catch(null),
         versionChanged: z.boolean().nullable().catch(null),
         clientChanged: z.boolean().nullable().catch(null),
+        // kind "bam": Jito-Solana connecting to BAM or leaving it, same
+        // version (was a "software" change).
+        bamChange: z.string().nullable().optional().catch(null),
         before: hostStateSchema,
         after: hostStateSchema
       })
@@ -3508,6 +3511,7 @@ export const activityEventSchema = voteAccountChangeSchema.extend({
   ipChanged: z.boolean().nullable().optional().catch(null),
   versionChanged: z.boolean().nullable().optional().catch(null),
   clientChanged: z.boolean().nullable().optional().catch(null),
+  bamChange: z.string().nullable().optional().catch(null),
   before: hostStateSchema.nullable().optional().catch(null),
   after: hostStateSchema.nullable().optional().catch(null),
   // identityWithdraw: SOL (lamports) or tokens (token) sent from the
