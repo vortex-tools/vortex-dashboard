@@ -1287,18 +1287,34 @@ const useValidatorDirectoryState = (): ValidatorDirectoryState => {
       const q = query.trim();
       if (!q) return [];
       const qLower = q.toLowerCase();
-      const results: Validator[] = [];
+      // Addresses match by prefix, any case ("jup" finds JUPiTER...); names
+      // anywhere in them. Best first: an address typed exactly, a name
+      // that starts with it, an address in another case, a name holding
+      // it - each by stake.
+      const scored: Array<[number, Validator]> = [];
       for (const v of validators) {
-        const matchesAddress =
-          v.nodeAddress.startsWith(q) ||
-          (v.voteAddress !== null && v.voteAddress.startsWith(q));
-        const matchesName =
-          v.name !== null && v.name.toLowerCase().includes(qLower);
-        if (matchesAddress || matchesName) {
-          results.push(v);
-          if (results.length >= limit) break;
-        }
+        const addrs = [v.nodeAddress, v.voteAddress].filter(
+          (a): a is string => a !== null
+        );
+        const name = v.name?.toLowerCase() ?? null;
+        const rank = addrs.some(a => a.startsWith(q))
+          ? 0
+          : name?.startsWith(qLower)
+            ? 1
+            : addrs.some(a => a.toLowerCase().startsWith(qLower))
+              ? 2
+              : name?.includes(qLower)
+                ? 3
+                : -1;
+        if (rank >= 0) scored.push([rank, v]);
       }
+      const results = scored
+        .sort(
+          ([ra, a], [rb, b]) =>
+            ra - rb || (b.activatedStake ?? 0) - (a.activatedStake ?? 0)
+        )
+        .slice(0, limit)
+        .map(([, v]) => v);
       return results;
     },
     [validators]
