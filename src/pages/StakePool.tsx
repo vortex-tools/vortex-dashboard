@@ -1209,6 +1209,83 @@ const StakePool = () => {
           <AuctionRun run={data.auctionRun} epochsPerYear={epochsPerYear} />
         )}
 
+        {/* What staking with it costs, near the top. */}
+        {data.fees && (
+          <SectionCard
+            title="Fees"
+            icon="percent"
+            info="Its commission on staking rewards (and next epoch's, if changing), and its deposit and withdrawal fees. From its on-chain account."
+          >
+            <dl className="row fs-9 mb-0 gy-1">
+              {(
+                [
+                  ['Commission on rewards', data.fees.epochFeeBps],
+                  [
+                    'Next epoch',
+                    data.fees.nextEpochFeeBps != null &&
+                    data.fees.nextEpochFeeBps !== data.fees.epochFeeBps
+                      ? data.fees.nextEpochFeeBps
+                      : undefined
+                  ],
+                  ['SOL deposit', data.fees.solDepositFeeBps],
+                  ['Stake deposit', data.fees.stakeDepositFeeBps],
+                  ['SOL withdrawal', data.fees.solWithdrawalFeeBps],
+                  ['Stake withdrawal', data.fees.stakeWithdrawalFeeBps],
+                  // Only what applies: a scheduled change, a referral cut,
+                  // Marinade's liquid unstake.
+                  [
+                    'SOL withdrawal, next epoch',
+                    data.fees.nextSolWithdrawalFeeBps != null &&
+                    data.fees.nextSolWithdrawalFeeBps !==
+                      data.fees.solWithdrawalFeeBps
+                      ? data.fees.nextSolWithdrawalFeeBps
+                      : undefined
+                  ],
+                  [
+                    'Stake withdrawal, next epoch',
+                    data.fees.nextStakeWithdrawalFeeBps != null &&
+                    data.fees.nextStakeWithdrawalFeeBps !==
+                      data.fees.stakeWithdrawalFeeBps
+                      ? data.fees.nextStakeWithdrawalFeeBps
+                      : undefined
+                  ],
+                  [
+                    'Referral share of SOL deposit fees',
+                    data.fees.solReferralFeePct
+                      ? data.fees.solReferralFeePct * 100
+                      : undefined
+                  ],
+                  [
+                    'Referral share of stake deposit fees',
+                    data.fees.stakeReferralFeePct
+                      ? data.fees.stakeReferralFeePct * 100
+                      : undefined
+                  ],
+                  [
+                    'Liquid unstake, from',
+                    data.fees.liquidUnstakeMinFeeBps ?? undefined
+                  ],
+                  [
+                    'Liquid unstake, up to',
+                    data.fees.liquidUnstakeMaxFeeBps ?? undefined
+                  ]
+                ] as Array<[string, number | null | undefined]>
+              )
+                .filter(([, v]) => v !== undefined)
+                .map(([label, v]) => (
+                  <Fragment key={label}>
+                    <dt className="col-6 col-md-3 fw-normal text-body-tertiary">
+                      {label}
+                    </dt>
+                    <dd className="col-6 col-md-3 mb-0 font-monospace">
+                      {bpsPct(v)}
+                    </dd>
+                  </Fragment>
+                ))}
+            </dl>
+          </SectionCard>
+        )}
+
         <Row className="g-3">
           <Col xs={12} lg={6}>
             <SectionCard
@@ -1491,82 +1568,6 @@ const StakePool = () => {
             <UntrackedState>No epochs recorded yet.</UntrackedState>
           )}
         </SectionCard>
-
-        {data.fees && (
-          <SectionCard
-            title="Fees"
-            icon="percent"
-            info="Its commission on staking rewards (and next epoch's, if changing), and its deposit and withdrawal fees. From its on-chain account."
-          >
-            <dl className="row fs-9 mb-0 gy-1">
-              {(
-                [
-                  ['Commission on rewards', data.fees.epochFeeBps],
-                  [
-                    'Next epoch',
-                    data.fees.nextEpochFeeBps != null &&
-                    data.fees.nextEpochFeeBps !== data.fees.epochFeeBps
-                      ? data.fees.nextEpochFeeBps
-                      : undefined
-                  ],
-                  ['SOL deposit', data.fees.solDepositFeeBps],
-                  ['Stake deposit', data.fees.stakeDepositFeeBps],
-                  ['SOL withdrawal', data.fees.solWithdrawalFeeBps],
-                  ['Stake withdrawal', data.fees.stakeWithdrawalFeeBps],
-                  // Only what applies: a scheduled change, a referral cut,
-                  // Marinade's liquid unstake.
-                  [
-                    'SOL withdrawal, next epoch',
-                    data.fees.nextSolWithdrawalFeeBps != null &&
-                    data.fees.nextSolWithdrawalFeeBps !==
-                      data.fees.solWithdrawalFeeBps
-                      ? data.fees.nextSolWithdrawalFeeBps
-                      : undefined
-                  ],
-                  [
-                    'Stake withdrawal, next epoch',
-                    data.fees.nextStakeWithdrawalFeeBps != null &&
-                    data.fees.nextStakeWithdrawalFeeBps !==
-                      data.fees.stakeWithdrawalFeeBps
-                      ? data.fees.nextStakeWithdrawalFeeBps
-                      : undefined
-                  ],
-                  [
-                    'Referral share of SOL deposit fees',
-                    data.fees.solReferralFeePct
-                      ? data.fees.solReferralFeePct * 100
-                      : undefined
-                  ],
-                  [
-                    'Referral share of stake deposit fees',
-                    data.fees.stakeReferralFeePct
-                      ? data.fees.stakeReferralFeePct * 100
-                      : undefined
-                  ],
-                  [
-                    'Liquid unstake, from',
-                    data.fees.liquidUnstakeMinFeeBps ?? undefined
-                  ],
-                  [
-                    'Liquid unstake, up to',
-                    data.fees.liquidUnstakeMaxFeeBps ?? undefined
-                  ]
-                ] as Array<[string, number | null | undefined]>
-              )
-                .filter(([, v]) => v !== undefined)
-                .map(([label, v]) => (
-                  <Fragment key={label}>
-                    <dt className="col-6 col-md-3 fw-normal text-body-tertiary">
-                      {label}
-                    </dt>
-                    <dd className="col-6 col-md-3 mb-0 font-monospace">
-                      {bpsPct(v)}
-                    </dd>
-                  </Fragment>
-                ))}
-            </dl>
-          </SectionCard>
-        )}
 
         {data.authorities.length > 0 && (
           <SectionCard title="Authorities" icon="key">
