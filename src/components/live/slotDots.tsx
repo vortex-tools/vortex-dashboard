@@ -72,29 +72,51 @@ export const SlotDotLegend = () => (
 /**
  * A leader window's handoff, live: from the previous window's last block
  * to this window's first, by the producers' own block times (footer
- * producerTimeNanos; a clamped time - a clock off - doesn't count).
+ * producerTimeNanos; a clamped time - a clock off - leaves it untimed).
  * `afterSkip`: this window's first slot was skipped, `beforeSkip`: the
  * previous window's last - either way the gap includes the skip. null
  * until both blocks are in.
  */
+/** The nearest block from `start` stepping by `dir`, past skipped slots
+ *  only: its time, 'clamped' when its time is clamped (a clock off -
+ *  reading past it would call a timed later block a skip), null when not
+ *  in yet. */
+const nearestBlock = (
+  infos: Map<number, SlotInfo | null>,
+  start: number,
+  dir: 1 | -1
+): { t: number; skipped: boolean } | 'clamped' | null => {
+  for (let i = 0; i < WINDOW; i++) {
+    const info = infos.get(start + dir * i);
+    if (info?.outcome === 'skipped') continue;
+    if (info?.outcome !== 'block') return null;
+    const f = info.footer;
+    return f?.producerTimeNanos != null && !f.clockClamp
+      ? { t: f.producerTimeNanos, skipped: i > 0 }
+      : 'clamped';
+  }
+  return null;
+};
+
+/** Whether a window's handoff can't be timed: a block either side of it
+ *  has a clamped time. */
+export const handoffClamped = (
+  first: number,
+  infos: Map<number, SlotInfo | null>
+) =>
+  nearestBlock(infos, first - 1, -1) === 'clamped' ||
+  nearestBlock(infos, first, 1) === 'clamped';
+
 export const windowHandoff = (
   first: number,
   infos: Map<number, SlotInfo | null>
 ): { ms: number; afterSkip: boolean; beforeSkip: boolean } | null => {
-  const time = (s: number) => {
-    const f = infos.get(s)?.footer;
-    return infos.get(s)?.outcome === 'block' &&
-      f?.producerTimeNanos != null &&
-      !f.clockClamp
-      ? f.producerTimeNanos
-      : null;
+  const prev = nearestBlock(infos, first - 1, -1);
+  const next = nearestBlock(infos, first, 1);
+  if (!prev || !next || prev === 'clamped' || next === 'clamped') return null;
+  return {
+    ms: (next.t - prev.t) / 1e6,
+    afterSkip: next.skipped,
+    beforeSkip: prev.skipped
   };
-  let prev: number | null = null;
-  let j = 0;
-  for (; j < WINDOW && prev == null; j++) prev = time(first - 1 - j);
-  let next: number | null = null;
-  let k = 0;
-  for (; k < WINDOW && next == null; k++) next = time(first + k);
-  if (prev == null || next == null) return null;
-  return { ms: (next - prev) / 1e6, afterSkip: k > 1, beforeSkip: j > 1 };
 };

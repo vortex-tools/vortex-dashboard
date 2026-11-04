@@ -4,7 +4,13 @@ import ValidatorLink from 'components/common/ValidatorLink';
 import { SlotInfo, ValidatorGeo } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
-import { SLOT_KIND, WINDOW, slotKind, windowHandoff } from './slotDots';
+import {
+  SLOT_KIND,
+  WINDOW,
+  handoffClamped,
+  slotKind,
+  windowHandoff
+} from './slotDots';
 
 /** A handoff slower than this (ms) is tinted: a slot plus ~100 ms. */
 const SLOW_HANDOFF_MS = 300;
@@ -188,6 +194,14 @@ const RecentLeadersTable = ({
                     title="It leads the next window too: no handoff"
                   >
                     —
+                  </span>
+                ) : playhead >= nextFirst &&
+                  handoffClamped(nextFirst, infos) ? (
+                  <span
+                    className="text-body-tertiary"
+                    title="A block time either side is clamped (its producer's clock is off): no handoff to time"
+                  >
+                    clock
                   </span>
                 ) : (
                   '…'

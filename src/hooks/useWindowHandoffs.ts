@@ -1,4 +1,8 @@
-import { WINDOW, windowHandoff } from 'components/live/slotDots';
+import {
+  WINDOW,
+  handoffClamped,
+  windowHandoff
+} from 'components/live/slotDots';
 import { fetchSlots } from 'helpers/slotContext';
 import { SlotInfo } from 'providers/vortex-schemas';
 import { useEffect, useMemo, useState } from 'react';
@@ -93,7 +97,9 @@ const useWindowHandoffs = (
       const x = windowHandoff(first + k, all);
       return x
         ? { ms: x.ms, skipped: x.beforeSkip, state: 'timed' as const }
-        : { ms: null, skipped: false, state: 'pending' as const };
+        : handoffClamped(first + k, all)
+          ? { ms: null, skipped: false, state: 'clamped' as const }
+          : { ms: null, skipped: false, state: 'pending' as const };
     });
     return {
       in: sameIn ? null : h(first),
