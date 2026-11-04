@@ -46,10 +46,12 @@ const useWindowHandoffs = (
     () => new Map()
   );
   // By value: a new array of the same windows doesn't refetch.
-  // A window still within a few slots of now is re-read every 8 slots
-  // (settled slots come from fetchSlots' cache, so only the newest go).
+  // A window played in the last ~20 s is re-read every 8 slots, so its
+  // neighbours' blocks fill in once ingested (which can lag the chain by
+  // seconds); settled slots come from fetchSlots' cache, so only the
+  // newest are asked for.
   const tick = Math.floor(slotNow / 8);
-  const fresh = firstSlots.some(f => slotNow && f + 3 * 4 > slotNow);
+  const fresh = firstSlots.some(f => slotNow && f + 100 > slotNow);
   const key = `${firstSlots.join(',')}${fresh ? `@${tick}` : ''}`;
   const firsts = useMemo(
     () => (key ? key.split('@')[0].split(',').filter(Boolean).map(Number) : []),

@@ -227,10 +227,12 @@ const NextHandoffCell = ({
         <span
           className="text-body-tertiary"
           title={
-            h?.sameOut ? 'It leads the next window too: no handoff' : undefined
+            h?.sameOut
+              ? 'It leads the next window too: no handoff'
+              : 'Not in yet: no timed block from the next leader'
           }
         >
-          —
+          {h?.sameOut ? '—' : '…'}
         </span>
       )}
     </td>
