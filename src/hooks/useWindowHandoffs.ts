@@ -16,6 +16,9 @@ export type WindowHandoffs = {
   /** It leads the window before / after too: no handoff that side. */
   sameIn: boolean;
   sameOut: boolean;
+  /** The leaders either side (the windows before and after). */
+  prevLeader: string | null;
+  nextLeader: string | null;
   /** Each of its 4 slots' time: from the block before it to its own, by
    *  the producers' block times - the first slot's is the handoff to it
    *  (unless it led the window before). `skipped`: the gap spans a skipped
@@ -108,6 +111,8 @@ const useWindowHandoffs = (
       out: sameOut ? null : h(first + WINDOW),
       sameIn,
       sameOut,
+      prevLeader: leaderOf(first - WINDOW) ?? null,
+      nextLeader: leaderOf(first + WINDOW) ?? null,
       slots
     };
   };

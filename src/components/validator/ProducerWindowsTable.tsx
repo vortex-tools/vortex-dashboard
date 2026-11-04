@@ -20,6 +20,7 @@ import {
 import { Form, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 import useLiveWindows, { when } from 'hooks/useLiveWindows';
+import { placeOf, useValidatorGeoAt } from 'hooks/useValidatorGeo';
 import useWindowHandoffs, { WindowHandoffs } from 'hooks/useWindowHandoffs';
 
 const PAGE = PRODUCTION_WINDOWS_PAGE;
@@ -151,12 +152,17 @@ export type Pace = {
 const WindowTimeline = ({
   first,
   h,
-  pace
+  pace,
+  who
 }: {
   first: number;
   h: WindowHandoffs | null;
   pace: Pace | undefined;
+  /** "Kiln (Frankfurt am Main, DE)": a leader, for the handoffs' hovers. */
+  who: (node: string | null) => string | null;
 }) => {
+  const prev = who(h?.prevLeader ?? null);
+  const next = who(h?.nextLeader ?? null);
   const gap = (
     key: string,
     ms: number | null | undefined,
@@ -220,7 +226,7 @@ const WindowTimeline = ({
         t?.ms,
         handoff ? pace?.handoffMs : pace?.slotMs,
         t?.state === 'timed' && t.ms != null
-          ? `${Math.round(t.ms)} ms ${handoff ? "from the previous leader's last block to its first (the handoff)" : 'from its block before'}${t.skipped ? ', across a skipped slot' : ''}`
+          ? `${Math.round(t.ms)} ms ${handoff ? `from the previous leader${prev ? `, ${prev}` : ''}: its last block to this one's first (the handoff)` : 'from its block before'}${t.skipped ? ', across a skipped slot' : ''}`
           : t?.state === 'clamped'
             ? "A block time here is clamped (its producer's clock is off): not timed"
             : t?.state === 'skip'
@@ -248,7 +254,7 @@ const WindowTimeline = ({
         out?.ms,
         pace?.handoffMs,
         out
-          ? `${Math.round(out.ms)} ms from its last block to the next leader's first (the handoff on)${out.skipped ? ', across a skipped slot' : ''}`
+          ? `${Math.round(out.ms)} ms to the next leader${next ? `, ${next}` : ''}: its last block to their first (the handoff on)${out.skipped ? ', across a skipped slot' : ''}`
           : h?.sameOut
             ? 'It leads the next window too: no handoff'
             : 'Not in yet',
@@ -418,6 +424,15 @@ const ProducerWindowsTable = ({
     : windows;
   // The live rows' too: their neighbours' blocks (the handoffs) aren't
   // in the poller's slots. Re-read as a row's window plays.
+  // timing: who the leaders either side were, and where (that epoch).
+  const geoSet = useValidatorGeoAt(epoch, timing);
+  const who = (node: string | null) => {
+    if (!node) return null;
+    const g = geoSet?.byNode.get(node);
+    const name = g?.name ?? `${node.slice(0, 4)}…${node.slice(-4)}`;
+    const place = placeOf(g);
+    return place ? `${name} (${place})` : name;
+  };
   const handoffsOf = useWindowHandoffs(
     timing
       ? [
@@ -598,6 +613,7 @@ const ProducerWindowsTable = ({
                     first={firstSlot}
                     h={state === 'ahead' ? null : handoffsOf(firstSlot)}
                     pace={pace}
+                    who={who}
                   />
                 </>
               ) : (
@@ -672,6 +688,7 @@ const ProducerWindowsTable = ({
                     first={w.firstSlot}
                     h={handoffsOf(w.firstSlot)}
                     pace={pace}
+                    who={who}
                   />
                 </>
               ) : (
