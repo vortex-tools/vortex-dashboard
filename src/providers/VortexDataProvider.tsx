@@ -60,6 +60,8 @@ import {
   stakeChangesSchema,
   productionHistorySchema,
   participationMissesSchema,
+  productionOmissionsSchema,
+  ProductionOmissions,
   ParticipationMisses,
   productionWindowsSchema,
   ProductionEpoch,
@@ -648,6 +650,21 @@ const participationMissesToEntries = (
   key: string,
   response: ParticipationMisses
 ): Array<[string, ParticipationMisses]> => [[key, response]];
+
+// One producer's omissions in an epoch (key "voteKey:epoch").
+const productionOmissionsRequest = (key: string) => {
+  const [voteKey, epoch] = key.split(':');
+  return {
+    path: '/epochs/production/omissions',
+    params: { voteKey, epoch: Number(epoch) },
+    schema: productionOmissionsSchema,
+    timeout: 20_000
+  };
+};
+const productionOmissionsToEntries = (
+  key: string,
+  response: ProductionOmissions
+): Array<[string, ProductionOmissions]> => [[key, response]];
 
 // One validator's production per epoch (vote or node key), last 30.
 const productionHistoryRequest = (voteKey: string) => ({
@@ -1487,6 +1504,7 @@ interface VortexDataState {
   versionsTimelineState: KeyedSlice<number, VersionsTimeline>;
   productionHistoryState: KeyedSlice<string, ProductionEpoch[]>;
   participationMissesState: KeyedSlice<string, ParticipationMisses>;
+  productionOmissionsState: KeyedSlice<string, ProductionOmissions>;
   productionWindowsState: KeyedSlice<string, ProductionWindows>;
   epochEarningsState: KeyedSlice<string, EpochEarnings[]>;
   participationLeaderboardState: KeyedSlice<number, ParticipationLeaderboard>;
@@ -1668,6 +1686,10 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: participationMissesRequest,
     toEntries: participationMissesToEntries
   });
+  const productionOmissionsState = useKeyedSlice({
+    request: productionOmissionsRequest,
+    toEntries: productionOmissionsToEntries
+  });
   const productionHistoryState = useKeyedSlice({
     request: productionHistoryRequest,
     toEntries: productionHistoryToEntries
@@ -1756,6 +1778,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       versionsTimelineState,
       productionHistoryState,
       participationMissesState,
+      productionOmissionsState,
       productionWindowsState,
       epochEarningsState,
       participationLeaderboardState,
@@ -1809,6 +1832,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       versionsTimelineState,
       productionHistoryState,
       participationMissesState,
+      productionOmissionsState,
       productionWindowsState,
       epochEarningsState,
       participationLeaderboardState,

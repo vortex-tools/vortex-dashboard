@@ -3654,3 +3654,42 @@ export const validatorPaceSchema = z.object({
     .catch([])
 });
 export type ValidatorPace = z.infer<typeof validatorPaceSchema>;
+
+// ---- Producer omissions (/epochs/production/omissions, requested) -------
+// One producer's epoch, pivoted from the voter side (/participation/misses):
+// every voter its blocks' reward certificates left out at least once
+// while the voter was online, how often of the blocks it could have been
+// in, and how many of those at its thin blocks (left out >= thinShare
+// besides the voter). Most left out first.
+export const productionOmissionsSchema = z.object({
+  epoch: z.number(),
+  voteAddress: z.string().nullable().catch(null),
+  nodeAddress: z.string().nullable().catch(null),
+  blocks: z.number().nullable().catch(null),
+  complete: z.boolean().catch(false),
+  thresholds: z
+    .object({
+      offlineSlots: z.number().nullable().optional().catch(null),
+      thinShare: z.number().nullable().optional().catch(null),
+      blackholeShare: z.number().nullable().optional().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  leftOutTotal: z.number().nullable().optional().catch(null),
+  votersLeftOut: z.number().nullable().optional().catch(null),
+  voters: z
+    .array(
+      z.object({
+        voteAddress: z.string(),
+        nodeAddress: z.string().nullable().catch(null),
+        nodeName: z.string().nullable().catch(null),
+        stake: z.number().catch(0),
+        slots: z.number(),
+        leftOut: z.number(),
+        thinLeftOut: z.number().nullable().optional().catch(null)
+      })
+    )
+    .catch([])
+});
+export type ProductionOmissions = z.infer<typeof productionOmissionsSchema>;

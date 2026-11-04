@@ -325,6 +325,45 @@ const hostEvent = (r: () => number, d: Dir, epoch: number) => {
 };
 
 const ROUTES: Record<string, Route> = {
+  // Producer omissions (requested of vortex-data): voters its blocks left
+  // out, a long tail of a few misses and a couple never included.
+  '/epochs/production/omissions': async q => {
+    const voteKey = q.get('voteKey') ?? '';
+    const epoch = Number(q.get('epoch') ?? 1076);
+    const r = rng(`omissions-${voteKey}-${epoch}`);
+    const dir = (await directory()).filter(d => d.voteAddress);
+    const blocks = 1200 + Math.floor(r() * 400);
+    const voters = Array.from({ length: 40 }, (_, i) => {
+      const d = dir[Math.floor(r() * dir.length)];
+      const slots = blocks - Math.floor(r() * 60);
+      const leftOut =
+        i < 2
+          ? slots - Math.floor(r() * 3)
+          : i < 6
+            ? Math.floor(slots * (0.1 + r() * 0.3))
+            : 1 + Math.floor(r() * r() * 40);
+      return {
+        voteAddress: d.voteAddress,
+        nodeAddress: d.nodeAddress,
+        nodeName: d.name ?? null,
+        stake: Math.floor((1 + r() * 400) * 1e3 * 1e9),
+        slots,
+        leftOut,
+        thinLeftOut: Math.floor(leftOut * r() * 0.5)
+      };
+    }).sort((a, b) => b.leftOut - a.leftOut);
+    return {
+      epoch,
+      voteAddress: voteKey,
+      nodeAddress: null,
+      blocks,
+      complete: true,
+      thresholds: { offlineSlots: 32, thinShare: 0.02, blackholeShare: 0.9 },
+      leftOutTotal: voters.reduce((a, v) => a + v.leftOut, 0),
+      votersLeftOut: voters.length,
+      voters
+    };
+  },
   '/cluster/activity': async q => {
     const epochs = Math.min(10, Math.max(1, Number(q.get('epochs') ?? 3)));
     const dir = (await directory()).filter(d => d.voteAddress);

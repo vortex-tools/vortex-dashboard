@@ -3,6 +3,9 @@ import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import BlackholeVoters from 'components/validator/BlackholeVoters';
+import ProducerOmissionsCard from 'components/validator/ProducerOmissionsCard';
+import { VortexDataContext } from 'providers/VortexDataProvider';
+import { useContext } from 'react';
 import ConsensusRecordHeader from 'components/validator/ConsensusRecordHeader';
 import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
 import ProducingSection from 'components/validator/ProducingSection';
@@ -35,6 +38,7 @@ const ValidatorProducedBlocks = () => {
     currentEpoch,
     row
   } = useConsensusRecord({ timeline: false });
+  const context = useContext(VortexDataContext);
   const { producerBoard, ranked, prodRanks } = useRecordBoards(
     alpenglowActive,
     epoch,
@@ -98,7 +102,12 @@ const ValidatorProducedBlocks = () => {
                     {clockLine(clockVerdict(producer)!)}
                   </WarningBanner>
                 )}
-                <BlackholeVoters voteKey={recordKey} epoch={epoch} />
+                {/* Every voter its blocks left out, once the API has it;
+                    until then the ones it never includes. */}
+                <ProducerOmissionsCard voteKey={recordKey} epoch={epoch} />
+                {!context?.productionOmissionsState.data.has(
+                  `${recordKey}:${epoch}`
+                ) && <BlackholeVoters voteKey={recordKey} epoch={epoch} />}
                 {(producer || !producerBoard) && (
                   <ProducerWindowsTable
                     voteKey={recordKey}
