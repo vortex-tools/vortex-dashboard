@@ -100,7 +100,7 @@ const CAUSE: Record<
       "The reward block (slot + 8, see Reward leader) left out 2%+ of the online stake besides this voter: its leader's fault, not the slot leader's"
   },
   late: {
-    label: "Didn't get in",
+    label: 'Late',
     cls: 'text-danger',
     tone: 'danger',
     title:
@@ -426,7 +426,7 @@ const DivergentSlotsTable = ({
     ['all', 'All', 'secondary'],
     ...(causeOf
       ? ([
-          ['late', "Didn't get in", 'danger'],
+          ['late', 'Late', 'danger'],
           ['thin', 'Left out', 'warning'],
           ['offline', 'Offline', 'secondary']
         ] as Array<[Filter, string, string]>)
