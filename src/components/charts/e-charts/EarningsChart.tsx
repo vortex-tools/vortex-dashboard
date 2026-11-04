@@ -244,18 +244,25 @@ const EarningsChart = ({
                 ];
                 if (parts.length) label += ` (${parts.join(', ')})`;
               }
-              // A participant's latest epochs read null until paid (~a day
-              // after the epoch ends): pending, not missing.
-              if (
-                d.name === 'SFDP reimbursement' &&
-                (r.sfdp?.pending ||
-                  (r.sfdp === undefined &&
-                    sfdpOf(r) == null &&
-                    r.epoch >= latestEpoch - 1))
-              )
-                return line(label, 'pending', d.color);
-              if (d.name === 'SFDP reimbursement' && sfdpOf(r) == null)
-                return line(label, '—', d.color);
+              // SFDP: only what it was paid. Nothing (or 0) is left out -
+              // the program tails off, and some validators never had it -
+              // and an unpaid latest epoch reads pending only when the epoch
+              // before was reimbursed (it's still in the program).
+              if (d.name === 'SFDP reimbursement') {
+                const v = sfdpOf(r);
+                if (v == null || v <= 0) {
+                  const before = rows.find(x => x.epoch === r.epoch - 1);
+                  const stillIn = (before ? (sfdpOf(before) ?? 0) : 0) > 0;
+                  const unpaid =
+                    r.sfdp?.pending ||
+                    (r.sfdp === undefined &&
+                      v == null &&
+                      r.epoch >= latestEpoch - 1);
+                  return unpaid && stillIn
+                    ? line(label, 'pending', d.color)
+                    : '';
+                }
+              }
               // Not running Jito: MEV is a dash, not "0".
               if (
                 d.name === 'MEV' &&
