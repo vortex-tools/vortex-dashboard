@@ -377,20 +377,22 @@ const ValidatorNetwork = () => {
     const toneOf = (t: ReturnType<typeof delayTone>) =>
       t === 'danger' ? 'danger' : t === 'warning' ? 'warning' : undefined;
     const pace = producer?.slotDuration?.inWindow;
+    // The cards' figures with the unit tight: "200ms", "+32ms".
+    const tight = (v: string) => v.replace(/ ms$/, 'ms');
     return (
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
           <Col xs={6} lg={3}>
             <StatCard
               label="Slot Pace"
-              value={pace?.p50Ms != null ? `${Math.round(pace.p50Ms)} ms` : '—'}
+              value={pace?.p50Ms != null ? `${Math.round(pace.p50Ms)}ms` : '—'}
               tone={producer?.lagging ? 'warning' : undefined}
               sublabel={
                 <span
                   title={`Its median time per slot within its leader windows (slots 2-4, each from its own previous block)${pace?.p90Ms != null ? `; 90th percentile ${Math.round(pace.p90Ms)} ms` : ''}. Lagging: 1.25x the cluster's or more.`}
                 >
                   {producer?.lagging ? 'Lagging · ' : ''}
-                  {slotMs != null ? `cluster ${Math.round(slotMs)} ms` : '—'}
+                  {slotMs != null ? `cluster ${Math.round(slotMs)}ms` : '—'}
                 </span>
               }
             />
@@ -398,11 +400,11 @@ const ValidatorNetwork = () => {
           <Col xs={6} lg={3}>
             <StatCard
               label="Handoff To It"
-              value={signedMs(inO)}
+              value={tight(signedMs(inO))}
               tone={toneOf(delayTone(inO, clO))}
               sublabel={
                 <span title="Its median handoff from the previous leader, less its own first block and the notarization floor: the overhead beyond the wait for the previous block to be notarized. Against the cluster's median.">
-                  overhead · cluster {signedMs(clO)}
+                  overhead · cluster {tight(signedMs(clO))}
                 </span>
               }
             />
@@ -410,11 +412,11 @@ const ValidatorNetwork = () => {
           <Col xs={6} lg={3}>
             <StatCard
               label="Handoff From It"
-              value={signedMs(outO)}
+              value={tight(signedMs(outO))}
               tone={toneOf(delayTone(outO, clO))}
               sublabel={
                 <span title="The next leaders' median handoff from it, the same way: how fast its blocks reach them and get notarized. Against the cluster's median.">
-                  overhead · cluster {signedMs(clO)}
+                  overhead · cluster {tight(signedMs(clO))}
                 </span>
               }
             />
