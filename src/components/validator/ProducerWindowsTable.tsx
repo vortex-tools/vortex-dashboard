@@ -132,7 +132,8 @@ const paceTone = (ms: number, ref: number | null | undefined) =>
   !ref
     ? 'bg-body-secondary text-body'
     : ms <= ref * 1.1
-      ? 'bg-success-subtle text-success'
+      ? // Fine: faded, so the slow ones stand out.
+        'vx-chip-agreed'
       : ms <= ref * 1.25
         ? 'bg-warning-subtle text-warning'
         : 'bg-danger-subtle text-danger';
@@ -144,97 +145,123 @@ export type Pace = {
   handoffMs: number | null;
 };
 
-/** One slot's time, as SlotCell's box: from the block before to its
- *  own, colored by how slow against the cluster's - the first slot's (a
- *  handoff, unless it led the window before) against the cluster's
- *  handoffs. */
-const SlotTimeCell = ({
-  slot,
-  t,
-  handoff,
-  pace
-}: {
-  slot: number;
-  t: WindowHandoffs['slots'][number] | undefined;
-  handoff: boolean;
-  pace: Pace | undefined;
-}) => {
-  const ref = handoff ? pace?.handoffMs : pace?.slotMs;
-  const cls =
-    t?.state === 'timed' && t.ms != null
-      ? paceTone(t.ms, ref)
-      : t?.state === 'skip'
-        ? 'bg-danger-subtle text-danger'
-        : 'bg-body-secondary text-body-tertiary';
-  const label =
-    t?.state === 'timed' && t.ms != null
-      ? `${Math.round(t.ms)}${t.skipped ? '*' : ''}`
-      : t?.state === 'skip'
-        ? 'skip'
-        : t?.state === 'clamped'
-          ? 'clock'
-          : '…';
-  const title =
-    t?.state === 'timed' && t.ms != null
-      ? `Slot ${slot.toLocaleString()}: ${Math.round(t.ms)} ms ${handoff ? "from the previous leader's last block (the handoff)" : 'from its block before'}${t.skipped ? ', across a skipped slot' : ''}${ref ? ` · cluster median ${Math.round(ref)} ms` : ''}`
-      : t?.state === 'clamped'
-        ? `Slot ${slot.toLocaleString()}: its block time is clamped (its clock is off), so it isn't timed`
-        : `Slot ${slot.toLocaleString()}`;
-  return (
-    <Link
-      to={`/slot/${slot}`}
-      className={`d-inline-block rounded-1 text-center font-monospace fs-10 px-1 ${cls}`}
-      style={{
-        minWidth: '3.1rem',
-        height: '1.25rem',
-        lineHeight: '1.25rem',
-        // The handoff slot set apart: it includes the trip from the
-        // previous leader.
-        ...(handoff ? { boxShadow: 'inset 2px 0 0 currentColor' } : {})
-      }}
-      title={title}
-    >
-      {label}
-    </Link>
-  );
-};
-
-/** The handoff from it: its last block to the next leader's first. */
-const NextHandoffCell = ({
+/** A window as a timeline: its 4 blocks and the next leader's first in a
+ *  row, each arrow between two blocks labeled with the time between them
+ *  (colored against the cluster's medians) - the first arrow the handoff
+ *  to it (from the previous leader's last block), the last the handoff on
+ *  to the next leader. */
+const WindowTimeline = ({
+  first,
   h,
   pace
 }: {
+  first: number;
   h: WindowHandoffs | null;
   pace: Pace | undefined;
 }) => {
-  const x = h?.out ?? null;
+  const gap = (
+    key: string,
+    ms: number | null | undefined,
+    ref: number | null | undefined,
+    title: string,
+    state: 'timed' | 'skip' | 'clamped' | 'pending' | 'same',
+    skipped = false
+  ) => (
+    <span
+      key={key}
+      className={`d-inline-flex align-items-center rounded-1 px-1 font-monospace fs-10 ${
+        state === 'timed' && ms != null
+          ? paceTone(ms, ref)
+          : 'text-body-tertiary'
+      }`}
+      style={{
+        minWidth: '3.4rem',
+        justifyContent: 'center',
+        height: '1.25rem'
+      }}
+      title={title}
+    >
+      →{' '}
+      {state === 'timed' && ms != null
+        ? `${Math.round(ms)}${skipped ? '*' : ''}`
+        : state === 'clamped'
+          ? 'clock'
+          : state === 'same'
+            ? ''
+            : state === 'skip'
+              ? ''
+              : '…'}
+    </span>
+  );
+  const block = (
+    slot: number,
+    kind: 'block' | 'skip' | 'pending',
+    next = false
+  ) => (
+    <Link
+      key={`b${slot}`}
+      to={`/slot/${slot}`}
+      className={`d-inline-block rounded-1 flex-shrink-0 ${
+        kind === 'block'
+          ? 'bg-success'
+          : kind === 'skip'
+            ? 'bg-danger'
+            : 'bg-body-secondary'
+      }`}
+      style={{ width: 12, height: 12, opacity: next ? 0.35 : 0.85 }}
+      title={`Slot ${slot.toLocaleString()}${next ? " - the next leader's first" : ''}: ${kind === 'pending' ? 'not in yet' : kind === 'skip' ? 'skipped' : 'block'}`}
+    />
+  );
+  const parts = [];
+  for (let k = 0; k < 4; k++) {
+    const t = h?.slots[k];
+    const handoff = k === 0 && !h?.sameIn;
+    parts.push(
+      gap(
+        `g${k}`,
+        t?.ms,
+        handoff ? pace?.handoffMs : pace?.slotMs,
+        t?.state === 'timed' && t.ms != null
+          ? `${Math.round(t.ms)} ms ${handoff ? "from the previous leader's last block to its first (the handoff)" : 'from its block before'}${t.skipped ? ', across a skipped slot' : ''}`
+          : t?.state === 'clamped'
+            ? "A block time here is clamped (its producer's clock is off): not timed"
+            : t?.state === 'skip'
+              ? 'Skipped: no block to time'
+              : 'Not in yet',
+        t?.state ?? 'pending',
+        t?.skipped
+      ),
+      block(
+        first + k,
+        t?.state === 'skip'
+          ? 'skip'
+          : t?.state === 'pending' || !t
+            ? 'pending'
+            : 'block'
+      )
+    );
+  }
+  const out = h?.out ?? null;
+  // It leads the next window too: no handoff, nothing after its blocks.
+  if (!h?.sameOut)
+    parts.push(
+      gap(
+        'out',
+        out?.ms,
+        pace?.handoffMs,
+        out
+          ? `${Math.round(out.ms)} ms from its last block to the next leader's first (the handoff on)${out.skipped ? ', across a skipped slot' : ''}`
+          : h?.sameOut
+            ? 'It leads the next window too: no handoff'
+            : 'Not in yet',
+        out ? 'timed' : h?.sameOut ? 'same' : 'pending',
+        out?.skipped
+      ),
+      block(first + 4, out ? 'block' : 'pending', true)
+    );
   return (
-    <td className="font-monospace text-nowrap">
-      {x ? (
-        <span
-          className={`d-inline-block rounded-1 text-center fs-10 px-1 ${paceTone(x.ms, pace?.handoffMs)}`}
-          style={{
-            minWidth: '3.6rem',
-            height: '1.25rem',
-            lineHeight: '1.25rem'
-          }}
-          title={`${Math.round(x.ms)} ms to the next leader${x.skipped ? ' (a skipped slot in between)' : ''}${pace?.handoffMs ? ` · cluster median handoff ${Math.round(pace.handoffMs)} ms` : ''}`}
-        >
-          → {Math.round(x.ms)}
-          {x.skipped ? '*' : ''}
-        </span>
-      ) : (
-        <span
-          className="text-body-tertiary"
-          title={
-            h?.sameOut
-              ? 'It leads the next window too: no handoff'
-              : 'Not in yet: no timed block from the next leader'
-          }
-        >
-          {h?.sameOut ? '—' : '…'}
-        </span>
-      )}
+    <td>
+      <div className="d-flex align-items-center gap-1 text-nowrap">{parts}</div>
     </td>
   );
 };
@@ -534,11 +561,8 @@ const ProducerWindowsTable = ({
             </th>
             {timing ? (
               <>
-                <th title="Each slot's time in ms, from the block before it to its own, by the producers' block times; the first (marked) is the handoff from the previous leader. Colored against the cluster's median - a slot against its slots, the first against its handoffs: green within 10%, amber to 25%, red beyond. * across a skipped slot; clock: a clamped block time.">
-                  Slot times (ms)
-                </th>
-                <th title="The handoff to the next leader: from its last block to the next leader's first, colored against the cluster's median handoff. A dash when it leads the next window too.">
-                  Next
+                <th title="Its 4 blocks and the next leader's first (faint), each arrow the time in ms between the blocks either side, by the producers' block times: the first is the handoff from the previous leader, the last the handoff to the next. Colored against the cluster's median - in-window gaps against its slot, handoffs against its handoff: green within 10%, amber to 25%, red beyond. * across a skipped slot; clock: a clamped block time.">
+                  Blocks and the time between them (ms)
                 </th>
               </>
             ) : (
@@ -572,24 +596,8 @@ const ProducerWindowsTable = ({
               </td>
               {timing ? (
                 <>
-                  <td>
-                    <div className="d-flex gap-1">
-                      {Array.from({ length: 4 }, (_, k) => (
-                        <SlotTimeCell
-                          key={k}
-                          slot={firstSlot + k}
-                          t={
-                            state === 'ahead'
-                              ? undefined
-                              : handoffsOf(firstSlot).slots[k]
-                          }
-                          handoff={k === 0 && !handoffsOf(firstSlot).sameIn}
-                          pace={pace}
-                        />
-                      ))}
-                    </div>
-                  </td>
-                  <NextHandoffCell
+                  <WindowTimeline
+                    first={firstSlot}
                     h={state === 'ahead' ? null : handoffsOf(firstSlot)}
                     pace={pace}
                   />
@@ -662,20 +670,11 @@ const ProducerWindowsTable = ({
               </td>
               {timing ? (
                 <>
-                  <td>
-                    <div className="d-flex gap-1">
-                      {w.slots.map((s, k) => (
-                        <SlotTimeCell
-                          key={s.slot}
-                          slot={s.slot}
-                          t={handoffsOf(w.firstSlot).slots[k]}
-                          handoff={k === 0 && !handoffsOf(w.firstSlot).sameIn}
-                          pace={pace}
-                        />
-                      ))}
-                    </div>
-                  </td>
-                  <NextHandoffCell h={handoffsOf(w.firstSlot)} pace={pace} />
+                  <WindowTimeline
+                    first={w.firstSlot}
+                    h={handoffsOf(w.firstSlot)}
+                    pace={pace}
+                  />
                 </>
               ) : (
                 <>
@@ -705,7 +704,7 @@ const ProducerWindowsTable = ({
           {!shown.length && !liveRows.length && (
             <tr>
               <td
-                colSpan={current ? 4 : 3}
+                colSpan={(current ? 4 : 3) - (timing ? 1 : 0)}
                 className="text-center text-body-tertiary py-3"
               >
                 {filter === 'all'
