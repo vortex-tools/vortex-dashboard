@@ -11,10 +11,12 @@ import { Link } from 'react-router';
 const PAGE = 10;
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const pct = (v: number) =>
-  `${(Math.floor(v * 1000) / 10).toLocaleString('en-US', { minimumFractionDigits: 1 })}%`;
+  v > 0 && v < 0.001
+    ? '<0.1%'
+    : `${(Math.floor(v * 1000) / 10).toLocaleString('en-US', { minimumFractionDigits: 1 })}%`;
 
 type Filter = 'all' | 'often' | 'never';
-type Sort = 'leftOut' | 'rate' | 'stake';
+type Sort = 'leftOut' | 'rate' | 'stake' | 'voter';
 /** Left out of this share of its blocks or more: "often". */
 const OFTEN = 0.1;
 
@@ -45,6 +47,8 @@ const ProducerOmissionsCard = ({
   const data: ProductionOmissions | undefined = slice?.data.get(key);
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('leftOut');
+  // Most first; a second click on the same header flips it.
+  const [asc, setAsc] = useState(false);
   const [page, setPage] = useState(0);
   useEffect(() => {
     setPage(0);
@@ -64,14 +68,20 @@ const ProducerOmissionsCard = ({
             ? v.rate >= OFTEN
             : true
       )
-      .sort((a, b) =>
-        sort === 'stake'
-          ? b.stake - a.stake
-          : sort === 'rate'
-            ? b.rate - a.rate || b.leftOut - a.leftOut
-            : b.leftOut - a.leftOut || b.stake - a.stake
-      );
-  }, [data, filter, sort, never]);
+      .sort((a, b) => {
+        const d =
+          sort === 'voter'
+            ? (b.nodeName ?? b.voteAddress).localeCompare(
+                a.nodeName ?? a.voteAddress
+              )
+            : sort === 'stake'
+              ? b.stake - a.stake
+              : sort === 'rate'
+                ? b.rate - a.rate || b.leftOut - a.leftOut
+                : b.leftOut - a.leftOut || b.stake - a.stake;
+        return asc ? -d : d;
+      });
+  }, [data, filter, sort, asc, never]);
   if (!data) return null;
   const voters = data.voters;
   const neverN = voters.filter(
@@ -89,18 +99,25 @@ const ProducerOmissionsCard = ({
     : null;
   const thinShare = thinTotal != null && total ? thinTotal / total : 0;
 
-  const sortHead = (s: Sort, label: string, title: string) => (
+  const sortHead = (
+    s: Sort,
+    label: string,
+    title: string,
+    className = 'text-end'
+  ) => (
     <th
-      className="text-end"
+      className={className}
       role="button"
-      title={`${title} - sort by it`}
+      title={`${title} - sort by it (again to flip)`}
       onClick={() => {
+        // Names A-Z first; figures most first.
+        setAsc(sort === s ? !asc : s === 'voter');
         setSort(s);
         setPage(0);
       }}
     >
       {label}
-      {sort === s ? ' ▾' : ''}
+      {sort === s ? (asc ? ' ▴' : ' ▾') : ''}
     </th>
   );
 
@@ -190,7 +207,7 @@ const ProducerOmissionsCard = ({
             <Table responsive size="sm" className="data-table fs-9 mb-2">
               <thead>
                 <tr>
-                  <th>Voter</th>
+                  {sortHead('voter', 'Voter', 'Its name', '')}
                   {sortHead('stake', 'Stake', 'Its stake this epoch')}
                   {sortHead(
                     'leftOut',
