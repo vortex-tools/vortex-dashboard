@@ -664,3 +664,11 @@ th.leaderboard-sticky-col {
   background: rgba(117, 183, 152, 0.1);
   color: rgba(117, 183, 152, 0.75);
 }
+
+// The Network tab's map beside its table: it stays in view on desktop.
+@include media-breakpoint-up(lg) {
+  .vx-sticky-map {
+    position: sticky;
+    top: 4.5rem;
+  }
+}
