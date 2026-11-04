@@ -1,10 +1,6 @@
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
-import {
-  SkippedSlotsCard,
-  skippedTotal
-} from 'components/validator/SkipCausesCard';
 import UntrackedState from 'components/common/UntrackedState';
 import BlackholeVoters from 'components/validator/BlackholeVoters';
 import ConsensusRecordHeader from 'components/validator/ConsensusRecordHeader';
@@ -101,9 +97,6 @@ const ValidatorProducedBlocks = () => {
                   <WarningBanner icon="clock" className="mb-0">
                     {clockLine(clockVerdict(producer)!)}
                   </WarningBanner>
-                )}
-                {skippedTotal(producer) > 0 && (
-                  <SkippedSlotsCard record={producer} board={producerBoard} />
                 )}
                 <BlackholeVoters voteKey={recordKey} epoch={epoch} />
                 {(producer || !producerBoard) && (
