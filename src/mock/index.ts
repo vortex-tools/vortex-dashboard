@@ -348,10 +348,10 @@ const ROUTES: Record<string, Route> = {
         nodeName: d.name ?? null,
         stake: Math.floor((1 + r() * 400) * 1e3 * 1e9),
         slots,
-        leftOut,
-        thinLeftOut: Math.floor(leftOut * r() * 0.5)
+        missedSlots: leftOut,
+        thinBlockSlots: Math.floor(leftOut * r() * 0.5)
       };
-    }).sort((a, b) => b.leftOut - a.leftOut);
+    }).sort((a, b) => b.missedSlots - a.missedSlots);
     return {
       epoch,
       voteAddress: voteKey,
@@ -359,8 +359,8 @@ const ROUTES: Record<string, Route> = {
       blocks,
       complete: true,
       thresholds: { offlineSlots: 32, thinShare: 0.02, blackholeShare: 0.9 },
-      leftOutTotal: voters.reduce((a, v) => a + v.leftOut, 0),
-      votersLeftOut: voters.length,
+      missedSlots: voters.reduce((a, v) => a + v.missedSlots, 0),
+      votersOmitted: voters.length,
       voters
     };
   },

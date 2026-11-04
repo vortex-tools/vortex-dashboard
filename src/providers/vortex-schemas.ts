@@ -3661,35 +3661,49 @@ export type ValidatorPace = z.infer<typeof validatorPaceSchema>;
 // while the voter was online, how often of the blocks it could have been
 // in, and how many of those at its thin blocks (left out >= thinShare
 // besides the voter). Most left out first.
-export const productionOmissionsSchema = z.object({
-  epoch: z.number(),
-  voteAddress: z.string().nullable().catch(null),
-  nodeAddress: z.string().nullable().catch(null),
-  blocks: z.number().nullable().catch(null),
-  complete: z.boolean().catch(false),
-  thresholds: z
-    .object({
-      offlineSlots: z.number().nullable().optional().catch(null),
-      thinShare: z.number().nullable().optional().catch(null),
-      blackholeShare: z.number().nullable().optional().catch(null)
-    })
-    .nullable()
-    .optional()
-    .catch(null),
-  leftOutTotal: z.number().nullable().optional().catch(null),
-  votersLeftOut: z.number().nullable().optional().catch(null),
-  voters: z
-    .array(
-      z.object({
-        voteAddress: z.string(),
-        nodeAddress: z.string().nullable().catch(null),
-        nodeName: z.string().nullable().catch(null),
-        stake: z.number().catch(0),
-        slots: z.number(),
-        leftOut: z.number(),
-        thinLeftOut: z.number().nullable().optional().catch(null)
+export const productionOmissionsSchema = z
+  .object({
+    epoch: z.number(),
+    voteAddress: z.string().nullable().catch(null),
+    nodeAddress: z.string().nullable().catch(null),
+    blocks: z.number().nullable().catch(null),
+    complete: z.boolean().catch(false),
+    thresholds: z
+      .object({
+        offlineSlots: z.number().nullable().optional().catch(null),
+        thinShare: z.number().nullable().optional().catch(null),
+        blackholeShare: z.number().nullable().optional().catch(null)
       })
-    )
-    .catch([])
-});
+      .nullable()
+      .optional()
+      .catch(null),
+    // The API's names (as /epochs/participation/misses): missedSlots is
+    // the voters' left-out total, votersOmitted how many.
+    missedSlots: z.number().nullable().optional().catch(null),
+    votersOmitted: z.number().nullable().optional().catch(null),
+    voters: z
+      .array(
+        z
+          .object({
+            voteAddress: z.string(),
+            nodeAddress: z.string().nullable().catch(null),
+            nodeName: z.string().nullable().catch(null),
+            stake: z.number().catch(0),
+            slots: z.number(),
+            missedSlots: z.number(),
+            thinBlockSlots: z.number().nullable().optional().catch(null)
+          })
+          .transform(({ missedSlots, thinBlockSlots, ...v }) => ({
+            ...v,
+            leftOut: missedSlots,
+            thinLeftOut: thinBlockSlots ?? null
+          }))
+      )
+      .catch([])
+  })
+  .transform(({ missedSlots, votersOmitted, ...d }) => ({
+    ...d,
+    leftOutTotal: missedSlots ?? null,
+    votersLeftOut: votersOmitted ?? null
+  }));
 export type ProductionOmissions = z.infer<typeof productionOmissionsSchema>;
