@@ -52,6 +52,22 @@ const ProducingSection = ({
       ? r.perfectSlots / r.classifiedSlots
       : null;
   const inclusion = producingShare ?? productionInclusion(record);
+  // Why its skipped slots were skipped, for the Blocks Produced hover.
+  const causes = record.skipCauses
+    ? (
+        [
+          ['offline', record.skipCauses.offline],
+          ['late block', record.skipCauses.lateBlock],
+          ['no block', record.skipCauses.noBlock],
+          ['stale parent', record.skipCauses.staleParent],
+          ['duplicate', record.skipCauses.duplicate],
+          ['unknown', record.skipCauses.unknown]
+        ] as Array<[string, number | null | undefined]>
+      )
+        .filter(([, n]) => (n ?? 0) > 0)
+        .map(([l, n]) => `${l} ${n}`)
+        .join(' · ')
+    : '';
   return (
     <Row className="g-3">
       <Col xs={6} md={4} xl={2}>
@@ -120,7 +136,7 @@ const ProducingSection = ({
           tone={record.skippedSlots > 0 ? 'warning' : undefined}
           sublabel={
             <span
-              title={`${record.blocks.toLocaleString()} of ${(record.blocks + record.skippedSlots).toLocaleString()} leader slots · skip rate ${pct(record.skipRate)}${cluster?.skipRate != null ? ` (cluster ${pct(cluster.skipRate)})` : ''}`}
+              title={`${record.blocks.toLocaleString()} of ${(record.blocks + record.skippedSlots).toLocaleString()} leader slots · skip rate ${pct(record.skipRate)}${cluster?.skipRate != null ? ` (cluster ${pct(cluster.skipRate)})` : ''}${causes ? `. Skipped: ${causes}` : ''}`}
             >
               {record.skippedSlots > 0
                 ? `${record.skippedSlots.toLocaleString()} skipped`
