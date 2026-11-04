@@ -104,7 +104,21 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
                       </span>
                     )}
                   </td>
-                  <td className="text-nowrap">{e.builderName ?? '—'}</td>
+                  <td className="text-nowrap">
+                    {/* "No builder" from a client gossip can't name
+                        (Unknown(N)) is a guess: say we can't tell. */}
+                    {e.builder === 'none' &&
+                    (!e.client || /^unknown/i.test(e.client)) ? (
+                      <span
+                        className="text-body-tertiary"
+                        title={`Its client isn't one we recognize (gossip says ${e.client ?? 'nothing'}), so which block builder it runs, if any, can't be told`}
+                      >
+                        Unknown
+                      </span>
+                    ) : (
+                      (e.builderName ?? '—')
+                    )}
+                  </td>
                   <td className="text-end font-monospace">
                     {sol(t?.gross ?? j?.gross)}
                   </td>
