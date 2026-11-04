@@ -1,10 +1,10 @@
 import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
-import { SlotPaceCard } from 'components/validator/SkipCausesCard';
+import StatCard from 'components/common/StatCard';
+import { IS_STAGING } from 'helpers/apiEndpoint';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import HandoffCard, { HANDOFF_INFO } from 'components/network/HandoffCard';
-import HandoffTrend from 'components/network/HandoffTrend';
 import NetworkMap, {
   MapMode,
   RegionHandoff
@@ -20,14 +20,15 @@ import {
   REGION_NAME,
   divergentVotes,
   DivergentVote,
-  isSkipped,
   TURBINE_FANOUT,
   turbineEstimate,
   divergenceByLeader,
   clusterExtra,
+  delayTone,
   entryOverhead,
+  handoffExtra,
+  signedMs,
   hasNotarization,
-  extraDelay,
   hostMoves,
   routeKey,
   divergenceByRegion,
@@ -48,7 +49,7 @@ import {
   Table,
   ToggleButton
 } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 
 /** The map's views: handoffs, its divergent votes in two kinds, hosts. */
 type PageView = 'handoffs' | 'divergent' | 'hosts';
@@ -198,7 +199,6 @@ const ValidatorNetwork = () => {
   // Its handoffs by region, with the cluster's from the same region.
   const handoffs: RegionHandoff[] = useMemo(() => {
     const mine = producer?.slotDuration?.handoffByRegion;
-    const cluster = producerBoard?.cluster?.slotDuration?.handoffByRegion;
     // A slot, that epoch: the cluster's pace within leader windows.
     const slotMs =
       producerBoard?.cluster?.slotDuration?.inWindow?.p50Ms ?? null;
@@ -229,17 +229,7 @@ const ValidatorNetwork = () => {
     });
   }, [producer, producerBoard]);
 
-  // Its handoffs over the floor per epoch (one request, ~30 epochs).
   const context = useContext(VortexDataContext);
-  const fetchPace = context?.validatorPaceState.fetchData;
-  const paceKey = alpenglowActive ? voteAddress : '';
-  useEffect(() => {
-    if (paceKey) fetchPace?.(paceKey);
-  }, [paceKey, fetchPace]);
-  const paceHistory = paceKey
-    ? context?.validatorPaceState.data.get(paceKey)
-    : undefined;
-  const navigate = useNavigate();
 
   // The map view last picked, kept across validators and visits.
   const [mode, setModeState] = useState<PageView>(() => {
@@ -325,8 +315,9 @@ const ValidatorNetwork = () => {
   );
   // A rough Turbine path into it (its layer by stake rank), for the
   // block legs.
+  // Staging only for now: production draws a block's trip straight.
   const turbine = useMemo(
-    () => (node && geo ? turbineEstimate(node, geo) : null),
+    () => (IS_STAGING && node && geo ? turbineEstimate(node, geo) : null),
     [node, geo]
   );
   const tabVotes = useMemo(() => {
@@ -376,8 +367,71 @@ const ValidatorNetwork = () => {
     const votedTotal = byRegion
       ? [...byRegion.values()].reduce((a, r) => a + r.slots, 0)
       : 0;
+    // The headline figures: its own pace, its handoffs either way and its
+    // divergent votes, each against the cluster's.
+    const cl = producerBoard?.cluster?.slotDuration;
+    const slotMs = cl?.inWindow?.p50Ms ?? null;
+    const inO = handoffExtra(producer?.slotDuration, slotMs).extra;
+    const outO = handoffExtra(producer?.slotDuration, slotMs, 'out').extra;
+    const clO = handoffExtra(cl, slotMs).extra;
+    const toneOf = (t: ReturnType<typeof delayTone>) =>
+      t === 'danger' ? 'danger' : t === 'warning' ? 'warning' : undefined;
+    const pace = producer?.slotDuration?.inWindow;
     return (
       <div className="d-flex flex-column gap-3">
+        <Row className="g-3">
+          <Col xs={6} lg={3}>
+            <StatCard
+              label="Slot Pace"
+              value={pace?.p50Ms != null ? `${Math.round(pace.p50Ms)} ms` : '—'}
+              tone={producer?.lagging ? 'warning' : undefined}
+              sublabel={
+                <span
+                  title={`Its median time per slot within its leader windows (slots 2-4, each from its own previous block)${pace?.p90Ms != null ? `; 90th percentile ${Math.round(pace.p90Ms)} ms` : ''}. Lagging: 1.25x the cluster's or more.`}
+                >
+                  {producer?.lagging ? 'Lagging · ' : ''}
+                  {slotMs != null ? `cluster ${Math.round(slotMs)} ms` : '—'}
+                </span>
+              }
+            />
+          </Col>
+          <Col xs={6} lg={3}>
+            <StatCard
+              label="Handoff To It"
+              value={signedMs(inO)}
+              tone={toneOf(delayTone(inO, clO))}
+              sublabel={
+                <span title="Its median handoff from the previous leader, less its own first block and the notarization floor: the overhead beyond the wait for the previous block to be notarized. Against the cluster's median.">
+                  overhead · cluster {signedMs(clO)}
+                </span>
+              }
+            />
+          </Col>
+          <Col xs={6} lg={3}>
+            <StatCard
+              label="Handoff From It"
+              value={signedMs(outO)}
+              tone={toneOf(delayTone(outO, clO))}
+              sublabel={
+                <span title="The next leaders' median handoff from it, the same way: how fast its blocks reach them and get notarized. Against the cluster's median.">
+                  overhead · cluster {signedMs(clO)}
+                </span>
+              }
+            />
+          </Col>
+          <Col xs={6} lg={3}>
+            <StatCard
+              label="Divergent Votes"
+              value={divergentTotal.toLocaleString()}
+              sublabel={
+                <span title="Slots where it voted skip on a block the cluster notarized, or its vote wasn't counted (offline runs aside), of the slots it voted on">
+                  {pct(votedTotal ? divergentTotal / votedTotal : 0, 2)} of
+                  slots voted on
+                </span>
+              }
+            />
+          </Col>
+        </Row>
         <Row className="g-3">
           {/* Desktop: the map (its own card, staying in view) on one
               half, what it shows in a card on the other. */}
@@ -688,17 +742,14 @@ const ValidatorNetwork = () => {
                           className="d-inline-block rounded-circle align-middle me-1 bg-info"
                           style={{ width: 8, height: 8 }}
                         />
-                        Block producer: whose block it voted on - dotted, its
-                        block reaches it through Turbine (relayed shreds), so
-                        the floor shown is a minimum
+                        Block producer (dotted: its block&apos;s trip)
                       </span>
                       <span>
                         <span
                           className="d-inline-block rounded-circle align-middle me-1 bg-warning"
                           style={{ width: 8, height: 8 }}
                         />
-                        Reward leader: slot + 8, where its vote had to arrive -
-                        solid, a vote is sent straight to it
+                        Reward leader, slot + 8 (solid: its vote&apos;s trip)
                       </span>
                       {turbine && waypoints && (
                         <span>
@@ -718,9 +769,7 @@ const ValidatorNetwork = () => {
                           slower than that are faint (a rough estimate)
                         </span>
                       )}
-                      <span>
-                        Hover a row, dot or route to see it; click to keep it.
-                      </span>
+                      <span>Hover or click a row, dot or route.</span>
                       {turbine && (
                         <Form.Check
                           type="switch"
@@ -919,29 +968,10 @@ const ValidatorNetwork = () => {
             </SectionCard>
           </Col>
         </Row>
-        {paceHistory &&
-          paceHistory.epochs.filter(
-            e => e.slotDuration?.handoffExcessP50Ms != null
-          ).length >= 2 && (
-            <SectionCard
-              title="Leader Handoffs Over Time"
-              icon="trending-up"
-              info="Its handoffs' overhead per epoch - the median less its own first block and the notarization floor (epochs before that was recorded: the direct one) - from the previous leader, and to the next leader where recorded, against the cluster's: a move or a provider change shows as a step. Click an epoch to open it."
-            >
-              <HandoffTrend
-                pace={paceHistory}
-                epoch={epoch}
-                onPick={e => navigate(recordPath(address, e, 'network'))}
-              />
-            </SectionCard>
-          )}
         {/* Its pace: how fast it builds its own blocks, and window by
             window each slot's time and the handoffs either side. */}
         <Row className="g-3">
-          <Col xs={12} xl={4}>
-            <SlotPaceCard record={producer} board={producerBoard} />
-          </Col>
-          <Col xs={12} xl={8}>
+          <Col xs={12}>
             {voteAddress && (producer || !producerBoard) && (
               <ProducerWindowsTable
                 voteKey={voteAddress}

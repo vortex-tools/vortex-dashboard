@@ -23,8 +23,6 @@ import useLiveWindows, { when } from 'hooks/useLiveWindows';
 import useWindowHandoffs, { WindowHandoffs } from 'hooks/useWindowHandoffs';
 
 const PAGE = PRODUCTION_WINDOWS_PAGE;
-/** A handoff slower than this (ms) is tinted, as on Cluster Status. */
-const SLOW_HANDOFF_MS = 300;
 // Slot outcomes that are known (else the slot is still ahead).
 const DECIDED = ['block', 'skipped', 'noData'];
 // A block that carried less than this share of the online stake is thin
