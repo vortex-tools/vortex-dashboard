@@ -3,7 +3,7 @@ import { SlotPaceCard } from 'components/validator/SkipCausesCard';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
-import HandoffCard from 'components/network/HandoffCard';
+import HandoffCard, { HANDOFF_INFO } from 'components/network/HandoffCard';
 import HandoffTrend from 'components/network/HandoffTrend';
 import NetworkMap, {
   MapMode,
@@ -57,6 +57,24 @@ type VoteSort = 'slot' | 'producer' | 'reward' | 'vote';
 
 /** Where the map's last-picked view is kept (this browser). */
 const MAP_VIEW_KEY = 'vx-network-map-view';
+/** The card beside the map, per view. */
+const SIDE: Record<
+  'handoffs' | 'divergent' | 'hosts',
+  { title: string; icon: string; info: string }
+> = {
+  handoffs: { title: 'Leader Handoffs', icon: 'shuffle', info: HANDOFF_INFO },
+  divergent: {
+    title: 'Divergent Votes',
+    icon: 'git-branch',
+    info: "Its skip votes on notarized blocks and its votes never counted, newest first, ten at a time (the map shows the page): each slot's block producer and reward leader (slot + 8) with their place and network floor. Hover or click a row for its route on the map. Offline runs are left out."
+  },
+  hosts: {
+    title: 'Host Moves',
+    icon: 'server',
+    info: 'Its failovers (to a spare running the same identity, and back) and moves to a new host, newest first, as on the map; moves within a place are listed only.'
+  }
+};
+
 /** Whether the divergent votes map draws Turbine's waypoints. */
 const WAYPOINTS_KEY = 'vx-network-turbine-waypoints';
 
@@ -361,81 +379,175 @@ const ValidatorNetwork = () => {
     return (
       <div className="d-flex flex-column gap-3">
         <Row className="g-3">
-          <Col xs={12}>
-            <SectionCard
-              title="Map"
-              icon="globe"
-              info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its overhead - the median handoff less its first block (~144 ms: Agave ends it 56 ms before its slot is up) and the direct network floor (the fibre-speed distance straight between them) - against the cluster's on the same route. Where its region figures have the notarization floor (the round the next leader waits for) they're against it, else the direct floor - then they run higher than the overall Overhead: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip), each labeled with its floor (a block's also along its estimated Turbine path). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
-              aside={
-                <ButtonGroup
-                  size="sm"
-                  // Full-size buttons, set into the header's padding
-                  // (12 px above the ~16 px title row, 8 below): centered,
-                  // and the header no taller than Where It Runs'.
-                  className="vx-header-control"
-                >
-                  {views.map(([k, label, has]) => (
-                    <ToggleButton
-                      key={k}
-                      id={`network-map-${k}`}
-                      type="radio"
-                      name="network-map"
-                      variant="soft-secondary"
-                      value={k}
-                      checked={view === k}
-                      disabled={!has}
-                      onChange={() => setMode(k)}
-                    >
-                      {label}
-                    </ToggleButton>
-                  ))}
-                </ButtonGroup>
-              }
-            >
-              {/* Desktop: the map on one half, what it shows on the
-                  other (the handoffs table, the votes, the hosts). */}
-              <Row className="g-3">
-                <Col xs={12} lg={6}>
-                  {/* On desktop the map stays in view while its side's
-                      table scrolls past. */}
-                  <div className="vx-sticky-map">
-                    <NetworkMap
-                      geo={geo}
-                      self={node}
-                      mode={mapMode}
-                      handoffs={handoffs}
-                      votes={pageVotes}
-                      highlight={highlight}
-                      onHighlight={setHighlight}
-                      moves={shownMoves}
-                      turbine={turbine}
-                      highlightMove={hoverMove?.route ?? null}
-                      onHighlightMove={route =>
-                        setHoverMove(route ? { route } : null)
-                      }
-                      onPick={pick}
-                      waypoints={waypoints}
-                      onPickMove={route => pickMove(route ? { route } : null)}
-                      nameOf={nameOf}
-                    />
-                  </div>
-                </Col>
-                <Col xs={12} lg={6}>
-                  {view === 'handoffs' &&
-                    (producer?.slotDuration?.handoff ? (
-                      <HandoffCard
-                        record={producer}
-                        board={producerBoard}
-                        bare
-                      />
-                    ) : producerBoard ? (
-                      <UntrackedState>
-                        No handoffs into its leader windows this epoch.
-                      </UntrackedState>
-                    ) : (
-                      <DelayedSpinner loading label="Loading handoffs…" />
+          {/* Desktop: the map (its own card, staying in view) on one
+              half, what it shows in a card on the other. */}
+          <Col xs={12} lg={6}>
+            <div className="vx-sticky-map">
+              <SectionCard
+                title="Map"
+                icon="globe"
+                info="Drag to pan; Ctrl (⌘) + scroll, a pinch or the buttons zoom. Handoffs: each region its previous leaders were in, with a line to it - hover one for its figures (its handoff count among them), colored by its overhead - the median handoff less its first block (~144 ms: Agave ends it 56 ms before its slot is up) and the direct network floor (the fibre-speed distance straight between them) - against the cluster's on the same route. Where its region figures have the notarization floor (the round the next leader waits for) they're against it, else the direct floor - then they run higher than the overall Overhead: green within 10 ms, amber up to 40 ms more, red beyond. Divergent votes: its skip votes on notarized blocks and its votes never counted - ten at a time in the table's order - every block producer (blue) and reward leader (amber: slot + 8's leader, whose block carries the reward certificate) as a dot; hover a row for its route - a dotted arrow from the producer to it (the block's trip, through Turbine: relayed, so the floor is a minimum) and from it to the reward leader (its vote's trip), each labeled with its floor (a block's also along its estimated Turbine path). The table gives each one's place and network floor (red: too late for a block that made the chain; amber: another miss). Offline runs are left out. Hosts: every place it ran from, an arrow per failover (amber) or move (accent colour) between them; moves within a place are listed only."
+                aside={
+                  <ButtonGroup
+                    size="sm"
+                    // Full-size buttons, set into the header's padding
+                    // (12 px above the ~16 px title row, 8 below): centered,
+                    // and the header no taller than Where It Runs'.
+                    className="vx-header-control"
+                  >
+                    {views.map(([k, label, has]) => (
+                      <ToggleButton
+                        key={k}
+                        id={`network-map-${k}`}
+                        type="radio"
+                        name="network-map"
+                        variant="soft-secondary"
+                        value={k}
+                        checked={view === k}
+                        disabled={!has}
+                        onChange={() => setMode(k)}
+                      >
+                        {label}
+                      </ToggleButton>
                     ))}
-                  {view === 'hosts' && (
+                  </ButtonGroup>
+                }
+              >
+                <NetworkMap
+                  geo={geo}
+                  self={node}
+                  mode={mapMode}
+                  handoffs={handoffs}
+                  votes={pageVotes}
+                  highlight={highlight}
+                  onHighlight={setHighlight}
+                  moves={shownMoves}
+                  turbine={turbine}
+                  highlightMove={hoverMove?.route ?? null}
+                  onHighlightMove={route =>
+                    setHoverMove(route ? { route } : null)
+                  }
+                  onPick={pick}
+                  waypoints={waypoints}
+                  onPickMove={route => pickMove(route ? { route } : null)}
+                  nameOf={nameOf}
+                />
+              </SectionCard>
+            </div>
+          </Col>
+          <Col xs={12} lg={6}>
+            <SectionCard
+              title={SIDE[view].title}
+              icon={SIDE[view].icon}
+              info={SIDE[view].info}
+            >
+              {view === 'handoffs' &&
+                (producer?.slotDuration?.handoff ? (
+                  <HandoffCard record={producer} board={producerBoard} bare />
+                ) : producerBoard ? (
+                  <UntrackedState>
+                    No handoffs into its leader windows this epoch.
+                  </UntrackedState>
+                ) : (
+                  <DelayedSpinner loading label="Loading handoffs…" />
+                ))}
+              {view === 'hosts' && (
+                <Table
+                  responsive
+                  size="sm"
+                  className="data-table compact-rows fs-9 mt-2 mb-0"
+                >
+                  <thead>
+                    <tr>
+                      <th>Epoch</th>
+                      <th>Change</th>
+                      <th>From → to</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shownMoves.map((m, i) => (
+                      <tr
+                        key={i}
+                        onMouseEnter={() =>
+                          setHoverMove({ row: i, route: routeKey(m) })
+                        }
+                        onMouseLeave={() => setHoverMove(null)}
+                        onClick={() => pickMove({ row: i, route: routeKey(m) })}
+                        className={m.epoch === epoch ? 'fw-semibold' : ''}
+                        style={{
+                          cursor: 'pointer',
+                          // A row hovered: the others fade; an arrow: every
+                          // row of other directions does.
+                          ...(hoverMove &&
+                          !(hoverMove.row != null
+                            ? hoverMove.row === i
+                            : hoverMove.route === routeKey(m))
+                            ? { opacity: 0.35 }
+                            : {})
+                        }}
+                      >
+                        <td className="text-nowrap">
+                          <Link to={recordPath(address, m.epoch, 'network')}>
+                            {m.epoch}
+                          </Link>
+                        </td>
+                        <td
+                          className={`text-nowrap ${m.kind === 'failover' ? 'text-warning-emphasis' : ''}`}
+                        >
+                          {m.kind === 'failover' ? 'Failover' : 'Moved'}
+                        </td>
+                        <td>
+                          {m.fromLabel}{' '}
+                          <span className="text-body-tertiary">→</span>{' '}
+                          {m.toLabel}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+              {view === 'hosts' && (
+                <div className="d-flex flex-wrap gap-3 fs-10 text-body-tertiary mt-2">
+                  <span>
+                    <span
+                      className="d-inline-block align-middle me-1 bg-warning"
+                      style={{ width: 14, height: 3 }}
+                    />
+                    Failover: to a spare running the same identity (and back)
+                  </span>
+                  <span>
+                    <span
+                      className="d-inline-block align-middle me-1 bg-primary"
+                      style={{ width: 14, height: 3 }}
+                    />
+                    Moved: to a new host for good
+                  </span>
+                </div>
+              )}
+              {view === 'hosts' && moves.length > HOST_MOVES_SHOWN && (
+                <div className="d-flex justify-content-between fs-10 text-body-tertiary mt-2">
+                  <span>
+                    {allMoves
+                      ? `All ${moves.length.toLocaleString()} moves`
+                      : `The latest ${HOST_MOVES_SHOWN} of ${moves.length.toLocaleString()} moves`}
+                    , on the map and here
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 fs-10"
+                    onClick={() => setAllMoves(a => !a)}
+                  >
+                    {allMoves ? 'Show fewer' : 'Show all'}
+                  </button>
+                </div>
+              )}
+              {isVotes &&
+                (tabVotes.length === 0 ? (
+                  <p className="fs-9 text-body-tertiary mt-2 mb-0">
+                    {!timeline ? 'Loading its votes…' : 'No divergent votes.'}
+                  </p>
+                ) : (
+                  <>
                     <Table
                       responsive
                       size="sm"
@@ -443,324 +555,213 @@ const ValidatorNetwork = () => {
                     >
                       <thead>
                         <tr>
-                          <th>Epoch</th>
-                          <th>Change</th>
-                          <th>From → to</th>
+                          {(
+                            [
+                              [
+                                'slot',
+                                voteSort.key !== 'slot'
+                                  ? 'Slot'
+                                  : voteSort.desc
+                                    ? 'Slot (newest)'
+                                    : 'Slot (oldest)',
+                                undefined,
+                                ''
+                              ],
+                              [
+                                'producer',
+                                'Block producer',
+                                "The slot's leader, whose block it voted on. Its block reaches this validator through Turbine (shreds relayed on the way), so the floor is a minimum. Sorts by it",
+                                ''
+                              ],
+                              [
+                                'reward',
+                                'Reward leader',
+                                "Slot + 8's leader, whose block carries the slot's reward certificate - where its vote had to arrive; sorts by its network floor",
+                                ''
+                              ],
+                              [
+                                'vote',
+                                'Its vote',
+                                undefined,
+                                'd-none d-sm-table-cell'
+                              ]
+                            ] as Array<
+                              [VoteSort, string, string | undefined, string]
+                            >
+                          ).map(([key, label, title, cls]) => (
+                            <th
+                              key={key}
+                              role="button"
+                              className={`text-nowrap ${cls}`}
+                              title={title}
+                              onClick={() => sortBy(key)}
+                            >
+                              {label}
+                              {key === 'slot' ? '' : sortMark(key)}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {shownMoves.map((m, i) => (
-                          <tr
-                            key={i}
-                            onMouseEnter={() =>
-                              setHoverMove({ row: i, route: routeKey(m) })
-                            }
-                            onMouseLeave={() => setHoverMove(null)}
-                            onClick={() =>
-                              pickMove({ row: i, route: routeKey(m) })
-                            }
-                            className={m.epoch === epoch ? 'fw-semibold' : ''}
-                            style={{
-                              cursor: 'pointer',
-                              // A row hovered: the others fade; an arrow: every
-                              // row of other directions does.
-                              ...(hoverMove &&
-                              !(hoverMove.row != null
-                                ? hoverMove.row === i
-                                : hoverMove.route === routeKey(m))
-                                ? { opacity: 0.35 }
-                                : {})
-                            }}
-                          >
-                            <td className="text-nowrap">
-                              <Link
-                                to={recordPath(address, m.epoch, 'network')}
-                              >
-                                {m.epoch}
-                              </Link>
-                            </td>
-                            <td
-                              className={`text-nowrap ${m.kind === 'failover' ? 'text-warning-emphasis' : ''}`}
+                        {pageVotes.map(v => {
+                          const to = coord(me);
+                          const k = DIVERGENCE[v.kind];
+                          // A leader's name, then where it was and the
+                          // network floor between it and this validator.
+                          const who = (
+                            n: string | null,
+                            role: 'info' | 'warning'
+                          ) => {
+                            if (!n)
+                              return (
+                                <span className="text-body-tertiary">—</span>
+                              );
+                            const g = geo.get(n);
+                            const c = coord(g);
+                            const floor =
+                              c && to ? fibreMs(distanceKm(c, to)) : null;
+                            return (
+                              <>
+                                <div
+                                  className="text-truncate"
+                                  style={{ maxWidth: 'min(170px, 26vw)' }}
+                                >
+                                  {/* Its color on the map. */}
+                                  <span
+                                    className={`d-inline-block rounded-circle align-middle me-1 bg-${role}`}
+                                    style={{ width: 7, height: 7 }}
+                                  />
+                                  {nameOf(n)}
+                                </div>
+                                <div
+                                  className="fs-10 text-body-tertiary text-truncate"
+                                  style={{ maxWidth: 'min(170px, 26vw)' }}
+                                >
+                                  {floor != null &&
+                                    `${Math.round(floor)} ms · `}
+                                  {placeOf(g) ?? 'unknown place'}
+                                </div>
+                              </>
+                            );
+                          };
+                          return (
+                            <tr
+                              key={v.slot}
+                              onMouseEnter={() => setHighlight(v.slot)}
+                              onMouseLeave={() => setHighlight(null)}
+                              onClick={() => pick(v.slot)}
+                              style={{
+                                cursor: 'pointer',
+                                ...(highlight != null && highlight !== v.slot
+                                  ? { opacity: 0.35 }
+                                  : {})
+                              }}
                             >
-                              {m.kind === 'failover' ? 'Failover' : 'Moved'}
-                            </td>
-                            <td>
-                              {m.fromLabel}{' '}
-                              <span className="text-body-tertiary">→</span>{' '}
-                              {m.toLabel}
-                            </td>
-                          </tr>
-                        ))}
+                              <td>
+                                <Link
+                                  to={`/slot/${v.slot}`}
+                                  className="font-monospace"
+                                >
+                                  {v.slot.toLocaleString()}
+                                </Link>
+                                <div
+                                  className={`d-sm-none fs-10 text-nowrap text-${k.tone}`}
+                                >
+                                  {k.label}
+                                </div>
+                              </td>
+                              <td>{who(v.leader, 'info')}</td>
+                              <td>{who(v.payer, 'warning')}</td>
+                              <td
+                                className={`d-none d-sm-table-cell text-${k.tone}`}
+                              >
+                                {k.label}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </Table>
-                  )}
-                  {view === 'hosts' && (
                     <div className="d-flex flex-wrap gap-3 fs-10 text-body-tertiary mt-2">
                       <span>
                         <span
-                          className="d-inline-block align-middle me-1 bg-warning"
-                          style={{ width: 14, height: 3 }}
+                          className="d-inline-block rounded-circle align-middle me-1 bg-info"
+                          style={{ width: 8, height: 8 }}
                         />
-                        Failover: to a spare running the same identity (and
-                        back)
+                        Block producer: whose block it voted on - dotted, its
+                        block reaches it through Turbine (relayed shreds), so
+                        the floor shown is a minimum
                       </span>
                       <span>
                         <span
-                          className="d-inline-block align-middle me-1 bg-primary"
-                          style={{ width: 14, height: 3 }}
+                          className="d-inline-block rounded-circle align-middle me-1 bg-warning"
+                          style={{ width: 8, height: 8 }}
                         />
-                        Moved: to a new host for good
+                        Reward leader: slot + 8, where its vote had to arrive -
+                        solid, a vote is sent straight to it
                       </span>
-                    </div>
-                  )}
-                  {view === 'hosts' && moves.length > HOST_MOVES_SHOWN && (
-                    <div className="d-flex justify-content-between fs-10 text-body-tertiary mt-2">
-                      <span>
-                        {allMoves
-                          ? `All ${moves.length.toLocaleString()} moves`
-                          : `The latest ${HOST_MOVES_SHOWN} of ${moves.length.toLocaleString()} moves`}
-                        , on the map and here
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-link p-0 fs-10"
-                        onClick={() => setAllMoves(a => !a)}
-                      >
-                        {allMoves ? 'Show fewer' : 'Show all'}
-                      </button>
-                    </div>
-                  )}
-                  {isVotes &&
-                    (tabVotes.length === 0 ? (
-                      <p className="fs-9 text-body-tertiary mt-2 mb-0">
-                        {!timeline
-                          ? 'Loading its votes…'
-                          : 'No divergent votes.'}
-                      </p>
-                    ) : (
-                      <>
-                        <Table
-                          responsive
-                          size="sm"
-                          className="data-table compact-rows fs-9 mt-2 mb-0"
-                        >
-                          <thead>
-                            <tr>
-                              {(
-                                [
-                                  [
-                                    'slot',
-                                    voteSort.key !== 'slot'
-                                      ? 'Slot'
-                                      : voteSort.desc
-                                        ? 'Slot (newest)'
-                                        : 'Slot (oldest)',
-                                    undefined,
-                                    ''
-                                  ],
-                                  [
-                                    'producer',
-                                    'Block producer',
-                                    "The slot's leader, whose block it voted on. Its block reaches this validator through Turbine (shreds relayed on the way), so the floor is a minimum. Sorts by it",
-                                    ''
-                                  ],
-                                  [
-                                    'reward',
-                                    'Reward leader',
-                                    "Slot + 8's leader, whose block carries the slot's reward certificate - where its vote had to arrive; sorts by its network floor",
-                                    ''
-                                  ],
-                                  [
-                                    'vote',
-                                    'Its vote',
-                                    undefined,
-                                    'd-none d-sm-table-cell'
-                                  ]
-                                ] as Array<
-                                  [VoteSort, string, string | undefined, string]
-                                >
-                              ).map(([key, label, title, cls]) => (
-                                <th
-                                  key={key}
-                                  role="button"
-                                  className={`text-nowrap ${cls}`}
-                                  title={title}
-                                  onClick={() => sortBy(key)}
-                                >
-                                  {label}
-                                  {key === 'slot' ? '' : sortMark(key)}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pageVotes.map(v => {
-                              const to = coord(me);
-                              const k = DIVERGENCE[v.kind];
-                              // A leader's name, then where it was and the
-                              // network floor between it and this validator.
-                              const who = (
-                                n: string | null,
-                                role: 'info' | 'warning'
-                              ) => {
-                                if (!n)
-                                  return (
-                                    <span className="text-body-tertiary">
-                                      —
-                                    </span>
-                                  );
-                                const g = geo.get(n);
-                                const c = coord(g);
-                                const floor =
-                                  c && to ? fibreMs(distanceKm(c, to)) : null;
-                                return (
-                                  <>
-                                    <div
-                                      className="text-truncate"
-                                      style={{ maxWidth: 'min(170px, 26vw)' }}
-                                    >
-                                      {/* Its color on the map. */}
-                                      <span
-                                        className={`d-inline-block rounded-circle align-middle me-1 bg-${role}`}
-                                        style={{ width: 7, height: 7 }}
-                                      />
-                                      {nameOf(n)}
-                                    </div>
-                                    <div
-                                      className="fs-10 text-body-tertiary text-truncate"
-                                      style={{ maxWidth: 'min(170px, 26vw)' }}
-                                    >
-                                      {floor != null &&
-                                        `${Math.round(floor)} ms · `}
-                                      {placeOf(g) ?? 'unknown place'}
-                                    </div>
-                                  </>
-                                );
-                              };
-                              return (
-                                <tr
-                                  key={v.slot}
-                                  onMouseEnter={() => setHighlight(v.slot)}
-                                  onMouseLeave={() => setHighlight(null)}
-                                  onClick={() => pick(v.slot)}
-                                  style={{
-                                    cursor: 'pointer',
-                                    ...(highlight != null &&
-                                    highlight !== v.slot
-                                      ? { opacity: 0.35 }
-                                      : {})
-                                  }}
-                                >
-                                  <td>
-                                    <Link
-                                      to={`/slot/${v.slot}`}
-                                      className="font-monospace"
-                                    >
-                                      {v.slot.toLocaleString()}
-                                    </Link>
-                                    <div
-                                      className={`d-sm-none fs-10 text-nowrap text-${k.tone}`}
-                                    >
-                                      {k.label}
-                                    </div>
-                                  </td>
-                                  <td>{who(v.leader, 'info')}</td>
-                                  <td>{who(v.payer, 'warning')}</td>
-                                  <td
-                                    className={`d-none d-sm-table-cell text-${k.tone}`}
-                                  >
-                                    {k.label}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </Table>
-                        <div className="d-flex flex-wrap gap-3 fs-10 text-body-tertiary mt-2">
-                          <span>
-                            <span
-                              className="d-inline-block rounded-circle align-middle me-1 bg-info"
-                              style={{ width: 8, height: 8 }}
-                            />
-                            Block producer: whose block it voted on - dotted,
-                            its block reaches it through Turbine (relayed
-                            shreds), so the floor shown is a minimum
-                          </span>
-                          <span>
-                            <span
-                              className="d-inline-block rounded-circle align-middle me-1 bg-warning"
-                              style={{ width: 8, height: 8 }}
-                            />
-                            Reward leader: slot + 8, where its vote had to
-                            arrive - solid, a vote is sent straight to it
-                          </span>
-                          {turbine && waypoints && (
-                            <span>
-                              <span
-                                className="d-inline-block rounded-circle align-middle me-1 border border-info"
-                                style={{
-                                  width: 8,
-                                  height: 8,
-                                  borderWidth: 1.5
-                                }}
-                              />
-                              Turbine hop: a root relaying the block&apos;s
-                              shreds, one per continent - its + ms is what that
-                              path adds over the straight line. Any half of a
-                              block&apos;s shreds rebuilds it, so it&apos;s in
-                              once the fastest paths carrying half the stake
-                              have delivered; paths slower than that are faint
-                              (a rough estimate)
-                            </span>
-                          )}
-                          <span>
-                            Hover a row, dot or route to see it; click to keep
-                            it.
-                          </span>
-                          {turbine && (
-                            <Form.Check
-                              type="switch"
-                              id="network-turbine-waypoints"
-                              className="mb-0 fs-10"
-                              checked={waypoints}
-                              onChange={e => setWaypoints(e.target.checked)}
-                              label="Turbine hops"
-                              title="Off: the block's paths as one arrow, labeled with the slowest path's floor"
-                            />
-                          )}
-                          {turbine && (
-                            <span className="w-100">
-                              Estimated Turbine paths: the leader sends each
-                              shred to one root, drawn by stake, so it changes
-                              shred to shred - a path through each
-                              continent&apos;s heaviest data center is drawn,
-                              heavier the more of the stake is there. This
-                              validator is #{turbine.rank.toLocaleString()} by
-                              stake, so{' '}
-                              {turbine.layer === 1
-                                ? `in layer 1 (the top ${TURBINE_FANOUT}): a shred reaches it from the root, 2 hops from the leader.`
-                                : `in layer 2 (below the top ${TURBINE_FANOUT}): a shred reaches it through a layer-1 node, 3 hops from the leader.`}{' '}
-                              Not stake-weighted beyond that; hop counts ignore
-                              geography and latency.
-                            </span>
-                          )}
-                        </div>
-                        {votePages > 1 && (
-                          <Pager
-                            page={votePage}
-                            pages={votePages}
-                            total={tabVotes.length}
-                            pageSize={VOTES_PAGE}
-                            shown={pageVotes.length}
-                            onPrev={() => setVotePage(p => p - 1)}
-                            onNext={() => setVotePage(p => p + 1)}
-                            onPage={setVotePage}
+                      {turbine && waypoints && (
+                        <span>
+                          <span
+                            className="d-inline-block rounded-circle align-middle me-1 border border-info"
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderWidth: 1.5
+                            }}
                           />
-                        )}
-                      </>
-                    ))}
-                </Col>
-              </Row>
+                          Turbine hop: a root relaying the block&apos;s shreds,
+                          one per continent - its + ms is what that path adds
+                          over the straight line. Any half of a block&apos;s
+                          shreds rebuilds it, so it&apos;s in once the fastest
+                          paths carrying half the stake have delivered; paths
+                          slower than that are faint (a rough estimate)
+                        </span>
+                      )}
+                      <span>
+                        Hover a row, dot or route to see it; click to keep it.
+                      </span>
+                      {turbine && (
+                        <Form.Check
+                          type="switch"
+                          id="network-turbine-waypoints"
+                          className="mb-0 fs-10"
+                          checked={waypoints}
+                          onChange={e => setWaypoints(e.target.checked)}
+                          label="Turbine hops"
+                          title="Off: the block's paths as one arrow, labeled with the slowest path's floor"
+                        />
+                      )}
+                      {turbine && (
+                        <span className="w-100">
+                          Estimated Turbine paths: the leader sends each shred
+                          to one root, drawn by stake, so it changes shred to
+                          shred - a path through each continent&apos;s heaviest
+                          data center is drawn, heavier the more of the stake is
+                          there. This validator is #
+                          {turbine.rank.toLocaleString()} by stake, so{' '}
+                          {turbine.layer === 1
+                            ? `in layer 1 (the top ${TURBINE_FANOUT}): a shred reaches it from the root, 2 hops from the leader.`
+                            : `in layer 2 (below the top ${TURBINE_FANOUT}): a shred reaches it through a layer-1 node, 3 hops from the leader.`}{' '}
+                          Not stake-weighted beyond that; hop counts ignore
+                          geography and latency.
+                        </span>
+                      )}
+                    </div>
+                    {votePages > 1 && (
+                      <Pager
+                        page={votePage}
+                        pages={votePages}
+                        total={tabVotes.length}
+                        pageSize={VOTES_PAGE}
+                        shown={pageVotes.length}
+                        onPrev={() => setVotePage(p => p - 1)}
+                        onNext={() => setVotePage(p => p + 1)}
+                        onPage={setVotePage}
+                      />
+                    )}
+                  </>
+                ))}
             </SectionCard>
           </Col>
         </Row>

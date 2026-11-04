@@ -71,6 +71,11 @@ const OverheadCell = ({
   </td>
 );
 
+/** What the Leader Handoffs table shows (its card's, and the Network
+ *  tab's side card's info). */
+export const HANDOFF_INFO =
+  "To it: its first block after the previous leader's last. From it: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the overhead (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the notarization floor where its region figures have it, else the direct floor (the distance straight between the two) on both sides - then they run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor.";
+
 /**
  * Its handoffs for an epoch in one phone-width table: all of them, then by
  * where the other leader was - the median from the previous leader, its
@@ -229,11 +234,7 @@ const HandoffCard = ({
   return bare ? (
     body
   ) : (
-    <SectionCard
-      title="Leader Handoffs"
-      icon="shuffle"
-      info="To it: its first block after the previous leader's last. From it: the next leader's first block after its last. A handoff holds the receiving leader's first block (~144 ms: Agave ends it 56 ms before its slot is up) plus the wait before it can start: without Fast Leader Handover it starts only once the previous block is notarized - the block reaching the voters through Turbine, then 60% of stake's votes reaching it. The notarization floor is that trip at fibre speed, so the overhead (the median less its block and that floor) is what the model leaves out - replay, vote processing - plus its error; compare with the cluster's. By region: by where the other leader was, against the notarization floor where its region figures have it, else the direct floor (the distance straight between the two) on both sides - then they run higher than All. Epochs before the notarization floor was recorded use the direct floor throughout. Hover a figure for its count, 90th percentile and floor."
-    >
+    <SectionCard title="Leader Handoffs" icon="shuffle" info={HANDOFF_INFO}>
       {body}
     </SectionCard>
   );
