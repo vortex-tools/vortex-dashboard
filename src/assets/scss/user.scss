@@ -636,3 +636,31 @@ th.leaderboard-sticky-col {
 [data-bs-theme='dark'] .vx-text-offline {
   color: #e26bd0;
 }
+
+// Divergent Votes chips: orange (a poor reward block) and magenta (offline),
+// apart from Bootstrap's red and amber.
+.vx-chip-orange {
+  background: rgba(232, 89, 12, 0.14);
+  color: #c2410c;
+}
+.vx-chip-offline {
+  background: rgba(181, 23, 158, 0.12);
+  color: #a3148d;
+}
+[data-bs-theme='dark'] .vx-chip-orange {
+  background: rgba(255, 146, 43, 0.18);
+  color: #ffa94d;
+}
+[data-bs-theme='dark'] .vx-chip-offline {
+  background: rgba(226, 107, 208, 0.18);
+  color: #e980d9;
+}
+// Divergent Votes: an agreeing slot, faded green so it recedes.
+.vx-chip-agreed {
+  background: rgba(25, 135, 84, 0.08);
+  color: rgba(25, 135, 84, 0.75);
+}
+[data-bs-theme='dark'] .vx-chip-agreed {
+  background: rgba(117, 183, 152, 0.1);
+  color: rgba(117, 183, 152, 0.75);
+}

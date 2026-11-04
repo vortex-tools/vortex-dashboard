@@ -93,7 +93,7 @@ const CAUSE: Record<
     title: `Part of a run of ${OFFLINE_RUN_SLOTS}+ consecutive misses (spanning several producers' windows): not voting`
   },
   thin: {
-    label: 'Poor reward block',
+    label: 'Left out',
     cls: 'text-warning',
     tone: 'warning',
     title:
@@ -107,6 +107,58 @@ const CAUSE: Record<
       "The reward block (slot + 8, see Reward leader) included other voters but not this one: its vote arrived late or didn't arrive"
   }
 };
+
+/** A divergent slot's chip: its color and one word for what happened -
+ *  late (its vote didn't get in), left out (the reward block left 2%+ of
+ *  the online stake out), offline, missed (cause not known), skip (voted
+ *  skip on a notarized block), notarized (on a block that didn't make the
+ *  chain). */
+const chipOf = (
+  kind: Divergence,
+  cause: MissCause | null
+): { word: string; cls: string } =>
+  kind === 'late-skip'
+    ? { word: 'skip', cls: 'bg-warning-subtle text-warning-emphasis' }
+    : kind === 'notarized-skipped'
+      ? { word: 'notarized', cls: 'bg-warning-subtle text-warning-emphasis' }
+      : cause === 'offline'
+        ? { word: 'offline', cls: 'vx-chip-offline' }
+        : cause === 'thin'
+          ? { word: 'left out', cls: 'vx-chip-orange' }
+          : cause === 'late'
+            ? { word: 'late', cls: 'bg-danger-subtle text-danger' }
+            : { word: 'missed', cls: 'bg-danger-subtle text-danger' };
+
+/** The chips' key, under the table. */
+const ChipLegend = () => (
+  <div className="d-flex flex-wrap align-items-center gap-3 fs-10 text-body-tertiary mt-2">
+    <span>
+      <span className="rounded-1 px-2 vx-chip-agreed">landed</span> its vote
+      agreed with the chain and counted
+    </span>
+    {(
+      [
+        ['late', 'bg-danger-subtle text-danger', "its vote didn't get in"],
+        [
+          'left out',
+          'vx-chip-orange',
+          "its reward block left out others' votes too"
+        ],
+        ['offline', 'vx-chip-offline', 'not voting'],
+        [
+          'skip',
+          'bg-warning-subtle text-warning-emphasis',
+          'voted skip on a notarized block'
+        ]
+      ] as const
+    ).map(([w, cls, what]) => (
+      <span key={w}>
+        <span className={`rounded-1 px-2 fw-semibold ${cls}`}>{w}</span> {what}
+      </span>
+    ))}
+    <span>% - the stake that voted the way the chain went</span>
+  </div>
+);
 
 /**
  * Every slot where the validator's vote disagreed with what the chain did
@@ -126,33 +178,20 @@ const AgreedVote = ({
 }) => {
   if (code !== OUTCOME.notarized && code !== OUTCOME.skipped) return null;
   const v = info?.votes;
-  // One line, as a divergent slot's cell: the label, then the shares.
-  // Pale: everything is fine here, so it recedes and the misses stand out.
+  // Fine: a faded green chip, so it recedes and the misses stand out.
   return (
-    <div className="d-flex align-items-baseline justify-content-center gap-2 text-nowrap">
+    <div className="text-center text-nowrap">
       <span
-        className="text-success"
-        style={{ opacity: 0.55 }}
-        title={
-          code === OUTCOME.notarized
-            ? 'Its notarize vote landed: agreed with the chain'
-            : 'It voted skip, and the chain skipped the slot: agreed'
-        }
+        className="d-inline-flex align-items-baseline gap-1 rounded-1 px-2 fs-10 vx-chip-agreed"
+        style={{ lineHeight: '1.35rem' }}
+        title={`${code === OUTCOME.notarized ? 'Its notarize vote landed' : 'It voted skip, and the chain skipped the slot'}: agreed with the chain${v ? `. Notarize / skip reward certificates: ${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}` : ''}`}
       >
-        {code === OUTCOME.notarized ? 'Notarized' : 'Skip'}
-      </span>
-      <span
-        className="fs-10 font-monospace text-body-tertiary"
-        style={{ opacity: 0.7 }}
-        title={
-          v
-            ? `Stake in its notarize / skip reward certificates: ${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}`
-            : undefined
-        }
-      >
-        {v
-          ? ppb(code === OUTCOME.notarized ? v.notarStakePpb : v.skipStakePpb)
-          : '—'}
+        <span>landed</span>
+        {v && (
+          <span className="font-monospace">
+            {ppb(code === OUTCOME.notarized ? v.notarStakePpb : v.skipStakePpb)}
+          </span>
+        )}
       </span>
     </div>
   );
@@ -202,29 +241,35 @@ const SlotCell = ({
       : kind === 'late-skip'
         ? 'It voted skip, but the cluster notarized the block: the block likely reached it too late. Its skip vote still counts.'
         : null;
+  const chip = chipOf(kind, cause);
+  const share =
+    info === undefined
+      ? infoError
+        ? '—'
+        : '…'
+      : !v
+        ? '—'
+        : ppb(chainSkipped ? v.skipStakePpb : v.notarStakePpb);
   return (
-    <div className="d-flex align-items-baseline justify-content-center gap-2 text-nowrap">
+    <div className="text-center text-nowrap">
       <Link
         to={`/slot/${slot}${selfNode ? `?voter=${selfNode}` : ''}`}
-        className={`fw-semibold ${cls}`}
-        title={[`Slot ${slot.toLocaleString()}`, k.title, why, finText]
+        className={`d-inline-flex align-items-baseline gap-1 rounded-1 px-2 fs-10 text-decoration-none ${chip.cls}`}
+        style={{ lineHeight: '1.35rem' }}
+        title={[
+          `Slot ${slot.toLocaleString()}`,
+          k.title,
+          why,
+          v
+            ? `Notarize / skip reward certificates: ${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}`
+            : null,
+          finText
+        ]
           .filter(Boolean)
           .join('. ')}
       >
-        {k.label}
-      </Link>
-      <Link
-        to={`/slot/${slot + 8}${selfNode ? `?voter=${selfNode}&on=${slot}` : ''}`}
-        className="fs-10 font-monospace text-body-tertiary"
-        title={`Stake that voted the way the chain went (${chainSkipped ? 'skip' : 'notarize'})${v ? ` - notarize / skip reward certificates: ${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}` : ''}. Opens the reward block's unrewarded votes, this validator marked.`}
-      >
-        {info === undefined
-          ? infoError
-            ? '—'
-            : '…'
-          : !v
-            ? '—'
-            : ppb(chainSkipped ? v.skipStakePpb : v.notarStakePpb)}
+        <span className="fw-semibold">{chip.word}</span>
+        {cause !== 'offline' && <span className="font-monospace">{share}</span>}
       </Link>
     </div>
   );
@@ -382,7 +427,7 @@ const DivergentSlotsTable = ({
     ...(causeOf
       ? ([
           ['late', "Didn't get in", 'danger'],
-          ['thin', 'Poor reward block', 'warning'],
+          ['thin', 'Left out', 'warning'],
           ['offline', 'Offline', 'secondary']
         ] as Array<[Filter, string, string]>)
       : ([['missed', 'Missed', 'danger']] as Array<[Filter, string, string]>)),
@@ -474,7 +519,7 @@ const DivergentSlotsTable = ({
       <Table
         responsive
         size="sm"
-        className="data-table fs-9 mb-0"
+        className="data-table fs-9 mb-0 align-middle"
         style={{ tableLayout: 'fixed', minWidth: 940 }}
       >
         <colgroup>
@@ -580,7 +625,7 @@ const DivergentSlotsTable = ({
                   return (
                     <td
                       key={n}
-                      className={`text-center border-start${hoverSlot === slot ? ' bg-body-highlight' : ''}`}
+                      className={`text-center align-middle border-start${hoverSlot === slot ? ' bg-body-highlight' : ''}`}
                       // The hover is the cell's: its slot's path (its
                       // producer, this voter, its reward leader).
                       onMouseEnter={() => {
@@ -639,6 +684,7 @@ const DivergentSlotsTable = ({
           })}
         </tbody>
       </Table>
+      <ChipLegend />
       {pages > 1 && (
         <Pager
           page={page}
