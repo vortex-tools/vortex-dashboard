@@ -30,6 +30,9 @@ export interface BucketOutcomes {
   lateSkipped: number;
   missed: number;
   ineligible: number;
+  /** Its misses by cause, where known (late, left out by a poor reward
+   *  block, offline); the rest of `missed` is unclassified. */
+  missedBy?: { late: number; thin: number; offline: number };
 }
 
 export const SLOTS_PER_BUCKET = 1000;

@@ -34,7 +34,48 @@ const BucketOutcomeChart = ({
   buckets: BucketOutcomes[];
   onBucketClick?: (b: BucketOutcomes) => void;
 }) => {
-  const { getThemeColor } = useAppContext();
+  const { getThemeColor, isDark } = useAppContext();
+  // Misses by cause where the buckets carry it, colored as Divergent
+  // Votes' chips: late red, left out orange, offline magenta; the
+  // unclassified rest red too.
+  const split = buckets.some(b => b.missedBy);
+  const misses = split
+    ? [
+        {
+          name: 'Late',
+          color: getThemeColor('danger'),
+          data: buckets.map(b => b.missedBy?.late ?? 0)
+        },
+        {
+          name: 'Left out',
+          color: isDark ? '#ffa94d' : '#e8590c',
+          data: buckets.map(b => b.missedBy?.thin ?? 0)
+        },
+        {
+          name: 'Offline',
+          color: isDark ? '#e26bd0' : '#b5179e',
+          data: buckets.map(b => b.missedBy?.offline ?? 0)
+        },
+        {
+          name: 'Missed',
+          color: getThemeColor('danger'),
+          data: buckets.map(b =>
+            b.missedBy
+              ? b.missed -
+                b.missedBy.late -
+                b.missedBy.thin -
+                b.missedBy.offline
+              : b.missed
+          )
+        }
+      ].filter(m => m.data.some(v => v > 0))
+    : [
+        {
+          name: 'Missed (unpaid)',
+          color: getThemeColor('danger'),
+          data: buckets.map(b => b.missed)
+        }
+      ];
   const option = useMemo(
     () => ({
       animation: false,
@@ -60,8 +101,25 @@ const BucketOutcomeChart = ({
             `<div class="d-flex justify-content-between gap-3 fs-9"><span>${l}</span><span class="font-monospace">${v.toLocaleString()}</span></div>`;
           return (
             `<div class="fw-bold mb-1">Bucket ${b.bucket + 1} · slots ${b.firstSlot.toLocaleString()}–${(b.firstSlot + 999).toLocaleString()}</div>` +
-            line('Skipped blocks (paid)', b.lateSkipped) +
-            line('Missed (unpaid)', b.missed)
+            line('Voted skip (paid)', b.lateSkipped) +
+            (b.missedBy
+              ? line('Late (unpaid)', b.missedBy.late) +
+                line('Left out (unpaid)', b.missedBy.thin) +
+                line('Offline (unpaid)', b.missedBy.offline) +
+                (b.missed -
+                  b.missedBy.late -
+                  b.missedBy.thin -
+                  b.missedBy.offline >
+                0
+                  ? line(
+                      'Missed, cause not known',
+                      b.missed -
+                        b.missedBy.late -
+                        b.missedBy.thin -
+                        b.missedBy.offline
+                    )
+                  : '')
+              : line('Missed (unpaid)', b.missed))
           );
         }
       },
@@ -84,24 +142,25 @@ const BucketOutcomeChart = ({
       },
       series: [
         {
-          name: 'Skipped blocks (paid)',
+          name: 'Voted skip (paid)',
           type: 'bar',
           stack: 'x',
           barMaxWidth: 10,
-          itemStyle: { color: getThemeColor('warning') },
+          // Amber, apart from Left out's orange.
+          itemStyle: { color: isDark ? '#ffd43b' : '#f2b705' },
           data: buckets.map(b => b.lateSkipped)
         },
-        {
-          name: 'Missed (unpaid)',
+        ...misses.map(m => ({
+          name: m.name,
           type: 'bar',
           stack: 'x',
           barMaxWidth: 10,
-          itemStyle: { color: getThemeColor('danger') },
-          data: buckets.map(b => b.missed)
-        }
+          itemStyle: { color: m.color },
+          data: m.data
+        }))
       ]
     }),
-    [buckets, getThemeColor]
+    [buckets, getThemeColor, misses, isDark]
   );
   return (
     <ReactEChartsCore

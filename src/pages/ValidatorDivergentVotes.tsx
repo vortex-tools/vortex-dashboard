@@ -142,6 +142,23 @@ const ValidatorDivergentVotes = () => {
       return payer && thin.get(payer)?.has(s8) ? 'thin' : 'late';
     };
   }, [misses, timeline, leaderOf]);
+  // The timeline's buckets with their misses split by cause (late, left
+  // out, offline), where the causes are known.
+  const bucketsByCause = useMemo(() => {
+    if (!timeline) return [];
+    if (!causeOf) return timeline.buckets;
+    const { codes, firstSlot } = timeline;
+    return timeline.buckets.map(b => {
+      const by = { late: 0, thin: 0, offline: 0 };
+      const start = b.firstSlot - firstSlot;
+      for (let i = start; i < Math.min(start + 1000, codes.length); i++) {
+        if (codes[i] !== OUTCOME.missed) continue;
+        const c = causeOf(firstSlot + i);
+        if (c) by[c]++;
+      }
+      return { ...b, missedBy: by };
+    });
+  }, [timeline, causeOf]);
 
   // Where each producer was that epoch (today's if the API has none).
   // The epoch's, once known (an unknown epoch would load today's first).
@@ -192,7 +209,7 @@ const ValidatorDivergentVotes = () => {
                       icon="bar-chart-2"
                       info={`Skipped blocks and missed slots per 1,000-slot bucket · ${timeline.slots.toLocaleString()} slots ingested`}
                     >
-                      <BucketOutcomeChart buckets={timeline.buckets} />
+                      <BucketOutcomeChart buckets={bucketsByCause} />
                     </SectionCard>
                   )}
                 </div>
