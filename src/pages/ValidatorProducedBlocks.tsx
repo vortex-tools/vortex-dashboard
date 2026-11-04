@@ -1,18 +1,13 @@
-import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
-import { Col, Row } from 'react-bootstrap';
 import {
   SkippedSlotsCard,
-  SlotPaceCard,
   skippedTotal
 } from 'components/validator/SkipCausesCard';
 import UntrackedState from 'components/common/UntrackedState';
 import BlackholeVoters from 'components/validator/BlackholeVoters';
-import ConsensusRecordHeader, {
-  recordPath
-} from 'components/validator/ConsensusRecordHeader';
+import ConsensusRecordHeader from 'components/validator/ConsensusRecordHeader';
 import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
 import ProducingSection from 'components/validator/ProducingSection';
 import RecordSummary from 'components/validator/RecordSummary';
@@ -107,29 +102,9 @@ const ValidatorProducedBlocks = () => {
                     {clockLine(clockVerdict(producer)!)}
                   </WarningBanner>
                 )}
-                {/* Side by side on large screens. */}
-                <Row className="g-3">
-                  {/* No skipped slots: no card, and pace takes the row. */}
-                  {skippedTotal(producer) > 0 && (
-                    <Col xs={12} lg={6}>
-                      <SkippedSlotsCard
-                        record={producer}
-                        board={producerBoard}
-                      />
-                    </Col>
-                  )}
-                  <Col xs={12} lg={skippedTotal(producer) > 0 ? 6 : 12}>
-                    <SlotPaceCard
-                      record={producer}
-                      board={producerBoard}
-                      networkLink={
-                        NETWORK_TAB
-                          ? recordPath(address, epoch, 'network')
-                          : undefined
-                      }
-                    />
-                  </Col>
-                </Row>
+                {skippedTotal(producer) > 0 && (
+                  <SkippedSlotsCard record={producer} board={producerBoard} />
+                )}
                 <BlackholeVoters voteKey={recordKey} epoch={epoch} />
                 {(producer || !producerBoard) && (
                   <ProducerWindowsTable

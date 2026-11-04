@@ -126,39 +126,108 @@ export const SlotCell = ({ s }: { s: Slot }) => {
   );
 };
 
-/** A window's handoff one way: to it (before its slots, right-aligned
- *  against them) or from it (after, left-aligned). */
-const HandoffCell = ({
+/** How slow a time is against its reference (the cluster's median):
+ *  up to 10% over green, up to 25% amber, beyond red. */
+const paceTone = (ms: number, ref: number | null | undefined) =>
+  !ref
+    ? 'bg-body-secondary text-body'
+    : ms <= ref * 1.1
+      ? 'bg-success-subtle text-success'
+      : ms <= ref * 1.25
+        ? 'bg-warning-subtle text-warning'
+        : 'bg-danger-subtle text-danger';
+
+export type Pace = {
+  /** The cluster's median slot within a window. */
+  slotMs: number | null;
+  /** The cluster's median handoff (a window's first slot). */
+  handoffMs: number | null;
+};
+
+/** One slot's time, as SlotCell's box: from the block before to its
+ *  own, colored by how slow against the cluster's - the first slot's (a
+ *  handoff, unless it led the window before) against the cluster's
+ *  handoffs. */
+const SlotTimeCell = ({
+  slot,
+  t,
+  handoff,
+  pace
+}: {
+  slot: number;
+  t: WindowHandoffs['slots'][number] | undefined;
+  handoff: boolean;
+  pace: Pace | undefined;
+}) => {
+  const ref = handoff ? pace?.handoffMs : pace?.slotMs;
+  const cls =
+    t?.state === 'timed' && t.ms != null
+      ? paceTone(t.ms, ref)
+      : t?.state === 'skip'
+        ? 'bg-danger-subtle text-danger'
+        : 'bg-body-secondary text-body-tertiary';
+  const label =
+    t?.state === 'timed' && t.ms != null
+      ? `${Math.round(t.ms)}${t.skipped ? '*' : ''}`
+      : t?.state === 'skip'
+        ? 'skip'
+        : t?.state === 'clamped'
+          ? 'clock'
+          : '…';
+  const title =
+    t?.state === 'timed' && t.ms != null
+      ? `Slot ${slot.toLocaleString()}: ${Math.round(t.ms)} ms ${handoff ? "from the previous leader's last block (the handoff)" : 'from its block before'}${t.skipped ? ', across a skipped slot' : ''}${ref ? ` · cluster median ${Math.round(ref)} ms` : ''}`
+      : t?.state === 'clamped'
+        ? `Slot ${slot.toLocaleString()}: its block time is clamped (its clock is off), so it isn't timed`
+        : `Slot ${slot.toLocaleString()}`;
+  return (
+    <Link
+      to={`/slot/${slot}`}
+      className={`d-inline-block rounded-1 text-center font-monospace fs-10 px-1 ${cls}`}
+      style={{
+        minWidth: '3.1rem',
+        height: '1.25rem',
+        lineHeight: '1.25rem',
+        // The handoff slot set apart: it includes the trip from the
+        // previous leader.
+        ...(handoff ? { boxShadow: 'inset 2px 0 0 currentColor' } : {})
+      }}
+      title={title}
+    >
+      {label}
+    </Link>
+  );
+};
+
+/** The handoff from it: its last block to the next leader's first. */
+const NextHandoffCell = ({
   h,
-  side
+  pace
 }: {
   h: WindowHandoffs | null;
-  side: 'in' | 'out';
+  pace: Pace | undefined;
 }) => {
-  const x = h?.[side] ?? null;
-  const same = side === 'in' ? h?.sameIn : h?.sameOut;
+  const x = h?.out ?? null;
   return (
-    <td
-      className={`${side === 'in' ? 'text-end' : ''} font-monospace text-nowrap d-none d-sm-table-cell`}
-    >
+    <td className="font-monospace text-nowrap">
       {x ? (
         <span
-          className={
-            x.ms > SLOW_HANDOFF_MS ? 'text-warning-emphasis' : undefined
-          }
-          title={`${Math.round(x.ms)} ms ${side === 'in' ? 'from the previous leader' : 'to the next leader'}${x.skipped ? ' (a skipped slot in between)' : ''}`}
+          className={`d-inline-block rounded-1 text-center fs-10 px-1 ${paceTone(x.ms, pace?.handoffMs)}`}
+          style={{
+            minWidth: '3.6rem',
+            height: '1.25rem',
+            lineHeight: '1.25rem'
+          }}
+          title={`${Math.round(x.ms)} ms to the next leader${x.skipped ? ' (a skipped slot in between)' : ''}${pace?.handoffMs ? ` · cluster median handoff ${Math.round(pace.handoffMs)} ms` : ''}`}
         >
-          {side === 'out' && '→ '}
-          {Math.round(x.ms)} ms{x.skipped ? '*' : ''}
-          {side === 'in' && ' →'}
+          → {Math.round(x.ms)}
+          {x.skipped ? '*' : ''}
         </span>
       ) : (
         <span
           className="text-body-tertiary"
           title={
-            same
-              ? `It leads the ${side === 'in' ? 'window before' : 'next window'} too: no handoff`
-              : undefined
+            h?.sameOut ? 'It leads the next window too: no handoff' : undefined
           }
         >
           —
@@ -180,7 +249,9 @@ const ProducerWindowsTable = ({
   epoch,
   nodeAddress,
   current = false,
-  card
+  card,
+  mode = 'inclusion',
+  pace
 }: {
   voteKey: string;
   epoch: number;
@@ -191,7 +262,15 @@ const ProducerWindowsTable = ({
   current?: boolean;
   /** Draw its card: the filter goes in the card's header. */
   card?: { title: string; icon: string; info?: string };
+  /** inclusion (the Production tab): each slot's outcome and the stake
+   *  its block carried. timing (the Network tab): each slot's time from
+   *  the block before, the first slot's the handoff to it, and the
+   *  handoff on to the next leader - colored against the cluster's. */
+  mode?: 'inclusion' | 'timing';
+  /** timing: the cluster's medians to color against. */
+  pace?: Pace;
 }) => {
+  const timing = mode === 'timing';
   const context = useContext(VortexDataContext);
   const slice = context?.productionWindowsState;
   const fetchData = slice?.fetchData;
@@ -305,11 +384,25 @@ const ProducerWindowsTable = ({
           ),
     [played, filter, legacy]
   );
-  // The page's handoffs both ways, from the slots' block times.
+  // timing: the page's slot times and handoffs, from the slots' block
+  // times (the live windows' from their poller, as they fill in).
   const pageWindows = legacy
     ? windows.slice(page * PAGE, (page + 1) * PAGE)
     : windows;
-  const handoffsOf = useWindowHandoffs(pageWindows.map(w => w.firstSlot));
+  // The live rows' too: their neighbours' blocks (the handoffs) aren't
+  // in the poller's slots. Re-read as a row's window plays.
+  const handoffsOf = useWindowHandoffs(
+    timing
+      ? [
+          ...[...liveWin.live]
+            .filter(l => l.state !== 'ahead')
+            .map(l => l.firstSlot),
+          ...pageWindows.map(w => w.firstSlot)
+        ]
+      : [],
+    timing ? liveWin.infos : undefined,
+    timing ? (liveWin.slotNow ?? 0) : 0
+  );
 
   if (failed)
     return (
@@ -437,25 +530,26 @@ const ProducerWindowsTable = ({
             <th title="Its 4 consecutive leader slots, by the first">
               Leader window
             </th>
-            <th
-              className="text-end d-none d-sm-table-cell"
-              title="The handoff to it: from the previous leader's last block to its first, by the two producers' block times - a block (~200 ms) plus the trip between them. * when a slot either side was skipped; a dash when it led the window before too, or a block time is clamped."
-            >
-              To it
-            </th>
-            <th>Slots</th>
-            <th
-              className="d-none d-sm-table-cell"
-              title="The handoff from it: from its last block to the next leader's first, by the two producers' block times. * when a slot either side was skipped; a dash when it leads the next window too, or a block time is clamped."
-            >
-              From it
-            </th>
-            <th
-              className="text-end d-none d-sm-table-cell"
-              title="Online stake its blocks carried / online stake, over these 4 slots, as the Production score counts it: a block that carried 99.9%+ counts as full, a skipped slot as 0"
-            >
-              Inclusion
-            </th>
+            {timing ? (
+              <>
+                <th title="Each slot's time in ms, from the block before it to its own, by the producers' block times; the first (marked) is the handoff from the previous leader. Colored against the cluster's median - a slot against its slots, the first against its handoffs: green within 10%, amber to 25%, red beyond. * across a skipped slot; clock: a clamped block time.">
+                  Slot times (ms)
+                </th>
+                <th title="The handoff to the next leader: from its last block to the next leader's first, colored against the cluster's median handoff. A dash when it leads the next window too.">
+                  Next
+                </th>
+              </>
+            ) : (
+              <>
+                <th>Slots</th>
+                <th
+                  className="text-end d-none d-sm-table-cell"
+                  title="Online stake its blocks carried / online stake, over these 4 slots, as the Production score counts it: a block that carried 99.9%+ counts as full, a skipped slot as 0"
+                >
+                  Inclusion
+                </th>
+              </>
+            )}
             {current && (
               <th className="text-end d-none d-sm-table-cell">When</th>
             )}
@@ -474,38 +568,62 @@ const ProducerWindowsTable = ({
                   {firstSlot.toLocaleString()}
                 </Link>
               </td>
-              <td className="text-end text-body-tertiary d-none d-sm-table-cell">
-                —
-              </td>
-              <td>
-                <div className="d-flex gap-1">
-                  {Array.from({ length: 4 }, (_, k) => {
-                    const slot = firstSlot + k;
-                    const i =
-                      liveWin.slotNow != null && slot <= liveWin.slotNow
-                        ? liveWin.infos.get(slot)
-                        : null;
-                    return (
-                      <SlotCell
-                        key={slot}
-                        s={
-                          {
-                            slot,
-                            outcome: i?.outcome ?? 'unknown',
-                            includedStakePpb: null,
-                            notarStakePpb: null,
-                            skipStakePpb: null
-                          } as Slot
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </td>
-              <td className="text-body-tertiary d-none d-sm-table-cell">—</td>
-              <td className="text-end text-body-tertiary d-none d-sm-table-cell">
-                —
-              </td>
+              {timing ? (
+                <>
+                  <td>
+                    <div className="d-flex gap-1">
+                      {Array.from({ length: 4 }, (_, k) => (
+                        <SlotTimeCell
+                          key={k}
+                          slot={firstSlot + k}
+                          t={
+                            state === 'ahead'
+                              ? undefined
+                              : handoffsOf(firstSlot).slots[k]
+                          }
+                          handoff={k === 0 && !handoffsOf(firstSlot).sameIn}
+                          pace={pace}
+                        />
+                      ))}
+                    </div>
+                  </td>
+                  <NextHandoffCell
+                    h={state === 'ahead' ? null : handoffsOf(firstSlot)}
+                    pace={pace}
+                  />
+                </>
+              ) : (
+                <>
+                  <td>
+                    <div className="d-flex gap-1">
+                      {Array.from({ length: 4 }, (_, k) => {
+                        const slot = firstSlot + k;
+                        const i =
+                          liveWin.slotNow != null && slot <= liveWin.slotNow
+                            ? liveWin.infos.get(slot)
+                            : null;
+                        return (
+                          <SlotCell
+                            key={slot}
+                            s={
+                              {
+                                slot,
+                                outcome: i?.outcome ?? 'unknown',
+                                includedStakePpb: null,
+                                notarStakePpb: null,
+                                skipStakePpb: null
+                              } as Slot
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  </td>
+                  <td className="text-end text-body-tertiary d-none d-sm-table-cell">
+                    —
+                  </td>
+                </>
+              )}
               <td className="text-end text-nowrap d-none d-sm-table-cell">
                 {state === 'played' ? (
                   <span className="text-body-tertiary">
@@ -540,18 +658,37 @@ const ProducerWindowsTable = ({
                   {w.firstSlot.toLocaleString()}
                 </Link>
               </td>
-              <HandoffCell h={handoffsOf(w.firstSlot)} side="in" />
-              <td>
-                <div className="d-flex gap-1">
-                  {w.slots.map(s => (
-                    <SlotCell key={s.slot} s={s} />
-                  ))}
-                </div>
-              </td>
-              <HandoffCell h={handoffsOf(w.firstSlot)} side="out" />
-              <td className="text-end font-monospace d-none d-sm-table-cell">
-                {pct(windowInclusion(w))}
-              </td>
+              {timing ? (
+                <>
+                  <td>
+                    <div className="d-flex gap-1">
+                      {w.slots.map((s, k) => (
+                        <SlotTimeCell
+                          key={s.slot}
+                          slot={s.slot}
+                          t={handoffsOf(w.firstSlot).slots[k]}
+                          handoff={k === 0 && !handoffsOf(w.firstSlot).sameIn}
+                          pace={pace}
+                        />
+                      ))}
+                    </div>
+                  </td>
+                  <NextHandoffCell h={handoffsOf(w.firstSlot)} pace={pace} />
+                </>
+              ) : (
+                <>
+                  <td>
+                    <div className="d-flex gap-1">
+                      {w.slots.map(s => (
+                        <SlotCell key={s.slot} s={s} />
+                      ))}
+                    </div>
+                  </td>
+                  <td className="text-end font-monospace d-none d-sm-table-cell">
+                    {pct(windowInclusion(w))}
+                  </td>
+                </>
+              )}
               {current && (
                 <td className="text-end text-nowrap text-body-tertiary d-none d-sm-table-cell">
                   {liveWin.slotNow != null
@@ -566,7 +703,7 @@ const ProducerWindowsTable = ({
           {!shown.length && !liveRows.length && (
             <tr>
               <td
-                colSpan={current ? 6 : 5}
+                colSpan={current ? 4 : 3}
                 className="text-center text-body-tertiary py-3"
               >
                 {filter === 'all'
@@ -604,7 +741,7 @@ const ProducerWindowsTable = ({
         />
       )}
     </>,
-    filterSelect
+    timing ? undefined : filterSelect
   );
 };
 

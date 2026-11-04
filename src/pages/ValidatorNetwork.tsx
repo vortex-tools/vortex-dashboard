@@ -1,3 +1,5 @@
+import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
+import { SlotPaceCard } from 'components/validator/SkipCausesCard';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -904,6 +906,36 @@ const ValidatorNetwork = () => {
               />
             </SectionCard>
           )}
+        {/* Its pace: how fast it builds its own blocks, and window by
+            window each slot's time and the handoffs either side. */}
+        <Row className="g-3">
+          <Col xs={12} xl={4}>
+            <SlotPaceCard record={producer} board={producerBoard} />
+          </Col>
+          <Col xs={12} xl={8}>
+            {voteAddress && (producer || !producerBoard) && (
+              <ProducerWindowsTable
+                voteKey={voteAddress}
+                epoch={epoch}
+                nodeAddress={node}
+                current={epoch === currentEpoch}
+                mode="timing"
+                pace={{
+                  slotMs:
+                    producerBoard?.cluster?.slotDuration?.inWindow?.p50Ms ??
+                    null,
+                  handoffMs:
+                    producerBoard?.cluster?.slotDuration?.handoff?.p50Ms ?? null
+                }}
+                card={{
+                  title: 'Leader Slots',
+                  icon: 'clock',
+                  info: "Its leader windows (4 slots each), newest first: each slot's time from the block before it, by the producers' block times - the first slot's is the handoff from the previous leader - then the handoff to the next leader. Colored against the cluster's medians: green within 10%, amber to 25%, red beyond."
+                }}
+              />
+            )}
+          </Col>
+        </Row>
         <HostChangesCard identity={node} currentEpoch={currentEpoch} />
       </div>
     );
