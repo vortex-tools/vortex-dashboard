@@ -627,3 +627,12 @@ th.leaderboard-sticky-col {
     margin: -8.5px 0 -4.5px;
   }
 }
+
+// A vote missed while offline (Divergent Votes): magenta, apart from the
+// red (didn't get in) and orange (poor reward block) misses.
+.vx-text-offline {
+  color: #b5179e;
+}
+[data-bs-theme='dark'] .vx-text-offline {
+  color: #e26bd0;
+}

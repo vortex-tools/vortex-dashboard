@@ -66,14 +66,14 @@ const CHAIN: Record<Divergence, string> = {
 // carried no certificate of that kind ('none': no such vote reached that
 // leader), not 0% of stake voting that way (per agave's reward-cert
 // builder).
-// A present certificate always has a signer, so a tiny share must not read
-// as 0% (e.g. 0.067% from 2 signers): one decimal under 1%, '<0.1%' below.
+// Two decimals, truncated - never rounded up: 99.997% reads 99.99%, so a
+// missed vote never sits beside "100%". A present certificate always has a
+// signer, so a tiny share must not read as 0%: '<0.01%' below that.
 const ppb = (v: number | null) => {
   if (v == null) return 'none';
   const p = v / 1e7;
-  if (p >= 1) return `${Math.round(p)}%`;
-  if (p >= 0.1) return `${p.toFixed(1)}%`;
-  return '<0.1%';
+  if (p > 0 && p < 0.01) return '<0.01%';
+  return `${(Math.floor(p * 100) / 100).toFixed(2)}%`;
 };
 
 // Tabs: every divergent vote, misses by cause (or all misses before the
@@ -88,7 +88,7 @@ const CAUSE: Record<
 > = {
   offline: {
     label: 'Offline',
-    cls: 'text-body-secondary',
+    cls: 'vx-text-offline',
     tone: 'secondary',
     title: `Part of a run of ${OFFLINE_RUN_SLOTS}+ consecutive misses (spanning several producers' windows): not voting`
   },
@@ -126,12 +126,13 @@ const AgreedVote = ({
 }) => {
   if (code !== OUTCOME.notarized && code !== OUTCOME.skipped) return null;
   const v = info?.votes;
-  // Laid out as a divergent slot's cell (label, the cause's line, the
-  // shares at the bottom), so the shares line up across the row.
+  // One line, as a divergent slot's cell: the label, then the shares.
+  // Pale: everything is fine here, so it recedes and the misses stand out.
   return (
-    <div className="d-flex flex-column align-items-center gap-1 text-nowrap">
+    <div className="d-flex align-items-baseline justify-content-center gap-2 text-nowrap">
       <span
-        className="fw-semibold text-success"
+        className="text-success"
+        style={{ opacity: 0.55 }}
         title={
           code === OUTCOME.notarized
             ? 'Its notarize vote landed: agreed with the chain'
@@ -140,15 +141,18 @@ const AgreedVote = ({
       >
         {code === OUTCOME.notarized ? 'Notarized' : 'Skip'}
       </span>
-      {/* The cause badge's line, empty. */}
-      <span className="badge invisible" aria-hidden>
-        &nbsp;
-      </span>
       <span
         className="fs-10 font-monospace text-body-tertiary"
-        title="Stake in its notarize / skip reward certificates"
+        style={{ opacity: 0.7 }}
+        title={
+          v
+            ? `Stake in its notarize / skip reward certificates: ${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}`
+            : undefined
+        }
       >
-        {v ? `${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}` : '—'}
+        {v
+          ? ppb(code === OUTCOME.notarized ? v.notarStakePpb : v.skipStakePpb)
+          : '—'}
       </span>
     </div>
   );
@@ -185,36 +189,34 @@ const SlotCell = ({
       : kind === 'missed-skip'
         ? 'The chain skipped the slot'
         : null;
+  // The cause colors the label (no badge of its own) and joins its
+  // hover: red - its vote didn't get in; orange - a poor reward block (the
+  // reward leader's fault) or a skip vote on a notarized block; purple -
+  // offline.
+  const cls = cause ? CAUSE[cause].cls : k.cls;
+  // The one share shown: the stake that voted the way the chain went.
+  const chainSkipped = kind === 'missed-skip' || kind === 'notarized-skipped';
+  const why =
+    cause != null
+      ? `${CAUSE[cause].label}: ${CAUSE[cause].title}`
+      : kind === 'late-skip'
+        ? 'It voted skip, but the cluster notarized the block: the block likely reached it too late. Its skip vote still counts.'
+        : null;
   return (
-    <div className="d-flex flex-column align-items-center gap-1 text-nowrap">
+    <div className="d-flex align-items-baseline justify-content-center gap-2 text-nowrap">
       <Link
         to={`/slot/${slot}${selfNode ? `?voter=${selfNode}` : ''}`}
-        className={`fw-semibold ${k.cls}`}
-        title={[`Slot ${slot.toLocaleString()}`, k.title, finText]
+        className={`fw-semibold ${cls}`}
+        title={[`Slot ${slot.toLocaleString()}`, k.title, why, finText]
           .filter(Boolean)
           .join('. ')}
       >
         {k.label}
       </Link>
-      {cause ? (
-        <span
-          className={`badge badge-soft badge-soft-${CAUSE[cause].tone}`}
-          title={CAUSE[cause].title}
-        >
-          {CAUSE[cause].label}
-        </span>
-      ) : kind === 'late-skip' ? (
-        <span
-          className="fs-10 text-body-secondary"
-          title="It voted skip, but the cluster notarized the block: the block likely reached it too late. Its skip vote still counts."
-        >
-          cluster notarized
-        </span>
-      ) : null}
       <Link
         to={`/slot/${slot + 8}${selfNode ? `?voter=${selfNode}&on=${slot}` : ''}`}
         className="fs-10 font-monospace text-body-tertiary"
-        title="Stake in its notarize / skip reward certificates (the reward block's unrewarded votes, this validator marked)"
+        title={`Stake that voted the way the chain went (${chainSkipped ? 'skip' : 'notarize'})${v ? ` - notarize / skip reward certificates: ${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}` : ''}. Opens the reward block's unrewarded votes, this validator marked.`}
       >
         {info === undefined
           ? infoError
@@ -222,7 +224,7 @@ const SlotCell = ({
             : '…'
           : !v
             ? '—'
-            : `${ppb(v.notarStakePpb)} / ${ppb(v.skipStakePpb)}`}
+            : ppb(chainSkipped ? v.skipStakePpb : v.notarStakePpb)}
       </Link>
     </div>
   );
@@ -473,14 +475,14 @@ const DivergentSlotsTable = ({
         responsive
         size="sm"
         className="data-table fs-9 mb-0"
-        style={{ tableLayout: 'fixed', minWidth: 980 }}
+        style={{ tableLayout: 'fixed', minWidth: 940 }}
       >
         <colgroup>
-          <col style={{ width: '9rem' }} />
-          <col style={{ width: '13rem' }} />
-          <col style={{ width: '13rem' }} />
+          <col style={{ width: '7.5rem' }} />
+          <col style={{ width: '10.5rem' }} />
+          <col style={{ width: '10.5rem' }} />
           {[0, 1, 2, 3].map(n => (
-            <col key={n} style={{ width: '8.5rem' }} />
+            <col key={n} style={{ width: '8rem' }} />
           ))}
         </colgroup>
         <thead>
