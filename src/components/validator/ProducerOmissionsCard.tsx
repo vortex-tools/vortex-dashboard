@@ -83,6 +83,11 @@ const ProducerOmissionsCard = ({
   const shown = rows.slice(page * PAGE, (page + 1) * PAGE);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
   const total = data.leftOutTotal ?? voters.reduce((a, v) => a + v.leftOut, 0);
+  // How much of it was at its own thin blocks (its lateness).
+  const thinTotal = voters.some(v => v.thinLeftOut != null)
+    ? voters.reduce((a, v) => a + (v.thinLeftOut ?? 0), 0)
+    : null;
+  const thinShare = thinTotal != null && total ? thinTotal / total : 0;
 
   const sortHead = (s: Sort, label: string, title: string) => (
     <th
@@ -104,7 +109,7 @@ const ProducerOmissionsCard = ({
       <SectionCard
         title="Producer Omissions"
         icon="slash"
-        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. At thin blocks: of those, the ones where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Each voter's own view is its Voting tab.`}
+        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Each voter's own view is its Voting tab.`}
         aside={
           voters.length > 0 ? (
             <ButtonGroup size="sm" className="vx-header-control">
@@ -154,6 +159,21 @@ const ProducerOmissionsCard = ({
               {data.blocks != null &&
                 ` over ${data.blocks.toLocaleString()} blocks`}
               )
+              {thinTotal != null && (
+                <span
+                  className={
+                    thinShare >= 0.25
+                      ? 'text-warning-emphasis'
+                      : 'text-body-tertiary'
+                  }
+                  title="Left out at its thin blocks - where it left out 2%+ of the stake besides the voter: its own lateness, not the voter's path to it"
+                >
+                  {' · '}
+                  {thinTotal === 0
+                    ? 'none at its thin blocks'
+                    : `${pct(thinShare)} at its thin blocks${thinShare >= 0.25 ? ': its own lateness' : ''}`}
+                </span>
+              )}
               {neverN > 0 && (
                 <>
                   {' '}
@@ -182,12 +202,6 @@ const ProducerOmissionsCard = ({
                     'Rate',
                     'The share of those blocks that left it out'
                   )}
-                  <th
-                    className="text-end d-none d-sm-table-cell"
-                    title="Of those, at its thin blocks (it left out 2%+ of the stake besides this voter): its own lateness. The rest: this voter's votes alone not reaching it."
-                  >
-                    At thin blocks
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -208,7 +222,14 @@ const ProducerOmissionsCard = ({
                     <td className="text-end font-monospace">
                       {formatLamports(v.stake, 0)}
                     </td>
-                    <td className="text-end font-monospace text-nowrap">
+                    <td
+                      className="text-end font-monospace text-nowrap"
+                      title={
+                        v.thinLeftOut != null
+                          ? `${v.leftOut.toLocaleString()} left out: ${v.thinLeftOut.toLocaleString()} at its thin blocks (its own lateness), ${(v.leftOut - v.thinLeftOut).toLocaleString()} otherwise (this voter's path to it)`
+                          : undefined
+                      }
+                    >
                       {v.leftOut.toLocaleString()}
                       <span className="text-body-tertiary">
                         {' '}
@@ -228,11 +249,6 @@ const ProducerOmissionsCard = ({
                         {v.rate >= never ? 'never · ' : ''}
                         {pct(v.rate)}
                       </span>
-                    </td>
-                    <td className="text-end font-monospace text-body-tertiary d-none d-sm-table-cell">
-                      {v.thinLeftOut != null
-                        ? v.thinLeftOut.toLocaleString()
-                        : '—'}
                     </td>
                   </tr>
                 ))}
