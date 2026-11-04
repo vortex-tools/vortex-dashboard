@@ -201,7 +201,7 @@ const RecentLeadersTable = ({
                     className="text-body-tertiary"
                     title="A block time either side is clamped (its producer's clock is off): no handoff to time"
                   >
-                    clock
+                    ??ms
                   </span>
                 ) : (
                   '…'

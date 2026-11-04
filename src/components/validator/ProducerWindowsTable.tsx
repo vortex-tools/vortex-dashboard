@@ -179,7 +179,7 @@ const WindowTimeline = ({
           : 'text-body-tertiary'
       }`}
       style={{
-        minWidth: '3.4rem',
+        minWidth: '4.1rem',
         justifyContent: 'center',
         height: '1.25rem'
       }}
@@ -187,9 +187,9 @@ const WindowTimeline = ({
     >
       →{' '}
       {state === 'timed' && ms != null
-        ? `${Math.round(ms)}${skipped ? '*' : ''}`
+        ? `${Math.round(ms)}ms${skipped ? '*' : ''}`
         : state === 'clamped'
-          ? 'clock'
+          ? '??ms'
           : state === 'same'
             ? ''
             : state === 'skip'
@@ -574,7 +574,7 @@ const ProducerWindowsTable = ({
             </th>
             {timing ? (
               <>
-                <th title="Its 4 blocks and the next leader's first (faint), each arrow the time in ms between the blocks either side, by the producers' block times: the first is the handoff from the previous leader, the last the handoff to the next. Colored against the cluster's median - in-window gaps against its slot, handoffs against its handoff: green within 10%, amber to 25%, red beyond. * across a skipped slot; clock: a clamped block time.">
+                <th title="Its 4 blocks and the next leader's first (faint), each arrow the time in ms between the blocks either side, by the producers' block times: the first is the handoff from the previous leader, the last the handoff to the next. Colored against the cluster's median - in-window gaps against its slot, handoffs against its handoff: green within 10%, amber to 25%, red beyond. * across a skipped slot; ??ms: a block time is clamped (its producer's clock is off), so it can't be timed.">
                   Blocks and the time between them (ms)
                 </th>
               </>
