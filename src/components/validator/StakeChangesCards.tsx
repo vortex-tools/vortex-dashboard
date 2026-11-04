@@ -1,4 +1,6 @@
+import { ShortAddress } from 'components/changes/changes';
 import { poolPath } from 'components/pools/pools';
+import useCluster from 'hooks/useCluster';
 import Button from 'components/base/Button';
 import StakeChangesChart, {
   stakeSetMoved
@@ -22,7 +24,7 @@ const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 
 /** A staker as people know it: a pool by name ("Helius Staked SOL",
  *  its symbol after), linking its Stake Pools page, else its withdraw
- *  authority. Where the name has little room - a phone, or a half-width
+ *  authority, linking Solana Explorer. Where the name has little room - a phone, or a half-width
  *  card below xxl - just the symbol ("SFDP"), the full name on hover. */
 export const StakerName = ({
   label,
@@ -30,8 +32,9 @@ export const StakerName = ({
 }: {
   label: { name: string; kind: string | null; fullName?: string | null } | null;
   withdrawer: string;
-}) =>
-  label ? (
+}) => {
+  const { isTestnet } = useCluster();
+  return label ? (
     <>
       {label.fullName && (
         <Link
@@ -56,8 +59,9 @@ export const StakerName = ({
       </span>
     </>
   ) : (
-    <span className="font-monospace">{short(withdrawer)}</span>
+    <ShortAddress address={withdrawer} isTestnet={isTestnet} />
   );
+};
 
 const KIND: Record<string, { label: string; cls: string }> = {
   new: { label: 'New', cls: 'text-success' },
