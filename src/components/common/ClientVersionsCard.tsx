@@ -256,9 +256,18 @@ const FamilyPanel = ({
     },
     xAxis: {
       type: 'category',
-      data: epochs.map(e => (e.inProgress ? `${e.epoch}*` : String(e.epoch))),
+      // The epoch in progress, named as such (its bar still moves).
+      data: epochs.map(e =>
+        e.inProgress ? `${e.epoch} (now)` : String(e.epoch)
+      ),
       axisTick: { show: false },
-      axisLabel: { color: getThemeColor('tertiary-color'), fontSize: 10 }
+      axisLabel: {
+        color: getThemeColor('tertiary-color'),
+        fontSize: 10,
+        // Every other epoch, counted back from the last, so the epoch in
+        // progress ("now") always has its label.
+        interval: (i: number) => (epochs.length - 1 - i) % 2 === 0
+      }
     },
     yAxis: {
       type: 'value',
@@ -288,7 +297,7 @@ const FamilyPanel = ({
     <SectionCard
       title={`${family.label} Upgrades`}
       icon="git-branch"
-      info={`${family.label} stake by version per epoch, against a target you can change (* = so far). Click an epoch for its upgrades in Recent Upgrades.`}
+      info={`${family.label} stake by version per epoch, against a target you can change ("now": the epoch in progress, so far). Click an epoch for its upgrades in Recent Upgrades.`}
       aside={
         <Form.Select
           size="sm"

@@ -93,8 +93,13 @@ const ClientDiversityCard = ({ compact = false }: { compact?: boolean }) => {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: points.map(p => `${p.epoch}${p.inProgress ? '*' : ''}`),
-      axisLabel: { color: getThemeColor('tertiary-color'), fontSize: 10 },
+      data: points.map(p => `${p.epoch}${p.inProgress ? ' (now)' : ''}`),
+      axisLabel: {
+        color: getThemeColor('tertiary-color'),
+        fontSize: 10,
+        // Every other epoch, counted back from the last: "now" stays labeled.
+        interval: (i: number) => (points.length - 1 - i) % 2 === 0
+      },
       axisTick: { show: false }
     },
     yAxis: {
@@ -121,7 +126,7 @@ const ClientDiversityCard = ({ compact = false }: { compact?: boolean }) => {
       icon="pie-chart"
       linkTo="/client-versions"
       linkLabel="Versions"
-      info="Agave and Firedancer as shares of stake, epoch by epoch (* = so far). Agave includes its block-building forks (Jito, BAM, Harmonic, ...), Firedancer its own."
+      info="Agave and Firedancer as shares of stake, epoch by epoch ('now': the epoch in progress, so far). Agave includes its block-building forks (Jito, BAM, Harmonic, ...), Firedancer its own."
     >
       <div className="d-flex gap-3 fs-10 text-body-tertiary mb-1">
         <span className="d-inline-flex align-items-center gap-1">
