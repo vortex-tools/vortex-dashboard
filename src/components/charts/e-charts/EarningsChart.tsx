@@ -226,9 +226,14 @@ const EarningsChart = ({
             (isCurrent(r) ? ' · in progress' : '') +
             (r.consensus === 'alpenglow' ? ' · Alpenglow' : '') +
             `</div>`;
-          // Alpenglow votes are free: no vote fees row.
+          // Alpenglow votes are free: no vote fees row; VAT came with
+          // Alpenglow: none before it.
           const body = shown
-            .filter(d => d.name !== 'Vote fees' || r.consensus !== 'alpenglow')
+            .filter(d =>
+              r.consensus === 'alpenglow'
+                ? d.name !== 'Vote fees'
+                : d.name !== 'VAT'
+            )
             .map(d => {
               let label = d.name;
               // Its inflation commission rate, as for MEV; "est." until paid.
@@ -263,12 +268,12 @@ const EarningsChart = ({
                     : '';
                 }
               }
-              // Not running Jito: MEV is a dash, not "0".
+              // Not running Jito: no MEV line.
               if (
                 d.name === 'MEV' &&
                 r.rates?.mevCommissionBpsSource === 'noTipAccount'
               )
-                return line(label, '–', d.color);
+                return '';
               // The MEV commission rate it was taken at: a 0 reads as
               // "0% commission", not missing data.
               if (d.name === 'MEV') {
@@ -283,8 +288,8 @@ const EarningsChart = ({
               if (d.name === 'BAM Boost') {
                 const b = r.bamBoost;
                 if (r.income.bamBoost == null) return line(label, '—', d.color);
-                if (b?.state === 'expired')
-                  return line(`${label} (expired)`, format(0), d.color);
+                // Expired: nothing (no zero lines).
+                if (b?.state === 'expired') return '';
                 if (b?.state === 'claimable') label += ' (pending)';
                 const main = line(label, format(d.value(r)), d.color);
                 return b
@@ -295,6 +300,8 @@ const EarningsChart = ({
               if (d.name === 'Vote fees' && !r.costs.voteFeesExact)
                 label += ' (est. max)';
               if (d.name === 'VAT' && !r.costs.vatExact) label += ' (est.)';
+              // No lines for zero: only what it earned or paid.
+              if (d.value(r) === 0) return '';
               const main = line(label, format(d.value(r)), d.color);
               // Alpenglow: what it's a share of - its votes' rewards and
               // its production rewards (gross).
