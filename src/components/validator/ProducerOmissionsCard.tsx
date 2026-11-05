@@ -117,6 +117,8 @@ const ProducerOmissionsCard = ({
     ? voters.reduce((a, v) => a + (v.thinLeftOut ?? 0), 0)
     : null;
   const thinShare = thinTotal != null && total ? thinTotal / total : 0;
+  // Its In our Poor blocks column: only when some voter has one.
+  const showThin = !!thinTotal;
 
   const sortHead = (
     s: Sort,
@@ -233,7 +235,7 @@ const ProducerOmissionsCard = ({
                     'Left out',
                     'Its blocks that left the voter out, of those it could have been in (the voter online)'
                   )}
-                  {thinTotal != null &&
+                  {showThin &&
                     sortHead(
                       'ours',
                       'In our Poor blocks',
@@ -288,7 +290,7 @@ const ProducerOmissionsCard = ({
                         / {v.slots.toLocaleString()}
                       </span>
                     </td>
-                    {thinTotal != null && (
+                    {showThin && (
                       <td
                         className={`text-end font-monospace text-nowrap fs-10 ${
                           (v.ours ?? 0) >= 0.5
