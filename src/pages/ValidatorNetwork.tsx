@@ -402,7 +402,7 @@ const ValidatorNetwork = () => {
           </Col>
           <Col xs={6} lg={3}>
             <StatCard
-              label="Handoff To It"
+              label="Handoff To Us"
               value={tight(signedMs(inO))}
               tone={toneOf(delayTone(inO, clO))}
               sublabel={
@@ -414,7 +414,7 @@ const ValidatorNetwork = () => {
           </Col>
           <Col xs={6} lg={3}>
             <StatCard
-              label="Handoff From It"
+              label="Handoff From Us"
               value={tight(signedMs(outO))}
               tone={toneOf(delayTone(outO, clO))}
               sublabel={
