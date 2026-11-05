@@ -229,14 +229,14 @@ const ProducerOmissionsCard = ({
                   )}
                   {sortHead(
                     'rate',
-                    'Missed in its blocks',
+                    'Missed in our blocks',
                     "The share of this producer's blocks that left it out"
                   )}
                   {baseline &&
                     sortHead(
                       'excess',
                       "Missed in others'",
-                      "How often this voter is missed by every OTHER producer this epoch (offline aside) - what's typical for it, not the cluster's. Low here beside a high Missed in its blocks: this producer is failing it. Sorts by how much worse this producer is than that"
+                      "How often this voter is missed by every OTHER producer this epoch (offline aside) - what's typical for it, not the cluster's. Low here beside a high Missed in our blocks: this producer is failing it. Sorts by how much worse this producer is than that"
                     )}
                 </tr>
               </thead>
