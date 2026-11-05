@@ -145,7 +145,7 @@ const ProducerOmissionsCard = ({
       <SectionCard
         title="Producer Omissions"
         icon="slash"
-        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Always missed": left out of ${(never * 100).toFixed(0)}%+ of them. Missed in others': how often every other producer misses the voter this epoch (offline aside) - its typical rate, not the cluster's; a voter rarely missed elsewhere but often missed here is this producer failing it. Each voter's own view is its Voting tab.`}
+        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. In our Poor blocks: of those, the ones in its Poor blocks (as the Production tab counts them) - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Always missed": left out of ${(never * 100).toFixed(0)}%+ of them. Missed in others': how often every other producer misses the voter this epoch (offline aside) - its typical rate, not the cluster's; a voter rarely missed elsewhere but often missed here is this producer failing it. Each voter's own view is its Voting tab.`}
         aside={
           voters.length > 0 ? (
             <ButtonGroup size="sm" className="vx-header-control">
@@ -202,12 +202,12 @@ const ProducerOmissionsCard = ({
                       ? 'text-warning-emphasis'
                       : 'text-body-tertiary'
                   }
-                  title="Misses at our thin blocks - blocks that left out 2%+ of the online stake besides the voter, many at once: our block was late, not the voter's path to us"
+                  title="Misses in our Poor blocks - blocks that carried under 98% of the online stake, leaving out many voters at once: likely our fault, not the voter's path to us"
                 >
                   {' · '}
                   {thinTotal === 0
                     ? "our blocks weren't the cause: each left out only that voter"
-                    : `${pct(thinShare)} likely our fault (our blocks were late)`}
+                    : `${pct(thinShare)} in our Poor blocks (likely our fault)`}
                 </span>
               )}
               {neverN > 0 && (
@@ -236,8 +236,8 @@ const ProducerOmissionsCard = ({
                   {thinTotal != null &&
                     sortHead(
                       'ours',
-                      'In our late blocks',
-                      'Of its Left out, how many were at our thin blocks - blocks that left out 2%+ of the online stake besides this voter, many voters at once: our block was late, likely our fault. The rest left out only this voter: its path to us'
+                      'In our Poor blocks',
+                      'Of its Left out, how many were in our Poor blocks - blocks that carried under 98% of the online stake, leaving out many voters at once: likely our fault. The rest left out only this voter: its path to us'
                     )}
                   {sortHead(
                     'rate',
@@ -297,7 +297,7 @@ const ProducerOmissionsCard = ({
                         }`}
                         title={
                           v.thinLeftOut != null
-                            ? `${v.thinLeftOut.toLocaleString()} of its ${v.leftOut.toLocaleString()} misses here (${pct(v.ours ?? 0)}) were at our late blocks - likely our fault`
+                            ? `${v.thinLeftOut.toLocaleString()} of its ${v.leftOut.toLocaleString()} misses here (${pct(v.ours ?? 0)}) were in our Poor blocks - likely our fault`
                             : undefined
                         }
                       >
