@@ -1,5 +1,6 @@
 import UntrackedState from 'components/common/UntrackedState';
 import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
+import StakingStatCards from 'components/validator/StakingStatCards';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import DelegatorsCards from 'components/validator/DelegatorsCards';
 import StakeChangesCards from 'components/validator/StakeChangesCards';
@@ -27,6 +28,10 @@ const ValidatorStaking = () => {
     identity && identity.source !== 'fallback' ? identity.nodeAddress : null;
   // Not resolved yet while the directory loads: the page's shape pulsing.
   const directory = useContext(VortexDataContext)?.validatorDirectoryState;
+  const statusSlice = useContext(VortexDataContext)?.validatorStatusState;
+  const status = nodeAddress ? statusSlice?.data.get(nodeAddress) : undefined;
+  const statusFailed = !!statusSlice?.error && !statusSlice.isLoading;
+  const settled = !!status || statusFailed;
   const resolving =
     !nodeAddress && directory?.validators == null && directory?.error == null;
   return (
@@ -49,12 +54,31 @@ const ValidatorStaking = () => {
           </UntrackedState>
         ) : (
           nodeAddress && (
-            <div className="d-flex flex-column gap-3">
-              {/* SFDP's status and delegation (only for participants). */}
-              <ValidatorSfdpBox nodeAddress={nodeAddress} />
-              <DelegatorsCards identity={nodeAddress} />
-              <StakeChangesCards identity={nodeAddress} />
-              <DelegatorsCards identity={nodeAddress} part="sizes" />
+            // Until its status is in (which decides the SFDP card above the
+            // rest), the tab's placeholder; the cards load meanwhile,
+            // unseen at full width, so they land all at once, in place.
+            <div className="position-relative">
+              {!settled && <PageSkeleton rows={SKELETON.staking} />}
+              <div
+                className="d-flex flex-column gap-3"
+                aria-hidden={!settled || undefined}
+                style={
+                  settled
+                    ? undefined
+                    : {
+                        position: 'absolute',
+                        inset: '0 0 auto 0',
+                        visibility: 'hidden'
+                      }
+                }
+              >
+                <StakingStatCards identity={nodeAddress} />
+                {/* SFDP's status and delegation (only for participants). */}
+                <ValidatorSfdpBox nodeAddress={nodeAddress} />
+                <DelegatorsCards identity={nodeAddress} />
+                <StakeChangesCards identity={nodeAddress} />
+                <DelegatorsCards identity={nodeAddress} part="sizes" />
+              </div>
             </div>
           )
         )}

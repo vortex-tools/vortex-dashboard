@@ -1,4 +1,5 @@
 import { directedDetail, directedTotal } from 'components/pools/directed';
+import { CardSkeleton } from 'components/common/PageSkeleton';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { BarChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
@@ -238,7 +239,16 @@ const DelegatorsCards = ({
   }, [identity, fetchData]);
   // Pools only: stake pools, Marinade and SFDP (the named stakers).
   const [poolsOnly, setPoolsOnly] = useState(false);
-  if (!d) return null;
+  // While it loads, its place (a table, or the sizes' chart); none if the
+  // read failed.
+  if (!d)
+    return context?.delegatorsState.error &&
+      !context.delegatorsState.isLoading ? null : (
+      <CardSkeleton
+        kind={part === 'sizes' ? 'chart' : 'table'}
+        height={part === 'sizes' ? 364 : 488}
+      />
+    );
   const top = poolsOnly ? d.top.filter(t => t.label) : d.top;
   if (part === 'sizes')
     return (

@@ -398,6 +398,9 @@ export const SKELETON = {
   fees: [[full(457)], [full(242)], [full(424, 'chart')]],
   earnings: [{ stats: 4 }, [half(432, 'chart'), half(432)], [half(423)]],
   staking: [
+    { stats: 4 },
+    // SFDP's card (most staked validators are in it).
+    [full(129, 'list')],
     [full(488)],
     [full(495, 'chart')],
     [full(351)],
