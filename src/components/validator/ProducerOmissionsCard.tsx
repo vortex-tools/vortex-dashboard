@@ -136,7 +136,7 @@ const ProducerOmissionsCard = ({
       <SectionCard
         title="Producer Omissions"
         icon="slash"
-        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Usually: the voter's miss rate across every producer this epoch (offline aside), with how many points higher this producer's is - a high figure here against a low usual one is this producer failing that voter. Each voter's own view is its Voting tab.`}
+        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Voter landing rate: how often the voter's votes land with every other producer this epoch (offline aside) - a voter that lands nearly everywhere but is often left out here is this producer failing it. Each voter's own view is its Voting tab.`}
         aside={
           voters.length > 0 ? (
             <ButtonGroup size="sm" className="vx-header-control">
@@ -232,8 +232,8 @@ const ProducerOmissionsCard = ({
                   {baseline &&
                     sortHead(
                       'excess',
-                      'Usually',
-                      "Its miss rate across every producer this epoch (offline aside), and how much higher this producer's is: the part that's this producer's"
+                      'Voter landing rate',
+                      "How often the voter's votes land with every other producer this epoch (offline aside): a high one here beside a high Rate is this producer failing it; sorts by how much worse this producer is than that"
                     )}
                 </tr>
               </thead>
@@ -285,29 +285,16 @@ const ProducerOmissionsCard = ({
                     </td>
                     {baseline && (
                       <td
-                        className="text-end text-nowrap fs-10"
+                        className="text-end font-monospace text-nowrap fs-10 text-body-tertiary"
                         title={
                           v.baselineShare != null
-                            ? `Left out of ${pct(v.baselineShare)} of all producers' blocks this epoch; here ${pct(v.rate)}`
+                            ? `Its votes land in ${pct(1 - v.baselineShare)} of other producers' blocks; this producer left it out of ${pct(v.rate)}`
                             : undefined
                         }
                       >
-                        {v.baselineShare != null ? (
-                          <>
-                            <span className="font-monospace text-body-tertiary">
-                              {pct(v.baselineShare)}
-                            </span>
-                            {v.excess != null && v.excess > 0.005 && (
-                              <span
-                                className={`ms-1 font-monospace ${v.excess >= OFTEN ? 'text-danger' : 'text-warning-emphasis'}`}
-                              >
-                                +{(v.excess * 100).toFixed(1)} pts
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-body-tertiary">—</span>
-                        )}
+                        {v.baselineShare != null
+                          ? pct(1 - v.baselineShare)
+                          : '—'}
                       </td>
                     )}
                   </tr>
