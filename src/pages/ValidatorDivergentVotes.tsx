@@ -1,6 +1,6 @@
 import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import BucketOutcomeChart from 'components/charts/e-charts/BucketOutcomeChart';
-import PageSkeleton from 'components/common/PageSkeleton';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import ConsensusRecordHeader, {
@@ -221,9 +221,18 @@ const ValidatorDivergentVotes = () => {
               </UntrackedState>
             ) : !history || !timeline ? (
               <PageSkeleton
-                live={!row && (epoch == null || epoch === currentEpoch)}
-                stats={row ? 0 : 4}
-                cards={['full', 'table']}
+                rows={
+                  row
+                    ? SKELETON.votingCards
+                    : [
+                        // The live strip on the current epoch.
+                        ...(epoch == null || epoch === currentEpoch
+                          ? [{ live: true } as const]
+                          : []),
+                        { stats: 4 },
+                        ...SKELETON.votingCards
+                      ]
+                }
               />
             ) : (
               (() => {

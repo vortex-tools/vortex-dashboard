@@ -1,5 +1,5 @@
 import UntrackedState from 'components/common/UntrackedState';
-import PageSkeleton from 'components/common/PageSkeleton';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import DelegatorsCards from 'components/validator/DelegatorsCards';
 import StakeChangesCards from 'components/validator/StakeChangesCards';
@@ -41,7 +41,7 @@ const ValidatorStaking = () => {
         {unavailable ? (
           <UntrackedState>The API is unavailable right now.</UntrackedState>
         ) : resolving ? (
-          <PageSkeleton stats={0} cards={['full', 'full', 'table']} />
+          <PageSkeleton rows={SKELETON.staking} />
         ) : isTestnet ? (
           <UntrackedState>
             Testnet stake is delegated by the foundation, so its changes

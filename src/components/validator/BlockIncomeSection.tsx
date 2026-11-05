@@ -1,5 +1,5 @@
 import UntrackedState from 'components/common/UntrackedState';
-import PageSkeleton from 'components/common/PageSkeleton';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import useCluster, { BLOCK_INCOME_UNTRACKED } from 'hooks/useCluster';
 import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
@@ -109,7 +109,7 @@ const BlockIncomeSection = ({ nodeAddress }: { nodeAddress: string }) => {
   return (
     <PageSection>
       {isLoadingValidator ? (
-        <PageSkeleton cards={['full', 'table']} />
+        <PageSkeleton rows={SKELETON.fees} />
       ) : (
         <div className="d-flex flex-column gap-3">
           <SectionCard

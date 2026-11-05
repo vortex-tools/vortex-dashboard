@@ -1,6 +1,6 @@
 import BlockIncomeSection from 'components/validator/BlockIncomeSection';
 import UntrackedState from 'components/common/UntrackedState';
-import PageSkeleton from 'components/common/PageSkeleton';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import useConsensus from 'hooks/useConsensus';
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
@@ -35,7 +35,7 @@ const ValidatorFees = () => {
         {unavailable ? (
           <UntrackedState>The API is unavailable right now.</UntrackedState>
         ) : resolving ? (
-          <PageSkeleton stats={0} cards={['full', 'table']} />
+          <PageSkeleton rows={SKELETON.fees} />
         ) : (
           nodeAddress && <BlockIncomeSection nodeAddress={nodeAddress} />
         )}

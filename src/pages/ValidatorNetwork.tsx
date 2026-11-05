@@ -1,7 +1,10 @@
 import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
 import StatCard from 'components/common/StatCard';
 import { IS_STAGING } from 'helpers/apiEndpoint';
-import PageSkeleton, { LinesSkeleton } from 'components/common/PageSkeleton';
+import PageSkeleton, {
+  LinesSkeleton,
+  SKELETON
+} from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import HandoffCard, { HANDOFF_INFO } from 'components/network/HandoffCard';
@@ -360,7 +363,7 @@ const ValidatorNetwork = () => {
         </UntrackedState>
       );
     if (epoch == null || !node || !geo)
-      return <PageSkeleton cards={['half', 'half', 'table']} />;
+      return <PageSkeleton rows={SKELETON.network} />;
     const divergentTotal = byRegion
       ? [...byRegion.values()].reduce((a, r) => a + r.divergent, 0)
       : 0;
