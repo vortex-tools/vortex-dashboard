@@ -28,11 +28,10 @@ const commissionChanges = (events: VoteAccountChange[] | undefined) =>
 
 /**
  * The top of the Earnings tab: its commissions - inflation (the rate in
- * effect, from its vote account, and a scheduled change), MEV (Jito's,
- * the latest epoch's) - and how often it changes its inflation
- * commission, over its last 10 epochs. Changing it in 3+ of them warns: the
- * rate a wallet reads at one moment may not be the one its delegators
- * are charged.
+ * effect, from its vote account, and a scheduled change) and MEV (Jito's,
+ * the latest epoch's) - under a warning when it changes its inflation
+ * commission often: in 3+ of its last 10 epochs. The rate a wallet reads
+ * at one moment may not be the one its delegators are charged.
  */
 const CommissionStatCards = ({ identity }: { identity: string }) => {
   const context = useContext(VortexDataContext);
@@ -64,7 +63,7 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
     (!changes && !changesFailed) ||
     currentEpoch == null
   )
-    return <PageSkeleton rows={[{ stats: 3 }]} />;
+    return <PageSkeleton rows={[{ stats: 2 }]} />;
 
   const vs = status.voteState;
   // The rate in effect now: a scheduled change's `effective` (the
@@ -115,14 +114,14 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
         </WarningBanner>
       )}
       <Row className="g-3">
-        <Col xs={12} sm={4}>
+        <Col xs={6}>
           <StatCard
             label="Inflation Commission"
             value={pct(inflation.now)}
             sublabel={inflation.sub}
           />
         </Col>
-        <Col xs={12} sm={4}>
+        <Col xs={6}>
           <StatCard
             label="MEV Commission"
             value={isTestnet || noTips ? '—' : pct(mev?.mevCommissionBps)}
@@ -134,20 +133,6 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
                   : mev?.mevCommissionBpsSource === 'previousEpoch'
                     ? `Jito's, epoch ${latest!.epoch - 1}'s`
                     : `Jito's, epoch ${latest?.epoch ?? '—'}`
-            }
-          />
-        </Col>
-        <Col xs={12} sm={4}>
-          <StatCard
-            label="Commission Changes"
-            value={recent ? recent.length.toLocaleString() : '—'}
-            tone={often ? 'warning' : undefined}
-            sublabel={
-              !recent
-                ? 'not available right now'
-                : recent.length
-                  ? `last ${WINDOW} epochs · ${pct(lo)}–${pct(hi)}`
-                  : `none in its last ${WINDOW} epochs`
             }
           />
         </Col>
