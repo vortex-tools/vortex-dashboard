@@ -13,7 +13,7 @@ const WINDOW = 10;
 // Changed in this many of them: "changes its commission often".
 const OFTEN_EPOCHS = 3;
 // Net On-chain Revenue: summed over this many finished epochs.
-const NET_EPOCHS = 10;
+const NET_EPOCHS = 30;
 // Inflation commission only (block revenue's isn't shown yet).
 const KINDS = ['inflationCommission'];
 
