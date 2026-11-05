@@ -1,8 +1,8 @@
 import { slotGroups } from 'helpers/slot';
 
 /**
- * A slot number, its digits in groups of three with a slight gap between
- * them (no commas: it's an identifier). The gap is a margin, so copying it
+ * A slot number in groups of three digits: commas between them, or in a
+ * table a slight gap (user.scss). Both are drawn by CSS, so copying it
  * gives the bare number, ready to paste into an explorer or an RPC call.
  */
 const SlotNumber = ({ slot }: { slot: number }) => (

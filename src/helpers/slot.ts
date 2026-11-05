@@ -1,7 +1,6 @@
 /**
- * Slot numbers: no commas - a slot is an identifier, not an amount, and
- * the commas pulled the eye (counts of slots keep theirs). In tables,
- * SlotNumber sets the digit groups slightly apart.
+ * Slot numbers: with commas, except in tables, where SlotNumber sets the
+ * digit groups slightly apart instead (columns of slots scan better).
  *
  * No imports: the Worker can bundle it.
  */
@@ -15,6 +14,7 @@ export const slotGroups = (slot: number): string[] => {
   return out;
 };
 
-/** A slot number as plain text (titles, chart tooltips): bare digits.
- *  For JSX use <SlotNumber>, which groups digits inside tables. */
-export const slotText = (slot: number) => String(Math.trunc(slot));
+/** A slot number as plain text (titles, chart tooltips): with commas.
+ *  For JSX use <SlotNumber>: commas too, a slight gap inside tables. */
+export const slotText = (slot: number) =>
+  Math.trunc(slot).toLocaleString('en-US');
