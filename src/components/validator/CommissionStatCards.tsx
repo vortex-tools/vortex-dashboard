@@ -11,7 +11,8 @@ import { Col, Row } from 'react-bootstrap';
 const WINDOW = 10;
 // Changed in this many of them: "changes its commission often".
 const OFTEN_EPOCHS = 3;
-const KINDS = ['inflationCommission', 'blockRevenueCommission'];
+// Inflation commission only (block revenue's isn't shown yet).
+const KINDS = ['inflationCommission'];
 
 const pct = (b: number | null | undefined) =>
   b == null ? '—' : `${(b / 100).toLocaleString('en-US')}%`;
@@ -26,10 +27,10 @@ const commissionChanges = (events: VoteAccountChange[] | undefined) =>
   );
 
 /**
- * The top of the Earnings tab: its commissions - inflation and block
- * revenue (the rate in effect, from its vote account, and a scheduled
- * change), MEV (Jito's, the latest epoch's) - and how often it changes
- * them, over its last 10 epochs. Changing it in 3+ of them warns: the
+ * The top of the Earnings tab: its commissions - inflation (the rate in
+ * effect, from its vote account, and a scheduled change), MEV (Jito's,
+ * the latest epoch's) - and how often it changes its inflation
+ * commission, over its last 10 epochs. Changing it in 3+ of them warns: the
  * rate a wallet reads at one moment may not be the one its delegators
  * are charged.
  */
@@ -63,14 +64,12 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
     (!changes && !changesFailed) ||
     currentEpoch == null
   )
-    return <PageSkeleton rows={[{ stats: 4 }]} />;
+    return <PageSkeleton rows={[{ stats: 3 }]} />;
 
   const vs = status.voteState;
   // The rate in effect now: a scheduled change's `effective` (the
   // runtime pays from an earlier snapshot), else the account's.
-  const rate = (
-    key: 'inflationRewardsCommissionBps' | 'blockRevenueCommissionBps'
-  ) => {
+  const rate = (key: 'inflationRewardsCommissionBps') => {
     const p = vs?.pending?.[key];
     const now = p ? num(p.effective) : (vs?.[key] ?? null);
     const next = p ? num(p.later?.value ?? p.next) : null;
@@ -84,7 +83,6 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
     };
   };
   const inflation = rate('inflationRewardsCommissionBps');
-  const blocks = rate('blockRevenueCommissionBps');
 
   // MEV: the latest epoch's Jito rate.
   const latest = earnings?.length ? earnings[earnings.length - 1] : undefined;
@@ -117,21 +115,14 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
         </WarningBanner>
       )}
       <Row className="g-3">
-        <Col xs={6} xl={3}>
+        <Col xs={12} sm={4}>
           <StatCard
             label="Inflation Commission"
             value={pct(inflation.now)}
             sublabel={inflation.sub}
           />
         </Col>
-        <Col xs={6} xl={3}>
-          <StatCard
-            label="Block Revenue Commission"
-            value={pct(blocks.now)}
-            sublabel={blocks.sub}
-          />
-        </Col>
-        <Col xs={6} xl={3}>
+        <Col xs={12} sm={4}>
           <StatCard
             label="MEV Commission"
             value={isTestnet || noTips ? '—' : pct(mev?.mevCommissionBps)}
@@ -146,7 +137,7 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
             }
           />
         </Col>
-        <Col xs={6} xl={3}>
+        <Col xs={12} sm={4}>
           <StatCard
             label="Commission Changes"
             value={recent ? recent.length.toLocaleString() : '—'}
