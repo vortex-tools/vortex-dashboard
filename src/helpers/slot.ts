@@ -1,7 +1,7 @@
 /**
- * Slot numbers: digits in groups of three, set apart by a small gap
- * rather than commas - a slot is an identifier, not an amount, and the
- * commas pulled the eye. Counts of slots keep their commas.
+ * Slot numbers: no commas - a slot is an identifier, not an amount, and
+ * the commas pulled the eye (counts of slots keep theirs). In tables,
+ * SlotNumber sets the digit groups slightly apart.
  *
  * No imports: the Worker can bundle it.
  */
@@ -15,11 +15,6 @@ export const slotGroups = (slot: number): string[] => {
   return out;
 };
 
-// A hair space: the gap in plain text (titles, chart tooltips), about as
-// slight as SlotNumber's.
-const GAP = '\u200a';
-
-/** A slot number as plain text, hair-spaced between digit groups. For
- *  JSX use <SlotNumber>, whose gaps are margins, so a copied slot has no
- *  spaces. */
-export const slotText = (slot: number) => slotGroups(slot).join(GAP);
+/** A slot number as plain text (titles, chart tooltips): bare digits.
+ *  For JSX use <SlotNumber>, which groups digits inside tables. */
+export const slotText = (slot: number) => String(Math.trunc(slot));

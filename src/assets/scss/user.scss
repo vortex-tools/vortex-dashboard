@@ -673,11 +673,12 @@ th.leaderboard-sticky-col {
   }
 }
 
-// Slot numbers (SlotNumber): digit groups set apart by a very slight gap,
-// not commas; a margin, so a copied slot has no spaces.
+// Slot numbers (SlotNumber): bare digits; in a table, where columns of
+// them are scanned, digit groups set apart by a very slight gap - a
+// margin, so a copied slot has no spaces.
 .vx-slot {
   white-space: nowrap;
 }
-.vx-slot-group {
+table .vx-slot-group {
   margin-left: 0.1em;
 }
