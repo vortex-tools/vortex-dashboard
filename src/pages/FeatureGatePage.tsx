@@ -2,7 +2,7 @@ import BackLink from 'components/common/BackLink';
 import AddressLine from 'components/common/AddressLine';
 import { explorerAddress } from 'helpers/explorer';
 import useCluster from 'hooks/useCluster';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -134,14 +134,14 @@ const FeatureGatePage = () => {
 
   if (!data)
     return (
-      <div className="mb-9 pt-4">
+      <div className={slice?.error ? 'mb-9 pt-4' : 'mb-9'}>
         {slice?.error ? (
           <UntrackedState>
             No feature gate with this id.{' '}
             <Link to="/features">All feature gates</Link>
           </UntrackedState>
         ) : (
-          <DelayedSpinner loading label="Loading the feature gate…" />
+          <PageSkeleton header rows={SKELETON.featureGate} />
         )}
       </div>
     );

@@ -1,4 +1,5 @@
 import { NETWORK_TAB } from 'helpers/apiEndpoint';
+
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { graphic } from 'echarts/core';
@@ -288,11 +289,8 @@ const LeaderMap = ({
         </div>
       )}
       {!ready || !geo ? (
-        <div
-          className="d-flex align-items-center justify-content-center text-body-tertiary fs-9"
-          style={{ height }}
-        >
-          Loading map…
+        <div className="placeholder-glow d-flex" style={{ height }}>
+          <span className="placeholder rounded bg-body-secondary w-100" />
         </div>
       ) : (
         <ReactEChartsCore

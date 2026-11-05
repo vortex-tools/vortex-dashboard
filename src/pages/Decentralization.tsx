@@ -1,4 +1,5 @@
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import ChartSkeleton from 'components/common/ChartSkeleton';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import ValidatorLink from 'components/common/ValidatorLink';
 import SectionCard from 'components/common/SectionCard';
 import StakeRace, { RaceFrame } from 'components/common/StakeRace';
@@ -192,7 +193,7 @@ const PendingCard = ({
     {failed ? (
       <UntrackedState>Couldn&apos;t load validator locations.</UntrackedState>
     ) : (
-      <DelayedSpinner loading label="Loading validators…" />
+      <ChartSkeleton height={280} />
     )}
   </SectionCard>
 );
@@ -297,7 +298,7 @@ const BreakdownCard = ({
             {...(view === 'recent' ? { step: 1, frameMs: 300 } : {})}
           />
         ) : history?.loading ? (
-          <DelayedSpinner loading label="Loading history…" />
+          <ChartSkeleton height={280} />
         ) : (
           <p className="fs-9 text-body-tertiary mb-0">
             {history?.failed
@@ -703,14 +704,7 @@ const Decentralization = () => {
             Couldn&apos;t load the stake distribution.
           </UntrackedState>
         ) : (
-          <DelayedSpinner
-            loading
-            label={
-              apiDown
-                ? 'Waiting for the API…'
-                : 'Loading the stake distribution…'
-            }
-          />
+          <PageSkeleton rows={SKELETON.decentralization} />
         )
       ) : (
         <div className="d-flex flex-column gap-3">

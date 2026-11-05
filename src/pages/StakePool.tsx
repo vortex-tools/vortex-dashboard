@@ -10,7 +10,10 @@ import FeatherIcon from 'components/base/FeatherIcon';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import AddressLine from 'components/common/AddressLine';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, {
+  LinesSkeleton,
+  SKELETON
+} from 'components/common/PageSkeleton';
 import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -714,7 +717,7 @@ const PoolNotFound = ({ name }: { name: string }) => {
         Stake pools aren&apos;t available right now.
       </UntrackedState>
     ) : (
-      <DelayedSpinner loading label="Loading the stake pool…" />
+      <LinesSkeleton rows={4} />
     );
   const q = name.toLowerCase();
   const matches = (listing?.pools ?? []).filter(p => {
@@ -943,11 +946,11 @@ const StakePool = () => {
 
   if (!data)
     return (
-      <div className="mb-9 pt-4">
+      <div className={slice?.error ? 'mb-9 pt-4' : 'mb-9'}>
         {slice?.error ? (
           <PoolNotFound name={name} />
         ) : (
-          <DelayedSpinner loading label="Loading the stake pool…" />
+          <PageSkeleton header rows={SKELETON.pool} />
         )}
       </div>
     );

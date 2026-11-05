@@ -1,4 +1,5 @@
 import SectionCard from 'components/common/SectionCard';
+import { LinesSkeleton } from 'components/common/PageSkeleton';
 import ValidatorLink from 'components/common/ValidatorLink';
 import UntrackedState from 'components/common/UntrackedState';
 import { clientBase, clientFork } from 'helpers/clients';
@@ -36,7 +37,7 @@ const HaltRunUpCard = ({
   if (!data)
     return context?.clusterHaltState.error ? null : (
       <SectionCard title="Before the Halt" icon="activity">
-        <UntrackedState>Loading the last slots…</UntrackedState>
+        <LinesSkeleton rows={6} />
       </SectionCard>
     );
 

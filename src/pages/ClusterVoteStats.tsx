@@ -3,7 +3,7 @@ import { faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
 import FaIcon from 'components/base/FaIcon';
 import FeatherIcon from 'components/base/FeatherIcon';
 import Button from 'components/base/Button';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import EmptyEpochState from 'components/common/EmptyEpochState';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SearchBox from 'components/common/SearchBox';
@@ -434,10 +434,7 @@ const ClusterVoteStats = () => {
 
         <div className="mx-n3 bg-body-emphasis border-top border-bottom border-translucent position-relative top-1">
           {isLoadingEpoch ? (
-            <DelayedSpinner
-              loading={isLoadingEpoch}
-              label="Loading epoch data…"
-            />
+            <TableSkeleton />
           ) : isEmptyEpoch ? (
             <EmptyEpochState
               epoch={resolvedEpoch}

@@ -2,7 +2,7 @@ import FeatherIcon from 'components/base/FeatherIcon';
 import ValidatorLink from 'components/common/ValidatorLink';
 import useConsensus from 'hooks/useConsensus';
 import Button from 'components/base/Button';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import PageBreadcrumb from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -277,7 +277,7 @@ const SlotPage = () => {
               right now.
             </UntrackedState>
           ) : (
-            <DelayedSpinner loading label="Loading slot…" />
+            <PageSkeleton rows={SKELETON.slot} />
           )}
         </div>
       </div>

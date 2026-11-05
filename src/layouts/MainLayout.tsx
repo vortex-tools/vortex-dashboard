@@ -5,7 +5,7 @@ import Sidebar from 'components/layout/Sidebar';
 import NavProgress from 'components/layout/NavProgress';
 import TopBar from 'components/layout/TopBar';
 import { useAppContext } from 'providers/AppProvider';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 
@@ -25,8 +25,8 @@ const MainLayout = () => {
             arrives (a spinner if it's slow). */}
         <Suspense
           fallback={
-            <div style={{ minHeight: '100vh' }} className="pt-4">
-              <DelayedSpinner loading label="Loading…" />
+            <div style={{ minHeight: '100vh' }}>
+              <PageSkeleton header rows={SKELETON.page} />
             </div>
           }
         >

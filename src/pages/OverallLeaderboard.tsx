@@ -1,4 +1,4 @@
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { StatsSkeleton, TableSkeleton } from 'components/common/PageSkeleton';
 import PageBreadcrumb from 'components/common/PageBreadcrumb';
 import SearchBox from 'components/common/SearchBox';
 import LowStakeToggle from 'components/leaderboards/LowStakeToggle';
@@ -251,62 +251,66 @@ const OverallLeaderboard = ({ epoch }: { epoch: number | null }) => {
 
   return shell(
     <>
-      {kpis && (
-        <Row className="g-3 mb-3">
-          <Col xs={6} md>
-            <StatCard
-              label="Inflation Rewards Earned"
-              value={formatLamports(kpis.earned, 0)}
-              sublabel={
-                <span title="Vote rewards plus production rewards (cluster-wide the two are equal: every paid vote pays its voter and its producer the same) over what admitted validators could earn: every vote in each slot with a reward certificate, and every leader slot carrying all online voters">
-                  {kpis.share != null
-                    ? `${formatShare(kpis.share)} reward efficiency`
-                    : undefined}
-                </span>
-              }
-            />
-          </Col>
-          <Col xs={6} md>
-            {/* One figure for both sides: each block carries the votes
+      {!voting ? (
+        <StatsSkeleton count={4} />
+      ) : (
+        kpis && (
+          <Row className="g-3 mb-3">
+            <Col xs={6} md>
+              <StatCard
+                label="Inflation Rewards Earned"
+                value={formatLamports(kpis.earned, 0)}
+                sublabel={
+                  <span title="Vote rewards plus production rewards (cluster-wide the two are equal: every paid vote pays its voter and its producer the same) over what admitted validators could earn: every vote in each slot with a reward certificate, and every leader slot carrying all online voters">
+                    {kpis.share != null
+                      ? `${formatShare(kpis.share)} reward efficiency`
+                      : undefined}
+                  </span>
+                }
+              />
+            </Col>
+            <Col xs={6} md>
+              {/* One figure for both sides: each block carries the votes
                 that land (the voter's 'votes landed' and the producer's
                 inclusion are the same votes). Average over blocks; the API
                 has no per-block median yet. */}
-            <StatCard
-              label="Stake Voting per Block"
-              value={(() => {
-                const v = producing?.cluster?.meanIncludedStakePpb;
-                return v != null ? formatShare(v / 1e9) : '—';
-              })()}
-              sublabel={
-                <span title="The share of all stake whose votes each block's reward certificates carried, averaged over the epoch's blocks (skipped slots aren't blocks). The same votes as Votes Landed, counted per block. Offline validators count as not voting.">
-                  average per block
-                  {producing?.cluster?.perfectSlots != null &&
-                  producing.cluster.classifiedSlots
-                    ? ` · ${formatShare(producing.cluster.perfectSlots / producing.cluster.classifiedSlots)} of slots Perfect`
-                    : ''}
-                </span>
-              }
-            />
-          </Col>
-          <Col xs={6} md>
-            <StatCard
-              label="Slot Skip Rate"
-              value={pct(producing?.cluster?.skipRate ?? null)}
-              sublabel={
-                producing?.cluster
-                  ? `${producing.cluster.skippedSlots.toLocaleString()} leader slots skipped`
-                  : undefined
-              }
-            />
-          </Col>
-          <Col xs={6} md>
-            <StatCard
-              label="Admitted Validators"
-              value={`${kpis.admitted.toLocaleString()} / ${kpis.total.toLocaleString()}`}
-              sublabel="able to vote this epoch"
-            />
-          </Col>
-        </Row>
+              <StatCard
+                label="Stake Voting per Block"
+                value={(() => {
+                  const v = producing?.cluster?.meanIncludedStakePpb;
+                  return v != null ? formatShare(v / 1e9) : '—';
+                })()}
+                sublabel={
+                  <span title="The share of all stake whose votes each block's reward certificates carried, averaged over the epoch's blocks (skipped slots aren't blocks). The same votes as Votes Landed, counted per block. Offline validators count as not voting.">
+                    average per block
+                    {producing?.cluster?.perfectSlots != null &&
+                    producing.cluster.classifiedSlots
+                      ? ` · ${formatShare(producing.cluster.perfectSlots / producing.cluster.classifiedSlots)} of slots Perfect`
+                      : ''}
+                  </span>
+                }
+              />
+            </Col>
+            <Col xs={6} md>
+              <StatCard
+                label="Slot Skip Rate"
+                value={pct(producing?.cluster?.skipRate ?? null)}
+                sublabel={
+                  producing?.cluster
+                    ? `${producing.cluster.skippedSlots.toLocaleString()} leader slots skipped`
+                    : undefined
+                }
+              />
+            </Col>
+            <Col xs={6} md>
+              <StatCard
+                label="Admitted Validators"
+                value={`${kpis.admitted.toLocaleString()} / ${kpis.total.toLocaleString()}`}
+                sublabel="able to vote this epoch"
+              />
+            </Col>
+          </Row>
+        )
       )}
 
       {viewingLive && voting && !voting.complete && (
@@ -340,7 +344,7 @@ const OverallLeaderboard = ({ epoch }: { epoch: number | null }) => {
 
       <div className="mx-n3 bg-body-emphasis border-top border-bottom border-translucent position-relative top-1">
         {!voting ? (
-          <DelayedSpinner loading label="Loading leaderboard…" />
+          <TableSkeleton />
         ) : rows.length === 0 ? (
           <p className="text-body-tertiary fs-9 text-center py-6 px-4 mb-0">
             No records for epoch {voting.epoch}.

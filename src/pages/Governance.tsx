@@ -1,5 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import {
   PhaseBadge,
@@ -69,7 +69,7 @@ const Governance = () => {
             Governance isn&apos;t available from this API (it is mainnet only).
           </UntrackedState>
         ) : (
-          <DelayedSpinner loading label="Loading proposals…" />
+          <TableSkeleton rows={3} />
         )
       ) : !proposals.length ? (
         <UntrackedState>No proposals recorded yet.</UntrackedState>

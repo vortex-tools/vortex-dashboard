@@ -1,4 +1,8 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import PageSkeleton, {
+  LinesSkeleton,
+  SKELETON
+} from 'components/common/PageSkeleton';
 import ValidatorLink from 'components/common/ValidatorLink';
 import { BarChart, LineChart } from 'echarts/charts';
 import {
@@ -493,7 +497,7 @@ const FamilyPanel = ({
           Every {family.label} validator is on {target} or newer.
         </p>
       ) : (
-        <UntrackedState>Loading validators…</UntrackedState>
+        <LinesSkeleton rows={8} />
       )}
       {note && <p className="fs-10 text-body-tertiary mt-3 mb-0">{note}</p>}
     </SectionCard>
@@ -553,14 +557,14 @@ const ClientVersionsCard = () => {
   }, [summary]);
 
   if (!data)
-    return (
+    return context?.clusterVersionsState.error ? (
       <SectionCard title="Client Upgrades" icon="git-branch">
         <UntrackedState>
-          {context?.clusterVersionsState.error
-            ? "Client versions aren't available right now."
-            : 'Loading versions…'}
+          Client versions aren&apos;t available right now.
         </UntrackedState>
       </SectionCard>
+    ) : (
+      <PageSkeleton rows={SKELETON.clientVersions} />
     );
   const epochs = data.epochs;
   const cutoverNote =

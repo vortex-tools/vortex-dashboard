@@ -5,7 +5,7 @@ import { poolPath } from 'components/pools/pools';
 import { ColumnDef } from '@tanstack/react-table';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import Pager from 'components/common/Pager';
 import { clientBase, clientFork, isKnownClient } from 'helpers/clients';
 import SearchBox from 'components/common/SearchBox';
@@ -427,14 +427,14 @@ const GovernanceProposal = () => {
 
   if (!data)
     return (
-      <div className="mb-9 pt-4">
+      <div className={slice?.error ? 'mb-9 pt-4' : 'mb-9'}>
         {slice?.error ? (
           <UntrackedState>
             This proposal isn&apos;t available from the API.{' '}
             <Link to="/governance">All proposals</Link>
           </UntrackedState>
         ) : (
-          <DelayedSpinner loading label="Loading the proposal…" />
+          <PageSkeleton header rows={SKELETON.proposal} />
         )}
       </div>
     );

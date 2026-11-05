@@ -1,7 +1,7 @@
 import BackLink from 'components/common/BackLink';
 import FeatherIcon from 'components/base/FeatherIcon';
 import Badge from 'components/base/Badge';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -150,13 +150,13 @@ const SimdPage = () => {
 
   if (!data)
     return (
-      <div className="mb-9 pt-4">
+      <div className={!valid || slice?.error ? 'mb-9 pt-4' : 'mb-9'}>
         {!valid || slice?.error ? (
           <UntrackedState>
             No SIMD with this number. <Link to="/features">Feature gates</Link>
           </UntrackedState>
         ) : (
-          <DelayedSpinner loading label="Loading the SIMD…" />
+          <PageSkeleton header rows={SKELETON.simd} />
         )}
       </div>
     );

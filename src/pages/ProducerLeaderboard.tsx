@@ -1,5 +1,5 @@
 import { handoffExtra } from 'helpers/network';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { StatsSkeleton, TableSkeleton } from 'components/common/PageSkeleton';
 import ConsensusHeader, {
   consensusBreadcrumbs
 } from 'components/leaderboards/ConsensusHeader';
@@ -272,36 +272,40 @@ const ProducerLeaderboard = () => {
       <div className="mb-9">
         {header}
 
-        {c && (
-          <Row className="g-3 mb-3">
-            <Col xs={6} md>
-              <StatCard
-                label="Slot Skip Rate"
-                value={pct(c.skipRate)}
-                sublabel={`${c.skippedSlots.toLocaleString()} of ${(c.blocks + c.skippedSlots).toLocaleString()} slots`}
-              />
-            </Col>
-            <Col xs={6} md>
-              <StatCard
-                label="Leader Slots"
-                value={(c.blocks + c.skippedSlots).toLocaleString()}
-                sublabel={`${c.blocks.toLocaleString()} blocks · ${c.skippedSlots.toLocaleString()} skipped`}
-              />
-            </Col>
-            <Col xs={6} md>
-              <StatCard
-                label="Block Vote Inclusion"
-                value={clusterScore != null ? formatShare(clusterScore) : '—'}
-                sublabel={
-                  <span title="The cluster's leader slots: the share of the online stake their blocks carried (voters in a 32+ slot offline run left out; skipped slots carry 0; a block carrying 99.9%+ counts as full), and the share of slots whose block was Perfect">
-                    {c.perfectSlots != null && c.classifiedSlots
-                      ? `Perfect ${formatShare(c.perfectSlots / c.classifiedSlots)} of slots`
-                      : 'of online stake'}
-                  </span>
-                }
-              />
-            </Col>
-          </Row>
+        {!board && !failed ? (
+          <StatsSkeleton count={3} />
+        ) : (
+          c && (
+            <Row className="g-3 mb-3">
+              <Col xs={6} md>
+                <StatCard
+                  label="Slot Skip Rate"
+                  value={pct(c.skipRate)}
+                  sublabel={`${c.skippedSlots.toLocaleString()} of ${(c.blocks + c.skippedSlots).toLocaleString()} slots`}
+                />
+              </Col>
+              <Col xs={6} md>
+                <StatCard
+                  label="Leader Slots"
+                  value={(c.blocks + c.skippedSlots).toLocaleString()}
+                  sublabel={`${c.blocks.toLocaleString()} blocks · ${c.skippedSlots.toLocaleString()} skipped`}
+                />
+              </Col>
+              <Col xs={6} md>
+                <StatCard
+                  label="Block Vote Inclusion"
+                  value={clusterScore != null ? formatShare(clusterScore) : '—'}
+                  sublabel={
+                    <span title="The cluster's leader slots: the share of the online stake their blocks carried (voters in a 32+ slot offline run left out; skipped slots carry 0; a block carrying 99.9%+ counts as full), and the share of slots whose block was Perfect">
+                      {c.perfectSlots != null && c.classifiedSlots
+                        ? `Perfect ${formatShare(c.perfectSlots / c.classifiedSlots)} of slots`
+                        : 'of online stake'}
+                    </span>
+                  }
+                />
+              </Col>
+            </Row>
+          )
         )}
 
         {viewingLive && board && (
@@ -350,7 +354,7 @@ const ProducerLeaderboard = () => {
               No block-producer data for epoch {epoch} from this API.
             </p>
           ) : !board ? (
-            <DelayedSpinner loading label="Loading producers…" />
+            <TableSkeleton />
           ) : records.length === 0 ? (
             <p className="text-body-tertiary fs-9 text-center py-6 px-4 mb-0">
               No producer records for epoch {board.epoch} yet.

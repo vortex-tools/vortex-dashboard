@@ -3,7 +3,7 @@ import UntrackedState from 'components/common/UntrackedState';
 import useCluster, { BLOCK_INCOME_UNTRACKED } from 'hooks/useCluster';
 import FaIcon from 'components/base/FaIcon';
 import Button from 'components/base/Button';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { StatsSkeleton, TableSkeleton } from 'components/common/PageSkeleton';
 import EmptyEpochState from 'components/common/EmptyEpochState';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SearchBox from 'components/common/SearchBox';
@@ -276,68 +276,72 @@ const IncomeLeaderboard = () => {
           </Col>
         </Row>
 
-        {kpis && (
-          <Row className="g-3 mb-3">
-            <Col xs={6} md={3}>
-              {capture ? (
+        {isLoadingEpoch ? (
+          <StatsSkeleton count={4} />
+        ) : (
+          kpis && (
+            <Row className="g-3 mb-3">
+              <Col xs={6} md={3}>
+                {capture ? (
+                  <StatCard
+                    label="Missed to Skips"
+                    value={formatLamports(capture.missed, 2)}
+                    sublabel="what skipped leader slots would have earned"
+                  />
+                ) : (
+                  <StatCard
+                    label="Validators"
+                    value={kpis.validators.toLocaleString()}
+                  />
+                )}
+              </Col>
+              <Col xs={6} md={3}>
                 <StatCard
-                  label="Missed to Skips"
-                  value={formatLamports(capture.missed, 2)}
-                  sublabel="what skipped leader slots would have earned"
-                />
-              ) : (
-                <StatCard
-                  label="Validators"
-                  value={kpis.validators.toLocaleString()}
-                />
-              )}
-            </Col>
-            <Col xs={6} md={3}>
-              <StatCard
-                label="Blocks Produced"
-                value={kpis.blocksProduced.toLocaleString()}
-                sublabel={
-                  viewingCurrent && (
-                    <DataFreshnessSublabel sources={['blocks']} />
-                  )
-                }
-              />
-            </Col>
-            <Col xs={6} md={3}>
-              {capture ? (
-                <StatCard
-                  label="Median Capture"
-                  value={
-                    capture.median != null
-                      ? `${capture.median.toFixed(2)}×`
-                      : '—'
-                  }
-                  sublabel="1.00× = earns like the blocks around it"
-                />
-              ) : (
-                <StatCard
-                  label="Typical Block"
-                  value={
-                    kpis.clusterMedianTotal !== undefined
-                      ? formatLamports(kpis.clusterMedianTotal, 4)
-                      : '—'
-                  }
+                  label="Blocks Produced"
+                  value={kpis.blocksProduced.toLocaleString()}
                   sublabel={
-                    kpis.clusterMean != null
-                      ? `cluster median · mean ${formatLamports(kpis.clusterMean, 4)}`
-                      : 'cluster median'
+                    viewingCurrent && (
+                      <DataFreshnessSublabel sources={['blocks']} />
+                    )
                   }
                 />
-              )}
-            </Col>
-            <Col xs={6} md={3}>
-              <StatCard
-                label="Total Fees"
-                value={formatLamports(kpis.totalRevenue, 2)}
-                sublabel="fees + tips, every block this epoch"
-              />
-            </Col>
-          </Row>
+              </Col>
+              <Col xs={6} md={3}>
+                {capture ? (
+                  <StatCard
+                    label="Median Capture"
+                    value={
+                      capture.median != null
+                        ? `${capture.median.toFixed(2)}×`
+                        : '—'
+                    }
+                    sublabel="1.00× = earns like the blocks around it"
+                  />
+                ) : (
+                  <StatCard
+                    label="Typical Block"
+                    value={
+                      kpis.clusterMedianTotal !== undefined
+                        ? formatLamports(kpis.clusterMedianTotal, 4)
+                        : '—'
+                    }
+                    sublabel={
+                      kpis.clusterMean != null
+                        ? `cluster median · mean ${formatLamports(kpis.clusterMean, 4)}`
+                        : 'cluster median'
+                    }
+                  />
+                )}
+              </Col>
+              <Col xs={6} md={3}>
+                <StatCard
+                  label="Total Fees"
+                  value={formatLamports(kpis.totalRevenue, 2)}
+                  sublabel="fees + tips, every block this epoch"
+                />
+              </Col>
+            </Row>
+          )
         )}
 
         <Row className="align-items-start justify-content-between mb-3 g-3">
@@ -369,10 +373,7 @@ const IncomeLeaderboard = () => {
 
         <div className="mx-n3 bg-body-emphasis border-top border-bottom border-translucent position-relative top-1">
           {isLoadingEpoch ? (
-            <DelayedSpinner
-              loading={isLoadingEpoch}
-              label="Loading epoch data…"
-            />
+            <TableSkeleton />
           ) : isEmptyEpoch ? (
             <EmptyEpochState
               epoch={resolvedEpoch}

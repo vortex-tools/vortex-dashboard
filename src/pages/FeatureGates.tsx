@@ -2,7 +2,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import FeatherIcon from 'components/base/FeatherIcon';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -227,7 +227,7 @@ const FeatureGates = () => {
             Feature gates aren&apos;t available right now.
           </UntrackedState>
         ) : (
-          <DelayedSpinner loading label="Loading feature gates…" />
+          <PageSkeleton rows={SKELETON.featureGates} />
         )
       ) : (
         <div className="d-flex flex-column gap-3">

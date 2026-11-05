@@ -1,6 +1,6 @@
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import useConsensus from 'hooks/useConsensus';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SearchBox from 'components/common/SearchBox';
 import StatCard from 'components/common/StatCard';
@@ -394,7 +394,7 @@ const Validators = () => {
           ) : !summary || !producersReady ? (
             // A screen's height held: the footer stays below the fold.
             <div style={{ minHeight: '100vh' }}>
-              <DelayedSpinner loading label="Loading validators…" />
+              <TableSkeleton rows={24} />
             </div>
           ) : (
             <AdvanceTableProvider {...table}>

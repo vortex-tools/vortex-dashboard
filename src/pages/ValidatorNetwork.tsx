@@ -1,4 +1,5 @@
 import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
+
 import StatCard from 'components/common/StatCard';
 import { IS_STAGING } from 'helpers/apiEndpoint';
 import PageSkeleton, {
@@ -601,9 +602,11 @@ const ValidatorNetwork = () => {
                 </div>
               )}
               {isVotes &&
-                (tabVotes.length === 0 ? (
+                (!timeline ? (
+                  <LinesSkeleton />
+                ) : tabVotes.length === 0 ? (
                   <p className="fs-9 text-body-tertiary mt-2 mb-0">
-                    {!timeline ? 'Loading its votes…' : 'No divergent votes.'}
+                    No divergent votes.
                   </p>
                 ) : (
                   <>

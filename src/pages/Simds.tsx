@@ -3,7 +3,7 @@ import FeatherIcon from 'components/base/FeatherIcon';
 import AdvanceTable from 'components/base/AdvanceTable';
 import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import Badge from 'components/base/Badge';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -213,7 +213,7 @@ const Simds = () => {
             SIMDs aren&apos;t available right now.
           </UntrackedState>
         ) : (
-          <DelayedSpinner loading label="Loading SIMDs…" />
+          <PageSkeleton rows={SKELETON.simds} />
         )
       ) : (
         <div className="d-flex flex-column gap-3">

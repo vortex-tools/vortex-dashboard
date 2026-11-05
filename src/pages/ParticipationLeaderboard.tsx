@@ -1,6 +1,6 @@
 import { DataFreshnessSublabel } from 'components/common/DataFreshness';
 import UntrackedState from 'components/common/UntrackedState';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { StatsSkeleton, TableSkeleton } from 'components/common/PageSkeleton';
 import ConsensusHeader, {
   consensusBreadcrumbs
 } from 'components/leaderboards/ConsensusHeader';
@@ -306,74 +306,78 @@ const ParticipationLeaderboard = () => {
           </>
         ) : (
           <>
-            {kpis && (
-              <Row className="g-3 mb-3">
-                <Col xs={6} md>
-                  <StatCard
-                    label="Votes Landed"
-                    value={
-                      kpis.participation == null
-                        ? '—'
-                        : formatShare(kpis.participation)
-                    }
-                    sublabel={
-                      <span title="Admitted validators' votes in the slots' reward certificates / the slots they could vote on, weighted by stake; and the middle admitted validator's">
-                        of admitted stake&apos;s votes
-                        {kpis.median != null &&
-                          ` · median ${formatShare(kpis.median)}`}
-                      </span>
-                    }
-                  />
-                </Col>
-                <Col xs={6} md>
-                  <StatCard
-                    label="Missed Votes"
-                    value={kpis.missed.toLocaleString()}
-                    sublabel={
-                      <span title="Admitted validators' votes in neither reward certificate of their slot (unpaid). Offline: in a run of 32+ consecutive misses - the validator wasn't voting.">
-                        {kpis.offline != null
-                          ? `offline ${kpis.offline.toLocaleString()} · other ${(kpis.missed - kpis.offline).toLocaleString()}`
-                          : `${kpis.missers.toLocaleString()} validators`}
-                      </span>
-                    }
-                  />
-                </Col>
-                <Col xs={6} md>
-                  <StatCard
-                    label="Fast Votes"
-                    value={
-                      kpis.finalizedMedian != null
-                        ? `${(kpis.finalizedMedian * 100).toFixed(1)}%`
-                        : '—'
-                    }
-                    sublabel={
-                      <span title="The middle admitted validator's share of finalization certificates its vote is in: nearly all are fast certificates - the first 80% of stake whose notarize votes reached the next leader in time. How early votes arrive, as the next leaders see it; not rewarded.">
-                        median admitted validator
-                      </span>
-                    }
-                  />
-                </Col>
-                <Col xs={6} md>
-                  <StatCard
-                    label="Skipped Blocks"
-                    value={kpis.lateSkips.toLocaleString()}
-                    sublabel={
-                      <span title="Admitted validators' skip votes on blocks the cluster notarized: the block reached them late, or they were slow. Still paid.">
-                        {kpis.lateSkippers.toLocaleString()} validators
-                        {kpis.lateSkipRate != null &&
-                          ` · ${(kpis.lateSkipRate * 100).toFixed(3)}% of votes on blocks`}
-                      </span>
-                    }
-                  />
-                </Col>
-                <Col xs={12} md>
-                  <StatCard
-                    label="Admitted Validators"
-                    value={`${kpis.admitted.toLocaleString()} / ${kpis.total.toLocaleString()}`}
-                    sublabel="able to vote this epoch"
-                  />
-                </Col>
-              </Row>
+            {!board ? (
+              <StatsSkeleton count={5} />
+            ) : (
+              kpis && (
+                <Row className="g-3 mb-3">
+                  <Col xs={6} md>
+                    <StatCard
+                      label="Votes Landed"
+                      value={
+                        kpis.participation == null
+                          ? '—'
+                          : formatShare(kpis.participation)
+                      }
+                      sublabel={
+                        <span title="Admitted validators' votes in the slots' reward certificates / the slots they could vote on, weighted by stake; and the middle admitted validator's">
+                          of admitted stake&apos;s votes
+                          {kpis.median != null &&
+                            ` · median ${formatShare(kpis.median)}`}
+                        </span>
+                      }
+                    />
+                  </Col>
+                  <Col xs={6} md>
+                    <StatCard
+                      label="Missed Votes"
+                      value={kpis.missed.toLocaleString()}
+                      sublabel={
+                        <span title="Admitted validators' votes in neither reward certificate of their slot (unpaid). Offline: in a run of 32+ consecutive misses - the validator wasn't voting.">
+                          {kpis.offline != null
+                            ? `offline ${kpis.offline.toLocaleString()} · other ${(kpis.missed - kpis.offline).toLocaleString()}`
+                            : `${kpis.missers.toLocaleString()} validators`}
+                        </span>
+                      }
+                    />
+                  </Col>
+                  <Col xs={6} md>
+                    <StatCard
+                      label="Fast Votes"
+                      value={
+                        kpis.finalizedMedian != null
+                          ? `${(kpis.finalizedMedian * 100).toFixed(1)}%`
+                          : '—'
+                      }
+                      sublabel={
+                        <span title="The middle admitted validator's share of finalization certificates its vote is in: nearly all are fast certificates - the first 80% of stake whose notarize votes reached the next leader in time. How early votes arrive, as the next leaders see it; not rewarded.">
+                          median admitted validator
+                        </span>
+                      }
+                    />
+                  </Col>
+                  <Col xs={6} md>
+                    <StatCard
+                      label="Skipped Blocks"
+                      value={kpis.lateSkips.toLocaleString()}
+                      sublabel={
+                        <span title="Admitted validators' skip votes on blocks the cluster notarized: the block reached them late, or they were slow. Still paid.">
+                          {kpis.lateSkippers.toLocaleString()} validators
+                          {kpis.lateSkipRate != null &&
+                            ` · ${(kpis.lateSkipRate * 100).toFixed(3)}% of votes on blocks`}
+                        </span>
+                      }
+                    />
+                  </Col>
+                  <Col xs={12} md>
+                    <StatCard
+                      label="Admitted Validators"
+                      value={`${kpis.admitted.toLocaleString()} / ${kpis.total.toLocaleString()}`}
+                      sublabel="able to vote this epoch"
+                    />
+                  </Col>
+                </Row>
+              )
             )}
 
             {board && board.missingFooters > 0 && (
@@ -435,7 +439,7 @@ const ParticipationLeaderboard = () => {
 
             <div className="mx-n3 bg-body-emphasis border-top border-bottom border-translucent position-relative top-1">
               {!board ? (
-                <DelayedSpinner loading label="Loading participation…" />
+                <TableSkeleton />
               ) : records.length === 0 ? (
                 <p className="text-body-tertiary fs-9 text-center py-6 px-4 mb-0">
                   No participation records for epoch {board.epoch}.
