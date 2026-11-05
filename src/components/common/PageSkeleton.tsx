@@ -233,8 +233,7 @@ export const SKELETON = {
   ],
   /** Below the live strip and stat cards (shown once its row is in). */
   votingCards: [[full(191, 'chart')], [full(1088)], [full(449)]],
-  production: [{ stats: 6 }, [full(467)], [full(939)]],
-  productionCards: [[full(467)], [full(939)]],
+  production: [{ stats: 6 }, [full(605)], [full(939)]],
   network: [
     { stats: 4 },
     [half(330, 'block'), half(330)],

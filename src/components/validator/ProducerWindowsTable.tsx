@@ -1,7 +1,7 @@
 import SectionCard from 'components/common/SectionCard';
 import { slotText } from 'helpers/slot';
 import SlotNumber from 'components/common/SlotNumber';
-import { LinesSkeleton } from 'components/common/PageSkeleton';
+import { CardSkeleton, LinesSkeleton } from 'components/common/PageSkeleton';
 import Pager from 'components/common/Pager';
 import UntrackedState from 'components/common/UntrackedState';
 import {
@@ -455,7 +455,13 @@ const ProducerWindowsTable = ({
         Leader slots aren&apos;t available right now.
       </UntrackedState>
     );
-  if (!data) return <LinesSkeleton rows={10} />;
+  // As its card would be (the Production tab's), or its rows inside one.
+  if (!data)
+    return card ? (
+      <CardSkeleton kind="table" height={939} />
+    ) : (
+      <LinesSkeleton rows={10} />
+    );
   if (legacy && !data.windows.length)
     return (
       <p className="fs-9 text-body-tertiary mb-0">

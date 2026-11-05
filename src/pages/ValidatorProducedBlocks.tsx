@@ -39,6 +39,15 @@ const ValidatorProducedBlocks = () => {
     row
   } = useConsensusRecord({ timeline: false });
   const context = useContext(VortexDataContext);
+  // Producer Omissions not served (an older API): BlackholeVoters instead -
+  // only then, so it doesn't flash in while the omissions load.
+  const omissions = context?.productionOmissionsState;
+  const omissionsFailed =
+    recordKey != null &&
+    epoch != null &&
+    !omissions?.data.has(`${recordKey}:${epoch}`) &&
+    !!omissions?.error &&
+    !omissions.isLoading;
   const { producerBoard, ranked, prodRanks } = useRecordBoards(
     alpenglowActive,
     epoch,
@@ -84,7 +93,7 @@ const ValidatorProducedBlocks = () => {
             <PageSection>
               <div className="d-flex flex-column gap-3">
                 {!producerBoard ? (
-                  <PageSkeleton rows={SKELETON.productionCards} />
+                  <PageSkeleton rows={[{ stats: 6 }]} />
                 ) : (
                   <ProducingSection
                     record={producer}
@@ -107,9 +116,9 @@ const ValidatorProducedBlocks = () => {
                 {/* Every voter its blocks left out, once the API has it;
                     until then the ones it never includes. */}
                 <ProducerOmissionsCard voteKey={recordKey} epoch={epoch} />
-                {!context?.productionOmissionsState.data.has(
-                  `${recordKey}:${epoch}`
-                ) && <BlackholeVoters voteKey={recordKey} epoch={epoch} />}
+                {omissionsFailed && (
+                  <BlackholeVoters voteKey={recordKey} epoch={epoch} />
+                )}
                 {(producer || !producerBoard) && (
                   <ProducerWindowsTable
                     voteKey={recordKey}
