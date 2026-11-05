@@ -12,6 +12,8 @@ import { Col, Row } from 'react-bootstrap';
 const WINDOW = 10;
 // Changed in this many of them: "changes its commission often".
 const OFTEN_EPOCHS = 3;
+// Net On-chain Revenue: summed over this many finished epochs.
+const NET_EPOCHS = 10;
 // Inflation commission only (block revenue's isn't shown yet).
 const KINDS = ['inflationCommission'];
 
@@ -106,10 +108,16 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
   const paid = (earnings ?? []).filter(r => r.net != null);
   const mean = (f: (r: (typeof paid)[number]) => number) =>
     paid.length ? paid.reduce((a, r) => a + f(r), 0) / paid.length : null;
-  const avgNet = mean(r => r.net ?? 0);
   const avgIncome = mean(r => (r.net ?? 0) + r.costs.voteFees + r.costs.vat);
-  const avgCosts =
-    avgIncome != null && avgNet != null ? avgIncome - avgNet : null;
+  // Net: summed over its last NET_EPOCHS finished epochs.
+  const lastPaid = paid.slice(-NET_EPOCHS);
+  const net = lastPaid.length
+    ? lastPaid.reduce((a, r) => a + (r.net ?? 0), 0)
+    : null;
+  const costs = lastPaid.reduce(
+    (a, r) => a + r.costs.voteFees + r.costs.vat,
+    0
+  );
   const sol = (l: number | null) => (l == null ? '—' : formatLamports(l, 3));
   const lo = values.length ? Math.min(...values) : null;
   const hi = values.length ? Math.max(...values) : null;
@@ -142,12 +150,12 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
             <Col xs={6} xl={3}>
               <StatCard
                 label="Net On-chain Revenue"
-                value={sol(avgNet)}
-                tone={avgNet != null && avgNet < 0 ? 'danger' : undefined}
+                value={sol(net)}
+                tone={net != null && net < 0 ? 'danger' : undefined}
                 sublabel={
-                  avgCosts != null
-                    ? `per epoch, after ${sol(avgCosts)} VAT and fees`
-                    : 'per epoch, after VAT and fees'
+                  lastPaid.length
+                    ? `last ${lastPaid.length} epochs, after ${sol(costs)} VAT and fees`
+                    : 'no finished epochs yet'
                 }
               />
             </Col>
