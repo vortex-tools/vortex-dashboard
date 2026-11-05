@@ -20,7 +20,7 @@ const vs = (v: number | null | undefined) =>
  * A validator's block production for one epoch, from its producer
  * record: its Production rank and Inclusion (of online stake; the bonus
  * over what its leader slots could earn), Perfect and Poor blocks, leader
- * slots (skip rate on hover) and producer bonus - each against the
+ * slots (skip rate on hover) and production rewards - each against the
  * cluster's where it has one.
  */
 const ProducingSection = ({
@@ -147,7 +147,7 @@ const ProducingSection = ({
       </Col>
       <Col xs={6} md={4} xl={2}>
         <StatCard
-          label="Producer Bonus"
+          label="Production Rewards"
           value={
             record.producerBonusLamports != null
               ? formatLamports(record.producerBonusLamports, 2)

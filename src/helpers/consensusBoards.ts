@@ -7,7 +7,7 @@ import {
  * The consensus leaderboard's three views of one epoch (one page,
  * /leaderboards/consensus?view=). Alpenglow pays one reward two ways: a
  * validator earns for its votes landing in other leaders' blocks (voting)
- * and for the votes its own blocks carry (the producer bonus, its half of
+ * and for the votes its own blocks carry (the production rewards, its half of
  * each), so 'overall' ranks the two together.
  */
 export type ConsensusView = 'overall' | 'voting' | 'production';
@@ -62,7 +62,7 @@ export const producerSlots = (p: ProducerLeaderboardRecord) =>
   p.blocks + p.skippedSlots + Math.max(0, p.rewardCerts - p.blocks);
 
 export interface OverallScore {
-  /** Earned so far: vote rewards + producer bonus (lamports). */
+  /** Earned so far: vote rewards + production rewards (lamports). */
   earned: number;
   voting: number;
   bonus: number;

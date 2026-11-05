@@ -28,7 +28,7 @@ const Dash = () => <span className="text-body-tertiary">—</span>;
 /**
  * Production card for the validator page (Alpenglow clusters), beside the
  * Consensus (voting) card: per epoch, newest first, its producing rank,
- * leader slots, skip rate, inclusion (of online stake) and producer bonus, from
+ * leader slots, skip rate, inclusion (of online stake) and production rewards, from
  * /epochs/production (every producer ranked by the board). Each epoch
  * links to its consensus record's Producing section.
  */
@@ -117,15 +117,15 @@ const ValidatorProduction = ({
               <th className="text-end">Skip rate</th>
               <th
                 className="text-end"
-                title="Producer bonus / the most its leader slots could earn carrying every online voter (voters in a 32+ slot offline run left out)"
+                title="Production rewards / the most its leader slots could earn carrying every online voter (voters in a 32+ slot offline run left out)"
               >
                 Inclusion
               </th>
               <th
                 className="text-end"
-                title="Half of every vote its blocks carried (gross, before commission)"
+                title="Production rewards: half of every vote its blocks carried (gross, before commission)"
               >
-                Bonus
+                Rewards
               </th>
             </tr>
           </thead>

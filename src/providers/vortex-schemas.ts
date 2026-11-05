@@ -676,7 +676,7 @@ export const epochEarningsSchema = z.object({
     blockRevenueCommission: z.number().nullable(),
     mevCommission: z.number().nullable(),
     // Alpenglow: voteAccountReward's gross breakdown (before commission):
-    // what its votes earned, and its producer bonus. Not part of net.
+    // what its votes earned, and its production rewards. Not part of net.
     votingReward: z.number().nullable().optional().catch(null),
     producerBonus: z.number().nullable().optional().catch(null),
     // SFDP's vote-cost reimbursement, to the identity, filed under the
@@ -945,7 +945,7 @@ export type Ingestion = NonNullable<
 // for the epoch in progress). Per paid slot (its notarize OR skip in the
 // slot's reward certificate) it earns perSlot = budget * stake /
 // (slotsPerEpoch * totalStake); the producer that packed the certificate
-// gets the same again (producer bonus). Gross, before commission. null:
+// gets the same again (production rewards). Gross, before commission. null:
 // not admitted, nothing ingested, or the epoch's budget unknown.
 export const voteRewardsSchema = z.object({
   perSlotLamports: z.number(),
@@ -1634,7 +1634,7 @@ export type SlotDuration = z.infer<typeof slotDurationSchema>;
 //
 // Every node the leader schedule names, with its window record, what its
 // blocks did for consensus (vote inclusion, finalization) and rewards
-// (producer bonus), and cohort fields. `cluster` is a record-shaped sum.
+// (production rewards), and cohort fields. `cluster` is a record-shaped sum.
 // 404 for Tower epochs (no stored leader schedule).
 export const producerLeaderboardRecordSchema = z.object({
   nodeName: validatorNameSchema,

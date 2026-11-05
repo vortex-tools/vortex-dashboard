@@ -40,7 +40,7 @@ export const sfdpOf = (r: EpochEarnings) =>
 /**
  * Its inflation commission for an epoch: the vote account's payout when
  * paid; under Alpenglow before that, an estimate from the gross its votes
- * earned plus its producer bonus x the commission rate (the same split
+ * earned plus its production rewards x the commission rate (the same split
  * the runtime makes). votes / bonus: the gross it's a share of.
  */
 export const commissionOf = (r: EpochEarnings) => {
@@ -116,7 +116,7 @@ const EarningsChart = ({
     // commission - for every epoch, Tower or Alpenglow. Under Alpenglow
     // it's paid at the next boundary: until then (and for epochs not
     // backfilled), estimate it from the gross the API already has (what
-    // its votes earned + its producer bonus) x the commission rate.
+    // its votes earned + its production rewards) x the commission rate.
     const commission = commissionOf;
     const defs: SeriesDef[] = [
       {
@@ -297,7 +297,7 @@ const EarningsChart = ({
               if (d.name === 'VAT' && !r.costs.vatExact) label += ' (est.)';
               const main = line(label, format(d.value(r)), d.color);
               // Alpenglow: what it's a share of - its votes' rewards and
-              // its producer bonus (gross).
+              // its production rewards (gross).
               const c = commission(r);
               const sub = (text: string) =>
                 `<div class="fs-10 text-body-tertiary ps-3">${text}</div>`;
@@ -305,7 +305,7 @@ const EarningsChart = ({
                 return (
                   main +
                   sub(
-                    `of ${format(convert(r, toSol(c.votes)))} votes + ${format(convert(r, toSol(c.bonus)))} producer bonus (gross)`
+                    `of ${format(convert(r, toSol(c.votes)))} votes + ${format(convert(r, toSol(c.bonus)))} production rewards (gross)`
                   )
                 );
               // MEV: what it's a share of - the tips in its blocks (gross,

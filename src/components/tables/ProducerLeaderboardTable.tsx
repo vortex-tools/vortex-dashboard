@@ -97,7 +97,7 @@ const num = (
 /**
  * Block-producer leaderboard columns (one Alpenglow epoch): how its leader
  * windows went, how much voting stake its blocks carried (vote inclusion),
- * its producer bonus, and how its blocks finalized. The cluster row is
+ * its production rewards, and how its blocks finalized. The cluster row is
  * pinned on top as the baseline.
  */
 /** A producer's stake-normalized standing: its inclusion of the online
@@ -225,7 +225,7 @@ export const createProducerLeaderboardColumns = (
   },
   num(
     'production',
-    <span title="Share of the online stake's votes this producer carried on chain per leader slot (skipped slots count as 0; voters in a 32+ slot offline run left out, as no producer could carry them; a block that carried 99.9%+ of it counts as full) - the producer bonus it earned out of the most it could. Leader slots follow stake, so it compares producers of any size. Hover a value for the bonus and the inclusion of all stake.">
+    <span title="Share of the online stake's votes this producer carried on chain per leader slot (skipped slots count as 0; voters in a 32+ slot offline run left out, as no producer could carry them; a block that carried 99.9%+ of it counts as full) - the production rewards it earned out of the most it could. Leader slots follow stake, so it compares producers of any size. Hover a value for the production rewards and the inclusion of all stake.">
       Inclusion
     </span>,
     r => scores.get(r.nodeAddress)?.score ?? null,
@@ -234,7 +234,7 @@ export const createProducerLeaderboardColumns = (
         title={[
           productionLossLine(r),
           r.producerBonusLamports != null
-            ? `producer bonus ${formatLamports(r.producerBonusLamports, 4)} (gross)`
+            ? `production rewards ${formatLamports(r.producerBonusLamports, 4)} (gross)`
             : null,
           r.effectiveInclusion != null && r.availableInclusion != null
             ? `${pctOf(r.effectiveInclusion) as string} of all admitted stake (offline voters counted)`

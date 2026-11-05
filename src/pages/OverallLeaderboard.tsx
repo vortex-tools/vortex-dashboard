@@ -258,7 +258,7 @@ const OverallLeaderboard = ({ epoch }: { epoch: number | null }) => {
               label="Inflation Rewards Earned"
               value={formatLamports(kpis.earned, 0)}
               sublabel={
-                <span title="Vote rewards plus producer bonus (cluster-wide the two are equal: every paid vote pays its voter and its producer the same) over what admitted validators could earn: every vote in each slot with a reward certificate, and every leader slot carrying all online voters">
+                <span title="Vote rewards plus production rewards (cluster-wide the two are equal: every paid vote pays its voter and its producer the same) over what admitted validators could earn: every vote in each slot with a reward certificate, and every leader slot carrying all online voters">
                   {kpis.share != null
                     ? `${formatShare(kpis.share)} reward efficiency`
                     : undefined}

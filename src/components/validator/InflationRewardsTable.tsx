@@ -167,7 +167,7 @@ const InflationRewardsTable = ({
             </th>
             <th
               className="text-end d-none d-sm-table-cell"
-              title="Alpenglow: the producer bonus, half of every vote its own blocks carried"
+              title="Alpenglow: the production rewards, half of every vote its own blocks carried"
             >
               Production
             </th>

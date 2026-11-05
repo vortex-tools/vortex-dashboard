@@ -19,7 +19,7 @@ import useRecordBoards from 'hooks/useRecordBoards';
 /**
  * A validator's production record for one epoch: the rewards summary,
  * its production cards (rank, inclusion, Perfect / Poor blocks, leader
- * slots, producer bonus), the next leader windows live (current epoch),
+ * slots, production rewards), the next leader windows live (current epoch),
  * voters its blocks never include, and each of its leader slots - block
  * or skipped, and the share of the online stake each block carried
  * (/epochs/production/windows, paged).

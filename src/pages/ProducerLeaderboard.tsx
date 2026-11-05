@@ -48,7 +48,7 @@ const pct = (v: number | null | undefined) =>
  * Alpenglow block-producer leaderboard for one epoch
  * (/epochs/leaderboard/producers): how each leader's slots went (skip
  * rate), how much voting stake its blocks carried, its
- * producer bonus, and how its blocks finalized - with the cluster as a
+ * production rewards, and how its blocks finalized - with the cluster as a
  * pinned baseline. Alpenglow only; the epoch picker offers the epochs
  * with data.
  */
@@ -105,7 +105,7 @@ const ProducerLeaderboard = () => {
       hideLow ? records.filter(r => !lowStake.has(r.nodeAddress)) : records,
     [records, hideLow, lowStake]
   );
-  // Fallback for APIs without the inclusion fields - effective inclusion: the producer bonus earned over the most its
+  // Fallback for APIs without the inclusion fields - effective inclusion: the production rewards earned over the most its
   // leader slots could earn (every slot produced, carrying all voting
   // stake: budget / (2 x slots per epoch) each). Stake-normalized - leader
   // slots follow stake - with skipped slots counting as 0. The budget comes

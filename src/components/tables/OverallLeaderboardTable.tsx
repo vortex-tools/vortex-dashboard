@@ -266,7 +266,7 @@ export const createOverallLeaderboardColumns = (
     columns: [
       shareColumn(
         'producingShare',
-        <span title="Producer bonus / the most its leader slots could earn carrying every online voter's vote (skipped slots count 0, voters in a 32+ slot offline run left out, a block carrying 99.9%+ counts as full). The Production view's Inclusion.">
+        <span title="Production rewards / the most its leader slots could earn carrying every online voter's vote (skipped slots count 0, voters in a 32+ slot offline run left out, a block carrying 99.9%+ counts as full). The Production view's Inclusion.">
           Inclusion
         </span>,
         { opensGroup: true }
