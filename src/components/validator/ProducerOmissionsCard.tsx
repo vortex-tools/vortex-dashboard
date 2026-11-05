@@ -16,7 +16,7 @@ const pct = (v: number) =>
     : `${(Math.floor(v * 1000) / 10).toLocaleString('en-US', { minimumFractionDigits: 1 })}%`;
 
 type Filter = 'all' | 'often' | 'never';
-type Sort = 'leftOut' | 'rate' | 'stake' | 'voter' | 'excess';
+type Sort = 'leftOut' | 'rate' | 'stake' | 'voter' | 'excess' | 'ours';
 /** Left out of this share of its blocks or more: "often". */
 const OFTEN = 0.1;
 
@@ -66,7 +66,11 @@ const ProducerOmissionsCard = ({
         rate,
         // How much more often this producer leaves it out than producers
         // do in general: the producer-specific part.
-        excess: v.baselineShare != null ? rate - v.baselineShare : null
+        excess: v.baselineShare != null ? rate - v.baselineShare : null,
+        // Of its misses here, the share at our thin blocks - where our
+        // block left out many voters at once: likely our lateness.
+        ours:
+          v.thinLeftOut != null && v.leftOut ? v.thinLeftOut / v.leftOut : null
       };
     });
     return vs
@@ -89,7 +93,9 @@ const ProducerOmissionsCard = ({
                 ? b.rate - a.rate || b.leftOut - a.leftOut
                 : sort === 'excess'
                   ? (b.excess ?? -1) - (a.excess ?? -1)
-                  : b.leftOut - a.leftOut || b.stake - a.stake;
+                  : sort === 'ours'
+                    ? (b.ours ?? -1) - (a.ours ?? -1) || b.leftOut - a.leftOut
+                    : b.leftOut - a.leftOut || b.stake - a.stake;
         return asc ? -d : d;
       });
   }, [data, filter, sort, asc, never]);
@@ -196,12 +202,12 @@ const ProducerOmissionsCard = ({
                       ? 'text-warning-emphasis'
                       : 'text-body-tertiary'
                   }
-                  title="Left out at its thin blocks - where it left out 2%+ of the stake besides the voter: its own lateness, not the voter's path to it"
+                  title="Misses at our thin blocks - blocks that left out 2%+ of the online stake besides the voter, many at once: our block was late, not the voter's path to us"
                 >
                   {' · '}
                   {thinTotal === 0
-                    ? 'none at its thin blocks'
-                    : `${pct(thinShare)} at its thin blocks${thinShare >= 0.25 ? ': its own lateness' : ''}`}
+                    ? "our blocks weren't the cause: each left out only that voter"
+                    : `${pct(thinShare)} likely our fault (our blocks were late)`}
                 </span>
               )}
               {neverN > 0 && (
@@ -237,6 +243,12 @@ const ProducerOmissionsCard = ({
                       'excess',
                       "Missed in others'",
                       "How often this voter is missed by every OTHER producer this epoch (offline aside) - what's typical for it, not the cluster's. Low here beside a high Missed in our blocks: this producer is failing it. Sorts by how much worse this producer is than that"
+                    )}
+                  {thinTotal != null &&
+                    sortHead(
+                      'ours',
+                      'Likely our fault',
+                      'Of its misses here, the share at our thin blocks - blocks that left out 2%+ of the online stake besides this voter, many voters at once: our block was late. The rest left out only this voter: its path to us'
                     )}
                 </tr>
               </thead>
@@ -300,6 +312,22 @@ const ProducerOmissionsCard = ({
                         }
                       >
                         {v.baselineShare != null ? pct(v.baselineShare) : '—'}
+                      </td>
+                    )}
+                    {thinTotal != null && (
+                      <td
+                        className={`text-end font-monospace text-nowrap fs-10 ${
+                          (v.ours ?? 0) >= 0.5
+                            ? 'text-warning-emphasis'
+                            : 'text-body-tertiary'
+                        }`}
+                        title={
+                          v.thinLeftOut != null
+                            ? `${v.thinLeftOut.toLocaleString()} of its ${v.leftOut.toLocaleString()} misses here were at our thin blocks`
+                            : undefined
+                        }
+                      >
+                        {v.ours != null ? pct(v.ours) : '—'}
                       </td>
                     )}
                   </tr>
