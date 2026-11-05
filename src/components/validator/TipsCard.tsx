@@ -1,6 +1,6 @@
 import SectionCard from 'components/common/SectionCard';
+import ChartSkeleton from 'components/common/ChartSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
-import DelayedSpinner from 'components/common/DelayedSpinner';
 import { formatLamports } from 'helpers/utils';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { TipPath, ValidatorTips } from 'providers/vortex-schemas';
@@ -42,7 +42,7 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
         <UntrackedState>Tips aren&apos;t available right now.</UntrackedState>
       ) : (
         <div style={{ minHeight: 300 }}>
-          <DelayedSpinner loading label="Loading tips…" />
+          <ChartSkeleton height={280} />
         </div>
       );
     if (!data.epochs.length)

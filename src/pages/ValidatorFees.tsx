@@ -1,8 +1,11 @@
 import BlockIncomeSection from 'components/validator/BlockIncomeSection';
 import UntrackedState from 'components/common/UntrackedState';
+import PageSkeleton from 'components/common/PageSkeleton';
+import { VortexDataContext } from 'providers/VortexDataProvider';
 import useConsensus from 'hooks/useConsensus';
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
+import { useContext } from 'react';
 import { useParams } from 'react-router';
 
 /**
@@ -16,6 +19,10 @@ const ValidatorFees = () => {
   const { unavailable } = useConsensus();
   const nodeAddress =
     identity && identity.source !== 'fallback' ? identity.nodeAddress : null;
+  // Not resolved yet while the directory loads: the page's shape pulsing.
+  const directory = useContext(VortexDataContext)?.validatorDirectoryState;
+  const resolving =
+    !nodeAddress && directory?.validators == null && directory?.error == null;
   return (
     <div>
       <ValidatorPageHeader
@@ -27,6 +34,8 @@ const ValidatorFees = () => {
       <div className="mb-9">
         {unavailable ? (
           <UntrackedState>The API is unavailable right now.</UntrackedState>
+        ) : resolving ? (
+          <PageSkeleton stats={0} cards={['full', 'table']} />
         ) : (
           nodeAddress && <BlockIncomeSection nodeAddress={nodeAddress} />
         )}

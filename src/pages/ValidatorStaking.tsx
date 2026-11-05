@@ -1,4 +1,6 @@
 import UntrackedState from 'components/common/UntrackedState';
+import PageSkeleton from 'components/common/PageSkeleton';
+import { VortexDataContext } from 'providers/VortexDataProvider';
 import DelegatorsCards from 'components/validator/DelegatorsCards';
 import StakeChangesCards from 'components/validator/StakeChangesCards';
 import ValidatorPageHeader from 'components/validator/ValidatorPageHeader';
@@ -6,6 +8,7 @@ import { ValidatorSfdpBox } from 'components/validator/ValidatorStatus';
 import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
+import { useContext } from 'react';
 import { useParams } from 'react-router';
 
 /**
@@ -22,6 +25,10 @@ const ValidatorStaking = () => {
   const identity = useValidatorIdentity(address);
   const nodeAddress =
     identity && identity.source !== 'fallback' ? identity.nodeAddress : null;
+  // Not resolved yet while the directory loads: the page's shape pulsing.
+  const directory = useContext(VortexDataContext)?.validatorDirectoryState;
+  const resolving =
+    !nodeAddress && directory?.validators == null && directory?.error == null;
   return (
     <div>
       <ValidatorPageHeader
@@ -33,6 +40,8 @@ const ValidatorStaking = () => {
       <div className="mb-9">
         {unavailable ? (
           <UntrackedState>The API is unavailable right now.</UntrackedState>
+        ) : resolving ? (
+          <PageSkeleton stats={0} cards={['full', 'full', 'table']} />
         ) : isTestnet ? (
           <UntrackedState>
             Testnet stake is delegated by the foundation, so its changes

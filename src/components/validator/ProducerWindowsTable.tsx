@@ -1,6 +1,6 @@
 import SectionCard from 'components/common/SectionCard';
+import { LinesSkeleton } from 'components/common/PageSkeleton';
 import Pager from 'components/common/Pager';
-import DelayedSpinner from 'components/common/DelayedSpinner';
 import UntrackedState from 'components/common/UntrackedState';
 import {
   PRODUCTION_WINDOWS_PAGE,
@@ -452,7 +452,7 @@ const ProducerWindowsTable = ({
         Leader slots aren&apos;t available right now.
       </UntrackedState>
     );
-  if (!data) return <DelayedSpinner loading label="Loading leader slots…" />;
+  if (!data) return <LinesSkeleton rows={10} />;
   if (legacy && !data.windows.length)
     return (
       <p className="fs-9 text-body-tertiary mb-0">

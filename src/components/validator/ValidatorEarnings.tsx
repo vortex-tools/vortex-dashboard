@@ -1,9 +1,9 @@
 import UntrackedState from 'components/common/UntrackedState';
+import ChartSkeleton from 'components/common/ChartSkeleton';
 import useCluster, { BLOCK_INCOME_UNTRACKED } from 'hooks/useCluster';
 import EarningsChart, {
   EarningsChartMode
 } from 'components/charts/e-charts/EarningsChart';
-import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import {
   CURRENCIES,
@@ -121,7 +121,7 @@ const ValidatorEarnings = ({ nodeAddress }: { nodeAddress: string }) => {
           Earnings aren't available right now.
         </p>
       ) : !rows ? (
-        <DelayedSpinner loading label="Loading earnings…" />
+        <ChartSkeleton height={300} />
       ) : rows.length === 0 ? (
         <p className="text-body-tertiary fs-9 mb-0">
           No earnings recorded for this validator in the last {EARNINGS_EPOCHS}{' '}
@@ -185,7 +185,7 @@ const ValidatorEarnings = ({ nodeAddress }: { nodeAddress: string }) => {
               again later.
             </p>
           ) : loadingPrices ? (
-            <DelayedSpinner loading label="Loading SOL prices…" />
+            <ChartSkeleton height={300} />
           ) : (
             <EarningsChart
               rows={rows}

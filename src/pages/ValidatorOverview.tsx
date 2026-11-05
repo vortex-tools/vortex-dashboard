@@ -7,7 +7,7 @@ import {
   RecentVoteAccountChanges,
   ValidatorKeyLines
 } from 'components/validator/ValidatorKeys';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton from 'components/common/PageSkeleton';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
 import NetworkSummaryCard from 'components/network/NetworkSummaryCard';
@@ -294,7 +294,7 @@ const ValidatorOverview = () => {
         {/* A screen's height held, as while the page's chunk loads: the
             footer stays below the fold until the page is in. */}
         <div className="mb-9" style={{ minHeight: '100vh' }}>
-          <DelayedSpinner loading={isLoadingRaw} label="Loading validator…" />
+          <PageSkeleton cards={['half', 'half', 'half', 'half']} />
         </div>
       </div>
     );

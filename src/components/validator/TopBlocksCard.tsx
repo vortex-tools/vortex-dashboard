@@ -1,5 +1,5 @@
-import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
+import { LinesSkeleton } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import { formatLamports } from 'helpers/utils';
 import { TOP_BLOCKS, VortexDataContext } from 'providers/VortexDataProvider';
@@ -58,7 +58,7 @@ const TopBlocksCard = ({
             </button>
           </UntrackedState>
         ) : (
-          <DelayedSpinner loading label="Loading its blocks…" />
+          <LinesSkeleton />
         )
       ) : !rows.length ? (
         <UntrackedState>No blocks yet.</UntrackedState>

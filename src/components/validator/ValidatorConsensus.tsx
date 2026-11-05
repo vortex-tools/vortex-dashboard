@@ -1,4 +1,5 @@
 import { SUMMARY_TABLE_HEIGHT } from 'components/validator/ValidatorProduction';
+import { LinesSkeleton } from 'components/common/PageSkeleton';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import {
   NOT_ADMITTED_REASONS,
@@ -8,7 +9,6 @@ import {
 import { Table } from 'react-bootstrap';
 import { formatLamports } from 'helpers/utils';
 import { Link } from 'react-router';
-import DelayedSpinner from 'components/common/DelayedSpinner';
 import { missCausesLine } from 'components/validator/ProducerMissesTable';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -260,7 +260,7 @@ const ValidatorConsensus = ({
         </p>
       ) : !rows ? (
         <div style={{ minHeight: SUMMARY_TABLE_HEIGHT }}>
-          <DelayedSpinner loading label="Loading participation…" />
+          <LinesSkeleton />
         </div>
       ) : (
         <>

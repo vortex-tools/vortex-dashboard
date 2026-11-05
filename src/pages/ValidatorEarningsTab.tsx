@@ -1,6 +1,6 @@
 import BamBoostCard from 'components/validator/BamBoostCard';
 import TipsCard from 'components/validator/TipsCard';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import { LinesSkeleton } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import SectionCard from 'components/common/SectionCard';
 import InflationRewardsTable from 'components/validator/InflationRewardsTable';
@@ -100,7 +100,7 @@ const ValidatorEarningsTab = () => {
                   Rewards aren&apos;t available right now.
                 </UntrackedState>
               ) : rewardsLoading ? (
-                <DelayedSpinner loading label="Loading rewards…" />
+                <LinesSkeleton rows={8} />
               ) : (
                 <InflationRewardsTable
                   rows={rows ?? []}

@@ -1,6 +1,6 @@
 import UntrackedState from 'components/common/UntrackedState';
+import PageSkeleton from 'components/common/PageSkeleton';
 import useCluster, { BLOCK_INCOME_UNTRACKED } from 'hooks/useCluster';
-import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
 import TopBlocksCard from 'components/validator/TopBlocksCard';
@@ -109,7 +109,7 @@ const BlockIncomeSection = ({ nodeAddress }: { nodeAddress: string }) => {
   return (
     <PageSection>
       {isLoadingValidator ? (
-        <DelayedSpinner loading={isLoadingValidator} label="Loading fees…" />
+        <PageSkeleton cards={['full', 'table']} />
       ) : (
         <div className="d-flex flex-column gap-3">
           <SectionCard

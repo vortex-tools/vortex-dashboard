@@ -1,6 +1,6 @@
 import { NETWORK_TAB } from 'helpers/apiEndpoint';
 import BucketOutcomeChart from 'components/charts/e-charts/BucketOutcomeChart';
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
 import ConsensusRecordHeader, {
@@ -220,7 +220,7 @@ const ValidatorDivergentVotes = () => {
                 The slot timeline isn&apos;t available right now.
               </UntrackedState>
             ) : !history || !timeline ? (
-              <DelayedSpinner loading label="Loading votes…" />
+              <PageSkeleton cards={['full', 'table']} />
             ) : (
               (() => {
                 // Divergent Votes, then the misses by payer below it.

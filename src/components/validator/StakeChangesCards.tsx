@@ -1,11 +1,11 @@
 import { ShortAddress } from 'components/changes/changes';
+import { LinesSkeleton } from 'components/common/PageSkeleton';
 import { poolPath } from 'components/pools/pools';
 import useCluster from 'hooks/useCluster';
 import Button from 'components/base/Button';
 import StakeChangesChart, {
   stakeSetMoved
 } from 'components/charts/e-charts/StakeChangesChart';
-import DelayedSpinner from 'components/common/DelayedSpinner';
 import SectionCard from 'components/common/SectionCard';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { StakeChangeEpoch } from 'providers/vortex-schemas';
@@ -223,7 +223,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
       Stake changes aren&apos;t available for this validator right now.
     </p>
   ) : !items ? (
-    <DelayedSpinner loading label="Loading stake changes…" />
+    <LinesSkeleton />
   ) : !items.length ? (
     <p className="text-body-tertiary fs-9 mb-0">
       No completed epochs with stake yet.

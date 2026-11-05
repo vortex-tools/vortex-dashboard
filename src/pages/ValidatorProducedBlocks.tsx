@@ -1,4 +1,4 @@
-import DelayedSpinner from 'components/common/DelayedSpinner';
+import PageSkeleton from 'components/common/PageSkeleton';
 import PageSection from 'components/common/PageSection';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -70,7 +70,9 @@ const ValidatorProducedBlocks = () => {
           <UntrackedState>
             Alpenglow isn&apos;t active on this cluster yet.
           </UntrackedState>
-        ) : epoch == null || !recordKey ? null : (
+        ) : epoch == null || !recordKey ? (
+          <PageSkeleton stats={6} cards={['half', 'half', 'table']} />
+        ) : (
           <>
             {row && (
               <RecordSummary
@@ -82,7 +84,7 @@ const ValidatorProducedBlocks = () => {
             <PageSection>
               <div className="d-flex flex-column gap-3">
                 {!producerBoard ? (
-                  <DelayedSpinner loading label="Loading production…" />
+                  <PageSkeleton stats={0} cards={['half', 'half', 'table']} />
                 ) : (
                   <ProducingSection
                     record={producer}
