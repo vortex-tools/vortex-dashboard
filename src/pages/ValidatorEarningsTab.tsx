@@ -1,4 +1,5 @@
 import BamBoostCard from 'components/validator/BamBoostCard';
+import CommissionStatCards from 'components/validator/CommissionStatCards';
 import TipsCard from 'components/validator/TipsCard';
 import { LinesSkeleton } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
@@ -83,6 +84,12 @@ const ValidatorEarningsTab = () => {
       />
       {/* Side by side on large screens. */}
       <Row className="mb-9 g-3">
+        {/* Its commissions, and a warning if it changes them often. */}
+        {nodeAddress && (
+          <Col xs={12}>
+            <CommissionStatCards identity={nodeAddress} />
+          </Col>
+        )}
         {nodeAddress && !isTestnet && (
           <Col xs={12} lg={6}>
             <ValidatorEarnings nodeAddress={nodeAddress} />
