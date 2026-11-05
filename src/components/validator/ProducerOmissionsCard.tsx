@@ -1,7 +1,9 @@
 import Pager from 'components/common/Pager';
+import { CardSkeleton } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import { formatLamports, formatStakeShare } from 'helpers/utils';
+import { geoAsOf, placeOf, useValidatorGeoAt } from 'hooks/useValidatorGeo';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ProductionOmissions } from 'providers/vortex-schemas';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -45,6 +47,19 @@ const ProducerOmissionsCard = ({
     fetchData?.(key);
   }, [key, fetchData]);
   const data: ProductionOmissions | undefined = slice?.data.get(key);
+  const failed = !data && !!slice?.error && !slice.isLoading;
+  // Where each voter was that epoch (today's if the API has none), as in
+  // Divergent Votes.
+  const geoSet = useValidatorGeoAt(epoch, true);
+  const geo = geoSet?.byNode ?? null;
+  const asOf = geoAsOf(geoSet, epoch);
+  // The table waits a moment for the places (they make each row taller),
+  // so it doesn't grow under the reader; without them after 3 s, it goes.
+  const [geoWait, setGeoWait] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setGeoWait(false), 3_000);
+    return () => clearTimeout(t);
+  }, []);
   // The epoch's stake, for each voter's share (the producer board's sum).
   const totalStake =
     context?.producerLeaderboardState.data.get(epoch)?.cluster?.stake ?? null;
@@ -99,7 +114,10 @@ const ProducerOmissionsCard = ({
         return asc ? -d : d;
       });
   }, [data, filter, sort, asc, never]);
-  if (!data) return null;
+  // Its place while it loads (the page doesn't jump when it lands); none
+  // for an API without it (the page shows BlackholeVoters then).
+  if (!data || (!geoSet && geoWait))
+    return failed ? null : <CardSkeleton kind="table" height={605} />;
   const voters = data.voters;
   // Each voter's usual rate, once the API serves it.
   const baseline = voters.some(v => v.baselineShare != null);
@@ -268,6 +286,25 @@ const ProducerOmissionsCard = ({
                       >
                         {v.nodeName || short(v.nodeAddress ?? v.voteAddress)}
                       </Link>
+                      {(() => {
+                        const g = v.nodeAddress
+                          ? geo?.get(v.nodeAddress)
+                          : undefined;
+                        const parts = [
+                          g?.geo?.continent ?? null,
+                          placeOf(g),
+                          g?.geo?.asnOrganization ?? null
+                        ].filter(Boolean);
+                        return parts.length ? (
+                          <div
+                            className="fs-10 text-body-tertiary text-truncate"
+                            style={{ maxWidth: 220 }}
+                            title={`${parts.join(' · ')} (location ${asOf})`}
+                          >
+                            {parts.join(' · ')}
+                          </div>
+                        ) : null;
+                      })()}
                     </td>
                     <td
                       className="text-end font-monospace"
