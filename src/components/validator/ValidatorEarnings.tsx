@@ -121,7 +121,8 @@ const ValidatorEarnings = ({ nodeAddress }: { nodeAddress: string }) => {
           Earnings aren't available right now.
         </p>
       ) : !rows ? (
-        <ChartSkeleton height={300} />
+        // The chart and its controls' height, so the card doesn't grow.
+        <ChartSkeleton height={361} />
       ) : rows.length === 0 ? (
         <p className="text-body-tertiary fs-9 mb-0">
           No earnings recorded for this validator in the last {EARNINGS_EPOCHS}{' '}

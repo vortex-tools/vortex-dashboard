@@ -1,3 +1,4 @@
+import { LinesSkeleton } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { HostChanges, HostState } from 'providers/vortex-schemas';
@@ -152,7 +153,15 @@ const HostChangesCard = ({
   useLiveRefresh(switching, 120_000, () =>
     fetchData?.(identity, { force: true })
   );
-  if (!data) return null;
+  // While it loads, its lines' place (inside the Network card), or none
+  // (a card of its own comes in at the page's foot); none if it failed.
+  if (!data)
+    return bare && !context?.hostChangesState.error ? (
+      // Its loaded height (the Overview's Network card).
+      <div style={{ minHeight: 226 }}>
+        <LinesSkeleton rows={6} />
+      </div>
+    ) : null;
 
   const now = linesOf(
     data.events.filter(e => currentEpoch != null && e.epoch === currentEpoch)

@@ -1,5 +1,5 @@
+import ChartSkeleton from 'components/common/ChartSkeleton';
 import { ShortAddress } from 'components/changes/changes';
-import { LinesSkeleton } from 'components/common/PageSkeleton';
 import { poolPath } from 'components/pools/pools';
 import useCluster from 'hooks/useCluster';
 import Button from 'components/base/Button';
@@ -218,17 +218,19 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
   // enough without them).
   const it =
     selected != null ? items?.find(x => x.epoch === selected) : undefined;
-  const status = unavailable ? (
-    <p className="text-body-tertiary fs-9 mb-0">
-      Stake changes aren&apos;t available for this validator right now.
-    </p>
-  ) : !items ? (
-    <LinesSkeleton />
-  ) : !items.length ? (
-    <p className="text-body-tertiary fs-9 mb-0">
-      No completed epochs with stake yet.
-    </p>
-  ) : null;
+  // While it loads, each card's chart silhouette at its loaded height.
+  const status = (height: number) =>
+    unavailable ? (
+      <p className="text-body-tertiary fs-9 mb-0">
+        Stake changes aren&apos;t available for this validator right now.
+      </p>
+    ) : !items ? (
+      <ChartSkeleton height={height} />
+    ) : !items.length ? (
+      <p className="text-body-tertiary fs-9 mb-0">
+        No completed epochs with stake yet.
+      </p>
+    ) : null;
   const hasPools = !!items?.some(x => x.pools.some(p => p.lamports >= 1e9));
 
   return (
@@ -238,7 +240,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
         icon="trending-up"
         info="Stake moves when it starts or stops earning (a delegation in epoch E shows in E + 1), without reward compounding."
       >
-        {status ?? (
+        {status(424) ?? (
           <>
             <p className="fs-10 text-body-tertiary mb-3">
               Last {items!.length} completed epochs · click an epoch for who
@@ -279,7 +281,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
         icon="layers"
         info="Each known pool's stake on this validator at epoch end. Named pools cover a minority of stake."
       >
-        {status ??
+        {status(280) ??
           (hasPools ? (
             <StakeChangesChart
               items={items!}

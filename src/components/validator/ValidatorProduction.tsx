@@ -19,7 +19,7 @@ const REFRESH_MS = 60_000;
 /** Epochs listed on the Overview. */
 const ROWS = 10;
 /** About the height of its ROWS-row table, held while loading. */
-export const SUMMARY_TABLE_HEIGHT = 300;
+export const SUMMARY_TABLE_HEIGHT = 314;
 
 const pct = (v: number | null | undefined) =>
   v == null ? '—' : `${(v * 100).toFixed(2)}%`;

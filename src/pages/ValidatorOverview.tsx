@@ -7,7 +7,10 @@ import {
   RecentVoteAccountChanges,
   ValidatorKeyLines
 } from 'components/validator/ValidatorKeys';
-import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
+import PageSkeleton, {
+  LinesSkeleton,
+  SKELETON
+} from 'components/common/PageSkeleton';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
 import SectionCard from 'components/common/SectionCard';
 import NetworkSummaryCard from 'components/network/NetworkSummaryCard';
@@ -341,6 +344,8 @@ const ValidatorOverview = () => {
   const belowDetails =
     (isTestnet && !!status && isSfdpState(status.sfdp.participant?.state)) ||
     notices.length > 0 ||
+    // Still loading: most validators have a notice, so hold its place.
+    (!status && !statusSlice.error) ||
     (!status && !statusSlice.isLoading && !!statusSlice.error);
   // A label column per card, so its values align ("Inflation collector",
   // "Vote balance" the longest).
@@ -711,10 +716,18 @@ const ValidatorOverview = () => {
               {belowDetails && (
                 <Col xs={12} className="d-flex flex-column gap-3">
                   {isTestnet && <ValidatorSfdpBox nodeAddress={nodeAddress} />}
-                  <ValidatorNotices
-                    notices={notices}
-                    nodeAddress={nodeAddress}
-                  />
+                  {!status && !statusSlice.error ? (
+                    <SectionCard title="Notices" icon="bell">
+                      <div style={{ minHeight: 27 }}>
+                        <LinesSkeleton rows={1} />
+                      </div>
+                    </SectionCard>
+                  ) : (
+                    <ValidatorNotices
+                      notices={notices}
+                      nodeAddress={nodeAddress}
+                    />
+                  )}
                 </Col>
               )}
             </Row>

@@ -59,7 +59,9 @@ const TopBlocksCard = ({
             </button>
           </UntrackedState>
         ) : (
-          <LinesSkeleton />
+          <div style={{ minHeight: 170 }}>
+            <LinesSkeleton />
+          </div>
         )
       ) : !rows.length ? (
         <UntrackedState>No blocks yet.</UntrackedState>

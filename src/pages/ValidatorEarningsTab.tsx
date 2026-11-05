@@ -1,7 +1,10 @@
 import BamBoostCard from 'components/validator/BamBoostCard';
 import CommissionStatCards from 'components/validator/CommissionStatCards';
 import TipsCard from 'components/validator/TipsCard';
-import { LinesSkeleton } from 'components/common/PageSkeleton';
+import PageSkeleton, {
+  CardSkeleton,
+  LinesSkeleton
+} from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import SectionCard from 'components/common/SectionCard';
 import InflationRewardsTable from 'components/validator/InflationRewardsTable';
@@ -36,6 +39,11 @@ const ValidatorEarningsTab = () => {
   const nodeAddress =
     identity && identity.source !== 'fallback' ? identity.nodeAddress : null;
   const currentEpoch = context?.currentEpochState.epoch ?? null;
+  // Not resolved yet while the directory loads: the cards that need the
+  // identity hold their places.
+  const directory = context?.validatorDirectoryState;
+  const resolving =
+    !nodeAddress && directory?.validators == null && directory?.error == null;
 
   // Per-epoch rewards: the URL's address works as the voteKey.
   const slice = context?.epochParticipationState;
@@ -85,14 +93,22 @@ const ValidatorEarningsTab = () => {
       {/* Side by side on large screens. */}
       <Row className="mb-9 g-3">
         {/* Its commissions, and a warning if it changes them often. */}
-        {nodeAddress && (
+        {(nodeAddress || resolving) && (
           <Col xs={12}>
-            <CommissionStatCards identity={nodeAddress} />
+            {nodeAddress ? (
+              <CommissionStatCards identity={nodeAddress} />
+            ) : (
+              <PageSkeleton rows={[{ stats: 4 }]} />
+            )}
           </Col>
         )}
-        {nodeAddress && !isTestnet && (
+        {(nodeAddress || resolving) && !isTestnet && (
           <Col xs={12} lg={6}>
-            <ValidatorEarnings nodeAddress={nodeAddress} />
+            {nodeAddress ? (
+              <ValidatorEarnings nodeAddress={nodeAddress} />
+            ) : (
+              <CardSkeleton kind="chart" height={432} />
+            )}
           </Col>
         )}
         {(alpenglowActive || withEarnings) && (

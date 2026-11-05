@@ -52,7 +52,7 @@ export const CardSkeleton = ({
         </div>
       ) : (
         // A row every ~28px, as the data tables' compact rows.
-        <LinesSkeleton rows={Math.max(2, Math.floor(body / 28))} />
+        <LinesSkeleton rows={Math.max(1, Math.floor(body / 28))} />
       )}
     </div>
   );
@@ -227,6 +227,8 @@ const full = (h: number, kind: SkeletonCard['kind'] = 'table') =>
 export const SKELETON = {
   overview: [
     [half(301), half(301)],
+    // Notices (most validators have one).
+    [full(98)],
     { stats: 4 },
     [half(388), half(388)],
     [half(303), half(303)]
