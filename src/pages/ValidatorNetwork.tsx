@@ -56,6 +56,10 @@ import {
 } from 'react-bootstrap';
 import { Link } from 'react-router';
 
+/** The Hosts map's window: moves in its last this-many epochs (the
+ *  current one in); the Infrastructure card below has them all. */
+const HOST_EPOCHS = 10;
+
 /** The map's views: handoffs, its divergent votes in two kinds, hosts. */
 type PageView = 'handoffs' | 'divergent' | 'hosts';
 /** What the votes table sorts by. */
@@ -77,7 +81,7 @@ const SIDE: Record<
   hosts: {
     title: 'Host Moves',
     icon: 'server',
-    info: 'Its failovers (to a spare running the same identity, and back) and moves to a new host, newest first, as on the map; moves within a place are listed only.'
+    info: `Its failovers (to a spare running the same identity, and back) and moves to a new host in its last ${HOST_EPOCHS} epochs, newest first, as on the map; moves within a place are listed only. Its whole host history is in Infrastructure below.`
   }
 };
 
@@ -264,8 +268,13 @@ const ValidatorNetwork = () => {
   }, [node, fetchHosts]);
   const hostData = node ? context?.hostChangesState.data.get(node) : undefined;
   const moves = useMemo(
-    () => (hostData ? hostMoves(hostData) : []),
-    [hostData]
+    () =>
+      hostData
+        ? hostMoves(hostData).filter(
+            m => currentEpoch == null || m.epoch > currentEpoch - HOST_EPOCHS
+          )
+        : [],
+    [hostData, currentEpoch]
   );
   // The map and the list show the same moves: the latest few, or all.
   const [allMoves, setAllMoves] = useState(false);
