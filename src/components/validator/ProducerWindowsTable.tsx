@@ -97,7 +97,8 @@ export const SlotCell = ({ s }: { s: Slot }) => {
       ? 'skip'
       : s.outcome === 'block'
         ? v == null
-          ? 'block'
+          ? // A block whose inclusion isn't in yet.
+            '--%'
           : isPerfect(s)
             ? pct(v)
             : // Rounded down, so a block short of full never reads 99.9%.
