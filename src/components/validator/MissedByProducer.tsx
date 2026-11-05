@@ -27,7 +27,7 @@ const pct = (v: number | null) =>
  * block, so a vote missing there is missing from that producer's
  * certificate. Against each producer: this voter's miss rate in its
  * windows, and how much voting stake the producer's blocks carried for
- * everyone - a producer that's thin for everyone points at the producer;
+ * everyone - a producer whose blocks are Poor for everyone points at the producer;
  * one that's fine for everyone else points at the voter.
  */
 const MissedByProducer = ({
@@ -186,7 +186,7 @@ const MissedByProducer = ({
                 <td className="text-nowrap fs-10">
                   {thin ? (
                     <span className="text-warning">
-                      Producer: thin certificates for everyone
+                      Producer: Poor blocks for everyone
                     </span>
                   ) : g.missed >= CONCENTRATED_MIN &&
                     rate >= CONCENTRATED_RATE ? (

@@ -26,7 +26,7 @@ import useWindowHandoffs, { WindowHandoffs } from 'hooks/useWindowHandoffs';
 const PAGE = PRODUCTION_WINDOWS_PAGE;
 // Slot outcomes that are known (else the slot is still ahead).
 const DECIDED = ['block', 'skipped', 'noData'];
-// A block that carried less than this share of the online stake is thin
+// A block that carried less than this share of the online stake is Poor
 // (the API's thin flag when it sends one; 1 - classification.thinShare).
 const THIN = 0.98;
 // Carried >= 99.9% of the online stake: full for the score.
@@ -275,7 +275,7 @@ const WindowTimeline = ({
  * newest first: each slot's outcome and the share of the online stake
  * its block's reward certificates carried (the votes on slot - 8), and
  * the window's inclusion (skips carrying 0 - over the epoch it's the
- * board's inclusion). Filter to windows with a skip or a thin block.
+ * board's inclusion). Filter to windows with a skip or a Poor block.
  */
 const ProducerWindowsTable = ({
   voteKey,

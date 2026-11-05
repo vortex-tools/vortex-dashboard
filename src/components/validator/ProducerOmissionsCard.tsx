@@ -24,7 +24,7 @@ const OFTEN = 0.1;
  * The producer side of missed votes (/epochs/production/omissions): every
  * voter its blocks' reward certificates left out at least once this epoch
  * while the voter was online, how often of the blocks it could have been
- * in, and how many of those at its thin blocks (where it left out 2%+ of
+ * in, and how many of those in its Poor blocks (where it left out 2%+ of
  * the stake besides the voter - its own lateness) against the rest (that
  * voter's votes alone not reaching it - the path between the two). The
  * voter side is each voter's Voting tab. null until the API has it, so the
@@ -67,7 +67,7 @@ const ProducerOmissionsCard = ({
         // How much more often this producer leaves it out than producers
         // do in general: the producer-specific part.
         excess: v.baselineShare != null ? rate - v.baselineShare : null,
-        // Of its misses here, the share at our thin blocks - where our
+        // Of its misses here, the share in our Poor blocks - where our
         // block left out many voters at once: likely our lateness.
         ours:
           v.thinLeftOut != null && v.leftOut ? v.thinLeftOut / v.leftOut : null
@@ -112,7 +112,7 @@ const ProducerOmissionsCard = ({
   const shown = rows.slice(page * PAGE, (page + 1) * PAGE);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
   const total = data.leftOutTotal ?? voters.reduce((a, v) => a + v.leftOut, 0);
-  // How much of it was at its own thin blocks (its lateness).
+  // How much of it was in its own Poor blocks (likely its fault).
   const thinTotal = voters.some(v => v.thinLeftOut != null)
     ? voters.reduce((a, v) => a + (v.thinLeftOut ?? 0), 0)
     : null;
@@ -278,7 +278,7 @@ const ProducerOmissionsCard = ({
                       className="text-end font-monospace text-nowrap"
                       title={
                         v.thinLeftOut != null
-                          ? `${v.leftOut.toLocaleString()} left out: ${v.thinLeftOut.toLocaleString()} at its thin blocks (its own lateness), ${(v.leftOut - v.thinLeftOut).toLocaleString()} otherwise (this voter's path to it)`
+                          ? `${v.leftOut.toLocaleString()} left out: ${v.thinLeftOut.toLocaleString()} in our Poor blocks (likely our fault), ${(v.leftOut - v.thinLeftOut).toLocaleString()} otherwise (this voter's path to it)`
                           : undefined
                       }
                     >
