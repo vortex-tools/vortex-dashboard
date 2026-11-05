@@ -43,12 +43,14 @@ const BucketOutcomeChart = ({
     ? [
         {
           name: 'Late',
-          color: getThemeColor('danger'),
+          // Light mode: a deep red and a light orange, so the two read
+          // apart (the theme's red and orange sit too close).
+          color: isDark ? getThemeColor('danger') : '#c92a2a',
           data: buckets.map(b => b.missedBy?.late ?? 0)
         },
         {
           name: 'Left out',
-          color: isDark ? '#ffa94d' : '#e8590c',
+          color: isDark ? '#ffa94d' : '#ff922b',
           data: buckets.map(b => b.missedBy?.thin ?? 0)
         },
         {
@@ -58,7 +60,7 @@ const BucketOutcomeChart = ({
         },
         {
           name: 'Missed',
-          color: getThemeColor('danger'),
+          color: isDark ? getThemeColor('danger') : '#c92a2a',
           data: buckets.map(b =>
             b.missedBy
               ? b.missed -
@@ -147,7 +149,7 @@ const BucketOutcomeChart = ({
           stack: 'x',
           barMaxWidth: 10,
           // Amber, apart from Left out's orange.
-          itemStyle: { color: isDark ? '#ffd43b' : '#f2b705' },
+          itemStyle: { color: isDark ? '#ffd43b' : '#fcc419' },
           data: buckets.map(b => b.lateSkipped)
         },
         ...misses.map(m => ({
