@@ -1,6 +1,7 @@
 import PageSkeleton from 'components/common/PageSkeleton';
 import StatCard from 'components/common/StatCard';
 import WarningBanner from 'components/common/WarningBanner';
+import { formatLamports } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { VoteAccountChange } from 'providers/vortex-schemas';
@@ -63,7 +64,7 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
     (!changes && !changesFailed) ||
     currentEpoch == null
   )
-    return <PageSkeleton rows={[{ stats: 2 }]} />;
+    return <PageSkeleton rows={[{ stats: 4 }]} />;
 
   const vs = status.voteState;
   // The rate in effect now: a scheduled change's `effective` (the
@@ -99,6 +100,17 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
     num(e.oldValue),
     num(e.newValue)
   ]);
+  // Per epoch, over the finished epochs with a net (the chart's): what it
+  // took in - commissions, block revenue, MEV, SFDP, BAM Boost - and that
+  // less what it paid on chain (VAT, vote fees).
+  const paid = (earnings ?? []).filter(r => r.net != null);
+  const mean = (f: (r: (typeof paid)[number]) => number) =>
+    paid.length ? paid.reduce((a, r) => a + f(r), 0) / paid.length : null;
+  const avgNet = mean(r => r.net ?? 0);
+  const avgIncome = mean(r => (r.net ?? 0) + r.costs.voteFees + r.costs.vat);
+  const avgCosts =
+    avgIncome != null && avgNet != null ? avgIncome - avgNet : null;
+  const sol = (l: number | null) => (l == null ? '—' : formatLamports(l, 3));
   const lo = values.length ? Math.min(...values) : null;
   const hi = values.length ? Math.max(...values) : null;
 
@@ -114,14 +126,41 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
         </WarningBanner>
       )}
       <Row className="g-3">
-        <Col xs={6}>
+        {!isTestnet && (
+          <>
+            <Col xs={6} xl={3}>
+              <StatCard
+                label="Avg Earnings / Epoch"
+                value={sol(avgIncome)}
+                sublabel={
+                  paid.length
+                    ? `before costs · last ${paid.length} epochs`
+                    : 'no finished epochs yet'
+                }
+              />
+            </Col>
+            <Col xs={6} xl={3}>
+              <StatCard
+                label="Net On-chain Revenue"
+                value={sol(avgNet)}
+                tone={avgNet != null && avgNet < 0 ? 'danger' : undefined}
+                sublabel={
+                  avgCosts != null
+                    ? `per epoch, after ${sol(avgCosts)} VAT and fees`
+                    : 'per epoch, after VAT and fees'
+                }
+              />
+            </Col>
+          </>
+        )}
+        <Col xs={6} xl={isTestnet ? 6 : 3}>
           <StatCard
             label="Inflation Commission"
             value={pct(inflation.now)}
             sublabel={inflation.sub}
           />
         </Col>
-        <Col xs={6}>
+        <Col xs={6} xl={isTestnet ? 6 : 3}>
           <StatCard
             label="MEV Commission"
             value={isTestnet || noTips ? '—' : pct(mev?.mevCommissionBps)}
