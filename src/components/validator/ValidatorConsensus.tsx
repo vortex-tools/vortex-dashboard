@@ -1,5 +1,5 @@
 import { SUMMARY_TABLE_HEIGHT } from 'components/validator/ValidatorProduction';
-import { LinesSkeleton } from 'components/common/PageSkeleton';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import {
   NOT_ADMITTED_REASONS,
@@ -260,7 +260,7 @@ const ValidatorConsensus = ({
         </p>
       ) : !rows ? (
         <div style={{ minHeight: SUMMARY_TABLE_HEIGHT }}>
-          <LinesSkeleton />
+          <TableSkeleton inCard rows={9} />
         </div>
       ) : (
         <>

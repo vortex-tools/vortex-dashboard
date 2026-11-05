@@ -1,4 +1,4 @@
-import { LinesSkeleton } from 'components/common/PageSkeleton';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { HostChanges, HostState } from 'providers/vortex-schemas';
@@ -159,7 +159,7 @@ const HostChangesCard = ({
     return bare && !context?.hostChangesState.error ? (
       // Its loaded height (the Overview's Network card).
       <div style={{ minHeight: 226 }}>
-        <LinesSkeleton rows={6} />
+        <TableSkeleton inCard rows={6} />
       </div>
     ) : null;
 

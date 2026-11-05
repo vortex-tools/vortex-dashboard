@@ -3,7 +3,7 @@ import CommissionStatCards from 'components/validator/CommissionStatCards';
 import TipsCard from 'components/validator/TipsCard';
 import PageSkeleton, {
   CardSkeleton,
-  LinesSkeleton
+  TableSkeleton
 } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import SectionCard from 'components/common/SectionCard';
@@ -123,7 +123,7 @@ const ValidatorEarningsTab = () => {
                   Rewards aren&apos;t available right now.
                 </UntrackedState>
               ) : rewardsLoading ? (
-                <LinesSkeleton rows={8} />
+                <TableSkeleton inCard rows={11} />
               ) : (
                 <InflationRewardsTable
                   rows={rows ?? []}

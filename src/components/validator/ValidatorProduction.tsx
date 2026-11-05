@@ -1,5 +1,5 @@
 import UntrackedState from 'components/common/UntrackedState';
-import { LinesSkeleton } from 'components/common/PageSkeleton';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import SectionCard from 'components/common/SectionCard';
 import {
@@ -98,7 +98,7 @@ const ValidatorProduction = ({
       ) : !anyLoaded ? (
         // The table's height held while it loads.
         <div style={{ minHeight: SUMMARY_TABLE_HEIGHT }}>
-          <LinesSkeleton />
+          <TableSkeleton inCard rows={9} />
         </div>
       ) : (
         <Table responsive size="sm" className="data-table fs-9 mb-0">

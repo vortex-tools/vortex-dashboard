@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import SlotNumber from 'components/common/SlotNumber';
 import Badge from 'components/base/Badge';
 import DelayedSpinner from 'components/common/DelayedSpinner';
@@ -657,7 +658,13 @@ const LiveConsensus = () => {
           </div>
         )}
 
-        {!annSettled && <div style={{ minHeight: '100vh' }} />}
+        {/* Until the posts are in: the page's shape (most days have
+            posts), a screen's height held. */}
+        {!annSettled && (
+          <div style={{ minHeight: '100vh' }}>
+            <PageSkeleton rows={SKELETON.status} />
+          </div>
+        )}
         {annSettled && current.length > 0 && (
           <SectionCard
             title="Announcements"

@@ -1,7 +1,7 @@
 import SectionCard from 'components/common/SectionCard';
 import { slotText } from 'helpers/slot';
 import SlotNumber from 'components/common/SlotNumber';
-import { CardSkeleton, LinesSkeleton } from 'components/common/PageSkeleton';
+import { CardSkeleton, TableSkeleton } from 'components/common/PageSkeleton';
 import Pager from 'components/common/Pager';
 import UntrackedState from 'components/common/UntrackedState';
 import {
@@ -460,7 +460,7 @@ const ProducerWindowsTable = ({
     return card ? (
       <CardSkeleton kind="table" height={939} />
     ) : (
-      <LinesSkeleton rows={10} />
+      <TableSkeleton inCard rows={10} />
     );
   if (legacy && !data.windows.length)
     return (

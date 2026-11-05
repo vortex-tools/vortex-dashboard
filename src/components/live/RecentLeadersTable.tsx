@@ -1,4 +1,5 @@
 import { NETWORK_TAB } from 'helpers/apiEndpoint';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import { slotText } from 'helpers/slot';
 import SlotNumber from 'components/common/SlotNumber';
 import { placeOf } from 'hooks/useValidatorGeo';
@@ -42,7 +43,8 @@ const RecentLeadersTable = ({
   geo: Map<string, ValidatorGeo> | null;
   nameOf: (node: string | null | undefined) => string;
 }) => {
-  if (playhead == null) return null;
+  // Before the first slot: its rows' place.
+  if (playhead == null) return <TableSkeleton inCard rows={windows} />;
   const head = playhead - (playhead % WINDOW);
   const rows = Array.from({ length: windows }, (_, i) => head - i * WINDOW);
   return (

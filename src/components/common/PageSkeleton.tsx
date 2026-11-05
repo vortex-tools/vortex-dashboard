@@ -7,7 +7,7 @@ const WIDTHS = [92, 78, 86, 70, 88, 74, 82, 66];
 // A card's header (a SectionCard's) and padding: what's left is its body.
 const CHROME = 72;
 // Taller cards than this hold a screen's worth, no more.
-const MAX = 640;
+const MAX = 1200;
 
 /** A table's rows' stand-in, for inside a card that's already there. */
 export const LinesSkeleton = ({ rows = 6 }: { rows?: number }) => (
@@ -33,10 +33,22 @@ export const CardSkeleton = ({
 }) => {
   const h = Math.min(height, MAX);
   const body = Math.max(h - CHROME, 40);
+  if (kind === 'cta')
+    return (
+      <div
+        className="bg-body-emphasis rounded border border-translucent p-3 h-100 placeholder-glow d-flex flex-column justify-content-center gap-2"
+        style={{ minHeight: h }}
+        data-skeleton={kind}
+      >
+        <span className={BAR} style={{ width: '14rem', height: 20 }} />
+        <span className={BAR} style={{ width: '24rem', maxWidth: '70%' }} />
+      </div>
+    );
   return (
     <div
       className="bg-body-emphasis rounded border border-translucent p-3 h-100 d-flex flex-column"
       style={{ minHeight: h }}
+      data-skeleton={kind}
     >
       <div className="placeholder-glow mt-n1 mx-n3 px-3 pb-2 mb-3 border-bottom border-translucent">
         <h6 className="mb-0">
@@ -45,31 +57,42 @@ export const CardSkeleton = ({
       </div>
       {kind === 'chart' ? (
         <ChartSkeleton height={body} />
+      ) : kind === 'list' ? (
+        // Label / value rows, ~29px apart.
+        <LinesSkeleton rows={Math.max(1, Math.floor((body + 8) / 29))} />
       ) : kind === 'block' ? (
         // A map: one solid area.
         <div className="placeholder-glow flex-grow-1 d-flex">
           <span className={`${BAR} w-100`} style={{ minHeight: body }} />
         </div>
       ) : (
-        // A row every ~28px, as the data tables' compact rows.
-        <LinesSkeleton rows={Math.max(1, Math.floor(body / 28))} />
+        // A data table: its header, then a row every ~29px.
+        <TableSkeleton
+          inCard
+          rows={Math.max(1, Math.floor((body - 28) / 29))}
+        />
       )}
     </div>
   );
 };
 
 /** A StatCard's stand-in: the same frame and type sizes, so it's as tall. */
-const StatSkeleton = () => (
-  <div className="stat-card rounded border border-translucent bg-body-emphasis px-3 py-2 h-100 placeholder-glow">
+const StatSkeleton = ({ sub = 1 }: { sub?: number }) => (
+  <div
+    className="stat-card rounded border border-translucent bg-body-emphasis px-3 py-2 h-100 placeholder-glow"
+    data-skeleton="stat"
+  >
     <p className="fs-10 mb-1 mt-0">
       <span className={`${BAR} col-6`} />
     </p>
     <p className="fs-7 fw-bolder mb-0">
       <span className={`${BAR} col-5`} />
     </p>
-    <p className="fs-10 mb-0 mt-1">
-      <span className={`${BAR} col-8`} />
-    </p>
+    {Array.from({ length: sub }, (_, i) => (
+      <p key={i} className="fs-10 mb-0 mt-1">
+        <span className={`${BAR} col-${i ? 6 : 8}`} />
+      </p>
+    ))}
   </div>
 );
 
@@ -77,15 +100,18 @@ const StatSkeleton = () => (
  *  half width on phones, equal shares from md up (as `<Col xs={6} md>`). */
 export const StatsSkeleton = ({
   count,
+  sub,
   className = 'g-3 mb-3'
 }: {
   count: number;
+  /** Sublabel lines per card. */
+  sub?: number;
   className?: string;
 }) => (
   <Row className={className}>
     {Array.from({ length: count }, (_, i) => (
       <Col key={i} xs={6} md>
-        <StatSkeleton />
+        <StatSkeleton sub={sub} />
       </Col>
     ))}
   </Row>
@@ -104,12 +130,20 @@ const TABLE_COLS: Array<[number, number]> = [
 
 /** A full-bleed data table's stand-in (the leaderboards'): a header row,
  *  then `rows` rows at the data tables' row height. */
-export const TableSkeleton = ({ rows = 16 }: { rows?: number }) => {
+export const TableSkeleton = ({
+  rows = 16,
+  inCard = false
+}: {
+  rows?: number;
+  /** Inside a card: its padding, and the compact rows of a card's
+   *  data table (a short header, ~29px rows). */
+  inCard?: boolean;
+}) => {
   const row = (header: boolean, i: number) => (
     <div
       key={i}
-      className={`d-flex align-items-center gap-3 px-3 border-bottom border-translucent${header ? ' fs-10' : ''}`}
-      style={{ height: header ? 64 : 36 }}
+      className={`d-flex align-items-center gap-3 border-bottom border-translucent${inCard ? '' : ' px-3'}${header ? ' fs-10' : ''}`}
+      style={{ height: header ? (inCard ? 28 : 64) : inCard ? 29 : 36 }}
     >
       {TABLE_COLS.map(([grow, w], j) => (
         <div key={j} style={{ flex: `${grow} 1 0` }}>
@@ -124,7 +158,7 @@ export const TableSkeleton = ({ rows = 16 }: { rows?: number }) => {
     </div>
   );
   return (
-    <div className="placeholder-glow" aria-busy="true">
+    <div className="placeholder-glow" aria-busy="true" data-skeleton-table>
       {row(true, 0)}
       {Array.from({ length: rows }, (_, i) => row(false, i + 1))}
     </div>
@@ -203,12 +237,26 @@ export type SkeletonCard = {
   w?: number;
   /** The loaded card's height, px (capped at a screen's worth). */
   h: number;
-  kind?: 'chart' | 'table' | 'block';
+  /** chart: bars; table: a data table; list: label / value rows (a
+   *  Details card); block: one solid area (a map); cta: a link card (a
+   *  title and a line, no header). */
+  kind?: 'chart' | 'table' | 'list' | 'block' | 'cta';
 };
 export type SkeletonRow =
   /** A row of n stat cards, laid out as the page's own (4 and 6 as the
    *  validator tabs', others in equal shares, as `<Col xs={6} md>`). */
-  { stats: number } | { live: true } | SkeletonCard[];
+  /** sub: the stat cards' sublabel lines (2 where they wrap). */
+  | { stats: number; sub?: number }
+  | { live: true }
+  /** A leaderboard's search / filter / epoch row. */
+  | { toolbar: true }
+  /** A one-line note above the cards (an info line). */
+  | { note: true }
+  /** The Status page's live bar (slot, pace, progress). */
+  | { liveBar: true }
+  /** A full-bleed data table (a leaderboard's), n rows. */
+  | { table: number }
+  | SkeletonCard[];
 
 /**
  * A page's stand-in while it loads, in its own shape: its rows of stat
@@ -218,11 +266,14 @@ export type SkeletonRow =
  */
 const PageSkeleton = ({
   rows,
-  header = false
+  header = false,
+  headerLines = 0
 }: {
   rows: SkeletonRow[];
   /** The page's title too (a page that renders none while it loads). */
   header?: boolean;
+  /** Lines of description under the title (a stake pool's). */
+  headerLines?: number;
 }) => (
   <div aria-busy="true">
     {header && (
@@ -234,6 +285,20 @@ const PageSkeleton = ({
               style={{ width: '18rem', maxWidth: '70vw' }}
             />
           </h1>
+          {Array.from({ length: headerLines }, (_, i) => (
+            // Its own line under the title (the title block is a flex row).
+            <p
+              key={i}
+              // A third line is a smaller note (a pool's gating line).
+              className={`${i < 2 ? 'fs-9' : 'fs-10'} mb-0`}
+              style={{ flexBasis: '100%', lineHeight: i < 2 ? undefined : 1.3 }}
+            >
+              <span
+                className={BAR}
+                style={{ width: i ? '24rem' : '38rem', maxWidth: '80vw' }}
+              />
+            </p>
+          ))}
         </div>
       </div>
     )}
@@ -241,8 +306,43 @@ const PageSkeleton = ({
       {rows.map((r, i) =>
         'live' in r ? (
           <LiveStripSkeleton key={i} />
+        ) : 'note' in r ? (
+          <div
+            key={i}
+            style={{ height: 27 }}
+            className="d-flex align-items-center"
+          >
+            <span className={BAR} style={{ width: '60%' }} />
+          </div>
+        ) : 'liveBar' in r ? (
+          <div
+            key={i}
+            style={{ height: 44 }}
+            className="d-flex flex-column justify-content-between"
+          >
+            <div className="d-flex justify-content-between">
+              <span className={BAR} style={{ width: 160, height: 20 }} />
+              <span className={BAR} style={{ width: 120, height: 20 }} />
+            </div>
+            <span className={`${BAR} w-100`} style={{ height: 6 }} />
+          </div>
+        ) : 'toolbar' in r ? (
+          <div key={i} className="d-flex flex-wrap gap-3 align-items-center">
+            <span className={BAR} style={{ width: 300, height: 30 }} />
+            <span
+              className={`${BAR} ms-auto`}
+              style={{ width: 340, height: 30 }}
+            />
+          </div>
+        ) : 'table' in r ? (
+          <div
+            key={i}
+            className="mx-n3 bg-body-emphasis border-top border-bottom border-translucent"
+          >
+            <TableSkeleton rows={r.table} />
+          </div>
         ) : 'stats' in r && r.stats !== 4 && r.stats !== 6 ? (
-          <StatsSkeleton key={i} count={r.stats} className="g-3" />
+          <StatsSkeleton key={i} count={r.stats} sub={r.sub} className="g-3" />
         ) : 'stats' in r ? (
           <Row key={i} className="g-3">
             {Array.from({ length: r.stats }, (_, j) => (
@@ -252,7 +352,7 @@ const PageSkeleton = ({
                 md={r.stats === 6 ? 4 : undefined}
                 xl={r.stats === 6 ? 2 : 3}
               >
-                <StatSkeleton />
+                <StatSkeleton sub={r.sub} />
               </Col>
             ))}
           </Row>
@@ -278,16 +378,16 @@ const full = (h: number, kind: SkeletonCard['kind'] = 'table') =>
 /** Each validator tab's layout, from its loaded cards (desktop). */
 export const SKELETON = {
   overview: [
-    [half(301), half(301)],
+    [half(301, 'list'), half(301, 'list')],
     // Notices (most validators have one).
-    [full(98)],
+    [full(98, 'list')],
     { stats: 4 },
     [half(388), half(388)],
     [half(303), half(303)]
   ],
   /** Below the live strip and stat cards (shown once its row is in). */
   votingCards: [[full(191, 'chart')], [full(1088)], [full(449)]],
-  production: [{ stats: 6 }, [full(605)], [full(939)]],
+  production: [{ stats: 6 }, [full(621)], [full(939)]],
   network: [
     { stats: 4 },
     [half(330, 'block'), half(330)],
@@ -295,15 +395,26 @@ export const SKELETON = {
     [full(939)],
     [full(194)]
   ],
-  fees: [[full(457, 'chart')], [full(242)], [full(424, 'chart')]],
+  fees: [[full(457)], [full(242)], [full(424, 'chart')]],
   earnings: [{ stats: 4 }, [half(432, 'chart'), half(432)], [half(423)]],
-  featureGate: [{ stats: 3 }, [half(244), half(244)], [full(123)], [full(182)]],
+  staking: [
+    [full(488)],
+    [full(495, 'chart')],
+    [full(351)],
+    [full(364, 'chart')]
+  ],
+  featureGate: [
+    { stats: 3 },
+    [half(244, 'list'), half(244)],
+    [full(123)],
+    [full(182)]
+  ],
   featureGates: [{ stats: 4 }, [full(235)], [full(782)]],
   simd: [
     { stats: 3 },
     [
-      { w: 5, h: 159 },
-      { w: 7, h: 159 }
+      { w: 5, h: 159, kind: 'list' },
+      { w: 7, h: 159, kind: 'table' }
     ],
     [full(182)]
   ],
@@ -316,31 +427,42 @@ export const SKELETON = {
   ],
   pools: [{ stats: 3 }, [full(733)]],
   proposal: [
-    { stats: 6 },
+    { stats: 6, sub: 2 },
     [
-      { w: 8, h: 317 },
-      { w: 4, h: 317 }
+      { w: 8, h: 317, kind: 'table' },
+      { w: 4, h: 317, kind: 'list' }
     ],
     [full(291, 'chart')],
     [full(480)],
     [full(516)]
   ],
+  // Ranked lists with share bars.
   decentralization: [
-    [half(359, 'chart'), half(359, 'chart')],
-    [half(359, 'chart'), half(359, 'chart')],
-    [half(217, 'chart'), half(217, 'chart')],
-    [half(342, 'chart')]
+    [half(359, 'list'), half(359, 'list')],
+    [half(359, 'list'), half(359, 'list')],
+    [half(217, 'list'), half(217, 'list')],
+    [half(342, 'list')]
   ],
-  slot: [[half(416), half(416)], [half(314), half(314)], [full(160)]],
-  clientVersions: [[half(843), half(843)], [full(1373)]],
+  slot: [[half(470), half(470)], [half(314), half(314)], [full(160)]],
+  clientVersions: [[half(843), half(843)], [full(569)]],
+  status: [
+    [full(152)],
+    { stats: 4 },
+    [
+      { w: 7, h: 224, kind: 'table' },
+      { w: 5, h: 224, kind: 'block' }
+    ],
+    [full(408)]
+  ],
+  leaderboard: [{ stats: 4 }, { toolbar: true }, { table: 16 }],
+  producers: [{ stats: 3 }, { toolbar: true }, { table: 16 }],
+  validators: [{ stats: 3 }, { toolbar: true }, { table: 24 }],
+  // Its Tower note, the Compare card, the past epochs.
+  votingLeaderboard: [{ note: true }, [full(85, 'cta')], [full(401)]],
+  governance: [{ table: 3 }],
+  activity: [[full(1200)]],
   /** A page's chunk still loading: a generic page. */
-  page: [{ stats: 4 }, [half(300), half(300)], [full(400)]],
-  staking: [
-    [full(488)],
-    [full(495, 'chart')],
-    [full(351)],
-    [full(364, 'chart')]
-  ]
+  page: [{ stats: 4 }, [half(300), half(300)], [full(400)]]
 } satisfies Record<string, SkeletonRow[]>;
 
 export default PageSkeleton;

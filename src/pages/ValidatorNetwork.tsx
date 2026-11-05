@@ -4,8 +4,8 @@ import SlotNumber from 'components/common/SlotNumber';
 import StatCard from 'components/common/StatCard';
 import { IS_STAGING } from 'helpers/apiEndpoint';
 import PageSkeleton, {
-  LinesSkeleton,
-  SKELETON
+  SKELETON,
+  TableSkeleton
 } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -519,7 +519,7 @@ const ValidatorNetwork = () => {
                     No handoffs into its leader windows this epoch.
                   </UntrackedState>
                 ) : (
-                  <LinesSkeleton />
+                  <TableSkeleton inCard rows={7} />
                 ))}
               {view === 'hosts' && (
                 <Table
@@ -613,7 +613,7 @@ const ValidatorNetwork = () => {
               )}
               {isVotes &&
                 (!timeline ? (
-                  <LinesSkeleton />
+                  <TableSkeleton inCard rows={7} />
                 ) : tabVotes.length === 0 ? (
                   <p className="fs-9 text-body-tertiary mt-2 mb-0">
                     No divergent votes.
@@ -912,7 +912,7 @@ const ValidatorNetwork = () => {
               info="Its votes that disagreed with the chain, by where that slot's leader was, of the slots it voted on (runs of 32+ consecutive misses, when it wasn't voting at all, left out). Skipped blocks: it voted skip on a block the cluster notarized - most often a block that reached it late. (Notarizing a block the chain skipped did no harm, and isn't counted.) Missed votes: no vote of its was counted - not cast, or too late for the reward certificate."
             >
               {!byRegion ? (
-                <LinesSkeleton />
+                <TableSkeleton inCard rows={5} />
               ) : (
                 <>
                   <Table

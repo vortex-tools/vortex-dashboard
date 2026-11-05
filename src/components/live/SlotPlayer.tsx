@@ -95,7 +95,19 @@ const SlotPlayer = ({
             <th className="text-end">Finalized</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className={slots.length ? undefined : 'placeholder-glow'}>
+          {/* Before the first slot: its rows' place. */}
+          {!slots.length &&
+            Array.from({ length: 4 }, (_, i) => (
+              <tr key={i}>
+                <td colSpan={7}>
+                  <span
+                    className="placeholder rounded bg-body-secondary"
+                    style={{ width: `${[88, 76, 82, 70][i]}%` }}
+                  />
+                </td>
+              </tr>
+            ))}
           {slots.map(s => {
             const played = slot != null && s <= slot;
             const current = s === slot;

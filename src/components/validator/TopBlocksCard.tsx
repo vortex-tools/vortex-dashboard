@@ -1,6 +1,6 @@
 import SectionCard from 'components/common/SectionCard';
 import SlotNumber from 'components/common/SlotNumber';
-import { LinesSkeleton } from 'components/common/PageSkeleton';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import { formatLamports } from 'helpers/utils';
 import { TOP_BLOCKS, VortexDataContext } from 'providers/VortexDataProvider';
@@ -60,7 +60,7 @@ const TopBlocksCard = ({
           </UntrackedState>
         ) : (
           <div style={{ minHeight: 170 }}>
-            <LinesSkeleton />
+            <TableSkeleton inCard rows={4} />
           </div>
         )
       ) : !rows.length ? (

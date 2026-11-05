@@ -25,14 +25,44 @@ const VALIDATOR_TAB: Record<string, { rows: SkeletonRow[]; picker?: boolean }> =
     production: { rows: SKELETON.production, picker: true },
     network: { rows: SKELETON.network, picker: true },
     earnings: { rows: SKELETON.earnings },
+    // The Fees tab (block-income and income redirect to it).
+    fees: { rows: SKELETON.fees },
     'block-income': { rows: SKELETON.fees },
+    income: { rows: SKELETON.fees },
     staking: { rows: SKELETON.staking }
   };
 
+/** Every other page's layout while its chunk loads, by path (the first
+ *  match): its title bar, then its rows. */
+const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
+  [/^\/leaderboards\/voting\/?$/, SKELETON.votingLeaderboard],
+  [
+    /^\/leaderboards\/(producers|consensus.*[?&]view=produc)/,
+    SKELETON.producers
+  ],
+  [/^\/leaderboards\/(?!voting\/compare)/, SKELETON.leaderboard],
+  [/^\/validators\/?$/, SKELETON.validators],
+  // The live bar above (the page draws it with the rest).
+  [/^\/status/, [{ liveBar: true }, ...SKELETON.status]],
+  [/^\/slot\//, SKELETON.slot],
+  [/^\/decentralization/, SKELETON.decentralization],
+  [/^\/(client-versions|cluster-health)/, SKELETON.clientVersions],
+  [/^\/features\/?$/, SKELETON.featureGates],
+  [/^\/feature\//, SKELETON.featureGate],
+  [/^\/simds\/?$/, SKELETON.simds],
+  [/^\/simd\//, SKELETON.simd],
+  [/^\/pools\/?$/, SKELETON.pools],
+  [/^\/pool\//, SKELETON.pool, 3],
+  [/^\/governance\/?$/, SKELETON.governance],
+  [/^\/governance\//, SKELETON.proposal],
+  [/^\/(activity|vote-account-changes)/, SKELETON.activity]
+];
+
 /** The page's stand-in while its chunk loads: a validator tab in its own
- *  shape, tab bar included; any other page a generic one. */
+ *  shape, tab bar included; another page in its own (PAGE), else a
+ *  generic one. */
 const ChunkFallback = () => {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const m = pathname.match(/^\/validator\/[^/]+(?:\/([^/]+))?/);
   const tab = m ? VALIDATOR_TAB[m[1] ?? ''] : undefined;
   return (
@@ -43,7 +73,12 @@ const ChunkFallback = () => {
           <PageSkeleton rows={tab.rows} />
         </>
       ) : (
-        <PageSkeleton header rows={SKELETON.page} />
+        (() => {
+          const [, rows, lines] = PAGE.find(([re]) =>
+            re.test(pathname + search)
+          ) ?? [null, SKELETON.page];
+          return <PageSkeleton header headerLines={lines} rows={rows} />;
+        })()
       )}
     </div>
   );

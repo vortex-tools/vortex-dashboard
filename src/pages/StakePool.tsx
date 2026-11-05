@@ -950,7 +950,7 @@ const StakePool = () => {
         {slice?.error ? (
           <PoolNotFound name={name} />
         ) : (
-          <PageSkeleton header rows={SKELETON.pool} />
+          <PageSkeleton header headerLines={3} rows={SKELETON.pool} />
         )}
       </div>
     );

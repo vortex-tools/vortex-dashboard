@@ -1,5 +1,5 @@
 import SectionCard from 'components/common/SectionCard';
-import ChartSkeleton from 'components/common/ChartSkeleton';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import { formatLamports } from 'helpers/utils';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -42,7 +42,7 @@ const TipsCard = ({ voteKey }: { voteKey: string }) => {
         <UntrackedState>Tips aren&apos;t available right now.</UntrackedState>
       ) : (
         <div style={{ minHeight: 300 }}>
-          <ChartSkeleton height={280} />
+          <TableSkeleton inCard rows={11} />
         </div>
       );
     if (!data.epochs.length)

@@ -1,7 +1,7 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import PageSkeleton, {
-  LinesSkeleton,
-  SKELETON
+  SKELETON,
+  TableSkeleton
 } from 'components/common/PageSkeleton';
 import ValidatorLink from 'components/common/ValidatorLink';
 import { BarChart, LineChart } from 'echarts/charts';
@@ -497,7 +497,7 @@ const FamilyPanel = ({
           Every {family.label} validator is on {target} or newer.
         </p>
       ) : (
-        <LinesSkeleton rows={8} />
+        <TableSkeleton inCard rows={8} />
       )}
       {note && <p className="fs-10 text-body-tertiary mt-3 mb-0">{note}</p>}
     </SectionCard>

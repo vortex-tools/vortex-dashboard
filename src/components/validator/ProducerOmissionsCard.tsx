@@ -117,7 +117,7 @@ const ProducerOmissionsCard = ({
   // Its place while it loads (the page doesn't jump when it lands); none
   // for an API without it (the page shows BlackholeVoters then).
   if (!data || (!geoSet && geoWait))
-    return failed ? null : <CardSkeleton kind="table" height={605} />;
+    return failed ? null : <CardSkeleton kind="table" height={621} />;
   const voters = data.voters;
   // Each voter's usual rate, once the API serves it.
   const baseline = voters.some(v => v.baselineShare != null);
