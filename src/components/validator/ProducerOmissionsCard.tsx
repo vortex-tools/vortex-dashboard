@@ -1,7 +1,7 @@
 import Pager from 'components/common/Pager';
 import SectionCard from 'components/common/SectionCard';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
-import { formatLamports } from 'helpers/utils';
+import { formatLamports, formatStakeShare } from 'helpers/utils';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ProductionOmissions } from 'providers/vortex-schemas';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -45,6 +45,9 @@ const ProducerOmissionsCard = ({
     fetchData?.(key);
   }, [key, fetchData]);
   const data: ProductionOmissions | undefined = slice?.data.get(key);
+  // The epoch's stake, for each voter's share (the producer board's sum).
+  const totalStake =
+    context?.producerLeaderboardState.data.get(epoch)?.cluster?.stake ?? null;
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('leftOut');
   // Most first; a second click on the same header flips it.
@@ -136,7 +139,7 @@ const ProducerOmissionsCard = ({
       <SectionCard
         title="Producer Omissions"
         icon="slash"
-        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Voter landing rate: how often the voter's votes land with every other producer this epoch (offline aside) - a voter that lands nearly everywhere but is often left out here is this producer failing it. Each voter's own view is its Voting tab.`}
+        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Lands elsewhere: the voter's own landing rate with every other producer this epoch (offline aside) - its typical rate, not the cluster's - a voter that lands nearly everywhere but is often left out here is this producer failing it. Each voter's own view is its Voting tab.`}
         aside={
           voters.length > 0 ? (
             <ButtonGroup size="sm" className="vx-header-control">
@@ -218,7 +221,7 @@ const ProducerOmissionsCard = ({
               <thead>
                 <tr>
                   {sortHead('voter', 'Voter', 'Its name', '')}
-                  {sortHead('stake', 'Stake', 'Its stake this epoch')}
+                  {sortHead('stake', 'Stake', "Its share of the epoch's stake")}
                   {sortHead(
                     'leftOut',
                     'Left out',
@@ -232,8 +235,8 @@ const ProducerOmissionsCard = ({
                   {baseline &&
                     sortHead(
                       'excess',
-                      'Voter landing rate',
-                      "How often the voter's votes land with every other producer this epoch (offline aside): a high one here beside a high Rate is this producer failing it; sorts by how much worse this producer is than that"
+                      'Lands elsewhere',
+                      "This voter's own landing rate with every OTHER producer this epoch (offline aside) - what's typical for it, not the cluster's. High here beside a high Rate: this producer is failing it. Sorts by how much worse this producer is than that"
                     )}
                 </tr>
               </thead>
@@ -252,8 +255,12 @@ const ProducerOmissionsCard = ({
                         {v.nodeName || short(v.nodeAddress ?? v.voteAddress)}
                       </Link>
                     </td>
-                    <td className="text-end font-monospace">
-                      {formatLamports(v.stake, 0)}
+                    <td
+                      className="text-end font-monospace"
+                      title={formatLamports(v.stake, 0)}
+                    >
+                      {(totalStake && formatStakeShare(v.stake, totalStake)) ||
+                        formatLamports(v.stake, 0)}
                     </td>
                     <td
                       className="text-end font-monospace text-nowrap"
