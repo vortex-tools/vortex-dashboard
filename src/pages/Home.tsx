@@ -1,4 +1,5 @@
 import EpochProgressSublabel from 'components/common/EpochProgressSublabel';
+import SlotNumber from 'components/common/SlotNumber';
 import useCluster from 'hooks/useCluster';
 import useConsensus from 'hooks/useConsensus';
 import useLiveSlot from 'hooks/useLiveSlot';
@@ -51,7 +52,7 @@ const LiveSlotValue = ({
 }) => {
   const strip = useLiveSlot();
   const v = halted ? fallback : (strip ?? fallback);
-  return <>{v != null ? v.toLocaleString() : '—'}</>;
+  return <>{v != null ? <SlotNumber slot={v} /> : '—'}</>;
 };
 
 /** Longest the live cards wait for the reads that decide the layout. */

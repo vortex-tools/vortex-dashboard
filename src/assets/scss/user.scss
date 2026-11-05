@@ -673,7 +673,11 @@ th.leaderboard-sticky-col {
   }
 }
 
-// Slot numbers (SlotNumber): bare digits, on one line.
+// Slot numbers (SlotNumber): digit groups set apart by a very slight gap,
+// not commas; a margin, so a copied slot has no spaces.
 .vx-slot {
   white-space: nowrap;
+}
+.vx-slot-group {
+  margin-left: 0.1em;
 }
