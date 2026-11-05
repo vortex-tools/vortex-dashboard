@@ -287,7 +287,8 @@ const EarningsChart = ({
               // claimable counts as pending, expired as nothing.
               if (d.name === 'BAM Boost') {
                 const b = r.bamBoost;
-                if (r.income.bamBoost == null) return line(label, '—', d.color);
+                // Not in the distribution: no line, not a dash.
+                if (r.income.bamBoost == null) return '';
                 // Expired: nothing (no zero lines).
                 if (b?.state === 'expired') return '';
                 if (b?.state === 'claimable') label += ' (pending)';
