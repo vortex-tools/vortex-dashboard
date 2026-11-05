@@ -139,7 +139,7 @@ const ProducerOmissionsCard = ({
       <SectionCard
         title="Producer Omissions"
         icon="slash"
-        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Usually missed: how often every other producer misses the voter this epoch (offline aside) - its typical rate, not the cluster's; a voter rarely missed elsewhere but often missed here is this producer failing it. Each voter's own view is its Voting tab.`}
+        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Missed in others': how often every other producer misses the voter this epoch (offline aside) - its typical rate, not the cluster's; a voter rarely missed elsewhere but often missed here is this producer failing it. Each voter's own view is its Voting tab.`}
         aside={
           voters.length > 0 ? (
             <ButtonGroup size="sm" className="vx-header-control">
@@ -229,14 +229,14 @@ const ProducerOmissionsCard = ({
                   )}
                   {sortHead(
                     'rate',
-                    'Missed here',
+                    'Missed in its blocks',
                     "The share of this producer's blocks that left it out"
                   )}
                   {baseline &&
                     sortHead(
                       'excess',
-                      'Usually missed',
-                      "How often this voter is missed by every OTHER producer this epoch (offline aside) - what's typical for it, not the cluster's. Low here beside a high Missed here: this producer is failing it. Sorts by how much worse this producer is than that"
+                      "Missed in others'",
+                      "How often this voter is missed by every OTHER producer this epoch (offline aside) - what's typical for it, not the cluster's. Low here beside a high Missed in its blocks: this producer is failing it. Sorts by how much worse this producer is than that"
                     )}
                 </tr>
               </thead>
