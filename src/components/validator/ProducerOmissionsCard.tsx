@@ -145,7 +145,7 @@ const ProducerOmissionsCard = ({
       <SectionCard
         title="Producer Omissions"
         icon="slash"
-        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Missed in others': how often every other producer misses the voter this epoch (offline aside) - its typical rate, not the cluster's; a voter rarely missed elsewhere but often missed here is this producer failing it. Each voter's own view is its Voting tab.`}
+        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Always missed": left out of ${(never * 100).toFixed(0)}%+ of them. Missed in others': how often every other producer misses the voter this epoch (offline aside) - its typical rate, not the cluster's; a voter rarely missed elsewhere but often missed here is this producer failing it. Each voter's own view is its Voting tab.`}
         aside={
           voters.length > 0 ? (
             <ButtonGroup size="sm" className="vx-header-control">
@@ -153,7 +153,7 @@ const ProducerOmissionsCard = ({
                 [
                   ['all', `All ${voters.length.toLocaleString()}`],
                   ['often', `${(OFTEN * 100).toFixed(0)}%+ ${oftenN}`],
-                  ['never', `Never ${neverN}`]
+                  ['never', `Always missed ${neverN}`]
                 ] as Array<[Filter, string]>
               ).map(([f, label]) => (
                 <ToggleButton
@@ -298,7 +298,7 @@ const ProducerOmissionsCard = ({
                               : 'text-body-tertiary'
                         }`}
                       >
-                        {v.rate >= never ? 'never · ' : ''}
+                        {v.rate >= never ? 'always · ' : ''}
                         {pct(v.rate)}
                       </span>
                     </td>
