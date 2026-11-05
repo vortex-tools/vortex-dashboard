@@ -12,7 +12,7 @@ import { Col, Row } from 'react-bootstrap';
 const WINDOW = 10;
 // Changed in this many of them: "changes its commission often".
 const OFTEN_EPOCHS = 3;
-// Net On-chain Revenue: summed over this many finished epochs.
+// Net Earnings: summed over this many finished epochs.
 const NET_EPOCHS = 30;
 // Inflation commission only (block revenue's isn't shown yet).
 const KINDS = ['inflationCommission'];
@@ -149,12 +149,12 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
             </Col>
             <Col xs={6} xl={3}>
               <StatCard
-                label="Net On-chain Revenue"
+                label="Net Earnings"
                 value={sol(net)}
                 tone={net != null && net < 0 ? 'danger' : undefined}
                 sublabel={
                   lastPaid.length
-                    ? `last ${lastPaid.length} epochs, after ${sol(costs)} VAT and fees`
+                    ? `last ${lastPaid.length} epochs · less ${sol(costs)} on-chain costs`
                     : 'no finished epochs yet'
                 }
               />
