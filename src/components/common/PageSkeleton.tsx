@@ -131,6 +131,58 @@ export const TableSkeleton = ({ rows = 16 }: { rows?: number }) => {
   );
 };
 
+/** The validator pages' tabs, as ValidatorPageHeader draws them (the
+ *  labels' rough widths, px). */
+const TAB_WIDTHS = [62, 46, 70, 62, 58, 36, 54];
+
+/**
+ * A validator page's header while its chunk loads: the title, the search
+ * row's place and the tab bar (as ValidatorPageHeader lays them out), then
+ * the epoch picker on the consensus tabs - so the tab bar is there from
+ * the first frame.
+ */
+export const ValidatorHeaderSkeleton = ({
+  picker = false
+}: {
+  /** The consensus tabs' epoch picker under the bar. */
+  picker?: boolean;
+}) => (
+  <div className="placeholder-glow" aria-busy="true">
+    <div className="validator-title d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
+      <h1 className="h3 mb-0">
+        <span className={BAR} style={{ width: '12rem', maxWidth: '50vw' }} />
+      </h1>
+      <div
+        className="d-flex align-items-stretch gap-2"
+        style={{ width: '30rem', maxWidth: '100%' }}
+      >
+        <span className={`${BAR} rounded`} style={{ width: 130, height: 38 }} />
+        <span className={`${BAR} rounded flex-grow-1`} style={{ height: 38 }} />
+      </div>
+    </div>
+    <div
+      className={`mx-n3 px-3 pt-1 border-top border-bottom border-translucent ${picker ? 'mb-0' : 'mb-3'}`}
+    >
+      <ul className="nav nav-underline fs-9 flex-nowrap overflow-hidden column-gap-2 column-gap-sm-3">
+        {TAB_WIDTHS.map((w, i) => (
+          <li key={i} className="nav-item">
+            <span className="nav-link">
+              <span className={BAR} style={{ width: w }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+    {picker && (
+      <div className="d-flex justify-content-center gap-2 my-3">
+        <span className={BAR} style={{ width: 32, height: 30 }} />
+        <span className={BAR} style={{ width: 170, height: 30 }} />
+        <span className={BAR} style={{ width: 32, height: 30 }} />
+      </div>
+    )}
+  </div>
+);
+
 /** A live slot strip's stand-in: its label, the grid of slots and the
  *  legend line, at the strip's height. */
 export const LiveStripSkeleton = () => (
@@ -244,6 +296,7 @@ export const SKELETON = {
     [full(194)]
   ],
   fees: [[full(457, 'chart')], [full(242)], [full(424, 'chart')]],
+  earnings: [{ stats: 4 }, [half(432, 'chart'), half(432)], [half(423)]],
   featureGate: [{ stats: 3 }, [half(244), half(244)], [full(123)], [full(182)]],
   featureGates: [{ stats: 4 }, [full(235)], [full(782)]],
   simd: [
