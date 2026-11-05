@@ -91,6 +91,7 @@ const LiveVoteStrip = ({ voteKey }: { voteKey: string }) => {
       leaderOf={leaderOf}
       nameOf={nameOf}
       label="Live votes"
+      flush
       legend={LEGEND}
       footnote="The record, replayed at block pace"
       footnoteTitle="Only what the chain recorded: each slot's votes from the reward certificates in the block 8 slots later, replayed one per slot-time a little behind the chain."

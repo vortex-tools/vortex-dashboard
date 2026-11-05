@@ -204,7 +204,8 @@ const LiveSlotStrip = ({
   onSlot,
   headerless = false,
   look = DEFAULT_LOOK,
-  className
+  className,
+  flush = false
 }: {
   /** Cell size, gap and shape (bigger blocks where there's room). */
   look?: StripLook;
@@ -241,6 +242,8 @@ const LiveSlotStrip = ({
   /** The strip's own box; by default a bordered card whose border turns
    *  primary while held. */
   className?: string;
+  /** No bottom margin on the default card (in a gap-spaced column). */
+  flush?: boolean;
 }) => {
   // This strip's geometry (shadowing the defaults).
   const DOT = look.size;
@@ -430,7 +433,7 @@ const LiveSlotStrip = ({
       <div
         className={
           className ??
-          `bg-body-emphasis rounded border p-3 mb-3 ${held ? 'border-primary' : 'border-translucent'}`
+          `bg-body-emphasis rounded border p-3${flush ? '' : ' mb-3'} ${held ? 'border-primary' : 'border-translucent'}`
         }
       >
         <div

@@ -191,7 +191,7 @@ const ValidatorDivergentVotes = () => {
         ) : (
           <>
             {row && (
-              <PageSection>
+              <PageSection className="mb-3">
                 <div className="d-flex flex-column gap-3">
                   {epoch != null && epoch === currentEpoch && voteAddress && (
                     <LiveVoteStrip voteKey={recordKey} />
@@ -220,7 +220,11 @@ const ValidatorDivergentVotes = () => {
                 The slot timeline isn&apos;t available right now.
               </UntrackedState>
             ) : !history || !timeline ? (
-              <PageSkeleton cards={['full', 'table']} />
+              <PageSkeleton
+                live={!row && (epoch == null || epoch === currentEpoch)}
+                stats={row ? 0 : 4}
+                cards={['full', 'table']}
+              />
             ) : (
               (() => {
                 // Divergent Votes, then the misses by payer below it.
