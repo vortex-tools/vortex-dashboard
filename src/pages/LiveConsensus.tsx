@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import SlotNumber from 'components/common/SlotNumber';
 import Badge from 'components/base/Badge';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import PageBreadcrumb, { Crumb } from 'components/common/PageBreadcrumb';
@@ -837,7 +838,9 @@ const InFlight = ({
           return (
             <tr key={s.slot}>
               <td className="font-monospace">
-                <Link to={`/slot/${s.slot}`}>{s.slot.toLocaleString()}</Link>
+                <Link to={`/slot/${s.slot}`}>
+                  <SlotNumber slot={s.slot} />
+                </Link>
               </td>
               <td className="text-nowrap">{nameOf(s.leader)}</td>
               <td>

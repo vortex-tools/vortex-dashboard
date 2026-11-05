@@ -1,4 +1,5 @@
 import FaIcon from 'components/base/FaIcon';
+import { slotText } from 'helpers/slot';
 import FeatherIcon from 'components/base/FeatherIcon';
 import Button from 'components/base/Button';
 import EmptyEpochState from 'components/common/EmptyEpochState';
@@ -897,7 +898,7 @@ const VoteHistory = () => {
                     const slotStart =
                       (epochStartSlot ?? 0) + bucketIndex * CHUNK_SIZE;
                     const slotEnd = slotStart + CHUNK_SIZE - 1;
-                    const slotRange = `${slotStart.toLocaleString()}–${slotEnd.toLocaleString()}`;
+                    const slotRange = `${slotText(slotStart)}–${slotText(slotEnd)}`;
                     return (
                       <div className="d-flex flex-column align-items-center text-center py-6 px-4">
                         <FeatherIcon

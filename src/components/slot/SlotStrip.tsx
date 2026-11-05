@@ -1,4 +1,6 @@
 import { SlotInfo } from 'providers/VortexDataProvider';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import ValidatorLink from 'components/common/ValidatorLink';
 import { ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
@@ -119,9 +121,9 @@ const SlotStrip = ({
                 </td>
                 <td
                   className="py-2 align-middle font-monospace fs-10 text-body-tertiary text-nowrap"
-                  title={`Slots ${w[0].toLocaleString()}–${w[w.length - 1].toLocaleString()}`}
+                  title={`Slots ${slotText(w[0])}–${slotText(w[w.length - 1])}`}
                 >
-                  {w[0].toLocaleString()}–{String(w[w.length - 1]).slice(-3)}
+                  <SlotNumber slot={w[0]} />–{String(w[w.length - 1]).slice(-3)}
                 </td>
                 <td className="py-2 pe-2 align-middle" style={{ width: '40%' }}>
                   {/* Padding so the slot's ring isn't clipped. */}
@@ -130,9 +132,9 @@ const SlotStrip = ({
                       const info = infos.get(s);
                       const mark =
                         s === rewardedIn
-                          ? `reward block for ${slot.toLocaleString()}`
+                          ? `reward block for ${slotText(slot)}`
                           : s === rewards
-                            ? `its votes are rewarded in ${slot.toLocaleString()}`
+                            ? `its votes are rewarded in ${slotText(slot)}`
                             : null;
                       // Fast-finalized blocks solid; other finalization
                       // (slow path / via a later block) faded.
@@ -157,7 +159,7 @@ const SlotStrip = ({
                                   : undefined,
                             outlineOffset: 2
                           }}
-                          title={`Slot ${s.toLocaleString()}: ${c.label}${mark ? ` · ${mark}` : ''}`}
+                          title={`Slot ${slotText(s)}: ${c.label}${mark ? ` · ${mark}` : ''}`}
                           aria-label={`Slot ${s}: ${c.label}`}
                         />
                       );
@@ -178,7 +180,7 @@ const SlotStrip = ({
       <div className="d-flex flex-wrap column-gap-3 row-gap-1 fs-10 text-body-tertiary mt-1 px-2">
         <RewardLegend>
           <Link to={`/slot/${rewardedIn}`} className="font-monospace">
-            {rewardedIn.toLocaleString()}
+            <SlotNumber slot={rewardedIn} />
           </Link>{' '}
           reward block for this slot
         </RewardLegend>
@@ -186,7 +188,7 @@ const SlotStrip = ({
           <RewardLegend>
             this block rewards{' '}
             <Link to={`/slot/${rewards}`} className="font-monospace">
-              {rewards.toLocaleString()}
+              <SlotNumber slot={rewards} />
             </Link>
           </RewardLegend>
         )}
@@ -215,11 +217,11 @@ export const stripCaption = (
     const wholeWindow = win.every(s => infos.get(s)?.outcome === 'skipped');
     return `${
       wholeWindow
-        ? `None of the leader's ${win.length} slots ${win[0].toLocaleString()}–${win[win.length - 1].toLocaleString()} has a block`
+        ? `None of the leader's ${win.length} slots ${slotText(win[0])}–${slotText(win[win.length - 1])} has a block`
         : 'No block for this slot'
     }${
       before != null && after != null
-        ? `: the chain went from ${before.toLocaleString()} to ${after.toLocaleString()}`
+        ? `: the chain went from ${slotText(before)} to ${slotText(after)}`
         : ''
     }.`;
   }

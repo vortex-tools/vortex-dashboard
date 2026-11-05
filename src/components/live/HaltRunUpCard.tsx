@@ -1,4 +1,6 @@
 import SectionCard from 'components/common/SectionCard';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import { LinesSkeleton } from 'components/common/PageSkeleton';
 import ValidatorLink from 'components/common/ValidatorLink';
 import UntrackedState from 'components/common/UntrackedState';
@@ -94,7 +96,7 @@ const HaltRunUpCard = ({
                 to={`/slot/${halt.finalizedSlot}`}
                 className="font-monospace"
               >
-                {halt.finalizedSlot.toLocaleString()}
+                <SlotNumber slot={halt.finalizedSlot} />
               </Link>
               .{' '}
             </>
@@ -107,7 +109,7 @@ const HaltRunUpCard = ({
                 data.lastBlockSlot < halt.finalizedSlot) && (
                 <>
                   {' '}
-                  {` - our block data ends at ${data.lastBlockSlot.toLocaleString()}: block ${halt.finalizedSlot?.toLocaleString()} is finalized but not yet in our block data`}
+                  {` - our block data ends at ${slotText(data.lastBlockSlot)}: block ${halt.finalizedSlot != null ? slotText(halt.finalizedSlot) : '—'} is finalized but not yet in our block data`}
                 </>
               )}
             .
@@ -137,7 +139,7 @@ const HaltRunUpCard = ({
               <tr key={s.slot}>
                 <td>
                   <Link to={`/slot/${s.slot}`} className="font-monospace">
-                    {s.slot.toLocaleString()}
+                    <SlotNumber slot={s.slot} />
                   </Link>
                   {s.outcome && s.outcome !== 'block' && (
                     <span className="badge badge-soft badge-soft-warning ms-2">
@@ -180,7 +182,7 @@ const HaltRunUpCard = ({
           <p className="fs-9 mb-3">
             Slot{' '}
             <Link to={`/slot/${fv.slot}`} className="font-monospace">
-              {fv.slot.toLocaleString()}
+              <SlotNumber slot={fv.slot} />
             </Link>
             : <span className="fw-semibold">{ppb(fv.votedStakePpb)}</span> of
             stake voted, {ppb(fv.missingStakePpb)} missing.

@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import { slotText } from 'helpers/slot';
 import CanonicalValidatorLink from 'components/common/ValidatorLink';
 import BackLink from 'components/common/BackLink';
 import { poolPath } from 'components/pools/pools';
@@ -701,7 +702,7 @@ const GovernanceProposal = () => {
                     [
                       'Stake snapshot',
                       p.snapshotEpoch != null
-                        ? `epoch ${p.snapshotEpoch.toLocaleString()}${p.snapshotSlot != null ? ` · slot ${p.snapshotSlot.toLocaleString()}` : ''}`
+                        ? `epoch ${p.snapshotEpoch.toLocaleString()}${p.snapshotSlot != null ? ` · slot ${slotText(p.snapshotSlot)}` : ''}`
                         : '—'
                     ],
                     [

@@ -1,4 +1,5 @@
 import PageBreadcrumb from 'components/common/PageBreadcrumb';
+import { slotText } from 'helpers/slot';
 import useConsensus from 'hooks/useConsensus';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ReactNode, useContext } from 'react';
@@ -48,10 +49,9 @@ const TowerGate = ({
           {e === cutoverEpoch ? (
             <>
               Epoch {e} switched to Alpenglow
-              {genesisSlot != null &&
-                ` at slot ${genesisSlot.toLocaleString()}`}
-              . Its Tower part (the first few thousand slots) is too short to
-              rank, so the epoch is shown as Alpenglow: see the{' '}
+              {genesisSlot != null && ` at slot ${slotText(genesisSlot)}`}. Its
+              Tower part (the first few thousand slots) is too short to rank, so
+              the epoch is shown as Alpenglow: see the{' '}
             </>
           ) : (
             <>

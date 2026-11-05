@@ -1,4 +1,5 @@
 import useIngestion from 'hooks/useIngestion';
+import { slotText } from 'helpers/slot';
 import { Ingestion } from 'providers/vortex-schemas';
 
 /** The laggiest source's lag, and a per-source line for each, for hovers. */
@@ -16,7 +17,7 @@ export const freshness = (
     title: reported
       .map(
         s =>
-          `${s.src === 'blocks' ? 'Block data' : 'Votes'} up to slot ${s.lastSlot.toLocaleString()} (${s.lagSlots === 0 ? 'current' : `${s.lagSlots.toLocaleString()} slots behind`})`
+          `${s.src === 'blocks' ? 'Block data' : 'Votes'} up to slot ${slotText(s.lastSlot)} (${s.lagSlots === 0 ? 'current' : `${s.lagSlots.toLocaleString()} slots behind`})`
       )
       .join('\n')
   };

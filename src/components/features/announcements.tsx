@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import { slotText } from 'helpers/slot';
 import Badge from 'components/base/Badge';
 import { Announcement } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
@@ -169,7 +170,7 @@ const AnnouncementsTable = ({
             <td className="text-body-secondary">
               {[
                 a.restart?.lastConfirmedSlot != null &&
-                  `halted chain's last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
+                  `halted chain's last confirmed slot ${slotText(a.restart.lastConfirmedSlot)}`,
                 a.restart?.finished === true && 'finished',
                 (a.versions.length > 0 || a.minVersions.length > 0) &&
                   versionsText(a),
@@ -226,7 +227,7 @@ export default AnnouncementsTable;
 export const summary = (a: Announcement) =>
   [
     a.restart?.lastConfirmedSlot != null &&
-      `last confirmed slot ${a.restart.lastConfirmedSlot.toLocaleString()}`,
+      `last confirmed slot ${slotText(a.restart.lastConfirmedSlot)}`,
     a.restart?.finished === true && 'finished',
     (a.versions.length > 0 || a.minVersions.length > 0) && versionsText(a),
     candidateText(a),

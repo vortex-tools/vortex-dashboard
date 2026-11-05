@@ -1,4 +1,6 @@
 import Pager from 'components/common/Pager';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import ValidatorLink from 'components/common/ValidatorLink';
 import UntrackedState from 'components/common/UntrackedState';
 import { Divergence, OFFLINE_RUN_SLOTS, OUTCOME } from 'helpers/participation';
@@ -257,7 +259,7 @@ const SlotCell = ({
         className={`d-inline-flex align-items-baseline gap-1 rounded-1 px-2 fs-10 text-decoration-none ${chip.cls}`}
         style={{ lineHeight: '1.35rem' }}
         title={[
-          `Slot ${slot.toLocaleString()}`,
+          `Slot ${slotText(slot)}`,
           k.title,
           why,
           v
@@ -567,7 +569,9 @@ const DivergentSlotsTable = ({
             return (
               <tr key={start}>
                 <td className="font-monospace text-nowrap">
-                  <Link to={`/slot/${start}`}>{start.toLocaleString()}</Link>
+                  <Link to={`/slot/${start}`}>
+                    <SlotNumber slot={start} />
+                  </Link>
                 </td>
                 <td className="text-nowrap">
                   {leader ? (

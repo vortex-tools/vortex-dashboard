@@ -1,4 +1,5 @@
 import SectionCard from 'components/common/SectionCard';
+import SlotNumber from 'components/common/SlotNumber';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import { LiveConsensus, LiveSlot } from 'providers/vortex-schemas';
 import { ReactNode, useEffect, useState } from 'react';
@@ -176,7 +177,7 @@ const ConsensusHealth = ({
           <span className="text-body-tertiary">
             Not voted yet on{' '}
             <Link to={`/slot/${oldest.slot}`}>
-              {oldest.slot.toLocaleString()}
+              <SlotNumber slot={oldest.slot} />
             </Link>{' '}
             ({oldest.notVoted.voters} validators,{' '}
             {pctPpb(oldest.notVoted.stakePpb)} of stake):{' '}

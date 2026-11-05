@@ -1,3 +1,5 @@
+import { slotText } from 'helpers/slot';
+
 /**
  * Decoding for /epochs/participation/history: 2 bits per reward slot,
  * little-endian within each byte (slot i = bits 2*(i mod 4)..+1 of byte
@@ -199,7 +201,7 @@ export const ingestProgress = (r: IngestFields): string =>
   r.complete
     ? 'epoch complete'
     : r.lastIngestedSlot != null
-      ? `through slot ${r.lastIngestedSlot.toLocaleString()}`
+      ? `through slot ${slotText(r.lastIngestedSlot)}`
       : r.lastBucket != null
         ? `${(r.lastBucket + 1).toLocaleString()} / ${(r.totalBuckets ?? 432).toLocaleString()} buckets`
         : 'not ingested yet';

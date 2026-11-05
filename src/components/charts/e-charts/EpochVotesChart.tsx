@@ -1,4 +1,5 @@
 import { useMemo, useContext, useEffect, CSSProperties } from 'react';
+import { slotText } from 'helpers/slot';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { useAppContext } from 'providers/AppProvider';
@@ -188,7 +189,7 @@ const getDefaultOptions = (
         const bucketStart =
           Math.floor((slotNumber - epochStartSlot) / 1000) + 1;
         const bucketEnd = bucketStart + bucketSize / 1000 - 1;
-        let result = `<strong>Slot: ${slotNumber.toLocaleString()}</strong><br/>`;
+        let result = `<strong>Slot: ${slotText(slotNumber)}</strong><br/>`;
         result += `<strong>Buckets: ${bucketStart}-${bucketEnd}</strong><br/>`;
         params.forEach((param: any) => {
           result += `${param.marker} ${

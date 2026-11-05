@@ -1,4 +1,6 @@
 import Button from 'components/base/Button';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import SectionCard from 'components/common/SectionCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -142,7 +144,7 @@ const SlotMissingVoters = ({
 
   const slotLink = (n: number) => (
     <Link to={`/slot/${n}`} className="font-monospace">
-      {n.toLocaleString()}
+      <SlotNumber slot={n} />
     </Link>
   );
   const title = (
@@ -163,12 +165,12 @@ const SlotMissingVoters = ({
       {!list ? (
         <UntrackedState>
           {which === 'votes'
-            ? `Not known until block ${judge.toLocaleString()} is in, or it was skipped.`
+            ? `Not known until block ${slotText(judge)} is in, or it was skipped.`
             : 'Not known yet, or this block carried no reward certificates.'}
         </UntrackedState>
       ) : !missing.length ? (
         <UntrackedState>
-          Every online voter&apos;s vote is in block {judge.toLocaleString()}
+          Every online voter&apos;s vote is in block <SlotNumber slot={judge} />
           &apos;s certificates
           {(offlinePpb ?? 0) >= HALF_BP
             ? ` (${pct2(offlinePpb)} of stake was offline)`

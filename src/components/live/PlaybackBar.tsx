@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import SlotNumber from 'components/common/SlotNumber';
 import FeatherIcon from 'components/base/FeatherIcon';
 import Button from 'components/base/Button';
 import { ProgressBar } from 'react-bootstrap';
@@ -110,7 +111,7 @@ const PlaybackBar = ({
               className="font-monospace fw-bold text-body-emphasis d-inline-block"
               style={{ minWidth: '11ch' }}
             >
-              {slot != null ? slot.toLocaleString() : '—'}
+              {slot != null ? <SlotNumber slot={slot} /> : '—'}
             </span>
           </span>
           {epoch != null && (

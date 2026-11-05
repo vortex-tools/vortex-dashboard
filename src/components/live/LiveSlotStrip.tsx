@@ -1,4 +1,6 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import ValidatorLink from 'components/common/ValidatorLink';
 import {
   createContext,
@@ -103,7 +105,7 @@ const Column = ({
           to={`/slot/${slot}`}
           className={`d-inline-flex ${roundOf(look.shape)}${slot === hoverSlot ? ' vx-dot-hover' : ''}`}
           style={radiusOf(look)}
-          aria-label={`Slot ${slot.toLocaleString()}: ${cell.label}`}
+          aria-label={`Slot ${slotText(slot)}: ${cell.label}`}
           onMouseEnter={() => onHover(slot)}
           onFocus={() => onHover(slot)}
         >
@@ -142,7 +144,7 @@ const SlotCard = ({
           className="fs-9 font-monospace fw-bold text-body-emphasis"
           style={{ fontVariantNumeric: 'tabular-nums' }}
         >
-          {slot.toLocaleString()}
+          <SlotNumber slot={slot} />
         </Link>
       )}
     </div>

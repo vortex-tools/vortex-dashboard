@@ -1,4 +1,5 @@
 import SectionCard from 'components/common/SectionCard';
+import SlotNumber from 'components/common/SlotNumber';
 import { LinesSkeleton } from 'components/common/PageSkeleton';
 import UntrackedState from 'components/common/UntrackedState';
 import { formatLamports } from 'helpers/utils';
@@ -92,7 +93,7 @@ const TopBlocksCard = ({
                 <tr key={r.slot}>
                   <td className="font-monospace">
                     <Link to={`/slot/${r.slot}`}>
-                      {r.slot.toLocaleString()}
+                      <SlotNumber slot={r.slot} />
                     </Link>
                   </td>
                   <td className="text-end font-monospace fw-semibold">

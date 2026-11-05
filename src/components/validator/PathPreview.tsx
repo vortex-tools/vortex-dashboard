@@ -1,4 +1,5 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import SlotNumber from 'components/common/SlotNumber';
 import * as echarts from 'echarts/core';
 import { LinesChart, ScatterChart } from 'echarts/charts';
 import { GeoComponent } from 'echarts/components';
@@ -114,7 +115,7 @@ export const PathPreview = ({
       aria-hidden
     >
       <div className="fs-10 fw-semibold text-body-emphasis mb-1">
-        Slot {hover.slot.toLocaleString()}
+        Slot <SlotNumber slot={hover.slot} />
       </div>
       <ReactEChartsCore
         echarts={echarts}

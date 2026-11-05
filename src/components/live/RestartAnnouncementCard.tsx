@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import SlotNumber from 'components/common/SlotNumber';
 import SectionCard from 'components/common/SectionCard';
 import { postedWhen } from 'components/features/announcements';
 import { Announcement } from 'providers/vortex-schemas';
@@ -14,7 +15,7 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
 
 const slotLink = (s: number) => (
   <Link to={`/slot/${s}`} className="font-monospace">
-    {s.toLocaleString()}
+    <SlotNumber slot={s} />
   </Link>
 );
 

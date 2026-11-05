@@ -1,4 +1,6 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import ValidatorLink from 'components/common/ValidatorLink';
 import useConsensus from 'hooks/useConsensus';
 import Button from 'components/base/Button';
@@ -211,7 +213,7 @@ const SlotPage = () => {
           }
         ]
       : []),
-    { label: `Slot ${valid ? slot.toLocaleString() : ''}`, active: true }
+    { label: `Slot ${valid ? slotText(slot) : ''}`, active: true }
   ];
 
   const nav = (
@@ -265,7 +267,9 @@ const SlotPage = () => {
         <div className="mb-9">
           <Row className="page-header align-items-end justify-content-between g-3">
             <Col xs="auto">
-              <h1 className="h3">Slot {valid ? slot.toLocaleString() : '—'}</h1>
+              <h1 className="h3">
+                Slot {valid ? <SlotNumber slot={slot} /> : '—'}
+              </h1>
             </Col>
             <Col xs="auto">{nav}</Col>
           </Row>
@@ -455,7 +459,7 @@ const SlotHeader = ({
           (!page.alpenglow && page.tower?.isSkipped === false)
             ? 'Block'
             : 'Slot'}{' '}
-          {page.slot.toLocaleString()}
+          <SlotNumber slot={page.slot} />
         </h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">{subtitle}</p>
       </Col>
@@ -520,7 +524,7 @@ const LeaderCallout = ({
                 to={`/slot/${rec.nextWindowSlot}`}
                 className="font-monospace"
               >
-                {rec.nextWindowSlot.toLocaleString()}
+                <SlotNumber slot={rec.nextWindowSlot} />
               </Link>
               .
             </>

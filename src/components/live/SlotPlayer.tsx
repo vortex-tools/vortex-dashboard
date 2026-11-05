@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import SlotNumber from 'components/common/SlotNumber';
 import ValidatorLink from 'components/common/ValidatorLink';
 import { recordPath } from 'components/validator/ConsensusRecordHeader';
 import Badge from 'components/base/Badge';
@@ -112,7 +113,9 @@ const SlotPlayer = ({
                   {current && <FeatherIcon icon="play" size={10} />}
                 </td>
                 <td className="font-monospace">
-                  <Link to={`/slot/${s}`}>{s.toLocaleString()}</Link>
+                  <Link to={`/slot/${s}`}>
+                    <SlotNumber slot={s} />
+                  </Link>
                 </td>
                 <td>
                   {o ? (

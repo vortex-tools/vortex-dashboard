@@ -1,4 +1,6 @@
 import BackLink from 'components/common/BackLink';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import AddressLine from 'components/common/AddressLine';
 import { explorerAddress } from 'helpers/explorer';
 import useCluster from 'hooks/useCluster';
@@ -49,7 +51,7 @@ const stateText = (s: FeatureClusterState | undefined) => {
       value: 'Active',
       sub:
         s.epoch != null
-          ? `since epoch ${s.epoch.toLocaleString()}${s.slot != null ? ` · slot ${s.slot.toLocaleString()}` : ''}`
+          ? `since epoch ${s.epoch.toLocaleString()}${s.slot != null ? ` · slot ${slotText(s.slot)}` : ''}`
           : 'activated'
     };
   if (s.status === 'skipped')
@@ -509,7 +511,7 @@ const FeatureGatePage = () => {
                       {e.slot != null && (
                         <span className="text-body-tertiary">
                           {' '}
-                          · {e.slot.toLocaleString()}
+                          · <SlotNumber slot={e.slot} />
                         </span>
                       )}
                     </td>

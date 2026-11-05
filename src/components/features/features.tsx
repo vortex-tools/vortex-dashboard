@@ -1,4 +1,5 @@
 import Badge from 'components/base/Badge';
+import { slotText } from 'helpers/slot';
 import { Link } from 'react-router';
 import {
   ClientVersionLists,
@@ -108,9 +109,7 @@ export const StatusChip = ({
     return (
       <Badge
         bg="success"
-        title={
-          state.slot != null ? `Slot ${state.slot.toLocaleString()}` : undefined
-        }
+        title={state.slot != null ? `Slot ${slotText(state.slot)}` : undefined}
       >
         Active{state.epoch != null && ` · ${state.epoch.toLocaleString()}`}
       </Badge>

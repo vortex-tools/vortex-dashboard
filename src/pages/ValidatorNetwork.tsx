@@ -1,4 +1,5 @@
 import ProducerWindowsTable from 'components/validator/ProducerWindowsTable';
+import SlotNumber from 'components/common/SlotNumber';
 
 import StatCard from 'components/common/StatCard';
 import { IS_STAGING } from 'helpers/apiEndpoint';
@@ -724,7 +725,7 @@ const ValidatorNetwork = () => {
                                   to={`/slot/${v.slot}`}
                                   className="font-monospace"
                                 >
-                                  {v.slot.toLocaleString()}
+                                  <SlotNumber slot={v.slot} />
                                 </Link>
                                 <div
                                   className={`d-sm-none fs-10 text-nowrap text-${k.tone}`}

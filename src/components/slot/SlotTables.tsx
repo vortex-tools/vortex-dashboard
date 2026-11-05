@@ -1,4 +1,6 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import ValidatorLink from 'components/common/ValidatorLink';
 import InfoTip from 'components/common/InfoTip';
 import SectionCard from 'components/common/SectionCard';
@@ -15,7 +17,7 @@ const EPOCH_SLOTS = 432_000;
 
 const SlotLink = ({ slot }: { slot: number }) => (
   <Link to={`/slot/${slot}`} className="font-monospace">
-    {slot.toLocaleString()}
+    <SlotNumber slot={slot} />
   </Link>
 );
 
@@ -411,7 +413,7 @@ export const ConsensusTable = ({
               ? [
                   fin.directStakePpb != null &&
                     `${pct2(fin.directStakePpb)} of stake in its certificate`,
-                  `carried by block ${fin.byFooterSlot.toLocaleString()}`
+                  `carried by block ${slotText(fin.byFooterSlot)}`
                 ]
                   .filter(Boolean)
                   .join(', ')
@@ -448,7 +450,7 @@ export const ConsensusTable = ({
           label: 'Votes on this slot',
           icon: 'check-square',
           title: v
-            ? `Rewarded by block ${(page.slot + 8).toLocaleString()} (the reward block), whose reward certificates carry them`
+            ? `Rewarded by block ${slotText(page.slot + 8)} (the reward block), whose reward certificates carry them`
             : undefined,
           value: v ? (
             <>
@@ -472,7 +474,7 @@ export const ConsensusTable = ({
         carriedOk && {
           label: 'Votes it carried',
           icon: 'package',
-          title: `The votes on slot ${c!.rewardSlot.toLocaleString()}: ${pct2(c!.includedIdealStakePpb)} of stake included, ${pct2(c!.leftOutStakePpb)} left out, ${pct2(c!.offlineStakePpb)} offline`,
+          title: `The votes on slot ${slotText(c!.rewardSlot)}: ${pct2(c!.includedIdealStakePpb)} of stake included, ${pct2(c!.leftOutStakePpb)} left out, ${pct2(c!.offlineStakePpb)} offline`,
           value: (
             <>
               <span className="font-monospace">

@@ -1,4 +1,6 @@
 import SectionCard from 'components/common/SectionCard';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import { clientLabel } from 'helpers/clients';
 import { ClusterHalt } from 'hooks/useIngestion';
 import { Table } from 'react-bootstrap';
@@ -82,7 +84,7 @@ const RestartCard = ({
               to={`/slot/${o.waitForSupermajoritySlot}`}
               className="font-monospace"
             >
-              {o.waitForSupermajoritySlot.toLocaleString()}
+              <SlotNumber slot={o.waitForSupermajoritySlot} />
             </Link>
           </dd>
           {o.expectedShredVersion != null && (
@@ -218,9 +220,9 @@ const RestartCard = ({
       )}
       <p className="fs-10 text-body-tertiary mt-3 mb-0">
         The cluster resumes once one shred version holds {pct(need)} of all
-        activated stake. Last slot {halt.slot.toLocaleString()}
+        activated stake. Last slot <SlotNumber slot={halt.slot} />
         {halt.finalizedSlot != null &&
-          `, last finalized ${halt.finalizedSlot.toLocaleString()}`}
+          `, last finalized ${slotText(halt.finalizedSlot)}`}
         .
       </p>
     </SectionCard>

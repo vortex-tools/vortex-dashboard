@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import SlotNumber from 'components/common/SlotNumber';
 import { restartProgress } from 'components/live/RestartCard';
 import { formatDuration } from 'helpers/utils';
 import useCluster from 'hooks/useCluster';
@@ -41,7 +42,9 @@ const ClusterHaltBanner = () => {
           {name} halted {formatDuration(Date.now() / 1000 - halt.since)} ago
         </span>{' '}
         at slot{' '}
-        <Link to={`/slot/${halt.slot}`}>{halt.slot.toLocaleString()}</Link>
+        <Link to={`/slot/${halt.slot}`}>
+          <SlotNumber slot={halt.slot} />
+        </Link>
         {halt.finalizedSlot === halt.slot && ', the last finalized block'}. Data
         shown is from before the halt.
         {halt.restart &&

@@ -1,4 +1,6 @@
 import SectionCard from 'components/common/SectionCard';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import { LinesSkeleton } from 'components/common/PageSkeleton';
 import Pager from 'components/common/Pager';
 import UntrackedState from 'components/common/UntrackedState';
@@ -111,9 +113,9 @@ export const SlotCell = ({ s }: { s: Slot }) => {
       to={`/slot/${s.slot}`}
       className={`d-inline-block rounded-1 text-center font-monospace fs-10 px-1 ${cls}`}
       style={{ minWidth: '3.1rem', height: '1.25rem', lineHeight: '1.25rem' }}
-      title={`Slot ${s.slot.toLocaleString()}: ${s.outcome}${
+      title={`Slot ${slotText(s.slot)}: ${s.outcome}${
         v != null
-          ? ` · carried ${pct(v)} of the online stake for slot ${(s.slot - 8).toLocaleString()}${
+          ? ` · carried ${pct(v)} of the online stake for slot ${slotText(s.slot - 8)}${
               s.idealStakePpb != null
                 ? ` (online ${pct(share(s.idealStakePpb))} of all; carried ${pct(share(s.includedStakePpb))} of all)`
                 : ''
@@ -214,7 +216,7 @@ const WindowTimeline = ({
             : 'bg-body-secondary'
       }`}
       style={{ width: 12, height: 12, opacity: next ? 0.35 : 0.85 }}
-      title={`Slot ${slot.toLocaleString()}${next ? " - the next leader's first" : ''}: ${kind === 'pending' ? 'not in yet' : kind === 'skip' ? 'skipped' : 'block'}`}
+      title={`Slot ${slotText(slot)}${next ? " - the next leader's first" : ''}: ${kind === 'pending' ? 'not in yet' : kind === 'skip' ? 'skipped' : 'block'}`}
     />
   );
   const parts = [];
@@ -555,7 +557,7 @@ const ProducerWindowsTable = ({
       {upcomingN > 0 && (
         <p className="fs-9 text-body-tertiary mb-2">
           {upcomingN.toLocaleString()} leader windows still ahead
-          {nextSlot != null && `, next at slot ${nextSlot.toLocaleString()}`}
+          {nextSlot != null && `, next at slot ${slotText(nextSlot)}`}
         </p>
       )}
       <Table
@@ -605,7 +607,7 @@ const ProducerWindowsTable = ({
             >
               <td className="font-monospace text-nowrap">
                 <Link to={`/slot/${firstSlot}`}>
-                  {firstSlot.toLocaleString()}
+                  <SlotNumber slot={firstSlot} />
                 </Link>
               </td>
               {timing ? (
@@ -680,7 +682,7 @@ const ProducerWindowsTable = ({
             <tr key={w.firstSlot}>
               <td className="font-monospace text-nowrap">
                 <Link to={`/slot/${w.firstSlot}`}>
-                  {w.firstSlot.toLocaleString()}
+                  <SlotNumber slot={w.firstSlot} />
                 </Link>
               </td>
               {timing ? (

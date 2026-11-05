@@ -1,4 +1,5 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { slotText } from 'helpers/slot';
 import * as echarts from 'echarts/core';
 import { BarChart } from 'echarts/charts';
 import {
@@ -102,7 +103,7 @@ const BucketOutcomeChart = ({
           const line = (l: string, v: number) =>
             `<div class="d-flex justify-content-between gap-3 fs-9"><span>${l}</span><span class="font-monospace">${v.toLocaleString()}</span></div>`;
           return (
-            `<div class="fw-bold mb-1">Bucket ${b.bucket + 1} · slots ${b.firstSlot.toLocaleString()}–${(b.firstSlot + 999).toLocaleString()}</div>` +
+            `<div class="fw-bold mb-1">Bucket ${b.bucket + 1} · slots ${slotText(b.firstSlot)}–${slotText(b.firstSlot + 999)}</div>` +
             line('Voted skip (paid)', b.lateSkipped) +
             (b.missedBy
               ? line('Late (unpaid)', b.missedBy.late) +

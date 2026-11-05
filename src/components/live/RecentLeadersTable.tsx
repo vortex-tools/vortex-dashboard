@@ -1,4 +1,6 @@
 import { NETWORK_TAB } from 'helpers/apiEndpoint';
+import { slotText } from 'helpers/slot';
+import SlotNumber from 'components/common/SlotNumber';
 import { placeOf } from 'hooks/useValidatorGeo';
 import ValidatorLink from 'components/common/ValidatorLink';
 import { SlotInfo, ValidatorGeo } from 'providers/vortex-schemas';
@@ -129,7 +131,9 @@ const RecentLeadersTable = ({
           return (
             <tr key={first} className="vx-row-in">
               <td className="font-monospace">
-                <Link to={`/slot/${first}`}>{first.toLocaleString()}</Link>
+                <Link to={`/slot/${first}`}>
+                  <SlotNumber slot={first} />
+                </Link>
               </td>
               <td className="text-truncate">
                 {leader ? (
@@ -158,7 +162,7 @@ const RecentLeadersTable = ({
                       to={`/slot/${s}`}
                       className={`d-inline-block rounded-circle ${SLOT_KIND[kind].cls}`}
                       style={{ width: 10, height: 10 }}
-                      title={`Slot ${s.toLocaleString()}: ${SLOT_KIND[kind].label}`}
+                      title={`Slot ${slotText(s)}: ${SLOT_KIND[kind].label}`}
                       aria-label={`Slot ${s}`}
                     />
                   </td>

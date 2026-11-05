@@ -1,4 +1,5 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { slotText } from 'helpers/slot';
 import * as echarts from 'echarts/core';
 import { EffectScatterChart, LinesChart, ScatterChart } from 'echarts/charts';
 import { GeoComponent, TooltipComponent } from 'echarts/components';
@@ -1099,7 +1100,7 @@ const NetworkMap = ({
             formatter: (p: { dataIndex: number }) => {
               const x = dots[p.dataIndex];
               return x
-                ? `<b>${nameOf(x.node)}</b> · ${x.leg === 'block' ? 'block producer (its block reaches it through Turbine)' : 'reward leader (its vote goes straight to it)'}<br/>Slot ${x.v.slot.toLocaleString()} · ${DIVERGENCE[x.v.kind].label}`
+                ? `<b>${nameOf(x.node)}</b> · ${x.leg === 'block' ? 'block producer (its block reaches it through Turbine)' : 'reward leader (its vote goes straight to it)'}<br/>Slot ${slotText(x.v.slot)} · ${DIVERGENCE[x.v.kind].label}`
                 : '';
             }
           },
@@ -1129,7 +1130,7 @@ const NetworkMap = ({
             formatter: (p: { dataIndex: number }) => {
               const m = arrows[p.dataIndex];
               return m
-                ? `<b>${m.kind === 'failover' ? 'Failover' : 'Moved'}</b> · epoch ${m.epoch}${m.slot != null ? `, slot ${m.slot.toLocaleString()}` : ''}<br/>${m.fromLabel} → ${m.toLabel}`
+                ? `<b>${m.kind === 'failover' ? 'Failover' : 'Moved'}</b> · epoch ${m.epoch}${m.slot != null ? `, slot ${slotText(m.slot)}` : ''}<br/>${m.fromLabel} → ${m.toLabel}`
                 : '';
             }
           },

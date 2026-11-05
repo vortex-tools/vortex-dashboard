@@ -1,4 +1,5 @@
 import FeatherIcon from 'components/base/FeatherIcon';
+import SlotNumber from 'components/common/SlotNumber';
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { latencyToCredits } from 'helpers/utils';
@@ -365,7 +366,7 @@ const BucketSearch = ({
                         </span>
                         {s.matchedSlot !== undefined && (
                           <span className="text-body-tertiary font-monospace fs-10">
-                            slot {s.matchedSlot.toLocaleString()}
+                            slot <SlotNumber slot={s.matchedSlot} />
                           </span>
                         )}
                       </div>
