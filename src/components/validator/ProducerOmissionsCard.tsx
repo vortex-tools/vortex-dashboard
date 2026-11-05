@@ -233,6 +233,12 @@ const ProducerOmissionsCard = ({
                     'Left out',
                     'Its blocks that left the voter out, of those it could have been in (the voter online)'
                   )}
+                  {thinTotal != null &&
+                    sortHead(
+                      'ours',
+                      'In our late blocks',
+                      'Of its Left out, how many were at our thin blocks - blocks that left out 2%+ of the online stake besides this voter, many voters at once: our block was late, likely our fault. The rest left out only this voter: its path to us'
+                    )}
                   {sortHead(
                     'rate',
                     'Missed in our blocks',
@@ -243,12 +249,6 @@ const ProducerOmissionsCard = ({
                       'excess',
                       "Missed in others'",
                       "How often this voter is missed by every OTHER producer this epoch (offline aside) - what's typical for it, not the cluster's. Low here beside a high Missed in our blocks: this producer is failing it. Sorts by how much worse this producer is than that"
-                    )}
-                  {thinTotal != null &&
-                    sortHead(
-                      'ours',
-                      'Likely our fault',
-                      'Of its misses here, the share at our thin blocks - blocks that left out 2%+ of the online stake besides this voter, many voters at once: our block was late. The rest left out only this voter: its path to us'
                     )}
                 </tr>
               </thead>
@@ -288,6 +288,24 @@ const ProducerOmissionsCard = ({
                         / {v.slots.toLocaleString()}
                       </span>
                     </td>
+                    {thinTotal != null && (
+                      <td
+                        className={`text-end font-monospace text-nowrap fs-10 ${
+                          (v.ours ?? 0) >= 0.5
+                            ? 'text-warning-emphasis'
+                            : 'text-body-tertiary'
+                        }`}
+                        title={
+                          v.thinLeftOut != null
+                            ? `${v.thinLeftOut.toLocaleString()} of its ${v.leftOut.toLocaleString()} misses here (${pct(v.ours ?? 0)}) were at our late blocks - likely our fault`
+                            : undefined
+                        }
+                      >
+                        {v.thinLeftOut != null
+                          ? v.thinLeftOut.toLocaleString()
+                          : '—'}
+                      </td>
+                    )}
                     <td className="text-end text-nowrap">
                       <span
                         className={`d-inline-block rounded-1 px-2 font-monospace fs-10 ${
@@ -312,22 +330,6 @@ const ProducerOmissionsCard = ({
                         }
                       >
                         {v.baselineShare != null ? pct(v.baselineShare) : '—'}
-                      </td>
-                    )}
-                    {thinTotal != null && (
-                      <td
-                        className={`text-end font-monospace text-nowrap fs-10 ${
-                          (v.ours ?? 0) >= 0.5
-                            ? 'text-warning-emphasis'
-                            : 'text-body-tertiary'
-                        }`}
-                        title={
-                          v.thinLeftOut != null
-                            ? `${v.thinLeftOut.toLocaleString()} of its ${v.leftOut.toLocaleString()} misses here were at our thin blocks`
-                            : undefined
-                        }
-                      >
-                        {v.ours != null ? pct(v.ours) : '—'}
                       </td>
                     )}
                   </tr>
