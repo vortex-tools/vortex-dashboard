@@ -3691,7 +3691,10 @@ export const productionOmissionsSchema = z
             stake: z.number().catch(0),
             slots: z.number(),
             missedSlots: z.number(),
-            thinBlockSlots: z.number().nullable().optional().catch(null)
+            thinBlockSlots: z.number().nullable().optional().catch(null),
+            // Its miss rate across every producer that epoch (offline
+            // aside): what's usual for it. Requested; absent until served.
+            baselineShare: z.number().nullable().optional().catch(null)
           })
           .transform(({ missedSlots, thinBlockSlots, ...v }) => ({
             ...v,

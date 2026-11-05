@@ -16,7 +16,7 @@ const pct = (v: number) =>
     : `${(Math.floor(v * 1000) / 10).toLocaleString('en-US', { minimumFractionDigits: 1 })}%`;
 
 type Filter = 'all' | 'often' | 'never';
-type Sort = 'leftOut' | 'rate' | 'stake' | 'voter';
+type Sort = 'leftOut' | 'rate' | 'stake' | 'voter' | 'excess';
 /** Left out of this share of its blocks or more: "often". */
 const OFTEN = 0.1;
 
@@ -56,10 +56,16 @@ const ProducerOmissionsCard = ({
   }, [key]);
   const never = data?.thresholds?.blackholeShare ?? 0.9;
   const rows = useMemo(() => {
-    const vs = (data?.voters ?? []).map(v => ({
-      ...v,
-      rate: v.slots ? v.leftOut / v.slots : 0
-    }));
+    const vs = (data?.voters ?? []).map(v => {
+      const rate = v.slots ? v.leftOut / v.slots : 0;
+      return {
+        ...v,
+        rate,
+        // How much more often this producer leaves it out than producers
+        // do in general: the producer-specific part.
+        excess: v.baselineShare != null ? rate - v.baselineShare : null
+      };
+    });
     return vs
       .filter(v =>
         filter === 'never'
@@ -78,12 +84,16 @@ const ProducerOmissionsCard = ({
               ? b.stake - a.stake
               : sort === 'rate'
                 ? b.rate - a.rate || b.leftOut - a.leftOut
-                : b.leftOut - a.leftOut || b.stake - a.stake;
+                : sort === 'excess'
+                  ? (b.excess ?? -1) - (a.excess ?? -1)
+                  : b.leftOut - a.leftOut || b.stake - a.stake;
         return asc ? -d : d;
       });
   }, [data, filter, sort, asc, never]);
   if (!data) return null;
   const voters = data.voters;
+  // Each voter's usual rate, once the API serves it.
+  const baseline = voters.some(v => v.baselineShare != null);
   const neverN = voters.filter(
     v => v.slots && v.leftOut / v.slots >= never
   ).length;
@@ -126,7 +136,7 @@ const ProducerOmissionsCard = ({
       <SectionCard
         title="Producer Omissions"
         icon="slash"
-        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Each voter's own view is its Voting tab.`}
+        info={`Every voter its blocks' reward certificates left out at least once this epoch while the voter was online (offline runs aside): how many of its blocks left it out, of those it could have been in. Hover a voter's figure for how many were at its thin blocks - where its block left out ${((data.thresholds?.thinShare ?? 0.02) * 100).toFixed(0)}%+ of the stake besides this voter - its own lateness; the rest, this voter's votes alone not reaching it - the path between the two (peering, firewall, region). "Never": left out of ${(never * 100).toFixed(0)}%+ of them. Usually: the voter's miss rate across every producer this epoch (offline aside), with how many points higher this producer's is - a high figure here against a low usual one is this producer failing that voter. Each voter's own view is its Voting tab.`}
         aside={
           voters.length > 0 ? (
             <ButtonGroup size="sm" className="vx-header-control">
@@ -219,6 +229,12 @@ const ProducerOmissionsCard = ({
                     'Rate',
                     'The share of those blocks that left it out'
                   )}
+                  {baseline &&
+                    sortHead(
+                      'excess',
+                      'Usually',
+                      "Its miss rate across every producer this epoch (offline aside), and how much higher this producer's is: the part that's this producer's"
+                    )}
                 </tr>
               </thead>
               <tbody>
@@ -267,6 +283,33 @@ const ProducerOmissionsCard = ({
                         {pct(v.rate)}
                       </span>
                     </td>
+                    {baseline && (
+                      <td
+                        className="text-end text-nowrap fs-10"
+                        title={
+                          v.baselineShare != null
+                            ? `Left out of ${pct(v.baselineShare)} of all producers' blocks this epoch; here ${pct(v.rate)}`
+                            : undefined
+                        }
+                      >
+                        {v.baselineShare != null ? (
+                          <>
+                            <span className="font-monospace text-body-tertiary">
+                              {pct(v.baselineShare)}
+                            </span>
+                            {v.excess != null && v.excess > 0.005 && (
+                              <span
+                                className={`ms-1 font-monospace ${v.excess >= OFTEN ? 'text-danger' : 'text-warning-emphasis'}`}
+                              >
+                                +{(v.excess * 100).toFixed(1)} pts
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-body-tertiary">—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

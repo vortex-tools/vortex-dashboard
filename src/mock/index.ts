@@ -349,7 +349,9 @@ const ROUTES: Record<string, Route> = {
         stake: Math.floor((1 + r() * 400) * 1e3 * 1e9),
         slots,
         missedSlots: leftOut,
-        thinBlockSlots: Math.floor(leftOut * r() * 0.5)
+        thinBlockSlots: Math.floor(leftOut * r() * 0.5),
+        baselineShare:
+          i < 6 ? r() * 0.02 : (leftOut / slots) * (0.5 + r() * 1.2)
       };
     }).sort((a, b) => b.missedSlots - a.missedSlots);
     return {
