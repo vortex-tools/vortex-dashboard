@@ -1,4 +1,5 @@
 import Pager from 'components/common/Pager';
+import { timeAgo, utcMinute } from 'helpers/utils';
 import { slotText } from 'helpers/slot';
 import SlotNumber from 'components/common/SlotNumber';
 import ValidatorLink from 'components/common/ValidatorLink';
@@ -279,6 +280,7 @@ const SlotCell = ({
 
 const DivergentSlotsTable = ({
   rows,
+  timeOf,
   leaderOf,
   selfNode,
   causeOf,
@@ -307,6 +309,8 @@ const DivergentSlotsTable = ({
   /** A row hovered (its block producer and payer), or null on leave. */
   onHover?: (path: HoverPath | null) => void;
   rows: Array<{ slot: number; kind: Divergence }>;
+  /** A slot's (estimated) unix time, for the window's "3h ago" line. */
+  timeOf?: (slot: number) => number | null;
   /** A missed slot's cause, once the API has classified the epoch. */
   causeOf?: ((slot: number) => MissCause | null) | null;
   /** Slot -> leader node identity, from the epoch's leader schedule. */
@@ -568,10 +572,21 @@ const DivergentSlotsTable = ({
               .find(i => i?.outcome === 'block');
             return (
               <tr key={start}>
-                <td className="font-monospace text-nowrap">
-                  <Link to={`/slot/${start}`}>
+                <td className="text-nowrap">
+                  <Link to={`/slot/${start}`} className="font-monospace">
                     <SlotNumber slot={start} />
                   </Link>
+                  {(() => {
+                    const t = timeOf?.(start);
+                    return t != null ? (
+                      <div
+                        className="fs-10 text-body-tertiary"
+                        title={`≈ ${utcMinute(t)} (estimated from the epoch's block times)`}
+                      >
+                        {timeAgo(t)}
+                      </div>
+                    ) : null;
+                  })()}
                 </td>
                 <td className="text-nowrap">
                   {leader ? (

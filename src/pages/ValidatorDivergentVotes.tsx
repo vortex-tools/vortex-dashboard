@@ -23,6 +23,7 @@ import {
   VortexDataContext,
   participationHistoryKey
 } from 'providers/VortexDataProvider';
+import useCluster from 'hooks/useCluster';
 import { useContext, useEffect, useMemo, useState } from 'react';
 
 /** One share of the eligible slots, for the vote-split bar. */
@@ -166,6 +167,45 @@ const ValidatorDivergentVotes = () => {
   const geo = geoSet?.byNode ?? null;
   const asOf = geoAsOf(geoSet, epoch);
 
+  // Each slot's time, estimated (the Divergent Votes window's "3h ago"):
+  // between the epoch's first and last block times (the earnings rows
+  // have them), the live epoch's from its start to the latest slot read;
+  // without a start, back from the latest slot at the observed pace.
+  const { isTestnet } = useCluster();
+  const node = identity?.nodeAddress;
+  const fetchEarnings = context?.epochEarningsState.fetchData;
+  useEffect(() => {
+    if (node && !isTestnet) fetchEarnings?.(node);
+  }, [node, isTestnet, fetchEarnings]);
+  const earningsRow = node
+    ? context?.epochEarningsState.data.get(node)?.find(r => r.epoch === epoch)
+    : undefined;
+  const progress = context?.currentEpochState.progress;
+  const timeOf = useMemo(() => {
+    if (!timeline) return undefined;
+    const first = timeline.firstSlot;
+    const start = earningsRow?.startTime ?? null;
+    const live = epoch === currentEpoch;
+    const at = progress?.absoluteSlot;
+    const readAt = progress?.readAt ?? null;
+    // Two anchors: (slot, unix s).
+    const a: [number, number] | null = start != null ? [first, start] : null;
+    const b: [number, number] | null = live
+      ? at != null && readAt != null
+        ? [at, readAt]
+        : null
+      : earningsRow?.endTime != null
+        ? [first + timeline.slots - 1, earningsRow.endTime]
+        : null;
+    if (a && b && b[0] > a[0]) {
+      const perSlot = (b[1] - a[1]) / (b[0] - a[0]);
+      return (slot: number) => a[1] + (slot - a[0]) * perSlot;
+    }
+    const pace = progress?.slotSeconds;
+    if (live && b && pace) return (slot: number) => b[1] - (b[0] - slot) * pace;
+    return undefined;
+  }, [timeline, earningsRow, epoch, currentEpoch, progress]);
+
   const name = identity?.displayName ?? 'Validator';
 
   return (
@@ -272,6 +312,7 @@ const ValidatorDivergentVotes = () => {
                     selfNode={identity?.nodeAddress ?? null}
                     causeOf={causeOf}
                     geo={geo}
+                    timeOf={timeOf}
                     geoAsOf={asOf}
                   />
                 );

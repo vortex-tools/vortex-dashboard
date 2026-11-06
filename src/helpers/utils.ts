@@ -16,6 +16,18 @@ export const formatDuration = (secs: number) => {
   return m < 90 ? `${m}min` : `${Math.floor(m / 60)}h ${m % 60}min`;
 };
 
+/** How long ago a unix time was, short: "12min ago", "3h ago", "2d ago". */
+export const timeAgo = (unixS: number) => {
+  const s = Math.max(0, Date.now() / 1000 - unixS);
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+};
+
+/** A unix time as "2026-11-06 08:14 UTC". */
+export const utcMinute = (unixS: number) =>
+  `${new Date(unixS * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+
 /** "block-income" -> "Block income". */
 export const capitalize = (s: string) =>
   (s.charAt(0).toUpperCase() + s.slice(1)).replace(/-/g, ' ');

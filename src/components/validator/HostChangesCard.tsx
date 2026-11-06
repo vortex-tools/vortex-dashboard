@@ -1,4 +1,5 @@
 import { TableSkeleton } from 'components/common/PageSkeleton';
+import { timeAgo } from 'helpers/utils';
 import SectionCard from 'components/common/SectionCard';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { HostChanges, HostState } from 'providers/vortex-schemas';
@@ -39,12 +40,7 @@ const place = (h: HostState) => {
 const sameSite = (a: HostState, b: HostState) =>
   !!a.dataCenterKey && a.dataCenterKey === b.dataCenterKey;
 
-const ago = (unixS: number) => {
-  const s = Math.max(0, Date.now() / 1000 - unixS);
-  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}min ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
-};
+const ago = timeAgo;
 
 type Event = HostChanges['events'][number];
 
