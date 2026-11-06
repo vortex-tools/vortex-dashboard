@@ -182,9 +182,11 @@ const ValidatorProduction = ({
                         </span>
                       )}
                     </td>
-                    <td className="text-end font-monospace text-nowrap">
-                      {record.blocks.toLocaleString()} /{' '}
-                      {(record.blocks + record.skippedSlots).toLocaleString()}
+                    <td className="text-end text-nowrap">
+                      <span className="font-monospace">
+                        {record.blocks.toLocaleString()} /{' '}
+                        {(record.blocks + record.skippedSlots).toLocaleString()}
+                      </span>
                       {/* The current epoch: its slots still to come. */}
                       {(() => {
                         const ahead =
@@ -195,10 +197,10 @@ const ValidatorProduction = ({
                             : 0;
                         return ahead > 0 ? (
                           <span
-                            className="d-block fs-10 text-body-tertiary"
+                            className="d-block text-body-tertiary fs-10"
                             title={`${ahead.toLocaleString()} more of its ${scheduledSlots!.toLocaleString()} leader slots are still to come this epoch`}
                           >
-                            +{ahead.toLocaleString()} to come
+                            ({ahead.toLocaleString()} upcoming)
                           </span>
                         ) : null;
                       })()}

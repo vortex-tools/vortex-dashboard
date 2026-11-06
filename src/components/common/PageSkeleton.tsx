@@ -382,7 +382,7 @@ export const SKELETON = {
     // Notices (most validators have one).
     [full(98, 'list')],
     { stats: 4 },
-    // Voting / Production (the current epoch's row has its slots to come).
+    // Voting / Production (the current epoch's row has its upcoming slots).
     [half(403), half(403)],
     [half(303), half(303)]
   ],
