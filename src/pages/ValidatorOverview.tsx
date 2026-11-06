@@ -750,6 +750,7 @@ const ValidatorOverview = () => {
               <ValidatorProduction
                 voteAddress={voteAddress}
                 nodeAddress={nodeAddress}
+                scheduledSlots={totalSlots}
               />
             </Col>
             {nodeAddress && (

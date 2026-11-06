@@ -19,7 +19,7 @@ const REFRESH_MS = 60_000;
 /** Epochs listed on the Overview. */
 const ROWS = 10;
 /** About the height of its ROWS-row table, held while loading. */
-export const SUMMARY_TABLE_HEIGHT = 314;
+export const SUMMARY_TABLE_HEIGHT = 329;
 
 const pct = (v: number | null | undefined) =>
   v == null ? '—' : `${(v * 100).toFixed(2)}%`;
@@ -34,10 +34,14 @@ const Dash = () => <span className="text-body-tertiary">—</span>;
  */
 const ValidatorProduction = ({
   voteAddress,
-  nodeAddress
+  nodeAddress,
+  scheduledSlots
 }: {
   voteAddress: string;
   nodeAddress: string;
+  /** Its leader slots in the leader schedule this epoch: the current
+   *  epoch's row says how many are still ahead. */
+  scheduledSlots?: number | null;
 }) => {
   const context = useContext(VortexDataContext);
   const currentEpoch = context?.currentEpochState.epoch ?? null;
@@ -181,6 +185,23 @@ const ValidatorProduction = ({
                     <td className="text-end font-monospace text-nowrap">
                       {record.blocks.toLocaleString()} /{' '}
                       {(record.blocks + record.skippedSlots).toLocaleString()}
+                      {/* The current epoch: its slots still to come. */}
+                      {(() => {
+                        const ahead =
+                          epoch === currentEpoch && scheduledSlots != null
+                            ? scheduledSlots -
+                              record.blocks -
+                              record.skippedSlots
+                            : 0;
+                        return ahead > 0 ? (
+                          <span
+                            className="d-block fs-10 text-body-tertiary"
+                            title={`${ahead.toLocaleString()} more of its ${scheduledSlots!.toLocaleString()} leader slots are still to come this epoch`}
+                          >
+                            +{ahead.toLocaleString()} to come
+                          </span>
+                        ) : null;
+                      })()}
                     </td>
                     <td
                       className={`text-end font-monospace${record.skippedSlots > 0 ? ' text-danger fw-semibold' : ''}`}
