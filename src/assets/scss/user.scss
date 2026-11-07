@@ -558,22 +558,23 @@ th.leaderboard-sticky-col {
   }
 }
 
-// A badge a shade off its kind's color, toward info (a failback beside
-// its failover's green): the theme's own tokens, so dark mode follows.
+// A failback beside its failover's green: mostly info blue with a touch
+// of green, so the two tell apart at a glance; the theme's own tokens,
+// so dark mode follows.
 .badge-soft.badge-soft-shade {
   --vx-badge-color: color-mix(
     in srgb,
-    var(--vx-success-text-emphasis) 60%,
+    var(--vx-success-text-emphasis) 25%,
     var(--vx-info-text-emphasis)
   );
   --vx-badge-bg: color-mix(
     in srgb,
-    var(--vx-success-bg-subtle) 60%,
+    var(--vx-success-bg-subtle) 25%,
     var(--vx-info-bg-subtle)
   );
   --vx-badge-border: color-mix(
     in srgb,
-    var(--vx-success-border-subtle) 60%,
+    var(--vx-success-border-subtle) 25%,
     var(--vx-info-border-subtle)
   );
 }
