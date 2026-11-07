@@ -128,8 +128,8 @@ const alpenglowRoutes: RouteItems[] = [
 /**
  * The nav, following the cluster's consensus (see useConsensus): `routes`
  * while Tower is current, `alpenglowRoutes` once Alpenglow is active.
- * Testnet (by the API's cluster) has no fees data, no client-upgrade
- * data, governance or stake pools, and only Alpenglow worth showing:
+ * Testnet (by the API's cluster) has no fees data, governance or stake
+ * pools, and only Alpenglow worth showing:
  * those are left out of the nav (their pages still answer direct links).
  */
 export const useNavRoutes = (): RouteItems[] => {
@@ -146,7 +146,6 @@ export const useNavRoutes = (): RouteItems[] => {
             pages: g.pages.filter(
               r =>
                 r.path !== '/leaderboards/fees' &&
-                r.path !== '/client-versions' &&
                 r.path !== '/governance' &&
                 r.path !== '/pools' &&
                 (!alpenglowActive || r.path !== '/leaderboards/voting')
