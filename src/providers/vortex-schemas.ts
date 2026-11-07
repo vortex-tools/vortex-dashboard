@@ -2263,6 +2263,11 @@ export const validatorDelegatorsSchema = z.object({
       stake: z.number(),
       share: z.number().nullable().catch(null),
       stakeAccounts: z.number().nullable().catch(null),
+      // Live reads: its stake joining next epoch (a staker only joining
+      // is listed with stake 0), and leaving at this epoch's end
+      // (requested of vortex-data; absent until served). null otherwise.
+      activating: z.number().nullable().optional().catch(null),
+      deactivating: z.number().nullable().optional().catch(null),
       // A pool row: the part its holders directed here, and the facts
       // behind its stake (as on /pool).
       directedStake: z.number().nullable().optional().catch(null),
@@ -2274,6 +2279,8 @@ export const validatorDelegatorsSchema = z.object({
     })
   ),
   moreDelegators: z.number().nullable().catch(null),
+  // 'live': the epoch in progress, now; 'epoch': an epoch's end.
+  source: z.string().nullable().optional().catch(null),
   // By delegator stake, smallest bucket first (maxSol null: open-ended).
   sizes: z
     .array(

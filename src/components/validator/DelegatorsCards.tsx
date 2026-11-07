@@ -1,4 +1,5 @@
 import { directedDetail, directedTotal } from 'components/pools/directed';
+import FeatherIcon from 'components/base/FeatherIcon';
 import { CardSkeleton } from 'components/common/PageSkeleton';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { BarChart } from 'echarts/charts';
@@ -128,6 +129,40 @@ const StakeSizes = ({ d }: { d: ValidatorDelegators }) => {
   );
 };
 
+/** A staker's stake changing next epoch: joining less leaving, with a
+ *  green rise / red fall (as the Next Epoch stat), the parts on hover. */
+const NextEpochChange = ({
+  activating,
+  deactivating
+}: {
+  activating: number | null | undefined;
+  deactivating: number | null | undefined;
+}) => {
+  const a = activating ?? 0;
+  const d = deactivating ?? 0;
+  const net = a - d;
+  if (net === 0 && a === 0)
+    return <span className="text-body-quaternary">—</span>;
+  return (
+    <span
+      className="d-inline-flex align-items-center gap-1"
+      title={[a > 0 && `+${sol(a)} joining`, d > 0 && `−${sol(d)} leaving`]
+        .filter(Boolean)
+        .join(' · ')}
+    >
+      {net !== 0 && (
+        <FeatherIcon
+          icon={net > 0 ? 'trending-up' : 'trending-down'}
+          size={12}
+          className={net > 0 ? 'text-success' : 'text-danger'}
+          aria-label={net > 0 ? 'Up' : 'Down'}
+        />
+      )}
+      {sol(Math.abs(net))}
+    </span>
+  );
+};
+
 /** Its largest stakers, by withdraw authority (a pool is one). */
 const TopStakers = ({
   d,
@@ -138,6 +173,8 @@ const TopStakers = ({
   top: ValidatorDelegators['top'];
 }) => {
   const [page, setPage] = useState(0);
+  // The epoch in progress: what each staker has changing next epoch.
+  const live = d.source === 'live' && top.some(t => t.activating != null);
   const pages = Math.ceil(top.length / PAGE);
   const shown = top.slice(page * PAGE, (page + 1) * PAGE);
   return (
@@ -157,6 +194,14 @@ const TopStakers = ({
             >
               Accounts
             </th>
+            {live && (
+              <th
+                className="text-end"
+                title="Its stake changing at the epoch's end: joining (activating) less leaving (deactivating), earning from next epoch"
+              >
+                Next Epoch
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -191,6 +236,14 @@ const TopStakers = ({
               <td className="text-end font-monospace text-body-tertiary d-none d-sm-table-cell">
                 {t.stakeAccounts?.toLocaleString() ?? '—'}
               </td>
+              {live && (
+                <td className="text-end font-monospace text-nowrap">
+                  <NextEpochChange
+                    activating={t.activating}
+                    deactivating={t.deactivating}
+                  />
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
