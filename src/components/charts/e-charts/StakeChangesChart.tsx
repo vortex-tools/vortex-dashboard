@@ -459,7 +459,7 @@ const StakeChangesChart = ({
             );
           // Top-down: what it earned on, then what changed it since the
           // epoch before (only the parts that moved: activated, deactivated,
-          // rewards restaked), then who.
+          // compounded rewards), then who.
           if (it.pending)
             return (
               `<div class="fw-bold mb-1">Epoch ${it.epoch} · pending</div>` +
@@ -511,7 +511,7 @@ const StakeChangesChart = ({
               : '') +
             (it.rewardGrowth
               ? line(
-                  'Rewards restaked',
+                  'Compounded rewards',
                   tone('body-tertiary', `+${fmtSol(sol(it.rewardGrowth))}`)
                 )
               : '') +
