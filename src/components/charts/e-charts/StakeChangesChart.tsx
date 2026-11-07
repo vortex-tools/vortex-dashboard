@@ -481,7 +481,8 @@ const StakeChangesChart = ({
         const zr = chart.getZr();
         const epochAt = (x: number, y: number) => {
           if (!chart.containPixel('grid', [x, y])) return null;
-          const i = chart.convertFromPixel({ xAxisIndex: 0 }, [x, y]) as
+          // The grid's data coordinates: [category index, value].
+          const i = chart.convertFromPixel({ gridIndex: 0 }, [x, y]) as
             | number[]
             | number;
           const idx = Math.round(Array.isArray(i) ? i[0] : i);
@@ -489,6 +490,7 @@ const StakeChangesChart = ({
         };
         zr.on('click', e => {
           const epoch = epochAt(e.offsetX, e.offsetY);
+
           if (epoch != null) latest.current.onSelect(epoch);
         });
         zr.on('mousemove', e => {
