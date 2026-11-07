@@ -2281,6 +2281,31 @@ export const validatorDelegatorsSchema = z.object({
   moreDelegators: z.number().nullable().catch(null),
   // 'live': the epoch in progress, now; 'epoch': an epoch's end.
   source: z.string().nullable().optional().catch(null),
+  // Live only (null for a completed epoch): stake leaving at this epoch's
+  // end (activating, above, is the stake joining), and every delegator
+  // with stake moving then, largest |net| first (`limit` of them;
+  // moreChanges beyond). stake: its effective stake here now when it's in
+  // top, else null. Joining is pending until the boundary (can still be
+  // cancelled); leaving is final once requested.
+  activating: z.number().nullable().optional().catch(null),
+  deactivating: z.number().nullable().optional().catch(null),
+  changes: z
+    .array(
+      z.object({
+        withdrawer: z.string(),
+        staker: z.string().nullable().catch(null),
+        label: delegatorLabelSchema,
+        stake: z.number().nullable().catch(null),
+        activating: z.number().catch(0),
+        deactivating: z.number().catch(0),
+        net: z.number().catch(0),
+        stakeAccounts: z.number().nullable().catch(null)
+      })
+    )
+    .nullable()
+    .optional()
+    .catch(null),
+  moreChanges: z.number().nullable().optional().catch(null),
   // By delegator stake, smallest bucket first (maxSol null: open-ended).
   sizes: z
     .array(

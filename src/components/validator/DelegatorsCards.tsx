@@ -145,7 +145,6 @@ const NextEpochChange = ({
     return <span className="text-body-quaternary">—</span>;
   return (
     <span
-      className="d-inline-flex align-items-center gap-1"
       title={[a > 0 && `+${sol(a)} joining`, d > 0 && `−${sol(d)} leaving`]
         .filter(Boolean)
         .join(' · ')}
@@ -154,12 +153,112 @@ const NextEpochChange = ({
         <FeatherIcon
           icon={net > 0 ? 'trending-up' : 'trending-down'}
           size={12}
-          className={net > 0 ? 'text-success' : 'text-danger'}
+          // Inline on the text's baseline: the row keeps its height.
+          className={`me-1 align-baseline ${net > 0 ? 'text-success' : 'text-danger'}`}
           aria-label={net > 0 ? 'Up' : 'Down'}
         />
       )}
       {sol(Math.abs(net))}
     </span>
+  );
+};
+
+/** Every staker with stake moving at this epoch's end (live), largest
+ *  net first: its stake here now (if in the top list), joining, leaving,
+ *  net. */
+const NextEpochChanges = ({
+  d,
+  changes
+}: {
+  d: ValidatorDelegators;
+  changes: NonNullable<ValidatorDelegators['changes']>;
+}) => {
+  const [page, setPage] = useState(0);
+  const pages = Math.ceil(changes.length / PAGE);
+  const shown = changes.slice(page * PAGE, (page + 1) * PAGE);
+  const dash = <span className="text-body-quaternary">—</span>;
+  return (
+    <>
+      <Table responsive size="sm" className="data-table fs-9 mb-0">
+        <thead>
+          <tr>
+            <th className="text-end" style={{ width: '2.5rem' }}>
+              #
+            </th>
+            <th>Staker</th>
+            <th
+              className="text-end"
+              title="Its stake earning here now (stakers in the top list)"
+            >
+              Stake
+            </th>
+            <th
+              className="text-end"
+              title="Activating: earning from next epoch (pending until then)"
+            >
+              Joining
+            </th>
+            <th
+              className="text-end"
+              title="Deactivating: stops earning at this epoch's end"
+            >
+              Leaving
+            </th>
+            <th className="text-end">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((c, i) => (
+            <tr key={c.withdrawer}>
+              <td className="text-end text-body-tertiary font-monospace">
+                {page * PAGE + i + 1}
+              </td>
+              <td
+                className="text-nowrap"
+                title={`Withdraw authority ${c.withdrawer}${c.staker && c.staker !== c.withdrawer ? ` · stake authority ${c.staker}` : ''}`}
+              >
+                <StakerName label={c.label} withdrawer={c.withdrawer} />
+              </td>
+              <td className="text-end font-monospace">
+                {c.stake != null ? sol(c.stake) : dash}
+              </td>
+              <td className="text-end font-monospace text-success">
+                {c.activating ? `+${sol(c.activating)}` : dash}
+              </td>
+              <td className="text-end font-monospace text-danger">
+                {c.deactivating ? `−${sol(c.deactivating)}` : dash}
+              </td>
+              <td className="text-end font-monospace text-nowrap">
+                <NextEpochChange
+                  activating={c.activating}
+                  deactivating={c.deactivating}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+      {pages > 1 && (
+        <Pager
+          page={page}
+          pages={pages}
+          total={changes.length}
+          pageSize={PAGE}
+          shown={shown.length}
+          onPrev={() => setPage(p => p - 1)}
+          onNext={() => setPage(p => p + 1)}
+          onPage={setPage}
+        />
+      )}
+      <p className="fs-10 text-body-tertiary mt-2 mb-0">
+        {(d.activating ?? 0) > 0 && `+${sol(d.activating!)} joining`}
+        {(d.activating ?? 0) > 0 && (d.deactivating ?? 0) > 0 && ' · '}
+        {(d.deactivating ?? 0) > 0 && `−${sol(d.deactivating!)} leaving`}
+        {d.moreChanges
+          ? ` · ${d.moreChanges.toLocaleString()} more stakers moving`
+          : ''}
+      </p>
+    </>
   );
 };
 
@@ -290,8 +389,10 @@ const DelegatorsCards = ({
   useEffect(() => {
     if (identity) fetchData?.(identity);
   }, [identity, fetchData]);
-  // Pools only: stake pools, Marinade and SFDP (the named stakers).
-  const [poolsOnly, setPoolsOnly] = useState(false);
+  // All stakers; pools only (stake pools, Marinade and SFDP: the named
+  // stakers); or, live, the stakers with stake moving next epoch.
+  const [view, setView] = useState<'all' | 'pools' | 'next'>('all');
+  const poolsOnly = view === 'pools';
   // While it loads, its place (a table, or the sizes' chart); none if the
   // read failed.
   if (!d)
@@ -326,29 +427,45 @@ const DelegatorsCards = ({
       {/* As the Stake Sizes card's toggle. */}
       <div className="d-flex align-items-center justify-content-between mb-1">
         <span className="fs-10 text-body-tertiary">
-          {poolsOnly
-            ? 'Stake pools, Marinade and SFDP'
-            : 'Largest first, by withdraw authority'}
+          {view === 'next'
+            ? "Stake moving at this epoch's end, largest first · joining is pending until then (can be cancelled), leaving is final"
+            : poolsOnly
+              ? 'Stake pools, Marinade and SFDP'
+              : 'Largest first, by withdraw authority'}
         </span>
         <ButtonGroup size="sm">
-          {([false, true] as const).map(v => (
+          {(
+            [
+              ['all', 'All stakers'],
+              ['pools', 'Pools only'],
+              ...(d.changes ? [['next', 'Next epoch']] : [])
+            ] as Array<['all' | 'pools' | 'next', string]>
+          ).map(([v, label]) => (
             <ToggleButton
-              key={String(v)}
-              id={`top-stakers-${v ? 'pools' : 'all'}`}
+              key={v}
+              id={`top-stakers-${v}`}
               type="radio"
               name="top-stakers"
               variant="soft-secondary"
-              value={String(v)}
-              checked={poolsOnly === v}
-              onChange={() => setPoolsOnly(v)}
+              value={v}
+              checked={view === v}
+              onChange={() => setView(v)}
             >
-              {v ? 'Pools only' : 'All stakers'}
+              {label}
             </ToggleButton>
           ))}
         </ButtonGroup>
       </div>
-      {top.length ? (
-        <TopStakers key={String(poolsOnly)} d={d} top={top} />
+      {view === 'next' && d.changes ? (
+        d.changes.length ? (
+          <NextEpochChanges d={d} changes={d.changes} />
+        ) : (
+          <p className="fs-9 text-body-tertiary mb-0">
+            No stake moving at this epoch&apos;s end.
+          </p>
+        )
+      ) : top.length ? (
+        <TopStakers key={view} d={d} top={top} />
       ) : (
         <p className="fs-9 text-body-tertiary mb-0">
           {poolsOnly ? 'No pools stake here.' : 'No stakers.'}
