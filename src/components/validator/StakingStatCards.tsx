@@ -1,4 +1,5 @@
 import { StatsSkeleton } from 'components/common/PageSkeleton';
+import FeatherIcon from 'components/base/FeatherIcon';
 import StatCard from 'components/common/StatCard';
 import { formatLamports } from 'helpers/utils';
 import { VortexDataContext } from 'providers/VortexDataProvider';
@@ -10,8 +11,6 @@ const pct = (x: number | null | undefined) =>
     ? '—'
     : `${(x * 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
 const sol = (lamports: number) => formatLamports(lamports, 0);
-const signed = (lamports: number) =>
-  `${lamports > 0 ? '+' : lamports < 0 ? '−' : ''}${sol(Math.abs(lamports))}`;
 
 /**
  * The top of the Staking tab: its active stake (and share of the
@@ -70,7 +69,24 @@ const StakingStatCards = ({ identity }: { identity: string }) => {
       <Col xs={6} md>
         <StatCard
           label="Next Epoch"
-          value={net != null ? signed(net) : '—'}
+          value={
+            net == null ? (
+              '—'
+            ) : net === 0 ? (
+              sol(0)
+            ) : (
+              // Which way, by a green rise or a red fall (not a bare +/−).
+              <span className="d-inline-flex align-items-center gap-1">
+                <FeatherIcon
+                  icon={net > 0 ? 'trending-up' : 'trending-down'}
+                  size={18}
+                  className={net > 0 ? 'text-success' : 'text-danger'}
+                  aria-label={net > 0 ? 'Up' : 'Down'}
+                />
+                {sol(Math.abs(net))}
+              </span>
+            )
+          }
           sublabel={
             stake
               ? `+${sol(stake.activatingStake)} in · −${sol(stake.deactivatingStake)} out`
