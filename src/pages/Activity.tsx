@@ -28,7 +28,7 @@ import useCluster from 'hooks/useCluster';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ActivityEvent } from 'providers/vortex-schemas';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { Form } from 'react-bootstrap';
 import { Link, useSearchParams } from 'react-router';
 
@@ -40,6 +40,21 @@ const NOWRAP = {
   headerProps: { className: 'text-nowrap' },
   cellProps: { className: 'text-nowrap' }
 };
+
+/** A To / From value cut to a column's width (an ellipsis), in full on
+ *  hover - read from its own text, links and all. */
+const Trunc = ({ children }: { children: ReactNode }) => (
+  <div
+    className="text-truncate"
+    style={{ maxWidth: '14rem' }}
+    onMouseEnter={e => {
+      const el = e.currentTarget;
+      if (el.scrollWidth > el.clientWidth) el.title = el.textContent ?? '';
+    }}
+  >
+    {children}
+  </div>
+);
 
 /** A failover and its failback (the move back), matched per validator -
  *  host A to B, then B to A - under one pair id. */
@@ -208,31 +223,37 @@ const columns = (
     id: 'new',
     header: 'To',
     enableSorting: false,
-    cell: ({ row: { original: e } }) =>
-      changeValue(e, 'new', isTestnet) ?? (
-        <span className="text-body-quaternary">—</span>
-      ),
+    cell: ({ row: { original: e } }) => (
+      <Trunc>
+        {changeValue(e, 'new', isTestnet) ?? (
+          <span className="text-body-quaternary">—</span>
+        )}
+      </Trunc>
+    ),
     meta: NOWRAP
   },
   {
     id: 'old',
     header: 'From',
     enableSorting: false,
-    cell: ({ row: { original: e } }) =>
-      changeValue(e, 'old', isTestnet) ?? (
-        <span
-          className="text-body-quaternary"
-          title={
-            e.kind === 'withdraw' ||
-            e.kind === 'create' ||
-            HOST_KINDS.has(e.kind)
-              ? undefined
-              : 'No earlier change on record'
-          }
-        >
-          —
-        </span>
-      ),
+    cell: ({ row: { original: e } }) => (
+      <Trunc>
+        {changeValue(e, 'old', isTestnet) ?? (
+          <span
+            className="text-body-quaternary"
+            title={
+              e.kind === 'withdraw' ||
+              e.kind === 'create' ||
+              HOST_KINDS.has(e.kind)
+                ? undefined
+                : 'No earlier change on record'
+            }
+          >
+            —
+          </span>
+        )}
+      </Trunc>
+    ),
     meta: NOWRAP
   },
   {
