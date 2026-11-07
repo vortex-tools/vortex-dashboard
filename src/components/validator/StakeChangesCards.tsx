@@ -65,10 +65,12 @@ export const StakerName = ({
 };
 
 const KIND: Record<string, { label: string; cls: string }> = {
+  // As the tooltip counts them ('17 new, 32 deactivated'): a new staker,
+  // more, less, or all of its stake here deactivated.
   new: { label: 'New', cls: 'text-success' },
   increased: { label: 'Increased', cls: 'text-success' },
   decreased: { label: 'Decreased', cls: 'text-danger' },
-  exited: { label: 'Exited', cls: 'text-danger' }
+  exited: { label: 'Deactivated', cls: 'text-danger' }
 };
 
 /** One epoch's largest staker changes. */
@@ -94,8 +96,8 @@ const EpochChanges = ({
         {stakeSetMoved(it) ? (
           <span className="text-warning">
             The vote account {it.stakeSet} the stake set: every delegation shows
-            as {it.stakeSet === 'entered' ? 'new' : 'exited'}, which isn&apos;t
-            stakers moving.
+            as {it.stakeSet === 'entered' ? 'new' : 'deactivated'}, which
+            isn&apos;t stakers moving.
           </span>
         ) : (
           <span className="text-body-tertiary">

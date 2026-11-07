@@ -86,7 +86,7 @@ const niceCeil = (v: number) => {
 };
 
 /** An epoch the vote account entered or left the stake set: every
- *  delegation shows as new / exited at once, which isn't flow. */
+ *  delegation shows as new / deactivated at once, which isn't flow. */
 export const stakeSetMoved = (it: StakeChangeEpoch) =>
   it.stakeSet === 'entered' || it.stakeSet === 'left';
 
@@ -454,7 +454,7 @@ const StakeChangesChart = ({
           if (stakeSetMoved(it))
             return (
               head +
-              `<div class="fs-9 mb-1">Vote account ${it.stakeSet} the stake set: every delegation shows as ${it.stakeSet === 'entered' ? 'new' : 'exited'} at once, so no flows are drawn.</div>` +
+              `<div class="fs-9 mb-1">Vote account ${it.stakeSet} the stake set: every delegation shows as ${it.stakeSet === 'entered' ? 'new' : 'deactivated'} at once, so no flows are drawn.</div>` +
               line('Active stake', fmtSol(sol(it.stakeAfter)))
             );
           // Top-down: what it earned on, then what changed it since the
@@ -488,12 +488,12 @@ const StakeChangesChart = ({
           const who =
             it.newDelegators || it.exitedDelegators
               ? [
-                  it.newDelegators && `${it.newDelegators} joined`,
-                  it.exitedDelegators && `${it.exitedDelegators} left`
+                  it.newDelegators && `${it.newDelegators} new`,
+                  it.exitedDelegators && `${it.exitedDelegators} deactivated`
                 ]
                   .filter(Boolean)
                   .join(', ')
-              : 'none joined or left';
+              : 'none new or deactivated';
           return (
             head +
             line(

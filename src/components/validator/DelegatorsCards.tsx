@@ -77,6 +77,8 @@ const StakeSizes = ({ d }: { d: ValidatorDelegators }) => {
     series: [
       {
         type: 'bar',
+        // Nothing happens on click: no pointer.
+        cursor: 'default',
         barMaxWidth: 36,
         itemStyle: { borderRadius: [3, 3, 0, 0] },
         label: {
