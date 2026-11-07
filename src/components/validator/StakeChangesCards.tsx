@@ -84,7 +84,7 @@ const EpochChanges = ({
   return (
     <div className="mt-3">
       <div className="d-flex flex-wrap align-items-baseline gap-2 fs-9 mb-2">
-        <span className="fw-bold">Into epoch {it.epoch}</span>
+        <span className="fw-bold">Epoch {it.epoch}</span>
         <span
           className="font-monospace"
           title={`Its stake earning in epoch ${it.epoch}`}

@@ -188,7 +188,7 @@ const StakeChangesChart = ({
           formatter: (ps: Array<{ dataIndex: number }>) => {
             const it = items[ps[0]?.dataIndex ?? 0];
             return it
-              ? `<div class="fw-bold mb-1">Into epoch ${it.epoch}</div>` +
+              ? `<div class="fw-bold mb-1">Epoch ${it.epoch}</div>` +
                   line('Stake earning', fmtSol(sol(it.stakeAfter)))
               : '';
           }
@@ -272,7 +272,7 @@ const StakeChangesChart = ({
             const it = items[ps[0]?.dataIndex ?? 0];
             if (!it) return '';
             return (
-              `<div class="fw-bold mb-1">Into epoch ${it.epoch} · earning ${fmtSol(sol(it.stakeAfter))}</div>` +
+              `<div class="fw-bold mb-1">Epoch ${it.epoch} · earning ${fmtSol(sol(it.stakeAfter))}</div>` +
               (it.pools.length
                 ? ''
                 : '<div class="fs-9 text-body-tertiary">No pool stake this epoch</div>') +
@@ -371,7 +371,7 @@ const StakeChangesChart = ({
         formatter: (ps: Array<{ dataIndex: number }>) => {
           const it = items[ps[0]?.dataIndex ?? 0];
           if (!it) return '';
-          const head = `<div class="fw-bold mb-1">Into epoch ${it.epoch}</div>`;
+          const head = `<div class="fw-bold mb-1">Epoch ${it.epoch}</div>`;
           if (stakeSetMoved(it))
             return (
               head +
@@ -381,8 +381,8 @@ const StakeChangesChart = ({
           return (
             head +
             line('Net (beyond rewards)', signed(sol(it.net))) +
-            line('Inflow', fmtSol(sol(it.inflow))) +
-            line('Outflow', fmtSol(sol(it.outflow))) +
+            line('Started earning', fmtSol(sol(it.inflow))) +
+            line('Stopped earning', fmtSol(sol(it.outflow))) +
             line('Rewards compounded', `+${fmtSol(sol(it.rewardGrowth))}`) +
             line('Stake earning', fmtSol(sol(it.stakeAfter))) +
             line(
