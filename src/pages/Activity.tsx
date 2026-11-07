@@ -165,9 +165,10 @@ const columns = (
       e.voteKey ? (
         <Link
           to={`/validator/${e.voteKey ?? e.identity}`}
-          title={e.voteKey}
+          // Cut short; in full (with its vote key) on hover.
+          title={e.name ? `${e.name} · ${e.voteKey}` : e.voteKey}
           className="d-inline-block text-truncate align-bottom"
-          style={{ maxWidth: '14rem' }}
+          style={{ maxWidth: '11rem' }}
         >
           {e.name ?? `${e.voteKey.slice(0, 4)}…${e.voteKey.slice(-4)}`}
         </Link>
