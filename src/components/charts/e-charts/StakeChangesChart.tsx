@@ -11,7 +11,7 @@ import {
 import { CanvasRenderer } from 'echarts/renderers';
 import { useAppContext } from 'providers/AppProvider';
 import { StakeChangeEpoch } from 'providers/vortex-schemas';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 echarts.use([
   BarChart,
@@ -461,6 +461,12 @@ const StakeChangesChart = ({
     };
   }, [items, view, selected, getThemeColor]);
 
+  // The click target: an epoch's whole column of the plot (the stake line,
+  // the gaps between bars), not just its bar - read from the pixel's x on
+  // the category axis. The latest items / handler, for handlers bound once.
+  const latest = useRef({ items, onSelect });
+  latest.current = { items, onSelect };
+
   return (
     <ReactEChartsCore
       echarts={echarts}
@@ -468,15 +474,28 @@ const StakeChangesChart = ({
       option={option}
       style={{ height: height ?? 280, width: '100%' }}
       onChartReady={chart => {
-        if (!group) return;
-        chart.group = group;
-        echarts.connect(group);
-      }}
-      onEvents={{
-        click: (p: { dataIndex: number }) => {
-          const it = items[p.dataIndex];
-          if (it) onSelect(it.epoch);
+        if (group) {
+          chart.group = group;
+          echarts.connect(group);
         }
+        const zr = chart.getZr();
+        const epochAt = (x: number, y: number) => {
+          if (!chart.containPixel('grid', [x, y])) return null;
+          const i = chart.convertFromPixel({ xAxisIndex: 0 }, [x, y]) as
+            | number[]
+            | number;
+          const idx = Math.round(Array.isArray(i) ? i[0] : i);
+          return latest.current.items[idx]?.epoch ?? null;
+        };
+        zr.on('click', e => {
+          const epoch = epochAt(e.offsetX, e.offsetY);
+          if (epoch != null) latest.current.onSelect(epoch);
+        });
+        zr.on('mousemove', e => {
+          zr.setCursorStyle(
+            epochAt(e.offsetX, e.offsetY) != null ? 'pointer' : 'default'
+          );
+        });
       }}
     />
   );
