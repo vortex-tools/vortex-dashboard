@@ -378,18 +378,46 @@ const StakeChangesChart = ({
               `<div class="fs-9 mb-1">Vote account ${it.stakeSet} the stake set: every delegation shows as ${it.stakeSet === 'entered' ? 'new' : 'exited'} at once, so no flows are drawn.</div>` +
               line('Stake earning', fmtSol(sol(it.stakeAfter)))
             );
+          // Top-down: what it earned on, then what changed it since the
+          // epoch before (only the parts that moved), then who.
+          const change = it.stakeAfter - it.stakeBefore;
+          const tone = (c: string, v: string) =>
+            `<span class="text-${c}">${v}</span>`;
+          const who =
+            it.newDelegators || it.exitedDelegators
+              ? [
+                  it.newDelegators && `${it.newDelegators} joined`,
+                  it.exitedDelegators && `${it.exitedDelegators} left`
+                ]
+                  .filter(Boolean)
+                  .join(', ')
+              : 'none joined or left';
           return (
             head +
-            line('Net (beyond rewards)', signed(sol(it.net))) +
-            line('Started earning', fmtSol(sol(it.inflow))) +
-            line('Stopped earning', fmtSol(sol(it.outflow))) +
-            line('Rewards compounded', `+${fmtSol(sol(it.rewardGrowth))}`) +
-            line('Stake earning', fmtSol(sol(it.stakeAfter))) +
+            line(
+              'Stake earning',
+              `${fmtSol(sol(it.stakeAfter))}${change ? ` <span class="text-body-tertiary">(${signed(sol(change))} since ${it.epoch - 1})</span>` : ''}`
+            ) +
+            (it.inflow
+              ? line('Added', tone('success', `+${fmtSol(sol(it.inflow))}`))
+              : '') +
+            (it.outflow
+              ? line('Removed', tone('danger', `−${fmtSol(sol(it.outflow))}`))
+              : '') +
+            (it.rewardGrowth
+              ? line(
+                  'Rewards restaked',
+                  tone('body-tertiary', `+${fmtSol(sol(it.rewardGrowth))}`)
+                )
+              : '') +
             line(
               'Stakers',
-              `${it.delegatorsAfter ?? '—'} (+${it.newDelegators} / −${it.exitedDelegators})`
+              // The words in the body font (the value cell is monospace).
+              `${it.delegatorsAfter?.toLocaleString() ?? '—'} <span style="font-family: var(--bs-body-font-family)">· ${who}</span>`
             ) +
-            `<div class="fs-10 text-body-tertiary mt-1">Click for the epoch's changes</div>`
+            (it.changes.length
+              ? `<div class="fs-10 text-body-tertiary mt-1">Click to see who moved, below</div>`
+              : '')
           );
         }
       },
