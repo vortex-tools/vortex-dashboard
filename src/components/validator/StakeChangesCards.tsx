@@ -4,12 +4,13 @@ import { poolPath } from 'components/pools/pools';
 import useCluster from 'hooks/useCluster';
 import Button from 'components/base/Button';
 import StakeChangesChart, {
-  stakeSetMoved
+  stakeSetMoved,
+  StakeChartItem
 } from 'components/charts/e-charts/StakeChangesChart';
 import SectionCard from 'components/common/SectionCard';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { StakeChangeEpoch } from 'providers/vortex-schemas';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
@@ -193,6 +194,86 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
   const slice = context?.stakeChangesState;
   const items = slice?.data.get(identity);
   const currentEpoch = context?.currentEpochState.epoch ?? null;
+
+  // The next epoch's pending changes, as one more (faded) column: the live
+  // delegators read's stake activating / deactivating at this epoch's end,
+  // by label (the rest 'other'), and each pool's holdings once they land.
+  // Only on top of the epoch in progress's own item.
+  const fetchDelegators = context?.delegatorsState.fetchData;
+  useEffect(() => {
+    if (identity) fetchDelegators?.(identity);
+  }, [identity, fetchDelegators]);
+  const live = context?.delegatorsState.data.get(identity);
+  const pending = useMemo((): StakeChartItem | null => {
+    const last = items?.[items.length - 1];
+    if (!last || !live || live.source !== 'live' || !live.changes) return null;
+    if (live.epoch !== last.epoch) return null;
+    const act = live.activating ?? 0;
+    const deact = live.deactivating ?? 0;
+    if (!act && !deact) return null;
+    const byName = new Map<string, { inflow: number; outflow: number }>();
+    for (const c of live.changes) {
+      const name = c.label?.name;
+      if (!name) continue;
+      const b = byName.get(name) ?? { inflow: 0, outflow: 0 };
+      b.inflow += c.activating;
+      b.outflow += c.deactivating;
+      byName.set(name, b);
+    }
+    const named = [...byName].map(([label, v]) => ({ label, ...v }));
+    const other = {
+      label: 'other',
+      inflow: Math.max(0, act - named.reduce((a, l) => a + l.inflow, 0)),
+      outflow: Math.max(0, deact - named.reduce((a, l) => a + l.outflow, 0))
+    };
+    const after = last.stakeAfter + act - deact;
+    const poolNet = (label: string) =>
+      (byName.get(label)?.inflow ?? 0) - (byName.get(label)?.outflow ?? 0);
+    const pools = last.pools.map(p => {
+      const lamports = Math.max(0, p.lamports + poolNet(p.label));
+      return { ...p, lamports, share: after ? lamports / after : null };
+    });
+    // A pool staking here for the first time.
+    for (const c of live.changes)
+      if (
+        c.label?.kind === 'stake-pool' &&
+        !pools.some(p => p.label === c.label!.name) &&
+        c.net > 0
+      )
+        pools.push({
+          label: c.label.name,
+          fullName: c.label.fullName ?? null,
+          kind: c.label.kind,
+          lamports: c.net,
+          share: after ? c.net / after : null
+        });
+    return {
+      ...last,
+      epoch: last.epoch + 1,
+      stakeBefore: last.stakeAfter,
+      stakeAfter: after,
+      rewardGrowth: 0,
+      inflow: act,
+      outflow: deact,
+      net: act - deact,
+      delegatorsBefore: last.delegatorsAfter,
+      delegatorsAfter: null,
+      newDelegators: 0,
+      exitedDelegators: 0,
+      top5Share: null,
+      byLabel: [...named, other].filter(l => l.inflow || l.outflow),
+      changes: [],
+      moreChanges: 0,
+      pools,
+      stakeSet: 'stayed',
+      pending: true
+    };
+  }, [items, live]);
+  const shown: StakeChartItem[] | undefined = items
+    ? pending
+      ? [...items, pending]
+      : items
+    : undefined;
   const fetchData = slice?.fetchData;
   const unavailable = !items && !slice?.isLoading && !!slice?.error;
   useEffect(() => {
@@ -238,7 +319,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
             {/* Stake above, flows below - two panels, one y-axis each,
                 sharing hover, an edge-to-edge rule between them. */}
             <StakeChangesChart
-              items={items!}
+              items={shown!}
               view="stake"
               group={`stake-changes:${identity}`}
               height={150}
@@ -247,7 +328,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
             />
             <hr className="mx-n3 my-3 border-translucent opacity-100" />
             <StakeChangesChart
-              items={items!}
+              items={shown!}
               view="flows"
               group={`stake-changes:${identity}`}
               height={210}
@@ -273,7 +354,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
         {status(280) ??
           (hasPools ? (
             <StakeChangesChart
-              items={items!}
+              items={shown!}
               view="holdings"
               selected={selected}
               onSelect={setSelected}

@@ -98,6 +98,10 @@ export const stakeSetMoved = (it: StakeChangeEpoch) =>
  * flows. 'holdings': each known pool's
  * stake on it, stacked. Click an epoch to select it.
  */
+/** An epoch's item, or the next epoch's pending changes (built from the
+ *  live delegators read: activating / deactivating at this epoch's end). */
+export type StakeChartItem = StakeChangeEpoch & { pending?: boolean };
+
 /** The stake and flows panels' plot left edge, so their epochs align. */
 const PANEL_LEFT = 52;
 
@@ -109,7 +113,7 @@ const StakeChangesChart = ({
   selected,
   onSelect
 }: {
-  items: StakeChangeEpoch[];
+  items: StakeChartItem[];
   view: 'stake' | 'flows' | 'holdings';
   /** Charts sharing a group share hover (the stake and flows panels). */
   group?: string;
@@ -130,9 +134,17 @@ const StakeChangesChart = ({
         color: getThemeColor('secondary-color'),
         fontSize: 11,
         formatter: (v: string) =>
-          currentEpoch != null && v === String(currentEpoch) ? `${v} (now)` : v
+          items.some(it => it.pending && String(it.epoch) === v)
+            ? `${v} (pending)`
+            : currentEpoch != null && v === String(currentEpoch)
+              ? `${v} (now)`
+              : v
       }
     };
+    // The pending column's tooltip: what is set to change at this epoch's
+    // end, not yet in effect.
+    const pendingNote = `<div class="fs-10 text-body-tertiary mt-1" style="max-width:17rem;white-space:normal">Set to change at this epoch's end. Activating stake is pending until then (it can still be cancelled); deactivating stake is final. This epoch's rewards aren't in it yet.</div>`;
+    const pendingIdx = items.findIndex(it => it.pending);
     const valueAxis = (pos: 'left' | 'right', show = true) => ({
       type: 'value' as const,
       position: pos,
@@ -197,8 +209,13 @@ const StakeChangesChart = ({
           formatter: (ps: Array<{ dataIndex: number }>) => {
             const it = items[ps[0]?.dataIndex ?? 0];
             return it
-              ? `<div class="fw-bold mb-1">Epoch ${it.epoch}</div>` +
-                  line('Stake earning', fmtSol(sol(it.stakeAfter)))
+              ? `<div class="fw-bold mb-1">Epoch ${it.epoch}${it.pending ? ' · pending' : ''}</div>` +
+                  line(
+                    it.pending
+                      ? 'Stake earning, if all goes through'
+                      : 'Stake earning',
+                    fmtSol(sol(it.stakeAfter))
+                  )
               : '';
           }
         },
@@ -218,8 +235,30 @@ const StakeChangesChart = ({
             lineStyle: { width: 1.5 },
             areaStyle: { opacity: 0.08 },
             color: getThemeColor('body-emphasis-color'),
-            data: items.map(it => sol(it.stakeAfter))
-          }
+            data: items.map(it => (it.pending ? null : sol(it.stakeAfter)))
+          },
+          // The pending step: dashed, from now to where it would land.
+          ...(pendingIdx > 0
+            ? [
+                {
+                  name: 'Pending',
+                  type: 'line' as const,
+                  symbol: 'none',
+                  lineStyle: {
+                    width: 1.5,
+                    type: 'dashed' as const,
+                    color: getThemeColor('body-emphasis-color')
+                  },
+                  itemStyle: { color: getThemeColor('body-emphasis-color') },
+                  color: getThemeColor('body-emphasis-color'),
+                  data: items.map((it, i) =>
+                    i === pendingIdx || i === pendingIdx - 1
+                      ? sol(it.stakeAfter)
+                      : null
+                  )
+                }
+              ]
+            : [])
         ]
       };
     }
@@ -250,6 +289,21 @@ const StakeChangesChart = ({
             : null
         )
       }));
+      // The pending column, shaded (its holdings are where they'd be once
+      // the epoch's activations and deactivations land).
+      if (pendingIdx > 0 && series.length)
+        Object.assign(series[0], {
+          markArea: {
+            silent: true,
+            itemStyle: { color: getThemeColor('tertiary-bg'), opacity: 0.6 },
+            data: [
+              [
+                { xAxis: String(items[pendingIdx - 1].epoch) },
+                { xAxis: String(items[pendingIdx].epoch) }
+              ]
+            ]
+          }
+        });
       // The small pools as one series on top, so the stack is still every
       // pool's stake.
       if (hasRest)
@@ -281,7 +335,7 @@ const StakeChangesChart = ({
             const it = items[ps[0]?.dataIndex ?? 0];
             if (!it) return '';
             return (
-              `<div class="fw-bold mb-1">Epoch ${it.epoch} · earning ${fmtSol(sol(it.stakeAfter))}</div>` +
+              `<div class="fw-bold mb-1">Epoch ${it.epoch}${it.pending ? ' · pending' : ` · earning ${fmtSol(sol(it.stakeAfter))}`}</div>` +
               (it.pools.length
                 ? ''
                 : '<div class="fs-9 text-body-tertiary">No pool stake this epoch</div>') +
@@ -300,7 +354,8 @@ const StakeChangesChart = ({
                     `${dot('#8a94ad')}${OTHER_POOLS} (${it.pools.filter(p => !labels.includes(p.label)).length})`,
                     `${fmtSol(sol(rest(it)))}${it.stakeAfter ? ` · ${((rest(it) / it.stakeAfter) * 100).toFixed(1)}%` : ''}`
                   )
-                : '')
+                : '') +
+              (it.pending ? pendingNote : '')
             );
           }
         },
@@ -347,8 +402,10 @@ const StakeChangesChart = ({
         },
         data: items.map(it => ({
           value: flowOf(it, label, dir),
-          itemStyle:
-            highlight != null && String(it.epoch) !== highlight
+          // Pending: faded; another epoch picked: dimmed.
+          itemStyle: it.pending
+            ? { opacity: 0.4 }
+            : highlight != null && String(it.epoch) !== highlight
               ? { opacity: 0.35 }
               : undefined
         }))
@@ -390,6 +447,28 @@ const StakeChangesChart = ({
           // Top-down: what it earned on, then what changed it since the
           // epoch before (only the parts that moved: activated, deactivated,
           // rewards restaked), then who.
+          if (it.pending)
+            return (
+              `<div class="fw-bold mb-1">Epoch ${it.epoch} · pending</div>` +
+              (it.inflow
+                ? line(
+                    'Activating',
+                    `<span class="text-success">+${fmtSol(sol(it.inflow))}</span>`
+                  )
+                : '') +
+              (it.outflow
+                ? line(
+                    'Deactivating',
+                    `<span class="text-danger">−${fmtSol(sol(it.outflow))}</span>`
+                  )
+                : '') +
+              line(
+                'Stake earning, if all goes through',
+                fmtSol(sol(it.stakeAfter))
+              ) +
+              pendingNote +
+              `<div class="fs-10 text-body-tertiary mt-1">Who: Top Stakers, Next epoch</div>`
+            );
           const change = it.stakeAfter - it.stakeBefore;
           const tone = (c: string, v: string) =>
             `<span class="text-${c}">${v}</span>`;
@@ -499,7 +578,9 @@ const StakeChangesChart = ({
             | number[]
             | number;
           const idx = Math.round(Array.isArray(i) ? i[0] : i);
-          return latest.current.items[idx]?.epoch ?? null;
+          const it = latest.current.items[idx];
+          // The pending column has no list of its own (Top Stakers has it).
+          return it && !it.pending ? it.epoch : null;
         };
         zr.on('click', e => {
           const epoch = epochAt(e.offsetX, e.offsetY);
