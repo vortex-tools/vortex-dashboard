@@ -31,8 +31,9 @@ export const isSfdpCheck = (id: string): boolean => id.startsWith('sfdp_');
  *   uncapped   - at the rule (within the fit's noise), below the cap: more
  *                outside stake earns more matching
  *   capped     - at the rule, and the rule is at its cap
- *   transition - the bulk of the delegation was (re)created this epoch or
- *                last: the program's stated 1-2 epoch rebalance
+ *   transition - a rebalance under way: SFDP's activating + deactivating
+ *                stake is over 5% of its effective (adding or removing;
+ *                the notice says which)
  *   withheld   - clearly below the rule, settled and eligible: matching
  *                layer withheld (skip rate) - or a criterion the API can't
  *                measure (vote credits, MEV commission, concentration...)

@@ -5,7 +5,7 @@ import { SfdpProgram } from 'providers/VortexDataProvider';
 const META: Record<SfdpMatchKind, { label: string; className: string }> = {
   uncapped: { label: 'Uncapped', className: 'text-body-tertiary' },
   capped: { label: 'Capped', className: 'text-body-tertiary' },
-  transition: { label: 'Transition', className: 'text-info' },
+  transition: { label: 'Rebalancing', className: 'text-info' },
   withheld: { label: 'Withheld', className: 'text-warning' },
   pulled: { label: 'Pulled', className: 'text-danger' },
   ineligible: { label: 'Ineligible', className: 'text-body-tertiary' }
@@ -16,7 +16,7 @@ const MEANING: Record<SfdpMatchKind, string> = {
     'Matched for its outside stake and below the cap: more outside stake earns more matching.',
   capped: 'At the program cap: more outside stake earns no more matching.',
   transition:
-    "The bulk of the delegation was (re)created this epoch or last: the program's 1-2 epoch rebalance. Settles on its own.",
+    "SFDP is changing its delegation this epoch - adding or removing stake (activating plus deactivating over 5% of what's active); it settles next epoch.",
   withheld:
     'Clearly below the rule while eligible and settled: matching layer withheld (5-epoch skip rate more than 5 points above the cluster average), or a criterion the API cannot measure.',
   pulled:

@@ -191,8 +191,8 @@ const sfdpStakeSchema = z.object({
   matching: z.number().nullable(),
   expectedDelegation: z.number().nullable(),
   shortfall: z.number().nullable(),
-  // inTransition = the largest live SFDP account
-  // activated this epoch or last (the program's 1-2 epoch rebalance);
+  // inTransition = a rebalance under way: activating + deactivating over
+  // 5% of effective (llms.txt: "a rebalance is under way");
   // shortfall is 0 then. criteria gate expectedDelegation (0 if !eligible).
   mainActivationEpoch: z.number().nullable().catch(null),
   inTransition: z.boolean().catch(false),

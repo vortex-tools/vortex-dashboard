@@ -1056,6 +1056,40 @@ const failedSfdpCriteria = (
   return failed.length ? failed.join(', ') : null;
 };
 
+/**
+ * SFDP's delegation changing this epoch (its activating + deactivating
+ * stake over 5% of its effective - the API's inTransition), worded from
+ * which way: adding (active next epoch), removing (gone next epoch), or
+ * both. Null when neither amount is known (the generic copy then).
+ */
+const sfdpChange = (
+  stake: { activating: number; deactivating: number } | null | undefined
+) => {
+  if (!stake) return null;
+  const a = stake.activating;
+  const d = stake.deactivating;
+  const sol = (l: number) => formatLamports(l, 0);
+  if (a > 0 && d === 0)
+    return {
+      removing: false,
+      title: 'Adding stake',
+      message: `${sol(a)} · active next epoch`
+    };
+  if (d > 0 && a === 0)
+    return {
+      removing: true,
+      title: 'Removing stake',
+      message: `${sol(d)} · gone next epoch`
+    };
+  if (a > 0 && d > 0)
+    return {
+      removing: false,
+      title: 'Rebalancing',
+      message: `+${sol(a)} / −${sol(d)}`
+    };
+  return null;
+};
+
 // Short notice copy per SFDP matching status (full meaning on expand).
 const MATCH_NOTICE: Record<string, { title: string; message: string }> = {
   pulled: {
@@ -1066,9 +1100,11 @@ const MATCH_NOTICE: Record<string, { title: string; message: string }> = {
     title: 'Matching withheld',
     message: 'SFDP stake clearly below the matching rule'
   },
+  // Worded from its activating / deactivating stake (sfdpChangeNotice);
+  // this is the fallback when neither is known.
   transition: {
-    title: 'Delegation in transition',
-    message: 'recreated recently; settles within 1-2 epochs'
+    title: 'Rebalancing',
+    message: 'its delegation is changing this epoch'
   },
   ineligible: {
     title: 'Not eligible',
@@ -1267,17 +1303,21 @@ export const useValidatorNotices = (
         severity:
           match.kind === 'pulled'
             ? 'fail'
-            : match.kind === 'withheld'
+            : match.kind === 'withheld' ||
+                (match.kind === 'transition' && sfdpChange(stake)?.removing)
               ? 'warn'
               : 'info',
         source: 'SFDP',
-        title: MATCH_NOTICE[match.kind].title,
+        title:
+          (match.kind === 'transition' && sfdpChange(stake)?.title) ||
+          MATCH_NOTICE[match.kind].title,
         // Not eligible: just the criterion it fails, when the API names it
         // (no list of every criterion to expand).
         message:
           match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
             ? failedSfdpCriteria(stake?.criteria)!
-            : MATCH_NOTICE[match.kind].message,
+            : (match.kind === 'transition' && sfdpChange(stake)?.message) ||
+              MATCH_NOTICE[match.kind].message,
         detail:
           match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
             ? undefined
