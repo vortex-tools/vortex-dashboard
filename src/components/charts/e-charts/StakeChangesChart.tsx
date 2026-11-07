@@ -120,10 +120,21 @@ const StakeChangesChart = ({
   const { getThemeColor } = useAppContext();
   const option = useMemo(() => {
     const epochs = items.map(it => String(it.epoch));
+    // The epoch in progress (a live item) reads '1079 (now)'.
+    const liveEpoch = items.find(it => it.live)?.epoch;
     const axisCommon = {
       axisLine: { lineStyle: { color: getThemeColor('tertiary-bg') } },
-      axisLabel: { color: getThemeColor('secondary-color'), fontSize: 11 }
+      axisLabel: {
+        color: getThemeColor('secondary-color'),
+        fontSize: 11,
+        formatter: (v: string) =>
+          liveEpoch != null && v === String(liveEpoch) ? `${v} (now)` : v
+      }
     };
+    const liveNote = (it: StakeChangeEpoch) =>
+      it.live
+        ? `<div class="fs-10 text-body-tertiary mt-1">The epoch in progress: what started earning at its start. A stake account changing authority mid-epoch settles at its end.</div>`
+        : '';
     const valueAxis = (pos: 'left' | 'right', show = true) => ({
       type: 'value' as const,
       position: pos,
@@ -379,7 +390,8 @@ const StakeChangesChart = ({
               line('Stake earning', fmtSol(sol(it.stakeAfter)))
             );
           // Top-down: what it earned on, then what changed it since the
-          // epoch before (only the parts that moved), then who.
+          // epoch before (only the parts that moved: activated, deactivated,
+          // rewards restaked), then who.
           const change = it.stakeAfter - it.stakeBefore;
           const tone = (c: string, v: string) =>
             `<span class="text-${c}">${v}</span>`;
@@ -399,10 +411,13 @@ const StakeChangesChart = ({
               `${fmtSol(sol(it.stakeAfter))}${change ? ` <span class="text-body-tertiary">(${signed(sol(change))} since ${it.epoch - 1})</span>` : ''}`
             ) +
             (it.inflow
-              ? line('Added', tone('success', `+${fmtSol(sol(it.inflow))}`))
+              ? line('Activated', tone('success', `+${fmtSol(sol(it.inflow))}`))
               : '') +
             (it.outflow
-              ? line('Removed', tone('danger', `−${fmtSol(sol(it.outflow))}`))
+              ? line(
+                  'Deactivated',
+                  tone('danger', `−${fmtSol(sol(it.outflow))}`)
+                )
               : '') +
             (it.rewardGrowth
               ? line(
@@ -415,6 +430,7 @@ const StakeChangesChart = ({
               // The words in the body font (the value cell is monospace).
               `${it.delegatorsAfter?.toLocaleString() ?? '—'} <span style="font-family: var(--bs-body-font-family)">· ${who}</span>`
             ) +
+            liveNote(it) +
             (it.changes.length
               ? `<div class="fs-10 text-body-tertiary mt-1">Click to see who moved, below</div>`
               : '')

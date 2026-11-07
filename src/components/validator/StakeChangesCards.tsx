@@ -228,8 +228,9 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
         {status(424) ?? (
           <>
             <p className="fs-10 text-body-tertiary mb-3">
-              Last {items!.length} completed epochs · click an epoch for who
-              moved
+              Last {items!.length} epochs
+              {items!.some(it => it.live) ? ', the current one in' : ''} · click
+              an epoch for who moved
             </p>
             {/* Stake above, flows below - two panels, one y-axis each,
                 sharing hover, an edge-to-edge rule between them. */}
