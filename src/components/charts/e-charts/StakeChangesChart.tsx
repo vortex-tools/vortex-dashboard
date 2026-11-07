@@ -145,6 +145,8 @@ const StakeChangesChart = ({
     // end, not yet in effect.
     const pendingNote = `<div class="fs-10 text-body-tertiary mt-1" style="max-width:17rem;white-space:normal">Set to change at this epoch's end. Activating stake is pending until then (it can still be cancelled); deactivating stake is final. This epoch's rewards aren't in it yet.</div>`;
     const pendingIdx = items.findIndex(it => it.pending);
+    // The stake line and its pending step (one colour, the theme's).
+    const stakeColor = getThemeColor('primary');
     const valueAxis = (pos: 'left' | 'right', show = true) => ({
       type: 'value' as const,
       position: pos,
@@ -234,7 +236,7 @@ const StakeChangesChart = ({
             symbol: 'none',
             lineStyle: { width: 1.5 },
             areaStyle: { opacity: 0.08 },
-            color: getThemeColor('body-emphasis-color'),
+            color: stakeColor,
             data: items.map(it => (it.pending ? null : sol(it.stakeAfter)))
           },
           // The pending step: dashed, from now to where it would land.
@@ -244,13 +246,17 @@ const StakeChangesChart = ({
                   name: 'Pending',
                   type: 'line' as const,
                   symbol: 'none',
+                  // No hover state: it would redraw the step without its
+                  // dashed style (it vanished on hover).
+                  emphasis: { disabled: true },
+                  silent: true,
                   lineStyle: {
                     width: 1.5,
                     type: 'dashed' as const,
-                    color: getThemeColor('body-emphasis-color')
+                    color: stakeColor
                   },
-                  itemStyle: { color: getThemeColor('body-emphasis-color') },
-                  color: getThemeColor('body-emphasis-color'),
+                  itemStyle: { color: stakeColor },
+                  color: stakeColor,
                   data: items.map((it, i) =>
                     i === pendingIdx || i === pendingIdx - 1
                       ? sol(it.stakeAfter)
@@ -289,21 +295,6 @@ const StakeChangesChart = ({
             : null
         )
       }));
-      // The pending column, shaded (its holdings are where they'd be once
-      // the epoch's activations and deactivations land).
-      if (pendingIdx > 0 && series.length)
-        Object.assign(series[0], {
-          markArea: {
-            silent: true,
-            itemStyle: { color: getThemeColor('tertiary-bg'), opacity: 0.6 },
-            data: [
-              [
-                { xAxis: String(items[pendingIdx - 1].epoch) },
-                { xAxis: String(items[pendingIdx].epoch) }
-              ]
-            ]
-          }
-        });
       // The small pools as one series on top, so the stack is still every
       // pool's stake.
       if (hasRest)
@@ -317,6 +308,24 @@ const StakeChangesChart = ({
           color: '#8a94ad',
           data: items.map(it => (it.pools.length ? sol(rest(it)) : null))
         });
+      // The pending column: each pool's band continues, lighter and dashed,
+      // to where its holdings would be once this epoch's activations and
+      // deactivations land (same names, so the legend toggles both).
+      const pendingSeries =
+        pendingIdx > 0
+          ? series.map(sr => ({
+              ...sr,
+              stack: 'pools-pending',
+              areaStyle: { opacity: 0.22 },
+              lineStyle: { width: 1, type: 'dashed' as const },
+              emphasis: { disabled: true },
+              silent: true,
+              data: sr.data.map((v, i) => (i >= pendingIdx - 1 ? v : null))
+            }))
+          : [];
+      if (pendingIdx > 0)
+        for (const sr of series)
+          sr.data = sr.data.map((v, i) => (i === pendingIdx ? null : v));
       return {
         animation: false,
         grid: { left: 8, right: 8, top: 16, bottom: 32, containLabel: true },
@@ -367,7 +376,7 @@ const StakeChangesChart = ({
           ...axisCommon
         },
         yAxis: valueAxis('left'),
-        series
+        series: [...series, ...pendingSeries]
       };
     }
 
