@@ -1059,7 +1059,7 @@ const failedSfdpCriteria = (
 /**
  * SFDP's delegation changing this epoch (its activating + deactivating
  * stake over 5% of its effective - the API's inTransition), worded from
- * which way: adding (active next epoch), removing (gone next epoch), or
+ * which way: adding (active next epoch), removing (at epoch end), or
  * both. Null when neither amount is known (the generic copy then).
  */
 const sfdpChange = (
@@ -1073,13 +1073,13 @@ const sfdpChange = (
     return {
       removing: false,
       title: 'Adding stake',
-      message: `${sol(a)} · active next epoch`
+      message: `SFDP is delegating +${sol(a)} more; active next epoch`
     };
   if (d > 0 && a === 0)
     return {
       removing: true,
       title: 'Removing stake',
-      message: `${sol(d)} · gone next epoch`
+      message: `−${sol(d)} at epoch end`
     };
   if (a > 0 && d > 0)
     return {
