@@ -129,7 +129,7 @@ const StakeSizes = ({ d }: { d: ValidatorDelegators }) => {
   );
 };
 
-/** A staker's stake changing next epoch: joining less leaving, with a
+/** A staker's stake changing next epoch: activating less deactivating, with a
  *  green rise / red fall (as the Next Epoch stat), the parts on hover. */
 const NextEpochChange = ({
   activating,
@@ -145,7 +145,10 @@ const NextEpochChange = ({
     return <span className="text-body-quaternary">—</span>;
   return (
     <span
-      title={[a > 0 && `+${sol(a)} joining`, d > 0 && `−${sol(d)} leaving`]
+      title={[
+        a > 0 && `+${sol(a)} activating`,
+        d > 0 && `−${sol(d)} deactivating`
+      ]
         .filter(Boolean)
         .join(' · ')}
     >
@@ -164,7 +167,7 @@ const NextEpochChange = ({
 };
 
 /** Every staker with stake moving at this epoch's end (live), largest
- *  net first: its stake here now (if in the top list), joining, leaving,
+ *  net first: its stake here now (if in the top list), activating, deactivating,
  *  net. */
 const NextEpochChanges = ({
   d,
@@ -194,15 +197,15 @@ const NextEpochChanges = ({
             </th>
             <th
               className="text-end"
-              title="Activating: earning from next epoch (pending until then)"
+              title="Stake activating: earning from next epoch (pending until then)"
             >
-              Joining
+              Activating
             </th>
             <th
               className="text-end"
-              title="Deactivating: stops earning at this epoch's end"
+              title="Stake deactivating: stops earning at this epoch\'s end"
             >
-              Leaving
+              Deactivating
             </th>
             <th className="text-end">Net</th>
           </tr>
@@ -251,9 +254,9 @@ const NextEpochChanges = ({
         />
       )}
       <p className="fs-10 text-body-tertiary mt-2 mb-0">
-        {(d.activating ?? 0) > 0 && `+${sol(d.activating!)} joining`}
+        {(d.activating ?? 0) > 0 && `+${sol(d.activating!)} activating`}
         {(d.activating ?? 0) > 0 && (d.deactivating ?? 0) > 0 && ' · '}
-        {(d.deactivating ?? 0) > 0 && `−${sol(d.deactivating!)} leaving`}
+        {(d.deactivating ?? 0) > 0 && `−${sol(d.deactivating!)} deactivating`}
         {d.moreChanges
           ? ` · ${d.moreChanges.toLocaleString()} more stakers moving`
           : ''}
@@ -296,7 +299,7 @@ const TopStakers = ({
             {live && (
               <th
                 className="text-end"
-                title="Its stake changing at the epoch's end: joining (activating) less leaving (deactivating), earning from next epoch"
+                title="Its stake changing at the epoch's end: activating less deactivating, earning from next epoch"
               >
                 Next Epoch
               </th>
@@ -428,7 +431,7 @@ const DelegatorsCards = ({
       <div className="d-flex align-items-center justify-content-between mb-1">
         <span className="fs-10 text-body-tertiary">
           {view === 'next'
-            ? "Stake moving at this epoch's end, largest first · joining is pending until then (can be cancelled), leaving is final"
+            ? "Stake moving at this epoch's end, largest first · activating stake is pending until then (can be cancelled), deactivating stake is final"
             : poolsOnly
               ? 'Stake pools, Marinade and SFDP'
               : 'Largest first, by withdraw authority'}
