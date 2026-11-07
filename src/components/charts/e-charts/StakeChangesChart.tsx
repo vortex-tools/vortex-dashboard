@@ -92,7 +92,7 @@ export const stakeSetMoved = (it: StakeChangeEpoch) =>
 /**
  * One validator's stake per completed epoch. 'flows': inflow up and
  * outflow down (beyond reward compounding), stacked by source pool, on an
- * axis symmetric around 0, under a small panel of stake at epoch end;
+ * axis symmetric around 0, under a small panel of the stake earning;
  * epochs it entered or left the stake set are marked instead of drawn as
  * flows. 'holdings': each known pool's
  * stake on it, stacked. Click an epoch to select it.
@@ -165,7 +165,7 @@ const StakeChangesChart = ({
     const highlight = selected != null ? String(selected) : null;
 
     if (view === 'stake') {
-      // Stake at epoch end: its own panel above the flows (one y-axis per
+      // The stake earning each epoch: its own panel above the flows (one y-axis per
       // panel), its own range - it needn't start at 0.
       return {
         animation: false,
@@ -176,7 +176,7 @@ const StakeChangesChart = ({
             right: 14,
             top: 2,
             style: {
-              text: 'Stake at epoch end',
+              text: 'Stake earning',
               fill: getThemeColor('tertiary-color'),
               fontSize: 10
             }
@@ -188,8 +188,8 @@ const StakeChangesChart = ({
           formatter: (ps: Array<{ dataIndex: number }>) => {
             const it = items[ps[0]?.dataIndex ?? 0];
             return it
-              ? `<div class="fw-bold mb-1">Epoch ${it.epoch}</div>` +
-                  line('Stake at end', fmtSol(sol(it.stakeAfter)))
+              ? `<div class="fw-bold mb-1">Into epoch ${it.epoch}</div>` +
+                  line('Stake earning', fmtSol(sol(it.stakeAfter)))
               : '';
           }
         },
@@ -272,7 +272,7 @@ const StakeChangesChart = ({
             const it = items[ps[0]?.dataIndex ?? 0];
             if (!it) return '';
             return (
-              `<div class="fw-bold mb-1">Epoch ${it.epoch} · stake ${fmtSol(sol(it.stakeAfter))}</div>` +
+              `<div class="fw-bold mb-1">Into epoch ${it.epoch} · earning ${fmtSol(sol(it.stakeAfter))}</div>` +
               (it.pools.length
                 ? ''
                 : '<div class="fs-9 text-body-tertiary">No pool stake this epoch</div>') +
@@ -371,12 +371,12 @@ const StakeChangesChart = ({
         formatter: (ps: Array<{ dataIndex: number }>) => {
           const it = items[ps[0]?.dataIndex ?? 0];
           if (!it) return '';
-          const head = `<div class="fw-bold mb-1">Epoch ${it.epoch}</div>`;
+          const head = `<div class="fw-bold mb-1">Into epoch ${it.epoch}</div>`;
           if (stakeSetMoved(it))
             return (
               head +
               `<div class="fs-9 mb-1">Vote account ${it.stakeSet} the stake set: every delegation shows as ${it.stakeSet === 'entered' ? 'new' : 'exited'} at once, so no flows are drawn.</div>` +
-              line('Stake at end', fmtSol(sol(it.stakeAfter)))
+              line('Stake earning', fmtSol(sol(it.stakeAfter)))
             );
           return (
             head +
@@ -384,7 +384,7 @@ const StakeChangesChart = ({
             line('Inflow', fmtSol(sol(it.inflow))) +
             line('Outflow', fmtSol(sol(it.outflow))) +
             line('Rewards compounded', `+${fmtSol(sol(it.rewardGrowth))}`) +
-            line('Stake at end', fmtSol(sol(it.stakeAfter))) +
+            line('Stake earning', fmtSol(sol(it.stakeAfter))) +
             line(
               'Stakers',
               `${it.delegatorsAfter ?? '—'} (+${it.newDelegators} / −${it.exitedDelegators})`

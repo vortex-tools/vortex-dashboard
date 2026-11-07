@@ -84,8 +84,11 @@ const EpochChanges = ({
   return (
     <div className="mt-3">
       <div className="d-flex flex-wrap align-items-baseline gap-2 fs-9 mb-2">
-        <span className="fw-bold">Epoch {it.epoch}</span>
-        <span className="font-monospace" title="Stake at the epoch's end">
+        <span className="fw-bold">Into epoch {it.epoch}</span>
+        <span
+          className="font-monospace"
+          title={`Its stake earning in epoch ${it.epoch}`}
+        >
           {fmt(it.stakeAfter)}
         </span>
         {stakeSetMoved(it) ? (
@@ -198,8 +201,10 @@ const EpochChanges = ({
 /**
  * A validator's stake over completed epochs (/validators/stake-changes,
  * last 50), as two charts: Stake Changes - inflow and outflow beyond
- * reward compounding, by source pool, with stake at epoch end - and Pool
- * Holdings - each known pool's stake on it. Picking an epoch in either
+ * reward compounding, by source pool, with the stake earning each epoch -
+ * and Pool Holdings - each known pool's stake earning on it. Item E is the
+ * stake that started or stopped earning as E began (the bank at E's last
+ * slot against E-1's): a delegation made in E shows in E + 1. Picking an epoch in either
  * shows its largest staker changes, with where the stake came from or
  * went, under Stake Changes.
  */
@@ -238,7 +243,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
       <SectionCard
         title="Stake Changes"
         icon="trending-up"
-        info="Stake moves when it starts or stops earning (a delegation in epoch E shows in E + 1), without reward compounding."
+        info="The stake that started or stopped earning as each epoch began, without reward compounding: a delegation made in epoch E starts earning in E + 1, so it shows there."
       >
         {status(424) ?? (
           <>
@@ -279,7 +284,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
       <SectionCard
         title="Pool Holdings"
         icon="layers"
-        info="Each known pool's stake on this validator at epoch end. Named pools cover a minority of stake."
+        info="Each known pool's stake earning on this validator in each epoch. Named pools cover a minority of stake."
       >
         {status(280) ??
           (hasPools ? (
