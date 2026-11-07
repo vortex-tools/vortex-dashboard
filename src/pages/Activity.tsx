@@ -302,63 +302,44 @@ const columns = (
 
 /**
  * Validator activity, newest first: vote-account changes (withdrawer,
- * voter and BLS key, identity, commissions, collectors, withdrawals, new
- * vote accounts; since Alpenglow, epoch 1064) and host changes
+ * voter and BLS key, identity, commissions, collectors, new vote accounts;
+ * since Alpenglow, epoch 1064; withdrawals left out) and host changes
  * (failovers, migrations, software), from /cluster/activity. Filtered by kind, by validator (name or either key) and by how
  * many epochs back, all in the URL (?kind=&validator=&epochs=).
  */
-/** The change filter's group options: every on-chain change (but
- *  withdrawals), every withdrawal, every host change. */
+/** The change filter's group options: every on-chain change, every host
+ *  change. */
 const ONCHAIN = 'onchain';
-const WITHDRAWALS = 'withdrawals';
 const INFRA = 'infra';
-/** Money out: from the vote account, or from the identity. */
+/** Money out, from the vote account or the identity: not listed (Justin). */
 const WITHDRAW_KINDS = new Set(['withdraw', 'identityWithdraw']);
-type Group = 'onchain' | 'withdrawals' | 'infra';
+type Group = 'onchain' | 'infra';
 const groupOf = (kind: string): Group =>
-  HOST_KINDS.has(kind)
-    ? 'infra'
-    : WITHDRAW_KINDS.has(kind)
-      ? 'withdrawals'
-      : 'onchain';
+  HOST_KINDS.has(kind) ? 'infra' : 'onchain';
 const GROUPS: Array<[Group, string, string]> = [
   ['onchain', 'On-chain', 'All on-chain'],
-  ['withdrawals', 'Withdrawals', 'All withdrawals'],
   ['infra', 'Infrastructure', 'All infrastructure']
 ];
 const matchesKind = (e: ActivityEvent, kind: string) =>
   !kind ||
-  (kind === ONCHAIN || kind === WITHDRAWALS || kind === INFRA
+  (kind === ONCHAIN || kind === INFRA
     ? groupOf(e.kind) === kind
     : kind === BLS_FILTER
       ? isBlsChange(e)
       : e.kind === kind);
 
-/** Identity withdrawals under this many SOL are routine payments: not
- *  listed. */
-const SMALL_SOL = 1;
-
-const isSmall = (e: ActivityEvent) => {
-  const sol = withdrawalSol(e);
-  return sol != null && sol < SMALL_SOL;
-};
-
 /** A kind's name in the change filter. */
 const kindLabel = (k: string) =>
-  k === BLS_FILTER
-    ? 'BLS key'
-    : // Under Withdrawals: where the money came from.
-      k === 'withdraw'
-      ? 'From the vote account'
-      : k === 'identityWithdraw'
-        ? 'From the identity'
-        : (CHANGE_KIND[k]?.label ?? k);
+  k === BLS_FILTER ? 'BLS key' : (CHANGE_KIND[k]?.label ?? k);
 
 const Activity = () => {
   const context = useContext(VortexDataContext);
   const { isTestnet } = useCluster();
   const [params, setParams] = useSearchParams();
-  const kind = params.get('kind') ?? '';
+  // A withdrawals filter from an old link: every change instead.
+  const rawKind = params.get('kind') ?? '';
+  const kind =
+    rawKind === 'withdrawals' || WITHDRAW_KINDS.has(rawKind) ? '' : rawKind;
   const validator = params.get('validator') ?? '';
   const epochs = RANGES.includes(Number(params.get('epochs')))
     ? Number(params.get('epochs'))
@@ -396,14 +377,13 @@ const Activity = () => {
   const keyList = picked
     ? [validator, picked.voteAddress, picked.nodeAddress].join(' ')
     : '';
-  // Identity withdrawals under SMALL_SOL (routine operator payments)
-  // are left out: noise next to the rest.
+  // Withdrawals are left out.
   const events = useMemo(() => {
     const keys = keyList ? new Set(keyList.split(' ')) : null;
     return (data?.events ?? []).filter(
       e =>
         !isNoopChange(e) &&
-        !isSmall(e) &&
+        !WITHDRAW_KINDS.has(e.kind) &&
         matchesKind(e, kind) &&
         (!keys || keys.has(e.voteKey ?? '') || keys.has(e.identity ?? ''))
     );
@@ -411,7 +391,9 @@ const Activity = () => {
   // Kinds present in the range, for the filter (in the order defined).
   const kinds = useMemo(() => {
     const seen = new Set(
-      (data?.events ?? []).filter(e => !isSmall(e)).map(e => e.kind)
+      (data?.events ?? [])
+        .filter(e => !WITHDRAW_KINDS.has(e.kind))
+        .map(e => e.kind)
     );
     const out = Object.keys(CHANGE_KIND).filter(k => seen.has(k));
     // BLS key changes (voter events) as an option of their own.
@@ -443,8 +425,7 @@ const Activity = () => {
         <div className="col-auto">
           <h1 className="h3">Validator Activity</h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
-            Key, commission and collector changes, withdrawals, failovers and
-            migrations
+            Key, commission and collector changes, failovers and migrations
           </p>
         </div>
       </div>
@@ -452,7 +433,7 @@ const Activity = () => {
       <SectionCard
         title="Activity"
         icon="activity"
-        info="Vote-account changes come from the vote program's instructions in successful transactions (a multisig's included), since Alpenglow (epoch 1064): a withdrawer change or a withdrawal is what matters most to delegators. Failovers, migrations and software changes come from each validator's gossip address and version, as our chain-state writer sees them. From is the previous value on record."
+        info="Vote-account changes come from the vote program's instructions in successful transactions (a multisig's included), since Alpenglow (epoch 1064): a withdrawer change is what matters most to delegators. Failovers, migrations and software changes come from each validator's gossip address and version, as our chain-state writer sees them. From is the previous value on record."
       >
         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
           {/* Pick a validator (suggestions as you type); it shows as a
@@ -487,12 +468,10 @@ const Activity = () => {
             onChange={e => set('kind', e.target.value)}
           >
             <option value="">All changes</option>
-            {/* On-chain (vote-account transactions), withdrawals (vote
-                account and identity) and infrastructure (gossip: hosts and
-                software), each alphabetical. */}
+            {/* On-chain (vote-account transactions) and infrastructure
+                (gossip: hosts and software), each alphabetical. */}
             {GROUPS.map(([group, label, all]) => {
-              const isGroup =
-                kind === ONCHAIN || kind === WITHDRAWALS || kind === INFRA;
+              const isGroup = kind === ONCHAIN || kind === INFRA;
               const shown = (
                 kinds.includes(kind) || !kind || isGroup
                   ? kinds
