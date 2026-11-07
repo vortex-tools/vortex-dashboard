@@ -627,11 +627,7 @@ export const stakeChangeEpochSchema = z.object({
       })
     )
     .catch([]),
-  stakeSet: z.string().catch('stayed'),
-  // The epoch in progress, from the live stakes cache (requested of
-  // vortex-data): mid-epoch authority moves / merges settle only at its
-  // end. Absent on completed items.
-  live: z.boolean().optional().catch(false)
+  stakeSet: z.string().catch('stayed')
 });
 export const stakeChangesSchema = z.array(stakeChangeEpochSchema);
 export type StakeChangeEpoch = z.infer<typeof stakeChangeEpochSchema>;

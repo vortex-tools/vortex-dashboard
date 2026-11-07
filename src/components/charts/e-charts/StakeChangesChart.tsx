@@ -11,7 +11,8 @@ import {
 import { CanvasRenderer } from 'echarts/renderers';
 import { useAppContext } from 'providers/AppProvider';
 import { StakeChangeEpoch } from 'providers/vortex-schemas';
-import { useMemo, useRef } from 'react';
+import { VortexDataContext } from 'providers/VortexDataProvider';
+import { useContext, useMemo, useRef } from 'react';
 
 echarts.use([
   BarChart,
@@ -118,23 +119,20 @@ const StakeChangesChart = ({
   onSelect: (epoch: number) => void;
 }) => {
   const { getThemeColor } = useAppContext();
+  const currentEpoch =
+    useContext(VortexDataContext)?.currentEpochState.epoch ?? null;
   const option = useMemo(() => {
     const epochs = items.map(it => String(it.epoch));
-    // The epoch in progress (a live item) reads '1079 (now)'.
-    const liveEpoch = items.find(it => it.live)?.epoch;
+    // The epoch in progress reads '1079 (now)'.
     const axisCommon = {
       axisLine: { lineStyle: { color: getThemeColor('tertiary-bg') } },
       axisLabel: {
         color: getThemeColor('secondary-color'),
         fontSize: 11,
         formatter: (v: string) =>
-          liveEpoch != null && v === String(liveEpoch) ? `${v} (now)` : v
+          currentEpoch != null && v === String(currentEpoch) ? `${v} (now)` : v
       }
     };
-    const liveNote = (it: StakeChangeEpoch) =>
-      it.live
-        ? `<div class="fs-10 text-body-tertiary mt-1">The epoch in progress: what started earning at its start. A stake account changing authority mid-epoch settles at its end.</div>`
-        : '';
     const valueAxis = (pos: 'left' | 'right', show = true) => ({
       type: 'value' as const,
       position: pos,
@@ -430,7 +428,6 @@ const StakeChangesChart = ({
               // The words in the body font (the value cell is monospace).
               `${it.delegatorsAfter?.toLocaleString() ?? '—'} <span style="font-family: var(--bs-body-font-family)">· ${who}</span>`
             ) +
-            liveNote(it) +
             (it.changes.length
               ? `<div class="fs-10 text-body-tertiary mt-1">Click to see who moved, below</div>`
               : '')
@@ -475,7 +472,7 @@ const StakeChangesChart = ({
         }))
       ]
     };
-  }, [items, view, selected, getThemeColor]);
+  }, [items, view, selected, getThemeColor, currentEpoch]);
 
   // The click target: an epoch's whole column of the plot (the stake line,
   // the gaps between bars), not just its bar - read from the pixel's x on

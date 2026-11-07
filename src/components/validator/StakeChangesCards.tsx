@@ -192,6 +192,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
   const context = useContext(VortexDataContext);
   const slice = context?.stakeChangesState;
   const items = slice?.data.get(identity);
+  const currentEpoch = context?.currentEpochState.epoch ?? null;
   const fetchData = slice?.fetchData;
   const unavailable = !items && !slice?.isLoading && !!slice?.error;
   useEffect(() => {
@@ -229,8 +230,10 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
           <>
             <p className="fs-10 text-body-tertiary mb-3">
               Last {items!.length} epochs
-              {items!.some(it => it.live) ? ', the current one in' : ''} · click
-              an epoch for who moved
+              {items!.some(it => it.epoch === currentEpoch)
+                ? ', the current one in'
+                : ''}{' '}
+              · click an epoch for who moved
             </p>
             {/* Stake above, flows below - two panels, one y-axis each,
                 sharing hover, an edge-to-edge rule between them. */}
