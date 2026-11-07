@@ -70,8 +70,7 @@ const KIND: Record<string, { label: string; cls: string }> = {
   exited: { label: 'Exited', cls: 'text-danger' }
 };
 
-/** One epoch's largest staker changes, with where the stake came from
- *  or went. */
+/** One epoch's largest staker changes. */
 const EpochChanges = ({
   it,
   onClose
@@ -130,7 +129,6 @@ const EpochChanges = ({
                 <th>Change</th>
                 <th className="text-end">Net</th>
                 <th className="text-end">Now</th>
-                <th>From / to</th>
               </tr>
             </thead>
             <tbody>
@@ -149,23 +147,6 @@ const EpochChanges = ({
                     </td>
                     <td className="text-end font-monospace text-nowrap">
                       {fmt(c.after)}
-                    </td>
-                    <td className="fs-10">
-                      {c.counterparts.length ? (
-                        c.counterparts.map((cp, i) => (
-                          <span key={cp.voteKey} className="text-nowrap">
-                            {i > 0 && ', '}
-                            <Link to={`/validator/${cp.voteKey}`}>
-                              {cp.name ?? short(cp.voteKey)}
-                            </Link>{' '}
-                            <span className="text-body-tertiary font-monospace">
-                              {signed(cp.net)}
-                            </span>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-body-tertiary">—</span>
-                      )}
                     </td>
                   </tr>
                 );
@@ -205,8 +186,7 @@ const EpochChanges = ({
  * and Pool Holdings - each known pool's stake earning on it. Item E is the
  * stake that started or stopped earning as E began (the bank at E's last
  * slot against E-1's): a delegation made in E shows in E + 1. Picking an epoch in either
- * shows its largest staker changes, with where the stake came from or
- * went, under Stake Changes.
+ * shows its largest staker changes under Stake Changes.
  */
 const StakeChangesCards = ({ identity }: { identity: string }) => {
   const context = useContext(VortexDataContext);

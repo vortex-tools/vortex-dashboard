@@ -565,8 +565,7 @@ export type ValidatorStake = z.infer<typeof validatorStakeSchema>;
 // One item per completed epoch (oldest first): effective stake before and
 // after, reward compounding kept apart from real flows (inflow / outflow
 // beyond rewards), by known pool (everyone else is "other"), the largest
-// per-delegator (withdraw authority) changes with the validators the stake
-// came from or went to, known pools' holdings, and whether the vote account
+// per-delegator (withdraw authority) changes, known pools' holdings, and whether the vote account
 // stayed in / entered / left the stake set (an entry or exit shows every
 // delegation as new / exited at once - not delegators moving). Stake
 // delegated in E shows up in E + 1 (it counts when it starts earning).
@@ -610,16 +609,7 @@ export const stakeChangeEpochSchema = z.object({
         kind: z.string(),
         before: z.number().catch(0),
         after: z.number().catch(0),
-        net: z.number(),
-        counterparts: z
-          .array(
-            z.object({
-              voteKey: z.string(),
-              name: z.string().nullable().catch(null),
-              net: z.number().catch(0)
-            })
-          )
-          .catch([])
+        net: z.number()
       })
     )
     .catch([]),
