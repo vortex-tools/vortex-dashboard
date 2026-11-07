@@ -670,7 +670,9 @@ export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
           externalStake: stake.externalStake,
           shortfall: stake.shortfall,
           inTransition: stake.inTransition,
-          eligible: stake.criteria?.eligible
+          eligible: stake.criteria?.eligible,
+          activating: stake.activating,
+          deactivating: stake.deactivating
         },
         program
       )
@@ -1292,7 +1294,9 @@ export const useValidatorNotices = (
             externalStake: stake.externalStake,
             shortfall: stake.shortfall,
             inTransition: stake.inTransition,
-            eligible: stake.criteria?.eligible
+            eligible: stake.criteria?.eligible,
+            activating: stake.activating,
+            deactivating: stake.deactivating
           },
           program
         )
@@ -1321,7 +1325,7 @@ export const useValidatorNotices = (
         detail:
           match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
             ? undefined
-            : sfdpMatchMeaning(match.kind)
+            : sfdpMatchMeaning(match.kind, match.change)
       });
   }
 

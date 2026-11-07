@@ -52,6 +52,9 @@ export type SfdpMatchKind =
 
 export interface SfdpMatch {
   kind: SfdpMatchKind;
+  /** A transition's direction, from its activating / deactivating stake
+   *  (when known): adding, removing, or both. */
+  change?: 'adding' | 'removing' | 'rebalancing';
   effective: number;
   externalStake: number;
   /** min(cap, baseline + matchRate * externalStake); 0 if ineligible;
@@ -79,6 +82,8 @@ export const sfdpMatch = (
     shortfall: number | null | undefined;
     inTransition?: boolean | null;
     eligible?: boolean | null;
+    activating?: number | null;
+    deactivating?: number | null;
   },
   program: SfdpProgram | null | undefined
 ): SfdpMatch | null => {
@@ -95,7 +100,19 @@ export const sfdpMatch = (
   const base = { effective, externalStake, expected, shortfall };
   if (stake.eligible === false)
     return { ...base, kind: 'ineligible', expected: 0, shortfall: 0 };
-  if (stake.inTransition) return { ...base, kind: 'transition' };
+  if (stake.inTransition) {
+    const a = stake.activating ?? 0;
+    const d = stake.deactivating ?? 0;
+    const change =
+      a > 0 && d > 0
+        ? 'rebalancing'
+        : a > 0
+          ? 'adding'
+          : d > 0
+            ? 'removing'
+            : undefined;
+    return { ...base, kind: 'transition', change };
+  }
   // Below a hundredth of the residual = nothing delegated.
   if (program && effective < program.baseline / 100)
     return { ...base, kind: 'pulled' };

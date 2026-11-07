@@ -16,7 +16,7 @@ const MEANING: Record<SfdpMatchKind, string> = {
     'Matched for its outside stake and below the cap: more outside stake earns more matching.',
   capped: 'At the program cap: more outside stake earns no more matching.',
   transition:
-    "SFDP is changing its delegation this epoch - adding or removing stake (activating plus deactivating over 5% of what's active); it settles next epoch.",
+    "SFDP is changing its delegation this epoch: its activating plus deactivating stake here is over 5% of SFDP's active stake on it. Added stake becomes active next epoch; removed stake stops at the end of this one.",
   withheld:
     'Clearly below the rule while eligible and settled: matching layer withheld (5-epoch skip rate more than 5 points above the cluster average), or a criterion the API cannot measure.',
   pulled:
@@ -25,7 +25,20 @@ const MEANING: Record<SfdpMatchKind, string> = {
     'Fails a program criterion (total stake ≤ 1M SOL, inflation commission ≤ 5%, version at the minimum, data center ≤ 15% and ASN ≤ 25% of stake): no delegation is due.'
 };
 
-export const sfdpMatchMeaning = (kind: SfdpMatchKind) => MEANING[kind];
+/** A transition worded by its direction, as its label is. */
+const CHANGE_MEANING: Record<NonNullable<SfdpMatch['change']>, string> = {
+  adding:
+    "SFDP is delegating more stake to it: activating stake over 5% of SFDP's active stake on it. It becomes active next epoch.",
+  removing:
+    "SFDP is taking stake away: deactivating stake over 5% of SFDP's active stake on it. It stops earning at the end of this epoch.",
+  rebalancing:
+    "SFDP is both adding and removing stake here: together over 5% of SFDP's active stake on it. Added stake becomes active next epoch; removed stake stops at the end of this one."
+};
+
+export const sfdpMatchMeaning = (
+  kind: SfdpMatchKind,
+  change?: SfdpMatch['change']
+) => (kind === 'transition' && change ? CHANGE_MEANING[change] : MEANING[kind]);
 
 /** ◎57.5k - compact SOL for the table cell. */
 const compactSol = (lamports: number) => {
@@ -69,12 +82,19 @@ const SfdpMatchStatus = ({
   program: SfdpProgram | null | undefined;
 }) => {
   const meta = META[match.kind];
+  // A transition says which way, as its notice does.
+  const label =
+    match.change === 'adding'
+      ? 'Adding stake'
+      : match.change === 'removing'
+        ? 'Removing stake'
+        : meta.label;
   return (
     <span
       className={meta.className}
-      title={`${MEANING[match.kind]}\n${sfdpMatchArithmetic(match, program)}`}
+      title={`${sfdpMatchMeaning(match.kind, match.change)}\n${sfdpMatchArithmetic(match, program)}`}
     >
-      {meta.label}
+      {label}
       {match.kind === 'withheld' && (
         <span className="font-monospace"> −{compactSol(match.shortfall)}</span>
       )}
