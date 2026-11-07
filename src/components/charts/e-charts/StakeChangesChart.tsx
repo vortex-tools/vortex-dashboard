@@ -93,7 +93,7 @@ export const stakeSetMoved = (it: StakeChangeEpoch) =>
 /**
  * One validator's stake per completed epoch. 'flows': inflow up and
  * outflow down (beyond reward compounding), stacked by source pool, on an
- * axis symmetric around 0, under a small panel of the stake earning;
+ * axis symmetric around 0, under a small panel of its active stake;
  * epochs it entered or left the stake set are marked instead of drawn as
  * flows. 'holdings': each known pool's
  * stake on it, stacked. Click an epoch to select it.
@@ -188,7 +188,7 @@ const StakeChangesChart = ({
     const highlight = selected != null ? String(selected) : null;
 
     if (view === 'stake') {
-      // The stake earning each epoch: its own panel above the flows (one y-axis per
+      // Its active stake each epoch: its own panel above the flows (one y-axis per
       // panel), its own range - it needn't start at 0.
       return {
         animation: false,
@@ -199,7 +199,7 @@ const StakeChangesChart = ({
             right: 14,
             top: 2,
             style: {
-              text: 'Stake earning',
+              text: 'Active stake',
               fill: getThemeColor('tertiary-color'),
               fontSize: 10
             }
@@ -214,8 +214,8 @@ const StakeChangesChart = ({
               ? `<div class="fw-bold mb-1">Epoch ${it.epoch}${it.pending ? ' · pending' : ''}</div>` +
                   line(
                     it.pending
-                      ? 'Stake earning, if all goes through'
-                      : 'Stake earning',
+                      ? 'Active stake, if all goes through'
+                      : 'Active stake',
                     fmtSol(sol(it.stakeAfter))
                   )
               : '';
@@ -344,7 +344,7 @@ const StakeChangesChart = ({
             const it = items[ps[0]?.dataIndex ?? 0];
             if (!it) return '';
             return (
-              `<div class="fw-bold mb-1">Epoch ${it.epoch}${it.pending ? ' · pending' : ` · earning ${fmtSol(sol(it.stakeAfter))}`}</div>` +
+              `<div class="fw-bold mb-1">Epoch ${it.epoch}${it.pending ? ' · pending' : ''}</div>` +
               (it.pools.length
                 ? ''
                 : '<div class="fs-9 text-body-tertiary">No pool stake this epoch</div>') +
@@ -363,6 +363,10 @@ const StakeChangesChart = ({
                     `${dot('#8a94ad')}${OTHER_POOLS} (${it.pools.filter(p => !labels.includes(p.label)).length})`,
                     `${fmtSol(sol(rest(it)))}${it.stakeAfter ? ` · ${((rest(it) / it.stakeAfter) * 100).toFixed(1)}%` : ''}`
                   )
+                : '') +
+              // What the shares are of: its whole stake that epoch.
+              (it.pools.length && !it.pending
+                ? `<div class="fs-10 text-body-tertiary mt-1">Shares of its ${fmtSol(sol(it.stakeAfter))} stake</div>`
                 : '') +
               (it.pending ? pendingNote : '')
             );
@@ -451,7 +455,7 @@ const StakeChangesChart = ({
             return (
               head +
               `<div class="fs-9 mb-1">Vote account ${it.stakeSet} the stake set: every delegation shows as ${it.stakeSet === 'entered' ? 'new' : 'exited'} at once, so no flows are drawn.</div>` +
-              line('Stake earning', fmtSol(sol(it.stakeAfter)))
+              line('Active stake', fmtSol(sol(it.stakeAfter)))
             );
           // Top-down: what it earned on, then what changed it since the
           // epoch before (only the parts that moved: activated, deactivated,
@@ -472,7 +476,7 @@ const StakeChangesChart = ({
                   )
                 : '') +
               line(
-                'Stake earning, if all goes through',
+                'Active stake, if all goes through',
                 fmtSol(sol(it.stakeAfter))
               ) +
               pendingNote +
@@ -493,7 +497,7 @@ const StakeChangesChart = ({
           return (
             head +
             line(
-              'Stake earning',
+              'Active stake',
               `${fmtSol(sol(it.stakeAfter))}${change ? ` <span class="text-body-tertiary">(${signed(sol(change))} since ${it.epoch - 1})</span>` : ''}`
             ) +
             (it.inflow

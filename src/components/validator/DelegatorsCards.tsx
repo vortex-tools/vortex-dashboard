@@ -191,19 +191,19 @@ const NextEpochChanges = ({
             <th>Staker</th>
             <th
               className="text-end"
-              title="Its stake earning here now (stakers in the top list)"
+              title="Its active stake here now (stakers in the top list)"
             >
               Stake
             </th>
             <th
               className="text-end"
-              title="Stake activating: earning from next epoch (pending until then)"
+              title="Stake activating: active from next epoch (pending until then)"
             >
               Activating
             </th>
             <th
               className="text-end"
-              title="Stake deactivating: stops earning at this epoch\'s end"
+              title="Stake deactivating: inactive from this epoch\'s end"
             >
               Deactivating
             </th>
@@ -299,7 +299,7 @@ const TopStakers = ({
             {live && (
               <th
                 className="text-end"
-                title="Its stake changing at the epoch's end: activating less deactivating, earning from next epoch"
+                title="Its stake changing at the epoch's end: activating less deactivating, active from next epoch"
               >
                 Next Epoch
               </th>

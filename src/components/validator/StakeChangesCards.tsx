@@ -87,7 +87,7 @@ const EpochChanges = ({
         <span className="fw-bold">Epoch {it.epoch}</span>
         <span
           className="font-monospace"
-          title={`Its stake earning in epoch ${it.epoch}`}
+          title={`Its active stake in epoch ${it.epoch}`}
         >
           {fmt(it.stakeAfter)}
         </span>
@@ -183,9 +183,9 @@ const EpochChanges = ({
 /**
  * A validator's stake over completed epochs (/validators/stake-changes,
  * last 50), as two charts: Stake Changes - inflow and outflow beyond
- * reward compounding, by source pool, with the stake earning each epoch -
- * and Pool Holdings - each known pool's stake earning on it. Item E is the
- * stake that started or stopped earning as E began (the bank at E's last
+ * reward compounding, by source pool, with its active stake each epoch -
+ * and Pool Holdings - each known pool's active stake on it. Item E is the
+ * stake that activated or deactivated as E began (the bank at E's last
  * slot against E-1's): a delegation made in E shows in E + 1. Picking an epoch in either
  * shows its largest staker changes under Stake Changes.
  */
@@ -305,7 +305,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
       <SectionCard
         title="Stake Changes"
         icon="trending-up"
-        info="The stake that started or stopped earning as each epoch began, without reward compounding: a delegation made in epoch E starts earning in E + 1, so it shows there."
+        info="Stake that activated or deactivated as each epoch began, without reward compounding: stake delegated in epoch E activates in E + 1, so it shows there."
       >
         {status(424) ?? (
           <>
@@ -349,7 +349,7 @@ const StakeChangesCards = ({ identity }: { identity: string }) => {
       <SectionCard
         title="Pool Holdings"
         icon="layers"
-        info="Each known pool's stake earning on this validator in each epoch. Named pools cover a minority of stake."
+        info="Each known pool's active stake on this validator in each epoch. Named pools cover a minority of stake."
       >
         {status(280) ??
           (hasPools ? (
