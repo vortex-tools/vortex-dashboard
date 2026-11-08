@@ -52,6 +52,7 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/simds\/?$/, SKELETON.simds],
   [/^\/simd\//, SKELETON.simd],
   [/^\/pools\/?$/, SKELETON.pools],
+  [/^\/pool\/SFDP\/?$/i, SKELETON.poolSfdp, 3],
   [/^\/pool\//, SKELETON.pool, 3],
   [/^\/governance\/?$/, SKELETON.governance],
   [/^\/governance\//, SKELETON.proposal],

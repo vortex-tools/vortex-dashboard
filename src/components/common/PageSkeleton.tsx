@@ -89,7 +89,7 @@ const StatSkeleton = ({ sub = 1 }: { sub?: number }) => (
       <span className={`${BAR} col-5`} />
     </p>
     {Array.from({ length: sub }, (_, i) => (
-      <p key={i} className="fs-10 mb-0 mt-1">
+      <p key={i} className={`fs-10 mb-0${i ? '' : ' mt-1'}`}>
         <span className={`${BAR} col-${i ? 6 : 8}`} />
       </p>
     ))}
@@ -425,6 +425,13 @@ export const SKELETON = {
   simds: [{ stats: 4 }, [full(923)]],
   pool: [
     { stats: 4 },
+    [half(291, 'chart'), half(291, 'chart')],
+    [full(593)],
+    [full(861)]
+  ],
+  // SFDP's: its Validators card has the 100 limit's line too.
+  poolSfdp: [
+    { stats: 4, sub: 2 },
     [half(291, 'chart'), half(291, 'chart')],
     [full(593)],
     [full(861)]

@@ -234,7 +234,11 @@ export const sfdpProgramSchema = z.object({
   // the live delegations, before it). Absent on older APIs.
   source: z.string().nullable().optional().catch(null),
   graduationExternalStake: z.number().nullable().optional().catch(null),
-  termMonths: z.number().nullable().optional().catch(null)
+  termMonths: z.number().nullable().optional().catch(null),
+  // The 2026 rules: at most this many validators delegated to at a time
+  // (null when fitted), and how many hold SFDP stake now.
+  maxValidators: z.number().nullable().optional().catch(null),
+  validators: z.number().nullable().optional().catch(null)
 });
 
 export type SfdpProgram = z.infer<typeof sfdpProgramSchema>;

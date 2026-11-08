@@ -34,7 +34,7 @@ const RETIRING_MEANING: Record<string, string> = {
   graduated:
     "Graduating: its outside stake is over the program's 300k SOL line, so SFDP's delegation leaves (2026 rules).",
   newRules:
-    "Retiring under SFDP's 2026 rules: SFDP's whole delegation here is leaving (members outside the new rules retire in weekly tranches). It can apply for renewal."
+    "Retiring under SFDP's 2026 rules: SFDP's whole delegation here is leaving. The program now delegates to at most 100 validators at a time, so members beyond that retire in weekly tranches. It can apply for renewal."
 };
 
 const CHANGE_MEANING: Record<NonNullable<SfdpMatch['change']>, string> = {

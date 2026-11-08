@@ -951,7 +951,11 @@ const StakePool = () => {
         {slice?.error ? (
           <PoolNotFound name={name} />
         ) : (
-          <PageSkeleton header headerLines={3} rows={SKELETON.pool} />
+          <PageSkeleton
+            header
+            headerLines={3}
+            rows={name === 'SFDP' ? SKELETON.poolSfdp : SKELETON.pool}
+          />
         )}
       </div>
     );
@@ -1106,6 +1110,21 @@ const StakePool = () => {
                   {prev
                     ? `${signedCount(validators.length - prev.validators) ?? 'no change'} since epoch ${prev.epoch.toLocaleString()}`
                     : 'delegated to'}
+                  {/* SFDP's 2026 limit: at most this many at a time, so the
+                      rest retire in weekly tranches. */}
+                  {isSfdp && summary?.sfdpProgram?.maxValidators != null && (
+                    <span
+                      className={
+                        validators.length > summary.sfdpProgram.maxValidators
+                          ? 'd-block text-warning-emphasis'
+                          : 'd-block'
+                      }
+                      title="SFDP's 2026 rules delegate to at most this many validators at a time; members beyond it retire in weekly tranches"
+                    >
+                      limit {summary.sfdpProgram.maxValidators.toLocaleString()}{' '}
+                      at a time
+                    </span>
+                  )}
                   {!!data.minimumOnly && (
                     <span
                       className="d-block"
