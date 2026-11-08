@@ -1112,19 +1112,29 @@ const StakePool = () => {
                     : 'delegated to'}
                   {/* SFDP's 2026 limit: at most this many at a time, so the
                       rest retire in weekly tranches. */}
-                  {isSfdp && summary?.sfdpProgram?.maxValidators != null && (
-                    <span
-                      className={
-                        validators.length > summary.sfdpProgram.maxValidators
-                          ? 'd-block text-warning-emphasis'
-                          : 'd-block'
-                      }
-                      title="SFDP's 2026 rules delegate to at most this many validators at a time; members beyond it retire in weekly tranches"
-                    >
-                      limit {summary.sfdpProgram.maxValidators.toLocaleString()}{' '}
-                      at a time
-                    </span>
-                  )}
+                  {isSfdp &&
+                    summary?.sfdpProgram?.maxValidators != null &&
+                    (() => {
+                      const max = summary.sfdpProgram.maxValidators;
+                      const over = validators.length - max;
+                      // Over it: the limit hasn't taken effect yet (members
+                      // retire in weekly tranches until it holds).
+                      return over > 0 ? (
+                        <span
+                          className="d-block text-warning-emphasis"
+                          title={`SFDP's 2026 rules delegate to at most ${max} validators at a time. It delegates to ${validators.length.toLocaleString()} now: ${over.toLocaleString()} more than the limit, who retire in weekly tranches until it holds.`}
+                        >
+                          {max} limit pending · {over.toLocaleString()} over
+                        </span>
+                      ) : (
+                        <span
+                          className="d-block"
+                          title="SFDP's 2026 rules delegate to at most this many validators at a time"
+                        >
+                          limit {max} at a time
+                        </span>
+                      );
+                    })()}
                   {!!data.minimumOnly && (
                     <span
                       className="d-block"
