@@ -789,7 +789,8 @@ const StakePool = () => {
           externalStake: v.externalStake,
           shortfall: v.sfdpShortfall,
           inTransition: v.sfdpInTransition,
-          eligible: v.sfdpEligible
+          eligible: v.sfdpEligible,
+          retiring: v.sfdpRetiring
         },
         program
       );

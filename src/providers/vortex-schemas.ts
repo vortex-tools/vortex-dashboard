@@ -196,10 +196,17 @@ const sfdpStakeSchema = z.object({
   // shortfall is 0 then. criteria gate expectedDelegation (0 if !eligible).
   mainActivationEpoch: z.number().nullable().catch(null),
   inTransition: z.boolean().catch(false),
+  // Leaving the program (inferred; the Foundation publishes no dates):
+  // 'graduated' (outside stake over the graduation line) or 'newRules'
+  // (SFDP's whole delegation leaving under the 2026 rules). null otherwise.
+  retiring: z.string().nullable().optional().catch(null),
   criteria: z
     .object({
       approved: z.boolean(),
-      stakeWithinLimit: z.boolean(),
+      // The 2025 rule's 1M total-stake limit (older APIs); the 2026 rules
+      // graduate a member above 300k SOL of outside stake instead.
+      stakeWithinLimit: z.boolean().optional().catch(undefined),
+      belowGraduation: z.boolean().nullable().optional().catch(null),
       commissionWithinLimit: z.boolean().nullable(),
       versionMeetsMinimum: z.boolean().nullable(),
       // Concentration: its data center (ASN + city) <= 15% of stake, its
@@ -222,7 +229,12 @@ export const sfdpProgramSchema = z.object({
   matchRate: z.number(),
   cap: z.number(),
   fitValidators: z.number(),
-  fitResidualP50: z.number()
+  fitResidualP50: z.number(),
+  // 'published' (the Foundation's rule, from epoch 1079) or 'fitted' (to
+  // the live delegations, before it). Absent on older APIs.
+  source: z.string().nullable().optional().catch(null),
+  graduationExternalStake: z.number().nullable().optional().catch(null),
+  termMonths: z.number().nullable().optional().catch(null)
 });
 
 export type SfdpProgram = z.infer<typeof sfdpProgramSchema>;
@@ -409,6 +421,16 @@ export const validatorStatusSchema = z.object({
         .nullable()
         .catch(null),
       stake: sfdpStakeSchema.nullable().catch(null),
+      // Its 12-month membership term (from the onboarding epoch's start).
+      term: z
+        .object({
+          startEpoch: z.number().nullable().catch(null),
+          startedAt: z.number().nullable().catch(null),
+          endsAt: z.number().nullable().catch(null)
+        })
+        .nullable()
+        .optional()
+        .catch(null),
       // The inferred matching rule (same as the summary's sfdpProgram).
       program: sfdpProgramSchema.nullable().catch(null),
       mainnet: versionComplianceSchema.nullable().catch(null),
@@ -513,6 +535,7 @@ export const validatorStatusSummarySchema = z.object({
       externalStake: z.number().nullable().catch(null),
       sfdpShortfall: z.number().nullable().catch(null),
       sfdpInTransition: z.boolean().nullable().catch(null),
+      sfdpRetiring: z.string().nullable().optional().catch(null),
       sfdpEligible: z.boolean().nullable().catch(null),
       // null when the identity balance is unknown OR votes are free (Alpenglow)
       epochsOfRunway: z.number().nullable().catch(null),

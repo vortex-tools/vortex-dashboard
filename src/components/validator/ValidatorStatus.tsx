@@ -672,7 +672,8 @@ export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
           inTransition: stake.inTransition,
           eligible: stake.criteria?.eligible,
           activating: stake.activating,
-          deactivating: stake.deactivating
+          deactivating: stake.deactivating,
+          retiring: stake.retiring
         },
         program
       )
@@ -701,6 +702,24 @@ export const ValidatorSfdpBox = ({ nodeAddress }: Props) => {
             <Muted> · </Muted>
             <SfdpMatchStatus match={match} program={program} />
           </>
+        )}
+      </>
+    ]);
+  // Its 12-month term (2026 rules), when the API has it.
+  const term = status.sfdp.term;
+  if (term?.endsAt != null && participant?.state === 'Approved')
+    rows.push([
+      'Term',
+      <>
+        {/* A term already past reads 'ended' (retiring in a tranche). */}
+        {term.endsAt * 1000 < Date.now() ? 'ended' : 'until'}{' '}
+        {new Date(term.endsAt * 1000).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        })}
+        {term.startEpoch != null && (
+          <Muted> · from epoch {term.startEpoch}</Muted>
         )}
       </>
     ]);
@@ -1037,7 +1056,8 @@ const failedSfdpCriteria = (
   c:
     | {
         approved: boolean;
-        stakeWithinLimit: boolean;
+        stakeWithinLimit?: boolean;
+        belowGraduation?: boolean | null;
         commissionWithinLimit: boolean | null;
         versionMeetsMinimum: boolean | null;
         dataCenterWithinLimit?: boolean | null;
@@ -1049,7 +1069,11 @@ const failedSfdpCriteria = (
   if (!c) return null;
   const failed = [
     !c.approved && 'Not approved',
-    !c.stakeWithinLimit && 'Total stake over 1M SOL',
+    // The 2026 rules' graduation line; older APIs' 1M total-stake limit.
+    c.belowGraduation === false && 'Outside stake over 300k SOL (graduates)',
+    c.belowGraduation == null &&
+      c.stakeWithinLimit === false &&
+      'Total stake over 1M SOL',
     c.commissionWithinLimit === false && 'Inflation commission over 5%',
     c.versionMeetsMinimum === false && 'Version below the minimum',
     c.dataCenterWithinLimit === false && 'Data center over 15% of stake',
@@ -1111,6 +1135,10 @@ const MATCH_NOTICE: Record<string, { title: string; message: string }> = {
   ineligible: {
     title: 'Not eligible',
     message: 'fails a program criterion'
+  },
+  retiring: {
+    title: 'Retiring',
+    message: "SFDP's delegation is leaving under its 2026 rules"
   }
 };
 export interface Notice {
@@ -1296,7 +1324,8 @@ export const useValidatorNotices = (
             inTransition: stake.inTransition,
             eligible: stake.criteria?.eligible,
             activating: stake.activating,
-            deactivating: stake.deactivating
+            deactivating: stake.deactivating,
+            retiring: stake.retiring
           },
           program
         )
@@ -1313,19 +1342,27 @@ export const useValidatorNotices = (
               : 'info',
         source: 'SFDP',
         title:
-          (match.kind === 'transition' && sfdpChange(stake)?.title) ||
-          MATCH_NOTICE[match.kind].title,
+          match.kind === 'retiring'
+            ? match.retiring === 'graduated'
+              ? 'Graduating'
+              : 'Retiring'
+            : (match.kind === 'transition' && sfdpChange(stake)?.title) ||
+              MATCH_NOTICE[match.kind].title,
         // Not eligible: just the criterion it fails, when the API names it
         // (no list of every criterion to expand).
         message:
           match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
             ? failedSfdpCriteria(stake?.criteria)!
-            : (match.kind === 'transition' && sfdpChange(stake)?.message) ||
-              MATCH_NOTICE[match.kind].message,
+            : match.kind === 'retiring'
+              ? match.retiring === 'graduated'
+                ? "outside stake over 300k SOL: SFDP's delegation leaves"
+                : "SFDP's whole delegation is leaving under its 2026 rules"
+              : (match.kind === 'transition' && sfdpChange(stake)?.message) ||
+                MATCH_NOTICE[match.kind].message,
         detail:
           match.kind === 'ineligible' && failedSfdpCriteria(stake?.criteria)
             ? undefined
-            : sfdpMatchMeaning(match.kind, match.change)
+            : sfdpMatchMeaning(match.kind, match.change, match.retiring)
       });
   }
 

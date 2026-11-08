@@ -40,12 +40,15 @@ export const isSfdpCheck = (id: string): boolean => id.startsWith('sfdp_');
  *   pulled     - eligible but no delegation: the residual is gone too, so
  *                an unmeasured baseline criterion is failing
  *   ineligible - fails a measurable criterion; no delegation is due
+ *   retiring   - leaving the program: graduated (outside stake over the
+ *                line) or retired under the 2026 rules
  * Only Approved validators get a delegation, so only they get a status.
  */
 export type SfdpMatchKind =
   | 'uncapped'
   | 'capped'
   | 'transition'
+  | 'retiring'
   | 'withheld'
   | 'pulled'
   | 'ineligible';
@@ -55,6 +58,9 @@ export interface SfdpMatch {
   /** A transition's direction, from its activating / deactivating stake
    *  (when known): adding, removing, or both. */
   change?: 'adding' | 'removing' | 'rebalancing';
+  /** Retiring: why - 'graduated' (outside stake over the line) or
+   *  'newRules' (the 2026 rules: its whole delegation leaving). */
+  retiring?: string;
   effective: number;
   externalStake: number;
   /** min(cap, baseline + matchRate * externalStake); 0 if ineligible;
@@ -84,6 +90,7 @@ export const sfdpMatch = (
     eligible?: boolean | null;
     activating?: number | null;
     deactivating?: number | null;
+    retiring?: string | null;
   },
   program: SfdpProgram | null | undefined
 ): SfdpMatch | null => {
@@ -98,6 +105,15 @@ export const sfdpMatch = (
     : null;
   const shortfall = stake.shortfall ?? 0;
   const base = { effective, externalStake, expected, shortfall };
+  // Leaving the program (graduated, or the 2026 rules): its own status,
+  // before anything its stake moving would suggest.
+  if (stake.retiring)
+    return {
+      ...base,
+      kind: 'retiring',
+      retiring: stake.retiring,
+      shortfall: 0
+    };
   if (stake.eligible === false)
     return { ...base, kind: 'ineligible', expected: 0, shortfall: 0 };
   if (stake.inTransition) {

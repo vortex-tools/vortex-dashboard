@@ -400,8 +400,8 @@ export const SKELETON = {
   earnings: [{ stats: 4 }, [half(432, 'chart'), half(432)], [half(423)]],
   staking: [
     { stats: 4 },
-    // SFDP's card (most staked validators are in it).
-    [full(129, 'list')],
+    // SFDP's card (most staked validators are in it), with its Term row.
+    [full(157, 'list')],
     [full(488)],
     [full(495, 'chart')],
     [full(351)],
