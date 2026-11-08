@@ -1,4 +1,5 @@
 import Badge from 'components/base/Badge';
+import { NextEpochChange } from 'components/validator/DelegatorsCards';
 import BackLink from 'components/common/BackLink';
 import { ColumnDef } from '@tanstack/react-table';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -283,7 +284,9 @@ const columns = (
   showOther: boolean,
   showRewards: boolean,
   showDirected: boolean,
-  showAuction: boolean
+  showAuction: boolean,
+  /** The epoch in progress: each validator's stake moving at its end. */
+  pendingBy: Map<string, { activating: number; deactivating: number }> | null
 ): ColumnDef<Validator>[] => [
   {
     id: 'rank',
@@ -353,6 +356,30 @@ const columns = (
     cell: ({ row: { original: v } }) => pct(v.shareOfPool, 2),
     meta: END
   },
+  // Its stake there changing at this epoch's end (as the Staking tab's).
+  ...(pendingBy
+    ? [
+        {
+          id: 'next',
+          header: 'Next Epoch',
+          accessorFn: (v: Validator) => {
+            const p = pendingBy.get(v.voteKey);
+            return p ? p.activating - p.deactivating : 0;
+          },
+          cell: ({
+            row: { original: v }
+          }: {
+            row: { original: Validator };
+          }) => (
+            <NextEpochChange
+              activating={pendingBy.get(v.voteKey)?.activating}
+              deactivating={pendingBy.get(v.voteKey)?.deactivating}
+            />
+          ),
+          meta: END
+        } as ColumnDef<Validator>
+      ]
+    : []),
   // The part of its stake here someone chose rather than the pool's own
   // selection (who, on hover).
   ...(showDirected
@@ -567,8 +594,23 @@ const DistributionChart = ({
 };
 
 /** The pool's stake (area) and validator count (line) per epoch. */
-const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
+/** A history row, or the next epoch's pending one (built from /pool's
+ *  pending: where stake and the validator count would land). */
+type PoolHistoryRow = PoolDetail['history'][number] & { pending?: boolean };
+
+const HistoryChart = ({
+  history: past,
+  pending
+}: {
+  history: PoolDetail['history'];
+  pending?: PoolHistoryRow | null;
+}) => {
   const { getThemeColor } = useAppContext();
+  const history: PoolHistoryRow[] = pending ? [...past, pending] : past;
+  const pi = pending ? history.length - 1 : -1;
+  // The pending step, dashed, from now to where it would land.
+  const step = (v: (h: PoolHistoryRow) => number) =>
+    history.map((h, i) => (i === pi || i === pi - 1 ? v(h) : null));
   // Stake labels with as many digits as its range needs: a pool whose
   // stake barely moves read "◎2.23M" on every line.
   const stakes = history.map(h => h.stake);
@@ -606,7 +648,12 @@ const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
     xAxis: {
       type: 'category',
       data: history.map(h => h.epoch),
-      axisLabel: { color: getThemeColor('tertiary-color'), fontSize: 10 }
+      axisLabel: {
+        color: getThemeColor('tertiary-color'),
+        fontSize: 10,
+        formatter: (v: string) =>
+          pending && v === String(pending.epoch) ? `${v} (pending)` : v
+      }
     },
     yAxis: [
       {
@@ -633,18 +680,42 @@ const HistoryChart = ({ history }: { history: PoolDetail['history'] }) => {
         name: 'Stake',
         type: 'line',
         symbol: 'none',
-        data: history.map(h => h.stake),
+        data: history.map((h, i) => (i === pi ? null : h.stake)),
         color: getThemeColor('primary'),
         areaStyle: { opacity: 0.15, origin: 'start' },
         tooltip: { valueFormatter: (v: number) => compactSol(v) }
       },
+      ...(pi > 0
+        ? [
+            {
+              name: 'Stake (pending)',
+              type: 'line',
+              symbol: 'none',
+              data: step(h => h.stake),
+              color: getThemeColor('primary'),
+              lineStyle: { type: 'dashed' },
+              emphasis: { disabled: true },
+              tooltip: { valueFormatter: (v: number) => compactSol(v) }
+            },
+            {
+              name: 'Validators (pending)',
+              type: 'line',
+              yAxisIndex: 1,
+              symbol: 'none',
+              data: step(h => h.validators),
+              color: getThemeColor('info'),
+              lineStyle: { type: 'dashed' },
+              emphasis: { disabled: true }
+            }
+          ]
+        : []),
       {
         name: 'Validators',
         type: 'line',
         yAxisIndex: 1,
         symbol: 'circle',
         symbolSize: 4,
-        data: history.map(h => h.validators),
+        data: history.map((h, i) => (i === pi ? null : h.validators)),
         color: getThemeColor('info')
       }
     ]
@@ -923,6 +994,13 @@ const StakePool = () => {
   );
   // A part's rewards would be of its whole stake: not shown there.
   const isPart = view === 'undirected' || view === 'directed';
+  const pendingBy = useMemo(
+    () =>
+      data?.pending
+        ? new Map(data.pending.validators.map(v => [v.voteKey, v]))
+        : null,
+    [data]
+  );
   const table = useAdvanceTable({
     columns: useMemo(
       () =>
@@ -931,9 +1009,18 @@ const StakePool = () => {
           showOther,
           showRewards && !isPart,
           showDirected,
-          showAuction
+          showAuction,
+          pendingBy
         ),
-      [isSfdp, showOther, showRewards, isPart, showDirected, showAuction]
+      [
+        isSfdp,
+        showOther,
+        showRewards,
+        isPart,
+        showDirected,
+        showAuction,
+        pendingBy
+      ]
     ),
     data: shown,
     sortable: true,
@@ -1024,7 +1111,47 @@ const StakePool = () => {
   const directedStake = directed ? sumBy(directed.by) : 0;
   const history = data.history;
   const prev = history.length > 1 ? history[history.length - 2] : null;
-  const newest = [...history].reverse();
+  const newest: PoolHistoryRow[] = [...history].reverse();
+  // The next epoch's pending changes (the epoch in progress only), as a
+  // row like the others: where stake and the count would land, and the
+  // validators it adds (nothing there now), drops (all of it leaving) or
+  // moves stake on.
+  const pend = data.pending;
+  const lastRow = history[history.length - 1];
+  const pendingRow: PoolHistoryRow | null =
+    pend && lastRow
+      ? (() => {
+          const added = pend.validators.filter(
+            v => v.stake === 0 && v.activating > 0
+          );
+          const dropped = pend.validators.filter(
+            v => v.stake > 0 && v.stake + v.net <= 0
+          );
+          const moved = pend.validators.filter(
+            v => !added.includes(v) && !dropped.includes(v)
+          );
+          const ref = (v: (typeof pend.validators)[number]) => ({
+            voteKey: v.voteKey,
+            identity: v.identity,
+            name: v.name
+          });
+          return {
+            epoch: pend.epoch,
+            stake: lastRow.stake + pend.activating - pend.deactivating,
+            validators: lastRow.validators + pend.added - pend.dropped,
+            compared: true,
+            minimumOnly: null,
+            added: added.map(v => ({ ...ref(v), stake: v.activating })),
+            moreAdded: 0,
+            dropped: dropped.map(v => ({ ...ref(v), stakePrev: v.stake })),
+            moreDropped: 0,
+            moved: moved.map(v => ({ ...ref(v), net: v.net })),
+            moreMoved: 0,
+            pending: true
+          };
+        })()
+      : null;
+  const rows = pendingRow ? [pendingRow, ...newest] : newest;
 
   return (
     <div className="mb-9">
@@ -1402,7 +1529,7 @@ const StakePool = () => {
               info="Its effective stake (area) and how many validators it stakes to (line) at the end of each epoch."
             >
               {history.length > 1 ? (
-                <HistoryChart history={history} />
+                <HistoryChart history={history} pending={pendingRow} />
               ) : (
                 <UntrackedState>Not enough epochs recorded yet.</UntrackedState>
               )}
@@ -1473,7 +1600,7 @@ const StakePool = () => {
           icon="clock"
           info="Each epoch, newest first: its stake, validator count, and the validators it added, dropped or moved stake on. Small moves can be reward noise."
         >
-          {newest.length ? (
+          {rows.length ? (
             <Table
               responsive
               size="sm"
@@ -1491,8 +1618,8 @@ const StakePool = () => {
                 </tr>
               </thead>
               <tbody>
-                {newest.map((h, i) => {
-                  const before = newest[i + 1];
+                {rows.map((h, i) => {
+                  const before = rows[i + 1];
                   const isOpen = open === h.epoch;
                   const nAdded = h.added.length + h.moreAdded;
                   const nDropped = h.dropped.length + h.moreDropped;
@@ -1501,8 +1628,19 @@ const StakePool = () => {
                     <Fragment key={h.epoch}>
                       {/* Striped by epoch: a Details row doesn't shift it. */}
                       <tr className={i % 2 === 0 ? 'stripe' : undefined}>
-                        <td className="font-monospace">
+                        <td className="font-monospace text-nowrap">
                           {h.epoch.toLocaleString()}
+                          {h.pending && (
+                            <span
+                              className="text-body-tertiary fs-10 ms-1"
+                              title="Set to change at this epoch's end: activating stake is pending until then (it can still be cancelled), deactivating stake leaves"
+                              style={{
+                                fontFamily: 'var(--bs-body-font-family)'
+                              }}
+                            >
+                              (pending)
+                            </span>
+                          )}
                         </td>
                         <td className="text-end font-monospace text-nowrap">
                           {compactSol(h.stake)}

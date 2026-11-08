@@ -3426,6 +3426,36 @@ export const poolDetailSchema = z.object({
       })
     )
     .catch([]),
+  // The epoch in progress only (null for a completed one): its stake
+  // moving at this epoch's end, landing in `epoch` (current + 1), from
+  // its authorities' live moving stake. validators: every one with stake
+  // moving, largest |net| first (stake: its stake there now, 0 if new);
+  // added: it holds nothing there now; dropped: its whole stake leaving.
+  // Activating is pending until the boundary (can be cancelled).
+  pending: z
+    .object({
+      epoch: z.number(),
+      activating: z.number().catch(0),
+      deactivating: z.number().catch(0),
+      validators: z
+        .array(
+          z.object({
+            voteKey: z.string(),
+            identity: z.string().nullable().catch(null),
+            name: validatorNameSchema.catch(null),
+            stake: z.number().catch(0),
+            activating: z.number().catch(0),
+            deactivating: z.number().catch(0),
+            net: z.number().catch(0)
+          })
+        )
+        .catch([]),
+      added: z.number().catch(0),
+      dropped: z.number().catch(0)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   // Oldest first. moved nets out reward compounding by the pool's
   // median growth, so small moves on big holdings can be noise.
   history: z

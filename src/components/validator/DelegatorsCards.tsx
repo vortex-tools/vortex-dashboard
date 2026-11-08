@@ -133,7 +133,7 @@ const StakeSizes = ({ d }: { d: ValidatorDelegators }) => {
 
 /** A staker's stake changing next epoch: activating less deactivating, with a
  *  green rise / red fall (as the Next Epoch stat), the parts on hover. */
-const NextEpochChange = ({
+export const NextEpochChange = ({
   activating,
   deactivating
 }: {
