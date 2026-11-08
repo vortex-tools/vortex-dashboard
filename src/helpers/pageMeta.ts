@@ -109,7 +109,7 @@ export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
     'Consensus leaderboard'
   ],
   '/leaderboards/fees': env => [
-    `${solana(env)} fees leaderboard: fees and tips per block`,
+    `${solana(env)} fees leaderboard: priority fees and tips per block`,
     `${solana(env)} validators ranked by the fees their blocks earn: base fees, priority fees and tips per block, compared with the blocks other leaders made around them, and what skipped slots cost.`,
     'Fees leaderboard'
   ],
@@ -124,27 +124,27 @@ export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
     'Compare'
   ],
   '/validators': env => [
-    `All ${solana(env)} validators: status, stake, client and location`,
-    `Every staked ${solana(env)} validator's operational status: stake, client and version, location and data center, check verdicts and SFDP status.`,
+    `${solana(env)} validators list: stake, client and location`,
+    `Every staked ${solana(env)} validator with its stake, client and version, location and data center, status checks and SFDP status.`,
     'Validators'
   ],
   '/decentralization': env => [
-    `${solana(env)} decentralization: Nakamoto coefficients`,
+    `${solana(env)} decentralization: Nakamoto coefficient and validator distribution`,
     `How decentralized ${solana(env)} is: Nakamoto coefficients by validator, hosting provider, provider and city, country and client, with each breakdown's history.`,
     'Decentralization'
   ],
   '/client-versions': env => [
-    `${solana(env)} client versions: Agave, Firedancer and Jito adoption`,
+    `${solana(env)} validator clients: Agave, Firedancer and Jito versions by stake`,
     `Which client and version every ${solana(env)} validator runs, by stake: how far each client's validators have upgraded.`,
     'Client versions'
   ],
   '/features': env => [
-    `${solana(env)} feature gates: activation status`,
-    `Every ${solana(env)} feature gate: pending, scheduled and activated features, with the epoch each one activated.`,
+    `${solana(env)} feature gates: activation schedule and status`,
+    `Every ${solana(env)} feature gate: pending, scheduled and activated, the activation queue, and the epoch each one activated.`,
     'Feature gates'
   ],
   '/simds': env => [
-    `SIMDs: Solana Improvement Documents and their status`,
+    `Solana SIMD tracker: every SIMD's status, feature gates and votes`,
     `Solana Improvement Documents (SIMDs) and how each one relates to ${solana(env)} feature gates and governance votes.`,
     'SIMDs'
   ],
@@ -159,13 +159,13 @@ export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
     'Activity'
   ],
   '/governance': env => [
-    `${solana(env)} governance proposals and validator votes`,
+    `${solana(env)} governance votes: proposals and how every validator voted`,
     `${solana(env)} governance proposals: each one's verdict under its rule, every validator's vote, and stakers' overrides.`,
     'Governance'
   ],
   '/status': env => [
-    `${solana(env)} cluster status: live Alpenglow slots and finality`,
-    `What ${solana(env)} is doing now: the latest slots as they happen under Alpenglow, finality, and any halt and restart.`,
+    `${solana(env)} network status: live slots, finality and halts`,
+    `What ${solana(env)} is doing now: the latest slots as they happen under Alpenglow, finality, and any outage (halt) and its restart.`,
     'Cluster status'
   ],
   '/usage': env => [
@@ -668,13 +668,13 @@ const simdMeta = (
             ? '; proposed in an open pull request'
             : '';
     facts.push(
-      `${simdLabel(n)}${title ? ` (${title})` : ''} is a ${what ? `${what} ` : ''}Solana Improvement Document${by}${status}.`
+      `${simdLabel(n)} (SIMD ${n}${title ? `, ${title}` : ''}) is a ${what ? `${what} ` : ''}Solana Improvement Document${by}${status}.`
     );
     facts.push(simdRollup(s));
   }
   return {
-    title: `${label}: status and activation`,
-    description: `${facts.join(' ') || `${simdLabel(n)}: Solana Improvement Document.`} Its feature gates on mainnet-beta, testnet and devnet, and its history.`,
+    title: `Solana ${label}: status and activation`,
+    description: `${facts.join(' ') || `${simdLabel(n)} (SIMD ${n}): Solana Improvement Document.`}${s?.gates.length ? ' Its feature gates on mainnet-beta, testnet and devnet, and its history.' : ''}`,
     canonical: path,
     h1: label,
     facts: facts.length ? facts : undefined,
