@@ -13,7 +13,7 @@ import AdvanceTableFooter from 'components/base/AdvanceTableFooter';
 import AddressLine from 'components/common/AddressLine';
 import PageSkeleton, {
   LinesSkeleton,
-  SKELETON
+  poolSkeletonFor
 } from 'components/common/PageSkeleton';
 import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
@@ -643,7 +643,34 @@ const HistoryChart = ({
       trigger: 'axis',
       backgroundColor: getThemeColor('body-highlight-bg'),
       borderColor: getThemeColor('border-color'),
-      textStyle: { color: getThemeColor('body-color') }
+      textStyle: { color: getThemeColor('body-color') },
+      // One Stake and one Validators row per epoch: the pending step's
+      // series repeat them (and are empty elsewhere), so not listed as
+      // their own.
+      formatter: (ps: Array<{ dataIndex: number }>) => {
+        const h = history[ps[0]?.dataIndex ?? 0];
+        if (!h) return '';
+        const dot = (c: string) =>
+          `<span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:${c}"></span>`;
+        const row = (c: string, label: string, v: string) =>
+          `<div class="d-flex justify-content-between gap-3">${dot(c)}<span class="me-auto">${label}</span><span class="fw-semibold">${v}</span></div>`;
+        return (
+          `<div class="fw-bold mb-1">Epoch ${h.epoch}${h.pending ? ' · pending' : ''}</div>` +
+          row(
+            getThemeColor('primary'),
+            h.pending ? 'Stake, if all goes through' : 'Stake',
+            compactSol(h.stake)
+          ) +
+          row(
+            getThemeColor('info'),
+            'Validators',
+            h.validators.toLocaleString()
+          ) +
+          (h.pending
+            ? `<div class="fs-10 text-body-tertiary mt-1" style="max-width:16rem;white-space:normal">Set to change at this epoch's end: activating stake is pending until then (it can still be cancelled); deactivating stake leaves.</div>`
+            : '')
+        );
+      }
     },
     xAxis: {
       type: 'category',
@@ -1038,11 +1065,7 @@ const StakePool = () => {
         {slice?.error ? (
           <PoolNotFound name={name} />
         ) : (
-          <PageSkeleton
-            header
-            headerLines={3}
-            rows={name === 'SFDP' ? SKELETON.poolSfdp : SKELETON.pool}
-          />
+          <PageSkeleton header headerLines={3} rows={poolSkeletonFor(name)} />
         )}
       </div>
     );
@@ -1151,7 +1174,10 @@ const StakePool = () => {
           };
         })()
       : null;
-  const rows = pendingRow ? [pendingRow, ...newest] : newest;
+  // Epoch Changes: the pending row and the 10 latest epochs (each row's
+  // change against the one before, from the full list).
+  const allRows = pendingRow ? [pendingRow, ...newest] : newest;
+  const rows = allRows.slice(0, pendingRow ? 11 : 10);
 
   return (
     <div className="mb-9">
@@ -1538,67 +1564,9 @@ const StakePool = () => {
         </Row>
 
         <SectionCard
-          title="Validators"
-          icon="server"
-          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Changes: the latest epoch's adds and drops."
-          aside={
-            churn || showDirected ? (
-              <ButtonGroup size="sm">
-                {viewOptions.map(([k, label]) => (
-                  <ToggleButton
-                    key={k}
-                    id={`pool-validators-${k}`}
-                    type="radio"
-                    name="pool-validators"
-                    variant="soft-secondary"
-                    value={k}
-                    checked={view === k}
-                    onChange={() => setView(k)}
-                  >
-                    {label}
-                  </ToggleButton>
-                ))}
-              </ButtonGroup>
-            ) : undefined
-          }
-        >
-          {isPart && (
-            <p className="fs-10 text-body-tertiary mb-2">
-              {view === 'undirected'
-                ? 'Only the stake it chose itself on each validator: every directed source taken out.'
-                : 'Only its directed stake on each validator.'}{' '}
-              Of the pool: that stake&apos;s share of the whole pool.
-            </p>
-          )}
-          {view === 'changes' && churn && (
-            <p className="fs-10 text-body-tertiary mb-2">
-              Epoch {churn.epoch.toLocaleString()}: the validators it started
-              delegating to (New) and stopped delegating to (Dropped, with its
-              stake there before)
-              {churn.moreAdded + churn.moreDropped > 0 &&
-                ` - and ${(churn.moreAdded + churn.moreDropped).toLocaleString()} more in Epoch Changes`}
-            </p>
-          )}
-          <AdvanceTableProvider {...table}>
-            <div className="mb-3">
-              <SearchBox
-                placeholder="Search validators, vote or identity keys"
-                onChange={e =>
-                  table.setGlobalFilter(e.target.value || undefined)
-                }
-              />
-            </div>
-            <AdvanceTable
-              tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
-            />
-            <AdvanceTableFooter viewAll={false} />
-          </AdvanceTableProvider>
-        </SectionCard>
-
-        <SectionCard
           title="Epoch Changes"
           icon="clock"
-          info="Each epoch, newest first: its stake, validator count, and the validators it added, dropped or moved stake on. Small moves can be reward noise."
+          info="The 10 latest epochs, newest first (and the next one's pending changes): its stake, validator count, and the validators it added, dropped or moved stake on. Small moves can be reward noise."
         >
           {rows.length ? (
             <Table
@@ -1619,7 +1587,7 @@ const StakePool = () => {
               </thead>
               <tbody>
                 {rows.map((h, i) => {
-                  const before = rows[i + 1];
+                  const before = allRows[i + 1];
                   const isOpen = open === h.epoch;
                   const nAdded = h.added.length + h.moreAdded;
                   const nDropped = h.dropped.length + h.moreDropped;
@@ -1738,6 +1706,64 @@ const StakePool = () => {
           ) : (
             <UntrackedState>No epochs recorded yet.</UntrackedState>
           )}
+        </SectionCard>
+
+        <SectionCard
+          title="Validators"
+          icon="server"
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Changes: the latest epoch's adds and drops."
+          aside={
+            churn || showDirected ? (
+              <ButtonGroup size="sm">
+                {viewOptions.map(([k, label]) => (
+                  <ToggleButton
+                    key={k}
+                    id={`pool-validators-${k}`}
+                    type="radio"
+                    name="pool-validators"
+                    variant="soft-secondary"
+                    value={k}
+                    checked={view === k}
+                    onChange={() => setView(k)}
+                  >
+                    {label}
+                  </ToggleButton>
+                ))}
+              </ButtonGroup>
+            ) : undefined
+          }
+        >
+          {isPart && (
+            <p className="fs-10 text-body-tertiary mb-2">
+              {view === 'undirected'
+                ? 'Only the stake it chose itself on each validator: every directed source taken out.'
+                : 'Only its directed stake on each validator.'}{' '}
+              Of the pool: that stake&apos;s share of the whole pool.
+            </p>
+          )}
+          {view === 'changes' && churn && (
+            <p className="fs-10 text-body-tertiary mb-2">
+              Epoch {churn.epoch.toLocaleString()}: the validators it started
+              delegating to (New) and stopped delegating to (Dropped, with its
+              stake there before)
+              {churn.moreAdded + churn.moreDropped > 0 &&
+                ` - and ${(churn.moreAdded + churn.moreDropped).toLocaleString()} more in Epoch Changes`}
+            </p>
+          )}
+          <AdvanceTableProvider {...table}>
+            <div className="mb-3">
+              <SearchBox
+                placeholder="Search validators, vote or identity keys"
+                onChange={e =>
+                  table.setGlobalFilter(e.target.value || undefined)
+                }
+              />
+            </div>
+            <AdvanceTable
+              tableProps={{ size: 'sm', className: 'data-table fs-9 mb-0' }}
+            />
+            <AdvanceTableFooter viewAll={false} />
+          </AdvanceTableProvider>
         </SectionCard>
 
         {data.authorities.length > 0 && (

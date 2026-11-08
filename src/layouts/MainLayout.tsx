@@ -8,6 +8,7 @@ import { useAppContext } from 'providers/AppProvider';
 import PageSkeleton, {
   SKELETON,
   SkeletonRow,
+  poolSkeletonFor,
   ValidatorHeaderSkeleton
 } from 'components/common/PageSkeleton';
 import { Suspense } from 'react';
@@ -52,8 +53,6 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/simds\/?$/, SKELETON.simds],
   [/^\/simd\//, SKELETON.simd],
   [/^\/pools\/?$/, SKELETON.pools],
-  [/^\/pool\/SFDP\/?$/i, SKELETON.poolSfdp, 3],
-  [/^\/pool\//, SKELETON.pool, 3],
   [/^\/governance\/?$/, SKELETON.governance],
   [/^\/governance\//, SKELETON.proposal],
   [/^\/(activity|vote-account-changes)/, SKELETON.activity]
@@ -75,9 +74,14 @@ const ChunkFallback = () => {
         </>
       ) : (
         (() => {
-          const [, rows, lines] = PAGE.find(([re]) =>
-            re.test(pathname + search)
-          ) ?? [null, SKELETON.page];
+          // A pool page: its own layout by name (SFDP, Marinade, others).
+          const pool = pathname.match(/^\/pool\/([^/]+)/);
+          const [, rows, lines] = pool
+            ? [null, poolSkeletonFor(decodeURIComponent(pool[1])), 3]
+            : (PAGE.find(([re]) => re.test(pathname + search)) ?? [
+                null,
+                SKELETON.page
+              ]);
           return <PageSkeleton header headerLines={lines} rows={rows} />;
         })()
       )}

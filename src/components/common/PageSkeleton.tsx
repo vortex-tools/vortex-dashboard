@@ -423,18 +423,39 @@ export const SKELETON = {
     [full(182)]
   ],
   simds: [{ stats: 4 }, [full(923)]],
+  // A stake pool's: five stat cards, its Fees, the two charts, Epoch
+  // Changes (the latest 10), then its Validators.
   pool: [
-    { stats: 4 },
-    [half(291, 'chart'), half(291, 'chart')],
-    [full(593)],
-    [full(861)]
+    { stats: 5, sub: 2 },
+    [full(137, 'list')],
+    [half(304, 'chart'), half(304, 'chart')],
+    [full(525)],
+    [full(593)]
   ],
-  // SFDP's: its Validators card has the 100 limit's line too.
+  // Marinade's (mSOL, Native): its stake auction's card above Fees.
+  poolMarinade: [
+    { stats: 5, sub: 2 },
+    [full(90, 'list')],
+    [full(160, 'list')],
+    [half(304, 'chart'), half(304, 'chart')],
+    [full(525)],
+    [full(593)]
+  ],
+  // Marinade Native's: four stat cards and the auction, no Fees.
+  poolMarinadeNative: [
+    { stats: 4, sub: 2 },
+    [full(90, 'list')],
+    [half(304, 'chart'), half(304, 'chart')],
+    [full(525)],
+    [full(593)]
+  ],
+  // SFDP's: four stat cards (its Validators card has the 100 limit's
+  // line), no Fees.
   poolSfdp: [
     { stats: 4, sub: 2 },
     [half(291, 'chart'), half(291, 'chart')],
-    [full(593)],
-    [full(861)]
+    [full(525)],
+    [full(593)]
   ],
   pools: [{ stats: 3 }, [full(733)]],
   proposal: [
@@ -475,5 +496,16 @@ export const SKELETON = {
   /** A page's chunk still loading: a generic page. */
   page: [{ stats: 4 }, [half(300), half(300)], [full(400)]]
 } satisfies Record<string, SkeletonRow[]>;
+
+/** A stake pool page's layout, by its name: SFDP's, Marinade's (with its
+ *  auction) or a stake pool's. */
+export const poolSkeletonFor = (name: string): SkeletonRow[] =>
+  name.toUpperCase() === 'SFDP'
+    ? SKELETON.poolSfdp
+    : name.toLowerCase() === 'msol'
+      ? SKELETON.poolMarinade
+      : name.toLowerCase() === 'marinade native'
+        ? SKELETON.poolMarinadeNative
+        : SKELETON.pool;
 
 export default PageSkeleton;
