@@ -658,7 +658,7 @@ const HistoryChart = ({
           `<div class="fw-bold mb-1">Epoch ${h.epoch}${h.pending ? ' · pending' : ''}</div>` +
           row(
             getThemeColor('primary'),
-            h.pending ? 'Stake, if all goes through' : 'Stake',
+            h.pending ? 'Stake (pending)' : 'Stake',
             compactSol(h.stake)
           ) +
           row(

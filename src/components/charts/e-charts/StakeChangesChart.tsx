@@ -213,9 +213,7 @@ const StakeChangesChart = ({
             return it
               ? `<div class="fw-bold mb-1">Epoch ${it.epoch}${it.pending ? ' · pending' : ''}</div>` +
                   line(
-                    it.pending
-                      ? 'Active stake, if all goes through'
-                      : 'Active stake',
+                    it.pending ? 'Active stake (pending)' : 'Active stake',
                     fmtSol(sol(it.stakeAfter))
                   )
               : '';
@@ -475,10 +473,7 @@ const StakeChangesChart = ({
                     `<span class="text-danger">−${fmtSol(sol(it.outflow))}</span>`
                   )
                 : '') +
-              line(
-                'Active stake, if all goes through',
-                fmtSol(sol(it.stakeAfter))
-              ) +
+              line('Active stake (pending)', fmtSol(sol(it.stakeAfter))) +
               pendingNote +
               `<div class="fs-10 text-body-tertiary mt-1">Who: Top Stakers, Next epoch</div>`
             );
