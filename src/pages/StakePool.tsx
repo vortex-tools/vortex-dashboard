@@ -956,7 +956,7 @@ const StakePool = () => {
   // The Validators card's view: all of them, or the latest epoch's adds
   // (a filter of the table) or drops (no longer in it: their own list).
   const [view, setView] = useState<
-    'all' | 'undirected' | 'directed' | 'changes'
+    'all' | 'undirected' | 'directed' | 'changes' | 'pending'
   >('all');
   // Undirected / Directed: each validator's row with only that part of
   // its stake, its shares of the pool and of the validator scaled to it.
@@ -978,8 +978,33 @@ const StakePool = () => {
     ? data.history[data.history.length - 1]
     : null;
   const churn = latest?.compared ? latest : null;
+  // The epoch in progress: the validators its stake moves on at its end.
+  const pendingRows = useMemo(() => {
+    const pendingVals = data?.pending?.validators ?? [];
+    // Its rows, and one (no stake yet: New) for each it starts
+    // delegating to - not its minimum-only stake (as All).
+    const rows = pendingVals
+      .flatMap(p => {
+        const v = validators.find(v => v.voteKey === p.voteKey);
+        if (v) return [v];
+        if (p.stake > 0 || p.activating <= MIN_STAKE) return [];
+        return [
+          {
+            voteKey: p.voteKey,
+            identity: p.identity,
+            name: p.name,
+            stake: 0,
+            shareOfPool: null,
+            shareOfValidator: null
+          } as unknown as Validator
+        ];
+      })
+      // By stake, as the table sorts it, so # counts down it.
+      .sort((x, y) => y.stake - x.stake);
+    return rows.length ? rows : null;
+  }, [data, validators]);
   // The Validators card's filter: all, the directed ones, the latest
-  // epoch's adds and drops.
+  // epoch's adds and drops, the pending ones.
   const viewOptions: Array<[typeof view, string]> = [
     ['all', 'All'],
     ...(showDirected
@@ -988,7 +1013,8 @@ const StakePool = () => {
           ['directed', 'Directed']
         ] as Array<[typeof view, string]>)
       : []),
-    ...(churn ? [['changes', 'Changes'] as [typeof view, string]] : [])
+    ...(churn ? [['changes', 'Changes'] as [typeof view, string]] : []),
+    ...(pendingRows ? [['pending', 'Pending'] as [typeof view, string]] : [])
   ];
   const shown = useMemo(
     () =>
@@ -1015,9 +1041,11 @@ const StakePool = () => {
                   }) as unknown as Validator
               )
             ]
-          : validators,
+          : view === 'pending' && pendingRows
+            ? pendingRows
+            : validators,
     // tablePart reads distParts and validators.
-    [view, validators, churn, distParts]
+    [view, validators, churn, pendingRows, distParts]
   );
   // A part's rewards would be of its whole stake: not shown there.
   const isPart = view === 'undirected' || view === 'directed';
@@ -1711,9 +1739,9 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Changes: the latest epoch's adds and drops."
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Changes: the latest epoch's adds and drops. Pending: the validators its stake moves on at this epoch's end."
           aside={
-            churn || showDirected ? (
+            churn || showDirected || pendingRows ? (
               <ButtonGroup size="sm">
                 {viewOptions.map(([k, label]) => (
                   <ToggleButton
@@ -1748,6 +1776,13 @@ const StakePool = () => {
               stake there before)
               {churn.moreAdded + churn.moreDropped > 0 &&
                 ` - and ${(churn.moreAdded + churn.moreDropped).toLocaleString()} more in Epoch Changes`}
+            </p>
+          )}
+          {view === 'pending' && data.pending && (
+            <p className="fs-10 text-body-tertiary mb-2">
+              Epoch {data.pending.epoch.toLocaleString()} (pending): the
+              validators its stake is activating or deactivating on at this
+              epoch&apos;s end - Next Epoch has how much.
             </p>
           )}
           <AdvanceTableProvider {...table}>
