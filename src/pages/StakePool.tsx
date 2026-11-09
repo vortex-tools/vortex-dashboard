@@ -703,13 +703,50 @@ const HistoryChart = ({
       }
     ],
     series: [
+      // Validators: a bar per epoch, behind the stake line (the pending
+      // one faint and dashed).
+      {
+        name: 'Validators',
+        type: 'bar',
+        yAxisIndex: 1,
+        barMaxWidth: 14,
+        z: 1,
+        color: getThemeColor('info'),
+        data: history.map((h, i) =>
+          i === pi
+            ? {
+                value: h.validators,
+                itemStyle: {
+                  opacity: 0.25,
+                  borderColor: getThemeColor('info'),
+                  borderType: 'dashed',
+                  borderWidth: 1
+                }
+              }
+            : { value: h.validators, itemStyle: { opacity: 0.55 } }
+        ),
+        emphasis: { itemStyle: { opacity: 0.8 } }
+      },
+      // Stake: its fill under the bars, its line over them.
+      {
+        name: 'Stake area',
+        type: 'line',
+        symbol: 'none',
+        z: 0,
+        silent: true,
+        data: history.map((h, i) => (i === pi ? null : h.stake)),
+        color: getThemeColor('primary'),
+        lineStyle: { width: 0 },
+        areaStyle: { opacity: 0.12, origin: 'start' },
+        tooltip: { show: false }
+      },
       {
         name: 'Stake',
         type: 'line',
         symbol: 'none',
+        z: 2,
         data: history.map((h, i) => (i === pi ? null : h.stake)),
         color: getThemeColor('primary'),
-        areaStyle: { opacity: 0.15, origin: 'start' },
         tooltip: { valueFormatter: (v: number) => compactSol(v) }
       },
       ...(pi > 0
@@ -718,33 +755,15 @@ const HistoryChart = ({
               name: 'Stake (pending)',
               type: 'line',
               symbol: 'none',
+              z: 2,
               data: step(h => h.stake),
               color: getThemeColor('primary'),
               lineStyle: { type: 'dashed' },
               emphasis: { disabled: true },
               tooltip: { valueFormatter: (v: number) => compactSol(v) }
-            },
-            {
-              name: 'Validators (pending)',
-              type: 'line',
-              yAxisIndex: 1,
-              symbol: 'none',
-              data: step(h => h.validators),
-              color: getThemeColor('info'),
-              lineStyle: { type: 'dashed' },
-              emphasis: { disabled: true }
             }
           ]
-        : []),
-      {
-        name: 'Validators',
-        type: 'line',
-        yAxisIndex: 1,
-        symbol: 'circle',
-        symbolSize: 4,
-        data: history.map((h, i) => (i === pi ? null : h.validators)),
-        color: getThemeColor('info')
-      }
+        : [])
     ]
   };
   return (
