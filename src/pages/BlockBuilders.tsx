@@ -75,6 +75,13 @@ type Row_ = {
   /** perBlock after the fees its blocks paid, each taken from the part
    *  it's charged on (null: no fees served). */
   perBlockAfter: Row_['perBlock'];
+  /** perBlock is the median block's (the API serves the per-block
+   *  distribution), not the mean. */
+  median: boolean;
+  /** The mean per block (its blocks' totals over their count). */
+  mean: number | null;
+  /** The middle half of its blocks' income: 25th to 75th percentile. */
+  iqr: [number, number] | null;
 };
 
 /** A builder's per-block parts after the fees its blocks paid: Jito tip
@@ -135,7 +142,46 @@ const rowsOf = (d: BlockBuilders): Row_[] => {
         keptPerBlock:
           b.built?.kept != null && blocks ? b.built.kept / blocks : null,
         keptEstimated: !!b.built?.fees && !b.built.fees.measured,
-        perBlockAfter: afterFees(b)
+        perBlockAfter: afterFees(b),
+        median: false,
+        mean: null,
+        iqr: null
+      };
+    })
+    .map(r => {
+      // The mean as computed above; with the per-block distribution, the
+      // median block's parts instead (its kept: after the fees on its
+      // Jito tips, taken off them).
+      const mean = r.perBlock?.total ?? null;
+      const q = r.b.built?.perBlock;
+      if (!q) return { ...r, mean };
+      const m = q.median;
+      const fees = m.kept != null ? Math.max(0, m.total - m.kept) : null;
+      return {
+        ...r,
+        // The per-block figures leave its own tips out (not per block).
+        understated: r.b.tips === 'ownTipAccounts',
+        median: true,
+        mean,
+        iqr: [q.p25.total, q.p75.total] as [number, number],
+        perBlock: {
+          base: m.baseFees,
+          priority: m.priorityFees,
+          tips: m.mevTips,
+          own: 0,
+          total: m.total
+        },
+        keptPerBlock: m.kept,
+        perBlockAfter:
+          fees != null
+            ? {
+                base: m.baseFees,
+                priority: m.priorityFees,
+                tips: Math.max(0, m.mevTips - fees),
+                own: 0,
+                total: m.kept!
+              }
+            : null
       };
     });
 };
@@ -216,7 +262,14 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
                 : '') +
               line(null, 'Kept per block', sol(pb(r)!.total)) +
               line(null, 'Before fees', sol(r.perBlock?.total ?? null))
-            : line(null, 'Average per block', sol(pb(r)!.total))) +
+            : line(
+                null,
+                r.median ? 'Median per block' : 'Average per block',
+                sol(pb(r)!.total)
+              )) +
+          (r.median
+            ? `<div class="fs-10 text-body-tertiary mt-1">The median block's parts. Middle half of its blocks: ${sol(r.iqr![0])} to ${sol(r.iqr![1])} · mean ${sol(r.mean)}</div>`
+            : '') +
           `<div class="fs-10 text-body-tertiary mt-1">${r.blocks.toLocaleString()} blocks built</div>` +
           (r.b.tips === 'priorityFees'
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its own tips arrive as priority fees: Jito tips here are only the Jito bundles that landed in its blocks.</div>`
@@ -797,9 +850,18 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
         )
         .map(b => b.builder)
     : [];
+  // Medians once every epoch shown has the per-block distribution (not a
+  // line mixing medians and means while the API fills it in).
+  const useMedian =
+    loaded.length > 0 &&
+    loaded.every(d =>
+      d.builders.every(b => !b.built?.blocks || !!b.built.perBlock)
+    );
   const at = (d: BlockBuilders, k: string) => {
     const b = d.builders.find(x => x.builder === k)?.built;
     if (!b?.blocks) return { avg: null, kept: null };
+    if (useMedian && b.perBlock)
+      return { avg: b.perBlock.median.total, kept: b.perBlock.median.kept };
     return {
       avg:
         (b.baseFees + b.priorityFees + b.mevTips + (b.ownTips ?? 0)) / b.blocks,
@@ -827,7 +889,7 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
           .sort((a, b) => b.avg! - a.avg!);
         return (
           `<div class="fw-bold mb-1">Epoch ${d.epoch}${d.complete ? '' : ' (so far)'}</div>` +
-          `<table class="fs-10"><tr class="text-body-tertiary"><td></td><td class="text-end ps-3">Avg / block</td>${anyKept ? '<td class="text-end ps-3">Kept</td>' : ''}</tr>` +
+          `<table class="fs-10"><tr class="text-body-tertiary"><td></td><td class="text-end ps-3">${useMedian ? 'Median' : 'Avg'} / block</td>${anyKept ? '<td class="text-end ps-3">Kept</td>' : ''}</tr>` +
           rows
             .map(
               r =>
@@ -883,9 +945,9 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
   };
   return (
     <SectionCard
-      title="Average Income per Block by Epoch"
+      title={`${useMedian ? 'Median' : 'Average'} Income per Block by Epoch`}
       icon="trending-up"
-      info={`Each builder's average (mean) income per block built, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid. Before epoch 1083 Jito's builder commission in it is an estimate (measured from 1083)." : ''}`}
+      info={`Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid. Before epoch 1083 Jito's builder commission in it is an estimate (measured from 1083)." : ''}`}
     >
       <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
         {keys.map(k => (
@@ -952,6 +1014,9 @@ const BlockBuildersPage = () => {
   const failed = !d && !slice?.isLoading && !!slice?.error;
   const rows = useMemo(() => (d ? rowsOf(d) : []), [d]);
   const unknown = d?.builders.find(b => b.builder === UNKNOWN);
+  // Median rather than mean per block where the API serves the per-block
+  // distribution.
+  const byMedian = rows.some(r => r.median);
   // Own Tips: a column once any builder's are measured.
   const showOwn = rows.some(r => r.b.built?.ownTips != null);
   // Kept per block: only where the API serves the blocks' fees (staging).
@@ -1066,12 +1131,12 @@ const BlockBuildersPage = () => {
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
-              label="Top Avg Income / Block"
+              label={byMedian ? 'Top Median / Block' : 'Top Avg Income / Block'}
               mono={false}
               value={best ? best.b.name : '—'}
               sublabel={
                 best
-                  ? `${sol(best.perBlock!.total)} average per block built`
+                  ? `${sol(best.perBlock!.total)} ${byMedian ? 'median' : 'average'} per block built`
                   : undefined
               }
             />
@@ -1098,9 +1163,9 @@ const BlockBuildersPage = () => {
           <Row className="g-3">
             <Col xs={12} lg={7}>
               <SectionCard
-                title="Average Income per Block"
+                title={`${byMedian ? 'Median' : 'Average'} Income per Block`}
                 icon="dollar-sign"
-                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees, Jito tips and its builder's own tips (Rakurai's, Raiku's, where measured). Builder fees (gray, at the end): what those blocks paid in fees (Jito's builder commission and tip router fee off the Jito tips, and so on; see Builder Revenue), taken off the part they're charged on: the bar is the gross, the label what the leader kept, before its own MEV commission. * Own tips not measured for the epoch: understated."
+                info={`${byMedian ? "The median block's income - half its builder's blocks paid the leader more, half less - and that block's parts (the mean, pulled up by a few large-tip blocks, and the middle half's range are in the tooltip)" : "The average (mean) the leader took in per block it built - the builder's blocks' total over their count -"} by the builder whose client it ran at that block: its share of base fees, priority fees, Jito tips and its builder's own tips (Rakurai's, Raiku's, where measured). Builder fees (gray, at the end): what those blocks paid in fees (Jito's builder commission and tip router fee off the Jito tips, and so on; see Builder Revenue), taken off the part they're charged on: the bar is the gross, the label what the leader kept, before its own MEV commission. * Own tips not measured for the epoch: understated.`}
               >
                 <IncomeChart rows={rows} after={after} />
               </SectionCard>
@@ -1133,10 +1198,22 @@ const BlockBuildersPage = () => {
                 <th className="text-end">Blocks Built</th>
                 <th
                   className="text-end"
-                  title="Average (mean) per block built: its blocks' total over their count"
+                  title={
+                    byMedian
+                      ? 'The median block: half its blocks paid more, half less'
+                      : "Average (mean) per block built: its blocks' total over their count"
+                  }
                 >
-                  Avg / Block
+                  {byMedian ? 'Median / Block' : 'Avg / Block'}
                 </th>
+                {byMedian && (
+                  <th
+                    className="text-end"
+                    title="Average (mean) per block built: its blocks' total over their count"
+                  >
+                    Mean / Block
+                  </th>
+                )}
                 {showKept && (
                   <th
                     className="text-end"
@@ -1189,6 +1266,7 @@ const BlockBuildersPage = () => {
                   <td className="text-end fw-semibold">
                     {sol(r.perBlock?.total ?? null)}
                   </td>
+                  {byMedian && <td className="text-end">{sol(r.mean)}</td>}
                   {showKept && (
                     <td className="text-end">
                       {sol(r.keptPerBlock)}

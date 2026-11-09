@@ -3824,6 +3824,13 @@ const builderIncomeSchema = z.object({
   priorityFees: z.number().catch(0),
   mevTips: z.number().catch(0)
 });
+const blockQuantileSchema = z.object({
+  total: z.number(),
+  baseFees: z.number().catch(0),
+  priorityFees: z.number().catch(0),
+  mevTips: z.number().catch(0),
+  kept: z.number().nullable().catch(null)
+});
 export const blockBuilderSchema = z.object({
   builder: z.string(),
   name: z.string().catch(''),
@@ -3876,7 +3883,20 @@ export const blockBuilderSchema = z.object({
         .nullable()
         .optional()
         .catch(null),
-      kept: z.number().nullable().optional().catch(null)
+      kept: z.number().nullable().optional().catch(null),
+      // The per-block income distribution over its blocks: the 25th,
+      // 50th and 75th percentile block (total, and that block's parts,
+      // which add up to it; kept after the fees on its Jito tips). Null
+      // until the API has it for the epoch.
+      perBlock: z
+        .object({
+          p25: blockQuantileSchema,
+          median: blockQuantileSchema,
+          p75: blockQuantileSchema
+        })
+        .nullable()
+        .optional()
+        .catch(null)
     })
     .nullable()
     .catch(null)
