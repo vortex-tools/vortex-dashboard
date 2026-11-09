@@ -1032,8 +1032,8 @@ const StakePool = () => {
           ['directed', 'Directed']
         ] as Array<[typeof view, string]>)
       : []),
-    ...(churn ? [['changes', 'Changes'] as [typeof view, string]] : []),
-    ...(pendingRows ? [['pending', 'Pending'] as [typeof view, string]] : [])
+    ...(churn ? [['changes', 'Last Epoch'] as [typeof view, string]] : []),
+    ...(pendingRows ? [['pending', 'Next Epoch'] as [typeof view, string]] : [])
   ];
   const shown = useMemo(
     () =>
@@ -1758,7 +1758,7 @@ const StakePool = () => {
         <SectionCard
           title="Validators"
           icon="server"
-          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Changes: the latest epoch's adds and drops. Pending: the validators its stake moves on at this epoch's end."
+          info="Every validator it delegates to (over 50 SOL), by stake: its share of the pool, what it earned there (inflation, MEV and priority fees), and whether SFDP and other pools delegate too. Last Epoch: the latest epoch's adds and drops. Next Epoch: the validators its stake moves on at this epoch's end (pending)."
           aside={
             churn || showDirected || pendingRows ? (
               <ButtonGroup size="sm">
