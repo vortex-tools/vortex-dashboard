@@ -83,6 +83,8 @@ const Simds = page(() => import('pages/Simds'));
 const Governance = page(() => import('pages/Governance'));
 const GovernanceProposal = page(() => import('pages/GovernanceProposal'));
 const Decentralization = page(() => import('pages/Decentralization'));
+const HostingProviders = page(() => import('pages/HostingProviders'));
+const HostingProvider = page(() => import('pages/HostingProvider'));
 // Staging only (not prefetched elsewhere): see the route below.
 const BlockBuilders = IS_STAGING
   ? page(() => import('pages/BlockBuilders'))
@@ -234,6 +236,8 @@ const routes: RouteObject[] = [
               // All-validators operational status.
               { path: '/validators', element: <Validators /> },
               { path: '/decentralization', element: <Decentralization /> },
+              { path: '/providers', element: <HostingProviders /> },
+              { path: '/provider/:slug', element: <HostingProvider /> },
               // Block builders: staging only until the API's per-block
               // labels reach production.
               ...(IS_STAGING

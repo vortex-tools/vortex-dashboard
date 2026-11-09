@@ -80,6 +80,7 @@ export const sections = (env: Site): Crumb[] =>
     { name: 'Validators', path: '/validators' },
     { name: 'Stake pools', path: '/pools' },
     { name: 'Decentralization', path: '/decentralization' },
+    { name: 'Hosting providers', path: '/providers' },
     { name: 'Client versions', path: '/client-versions' },
     { name: 'Cluster status', path: '/status' },
     { name: 'Governance', path: '/governance' },
@@ -133,6 +134,11 @@ export const STATIC: Record<string, (env: Site) => [string, string, string]> = {
     `How decentralized ${solana(env)} is: Nakamoto coefficients by validator, hosting provider, provider and city, country and client, with each breakdown's history.`,
     'Decentralization'
   ],
+  '/providers': env => [
+    `${solana(env)} validator hosting providers and where they are`,
+    `Every hosting provider ${solana(env)} validators run in, by stake: its validators, its locations on a world map, and how concentrated the stake is.`,
+    'Hosting providers'
+  ],
   '/client-versions': env => [
     `${solana(env)} validator clients: Agave, Firedancer and Jito versions by stake`,
     `Which client and version every ${solana(env)} validator runs, by stake: how far each client's validators have upgraded.`,
@@ -182,6 +188,8 @@ export const KNOWN_SECTIONS = new Set([
   'leaderboards',
   'validators',
   'decentralization',
+  'providers',
+  'provider',
   'client-versions',
   'cluster-health',
   'features',
@@ -809,6 +817,23 @@ export const pageMeta = (
   if (isTestnet(env) && /^\/(pool|governance)\//.test(path)) return PASS;
   if ((m = path.match(/^\/pool\/([^/]+)$/)))
     return poolMeta(env, decodeURIComponent(m[1]), facts.pool);
+  if ((m = path.match(/^\/provider\/([a-z0-9-]+)$/i))) {
+    // The name from the slug ("uab-cherry-servers": "Uab Cherry Servers",
+    // close enough for a title).
+    const name = /^(?:as)?\d+$/i.test(m[1])
+      ? `AS${m[1].replace(/^as/i, '')}`
+      : m[1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return {
+      title: `${name}: ${solana(env)} validators by location`,
+      description: `The ${solana(env)} validators hosted with ${name}: its locations on a world map, and each one's validators and stake.`,
+      canonical: path,
+      crumbs: [
+        HOME,
+        { name: 'Hosting providers', path: '/providers' },
+        { name, path }
+      ]
+    };
+  }
   if ((m = path.match(/^\/simd\/([^/]+)$/))) {
     const n = simdNumber(m[1]);
     return n == null ? MISSING : simdMeta(env, n, facts.simd);

@@ -54,6 +54,8 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
   { name: 'Stake Pools', icon: 'layers', path: '/pools' },
   // How spread out the stake is (clients, providers, countries).
   { name: 'Decentralization', icon: 'globe', path: '/decentralization' },
+  // Hosting providers and where they are.
+  { name: 'Hosting Providers', icon: 'map', path: '/providers' },
   // How each block builder's blocks pay (staging only for now).
   ...(IS_STAGING
     ? [{ name: 'Block Builders', icon: 'package', path: '/block-builders' }]

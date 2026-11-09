@@ -458,6 +458,9 @@ export const SKELETON = {
     [full(593)]
   ],
   pools: [{ stats: 3 }, [full(733)]],
+  providers: [{ stats: 4 }, [full(490, 'chart')], [full(1283)]],
+  // A provider's Locations table follows its places: a typical one's.
+  provider: [{ stats: 4 }, [full(451, 'chart')], [full(384)], [full(900)]],
   proposal: [
     { stats: 6, sub: 2 },
     [

@@ -54,6 +54,8 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/simds\/?$/, SKELETON.simds],
   [/^\/simd\//, SKELETON.simd],
   [/^\/pools\/?$/, SKELETON.pools],
+  [/^\/providers\/?$/, SKELETON.providers],
+  [/^\/provider\//, SKELETON.provider],
   [/^\/governance\/?$/, SKELETON.governance],
   [/^\/governance\//, SKELETON.proposal],
   [/^\/(activity|vote-account-changes)/, SKELETON.activity]
