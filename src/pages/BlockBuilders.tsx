@@ -89,7 +89,7 @@ const rowsOf = (d: BlockBuilders): Row_[] => {
 const label = (r: Row_) =>
   `${r.b.name || r.b.builder}${r.understated ? '*' : ''}`;
 
-/** Income per built block by builder, split base / priority / Jito tips
+/** Income per built block by builder, split base / priority / tips
  *  (SOL), most first. */
 const IncomeChart = ({ rows }: { rows: Row_[] }) => {
   const { getThemeColor } = useAppContext();
@@ -103,7 +103,7 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
       name: 'Priority fees',
       color: getThemeColor('primary')
     },
-    { key: 'tips', name: 'Jito tips', color: getThemeColor('success') }
+    { key: 'tips', name: 'Tips', color: getThemeColor('success') }
   ] as const;
   const option = {
     animation: false,
@@ -139,7 +139,7 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
           line(null, 'Per block', sol(r.perBlock.total)) +
           `<div class="fs-10 text-body-tertiary mt-1">${r.blocks.toLocaleString()} blocks built</div>` +
           (r.b.tips === 'priorityFees'
-            ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its tips are priority fees: Jito tips here are only the Jito bundles in its blocks.</div>`
+            ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its tips arrive as priority fees: Tips here are only the tips paid through Jito's tip accounts in its blocks.</div>`
             : '') +
           (r.understated
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its tips go to its own tip accounts, not read yet: understated.</div>`
@@ -276,7 +276,7 @@ const ShareChart = ({ rows }: { rows: Row_[] }) => {
 
 /**
  * Block builders (/cluster/block-builders): for one epoch, how each
- * builder's blocks paid the leader - base fees, priority fees and Jito
+ * builder's blocks paid the leader - base fees, priority fees and
  * tips per block built - and its share of the blocks against its share
  * of the stake, to help validators pick one. Blocks are credited by the
  * client the leader ran when it built them. Staging only for now.
@@ -334,8 +334,8 @@ const BlockBuildersPage = () => {
       <div className="col">
         <h1 className="h3">Block Builders</h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
-          How each block builder&apos;s blocks pay the leader: fees and Jito
-          tips per block built
+          How each block builder&apos;s blocks pay the leader: fees and tips per
+          block built
         </p>
       </div>
       <Col xs={12} sm={4} md={3}>
@@ -436,7 +436,7 @@ const BlockBuildersPage = () => {
               <SectionCard
                 title="Income per Block"
                 icon="dollar-sign"
-                info="What the leader took in per block it built, by the builder whose client it ran at that block: its share of base fees, priority fees and Jito tips (gross, before Jito's fee and its MEV commission). * Tips paid to its own tip accounts, not read yet: understated."
+                info="What the leader took in per block it built, by the builder whose client it ran at that block: its share of base fees, priority fees and tips (paid through Jito's tip accounts; gross, before Jito's fee and its MEV commission). * Tips paid to its own tip accounts, not read yet: understated."
               >
                 <IncomeChart rows={rows} />
               </SectionCard>
@@ -464,7 +464,7 @@ const BlockBuildersPage = () => {
                 <th className="text-end">Per Block</th>
                 <th className="text-end">Base</th>
                 <th className="text-end">Priority</th>
-                <th className="text-end">Jito Tips</th>
+                <th className="text-end">Tips</th>
                 <th
                   className="text-end"
                   title="The median MEV commission of its validators with a Jito tip account"
@@ -547,16 +547,18 @@ const BlockBuildersPage = () => {
         <SectionCard title="Reading the Numbers" icon="info">
           <ul className="fs-9 text-body-secondary mb-0 ps-4 d-flex flex-column gap-1">
             <li>
-              Jito tips don&apos;t compare across builders: Harmonic&apos;s tips
-              arrive as priority fees, so its Jito tips are only the Jito
-              bundles that landed in its blocks. Compare the per-block total.
+              Tips are what&apos;s paid through Jito&apos;s tip accounts, in any
+              builder&apos;s blocks. They don&apos;t compare across builders:
+              Harmonic&apos;s tips arrive as priority fees, so its Tips are only
+              the Jito-account tips that landed in its blocks. Compare the
+              per-block total.
             </li>
             <li>
               Rakurai and Raiku (*) pay tips into their own tip accounts, which
               Vortex doesn&apos;t read yet: their income here is understated.
             </li>
             <li>
-              Jito tips are gross: Jito&apos;s fee and the validator&apos;s MEV
+              Tips are gross: Jito&apos;s fee and the validator&apos;s MEV
               commission come out later, when the epoch&apos;s tips are
               distributed.
             </li>
