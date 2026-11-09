@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { LineChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
@@ -146,7 +147,7 @@ const ClientDiversityCard = ({ compact = false }: { compact?: boolean }) => {
       </div>
       <ReactEChartsCore
         echarts={echarts}
-        option={option}
+        option={noPointer(option)}
         notMerge
         style={{ height: compact ? 125 : 160, width: '100%' }}
       />

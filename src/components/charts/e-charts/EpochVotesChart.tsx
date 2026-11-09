@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import { useMemo, useContext, useEffect, CSSProperties } from 'react';
 import { slotText } from 'helpers/slot';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -391,12 +392,14 @@ const EpochVotesChart = ({
       echarts={echarts}
       notMerge
       showLoading={epochVoteRecordState.isLoading}
-      option={getDefaultOptions(
-        xAxisData,
-        yAxisData,
-        getThemeColor,
-        EPOCH_START_SLOT,
-        BUCKET
+      option={noPointer(
+        getDefaultOptions(
+          xAxisData,
+          yAxisData,
+          getThemeColor,
+          EPOCH_START_SLOT,
+          BUCKET
+        )
       )}
       style={style}
     />

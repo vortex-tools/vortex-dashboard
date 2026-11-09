@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart } from 'echarts/charts';
@@ -263,7 +264,7 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
   return (
     <ReactEChartsCore
       echarts={echarts}
-      option={option}
+      option={noPointer(option)}
       notMerge
       style={{ height: 64 + shown.length * 34, width: '100%' }}
     />
@@ -339,7 +340,7 @@ const ShareChart = ({ rows }: { rows: Row_[] }) => {
   return (
     <ReactEChartsCore
       echarts={echarts}
-      option={option}
+      option={noPointer(option)}
       notMerge
       style={{ height: 64 + shown.length * 34, width: '100%' }}
     />
@@ -722,7 +723,7 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
       ) : (
         <ReactEChartsCore
           echarts={echarts}
-          option={option}
+          option={noPointer(option)}
           notMerge
           style={{ height: 200, width: '100%' }}
         />

@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { BarChart } from 'echarts/charts';
 import { GridComponent, MarkLineComponent } from 'echarts/components';
@@ -174,7 +175,7 @@ const StakeRaceChart = ({
   return (
     <ReactEChartsCore
       echarts={echarts}
-      option={option}
+      option={noPointer(option)}
       style={{ height: 320, width: '100%' }}
     />
   );

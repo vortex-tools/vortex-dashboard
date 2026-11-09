@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import Badge from 'components/base/Badge';
 import { NextEpochChange } from 'components/validator/DelegatorsCards';
 import BackLink from 'components/common/BackLink';
@@ -586,7 +587,7 @@ const DistributionChart = ({
   return (
     <ReactEChartsCore
       echarts={echarts}
-      option={option}
+      option={noPointer(option)}
       notMerge
       style={{ height: 220, width: '100%' }}
     />
@@ -769,7 +770,7 @@ const HistoryChart = ({
   return (
     <ReactEChartsCore
       echarts={echarts}
-      option={option}
+      option={noPointer(option)}
       notMerge
       style={{ height: 200, width: '100%' }}
     />

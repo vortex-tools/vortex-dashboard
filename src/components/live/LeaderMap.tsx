@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import { NETWORK_TAB } from 'helpers/apiEndpoint';
 
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -296,7 +297,7 @@ const LeaderMap = ({
         <ReactEChartsCore
           ref={chartRef}
           echarts={echarts}
-          option={option}
+          option={noPointer(option)}
           lazyUpdate
           style={{ height, width: '100%' }}
         />

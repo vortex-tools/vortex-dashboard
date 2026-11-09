@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import SlotNumber from 'components/common/SlotNumber';
 import * as echarts from 'echarts/core';
@@ -119,7 +120,7 @@ export const PathPreview = ({
       </div>
       <ReactEChartsCore
         echarts={echarts}
-        option={option}
+        option={noPointer(option)}
         notMerge
         style={{ height: 150, width: '100%' }}
       />

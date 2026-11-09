@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import { useContext } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
@@ -209,7 +210,7 @@ const VoteStatsRankingChart = ({ voteAddress }: { voteAddress: string }) => {
   return (
     <ReactEChartsCore
       echarts={echarts}
-      option={option}
+      option={noPointer(option)}
       style={{ height: CHART_HEIGHT, width: '100%' }}
     />
   );

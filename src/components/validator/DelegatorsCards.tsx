@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import { directedDetail, directedTotal } from 'components/pools/directed';
 import FeatherIcon from 'components/base/FeatherIcon';
 import { CardSkeleton } from 'components/common/PageSkeleton';
@@ -123,7 +124,7 @@ const StakeSizes = ({ d }: { d: ValidatorDelegators }) => {
       </div>
       <ReactEChartsCore
         echarts={echarts}
-        option={option}
+        option={noPointer(option)}
         notMerge
         style={{ height: 260, width: '100%' }}
       />

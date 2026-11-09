@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import TowerHistoricalNote from 'components/common/TowerHistoricalNote';
 import ValidatorLink from 'components/common/ValidatorLink';
 import ChartSkeleton from 'components/common/ChartSkeleton';
@@ -582,7 +583,7 @@ const CompareVoting = () => {
             <div className="mb-4">
               <ReactEChartsCore
                 echarts={echarts}
-                option={chartOption}
+                option={noPointer(chartOption)}
                 style={{ height: 300, width: '100%' }}
                 notMerge
               />

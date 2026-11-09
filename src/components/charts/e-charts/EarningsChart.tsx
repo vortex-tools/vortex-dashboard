@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart } from 'echarts/charts';
@@ -409,7 +410,7 @@ const EarningsChart = ({
     <ReactEChartsCore
       echarts={echarts}
       notMerge
-      option={option}
+      option={noPointer(option)}
       style={{ height: 300, width: '100%' }}
     />
   );

@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { LineChart } from 'echarts/charts';
 import {
@@ -102,7 +103,7 @@ const TurnoutChart = ({
   return (
     <ReactEChartsCore
       echarts={echarts}
-      option={option}
+      option={noPointer(option)}
       notMerge
       style={{ height: 220, width: '100%' }}
     />

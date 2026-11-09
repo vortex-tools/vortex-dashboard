@@ -15,7 +15,7 @@ import {
 import { LineChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import { ThemeVariant } from 'config';
-import { namedTooltipList } from 'helpers/echart-utils';
+import { namedTooltipList, noPointer } from 'helpers/echart-utils';
 import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 
 echarts.use([
@@ -275,12 +275,8 @@ const BlockIncomeChart = ({ nodeAddress }: { nodeAddress: string }) => {
       </div>
       <ReactEChartsCore
         echarts={echarts}
-        option={getDefaultOptions(
-          theme,
-          xAxisData,
-          yAxisData,
-          getThemeColor,
-          ratio
+        option={noPointer(
+          getDefaultOptions(theme, xAxisData, yAxisData, getThemeColor, ratio)
         )}
         style={{ height: '316px', width: '100%' }}
         notMerge

@@ -1,3 +1,4 @@
+import { noPointer } from 'helpers/echart-utils';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import { EffectScatterChart, LineChart } from 'echarts/charts';
 import {
@@ -600,7 +601,7 @@ const ThroughputCard = ({
           <ReactEChartsCore
             key={`${shown}-${historyLoaded ? 1 : 0}`}
             echarts={echarts}
-            option={option}
+            option={noPointer(option)}
             style={{ height: chartHeight, width: '100%' }}
           />
           {filling != null && shown !== 'tps' && (
