@@ -108,13 +108,12 @@ const FAMILY_LABELS: Record<string, string> = {
   mithril: 'Mithril',
   sig: 'Sig'
 };
-/** The flavor's name within its family: "AgaveBam" -> "BAM". */
 /** A client id's block-building flavor, across families: "AgaveBam" and
- *  "FireBAM" are both BAM. null: the plain client (no flavor). */
+ *  "FireBAM" are both Jito BAM. null: the plain client (no flavor). */
 const FLAVORS: Record<string, string | null> = {
-  AgaveBam: 'BAM',
-  FireBAM: 'BAM',
-  JitoLabs: 'Jito',
+  AgaveBam: 'Jito BAM',
+  FireBAM: 'Jito BAM',
+  JitoLabs: 'Jito Block Engine',
   HarmonicAgave: 'Harmonic',
   HarmonicFiredancer: 'Harmonic',
   Rakurai: 'Rakurai',
@@ -128,9 +127,9 @@ const FLAVORS: Record<string, string | null> = {
 
 /** geo-history's flavor keys, as the card names them. */
 const FLAVOR_KEYS: Record<string, string> = {
-  bam: 'BAM',
+  bam: 'Jito BAM',
   harmonic: 'Harmonic',
-  jito: 'Jito',
+  jito: 'Jito Block Engine',
   rakurai: 'Rakurai',
   raiku: 'Raiku',
   paladin: 'Paladin',
@@ -817,7 +816,7 @@ const Decentralization = () => {
                 title="Block Builders"
                 icon="layers"
                 noun="builder"
-                info="Stake by block builder (Jito, BAM, Harmonic), across clients: an outage in one builder hits validators of either client."
+                info="Stake by block builder (Jito BAM, Jito Block Engine, Harmonic), across clients: an outage in one builder hits validators of either client."
                 groups={view.flavors}
                 total={view.total}
                 race={races?.flavors}
