@@ -15,22 +15,8 @@ import { formatLamports } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { BlockBuilder, BlockBuilders } from 'providers/vortex-schemas';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import {
-  ChangeEvent,
-  Fragment,
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from 'react';
-import {
-  ButtonGroup,
-  Col,
-  Form,
-  Row,
-  Table,
-  ToggleButton
-} from 'react-bootstrap';
+import { ChangeEvent, Fragment, useContext, useEffect, useMemo } from 'react';
+import { Col, Form, Row, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router';
 
 echarts.use([
@@ -151,8 +137,13 @@ const label = (r: Row_) =>
  *  (SOL), most first. */
 const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
   const { getThemeColor } = useAppContext();
-  // Before or after the fees its blocks paid.
+  // After the fees its blocks paid where they're served (the fees then a
+  // last segment, so the whole bar is the gross), else before.
   const pb = (r: Row_) => (after ? r.perBlockAfter : r.perBlock);
+  const feesOf = (r: Row_) =>
+    after && r.perBlock && r.perBlockAfter
+      ? Math.max(0, r.perBlock.total - r.perBlockAfter.total)
+      : 0;
   const shown = rows
     .filter(r => pb(r))
     .sort((a, b) => pb(a)!.total - pb(b)!.total);
@@ -165,6 +156,7 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
     },
     { key: 'tips', name: 'Jito tips', color: getThemeColor('success') }
   ] as const;
+  const feesColor = getThemeColor('quaternary-color');
   const option = {
     animation: false,
     grid: { left: 4, right: 64, top: 28, bottom: 4, containLabel: true },
@@ -194,11 +186,11 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
         return (
           `<div class="fw-bold mb-1">${r.b.name || r.b.builder}</div>` +
           parts.map(p => line(p.color, p.name, sol(pb(r)![p.key]))).join('') +
-          line(
-            null,
-            after ? 'Average kept per block' : 'Average per block',
-            sol(pb(r)!.total)
-          ) +
+          (after
+            ? line(feesColor, 'Builder fees', sol(feesOf(r))) +
+              line(null, 'Kept per block', sol(pb(r)!.total)) +
+              line(null, 'Before fees', sol(r.perBlock?.total ?? null))
+            : line(null, 'Average per block', sol(pb(r)!.total))) +
           `<div class="fs-10 text-body-tertiary mt-1">${r.blocks.toLocaleString()} blocks built</div>` +
           (r.b.tips === 'priorityFees'
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its own tips arrive as priority fees: Jito tips here are only the Jito bundles that landed in its blocks.</div>`
@@ -227,16 +219,28 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
       axisLabel: { color: getThemeColor('body-color'), fontSize: 11 },
       axisTick: { show: false }
     },
-    series: parts.map((p, i) => ({
+    series: [
+      ...parts.map(p => ({ ...p, value: (r: Row_) => pb(r)![p.key] })),
+      ...(after
+        ? [
+            {
+              key: 'fees',
+              name: 'Builder fees',
+              color: feesColor,
+              value: feesOf
+            }
+          ]
+        : [])
+    ].map((p, i, all) => ({
       name: p.name,
       type: 'bar',
       stack: 'income',
       barMaxWidth: 22,
       color: p.color,
-      data: shown.map(r => pb(r)![p.key]),
+      data: shown.map(p.value),
       cursor: 'default',
-      // The total at the end of the bar.
-      ...(i === parts.length - 1
+      // The average kept (or, without fees, the total) at the end.
+      ...(i === all.length - 1
         ? {
             label: {
               show: true,
@@ -698,10 +702,9 @@ const BlockBuildersPage = () => {
   const unknown = d?.builders.find(b => b.builder === UNKNOWN);
   // Kept per block: only where the API serves the blocks' fees (staging).
   const showKept = rows.some(r => r.keptPerBlock != null);
-  // Average Income per Block: before or after builder fees (after, where
-  // the API serves the blocks' fees).
-  const [feesView, setFeesView] = useState<'before' | 'after'>('after');
-  const after = showKept && feesView === 'after';
+  // Average Income per Block: after builder fees, the fees a segment of
+  // their own, where the API serves the blocks' fees.
+  const after = showKept;
 
   const epochOptions = useMemo(() => {
     const out: Array<{ value: number; label: string }> = [];
@@ -843,32 +846,7 @@ const BlockBuildersPage = () => {
               <SectionCard
                 title="Average Income per Block"
                 icon="dollar-sign"
-                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees and Jito tips. Before fees: gross. After fees: less the fees those blocks paid (Jito's builder commission and tip router fee off the Jito tips, and so on; see Builder Revenue), before the validator's own MEV commission. * Tips paid to its own tip accounts, not read yet: understated."
-                aside={
-                  showKept ? (
-                    <ButtonGroup size="sm">
-                      {(
-                        [
-                          ['after', 'After fees'],
-                          ['before', 'Before fees']
-                        ] as const
-                      ).map(([k, l]) => (
-                        <ToggleButton
-                          key={k}
-                          id={`income-fees-${k}`}
-                          type="radio"
-                          name="income-fees"
-                          variant="soft-secondary"
-                          value={k}
-                          checked={feesView === k}
-                          onChange={() => setFeesView(k)}
-                        >
-                          {l}
-                        </ToggleButton>
-                      ))}
-                    </ButtonGroup>
-                  ) : undefined
-                }
+                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees and Jito tips. Builder fees (gray, at the end): what those blocks paid in fees (Jito's builder commission and tip router fee off the Jito tips, and so on; see Builder Revenue), taken off the part they're charged on: the bar is the gross, the label what the leader kept, before its own MEV commission. * Tips paid to its own tip accounts, not read yet: understated."
               >
                 <IncomeChart rows={rows} after={after} />
               </SectionCard>

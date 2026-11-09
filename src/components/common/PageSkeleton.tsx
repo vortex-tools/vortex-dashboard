@@ -481,8 +481,8 @@ export const SKELETON = {
     { stats: 4 },
     [full(290, 'chart')],
     [
-      { w: 7, h: 352, kind: 'chart' },
-      { w: 5, h: 352, kind: 'chart' }
+      { w: 7, h: 339, kind: 'chart' },
+      { w: 5, h: 339, kind: 'chart' }
     ],
     [full(469)],
     [full(364)],
