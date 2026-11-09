@@ -185,9 +185,15 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
           }<span class="me-auto">${k}</span><span class="fw-semibold">${v}</span></div>`;
         return (
           `<div class="fw-bold mb-1">${r.b.name || r.b.builder}</div>` +
-          parts.map(p => line(p.color, p.name, sol(pb(r)![p.key]))).join('') +
+          // Not the parts that are 0 (no Jito tips in its blocks, no fees).
+          parts
+            .filter(p => pb(r)![p.key] > 0)
+            .map(p => line(p.color, p.name, sol(pb(r)![p.key])))
+            .join('') +
           (after
-            ? line(feesColor, 'Builder fees', sol(feesOf(r))) +
+            ? (feesOf(r) > 0
+                ? line(feesColor, 'Builder fees', sol(feesOf(r)))
+                : '') +
               line(null, 'Kept per block', sol(pb(r)!.total)) +
               line(null, 'Before fees', sol(r.perBlock?.total ?? null))
             : line(null, 'Average per block', sol(pb(r)!.total))) +
@@ -265,7 +271,7 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
 };
 
 /** Each builder's share of the blocks built, most first, in its color
- *  (as Builders Over Time). */
+ *  (as Block Builder Distribution). */
 const ShareChart = ({ rows }: { rows: Row_[] }) => {
   const { getThemeColor } = useAppContext();
   const shown = rows
@@ -377,23 +383,64 @@ const Tag = ({ tone, children }: { tone: string; children: string }) => (
  * (rate x base; the staging API only) marked as one. Fees on bases Vortex
  * doesn't read are "not measured".
  */
+type Collector = NonNullable<BlockBuilders['builderRevenue']>[number];
+
+/** Jito's revenue as three rows: Jito BAM (the builder commission in BAM
+ *  blocks), Jito Block Engine (the builder commission in every other
+ *  block: the Block Engine's, and Rakurai's and stock clients' that pass
+ *  its bundles on) and Jito's tip router (its protocol fees on every
+ *  validator's Jito tips and shared priority fees, whatever built the
+ *  block). Other collectors as they are. */
+const splitJito = (c: Collector): Collector[] => {
+  if (c.collector !== 'jito') return [c];
+  const row = (
+    collector: string,
+    name: string,
+    builders: string[],
+    items: Collector['items']
+  ): Collector => ({
+    ...c,
+    collector,
+    name,
+    builders,
+    items,
+    lamports: items.reduce((a, i) => a + (i.lamports ?? 0), 0),
+    complete: items.every(i => i.complete && i.lamports != null)
+  });
+  const bam = c.items.filter(i => i.paidBy === 'jito-bam');
+  const router = c.items.filter(i => i.paidBy == null);
+  const engine = c.items.filter(i => !bam.includes(i) && !router.includes(i));
+  return [
+    row('jito-bam', 'Jito BAM', ['jito-bam'], bam),
+    row(
+      'jito-block-engine',
+      'Jito Block Engine',
+      ['jito-block-engine'],
+      engine
+    ),
+    row('jito-tip-router', 'Jito tip router', [], router)
+  ].filter(r => r.items.length > 0);
+};
+
 const RevenueCard = ({ d }: { d: BlockBuilders }) => {
   // Collectors with a fee, or with a builder in the epoch (Harmonic: none
   // charged); not one nobody runs (Paladin today).
-  const revenue = (d.builderRevenue ?? []).filter(
-    c =>
-      c.items.length > 0 ||
-      c.builders.some(id =>
-        d.builders.some(b => b.builder === id && b.validators > 0)
-      )
-  );
+  const revenue = (d.builderRevenue ?? [])
+    .filter(
+      c =>
+        c.items.length > 0 ||
+        c.builders.some(id =>
+          d.builders.some(b => b.builder === id && b.validators > 0)
+        )
+    )
+    .flatMap(splitJito);
   const builderName = (id: string | null) =>
     id ? (d.builders.find(b => b.builder === id)?.name ?? id) : null;
   return (
     <SectionCard
       title="Builder Revenue"
       icon="briefcase"
-      info="What each builder's operator collected in the epoch from the fees it charges, by who collects them (Jito runs both Jito builders). Measured: read on chain. Estimate: the fee's rate times what it's charged on. Not measured: charged on something Vortex doesn't read yet (Rakurai's and Raiku's own tips)."
+      info="What each builder's operator collected in the epoch from the fees it charges, by who collects them: Jito BAM and Jito Block Engine each their builder commission (the Block Engine's includes the blocks of clients that pass its bundles on, Rakurai's among them), and Jito's tip router its fees on every validator's Jito tips, whatever built the block. Measured: read on chain. Estimate: the fee's rate times what it's charged on. Not measured: charged on something Vortex doesn't read yet (Rakurai's and Raiku's own tips)."
     >
       {revenue.length === 0 ? (
         <UntrackedState>
@@ -415,10 +462,17 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
                 <tr className="bg-body-highlight">
                   <td className="fw-semibold">
                     {c.name || c.collector}
-                    {c.builders.length > 0 && (
+                    {c.collector === 'jito-tip-router' ? (
                       <span className="fw-normal text-body-tertiary fs-10 ms-2">
-                        runs {c.builders.map(builderName).join(', ')}
+                        Jito&apos;s protocol fees, whatever built the block
                       </span>
+                    ) : (
+                      // Not "Jito BAM runs Jito BAM".
+                      c.builders.some(id => builderName(id) !== c.name) && (
+                        <span className="fw-normal text-body-tertiary fs-10 ms-2">
+                          runs {c.builders.map(builderName).join(', ')}
+                        </span>
+                      )
                     )}
                   </td>
                   <td className="text-body-tertiary fs-10">
@@ -494,8 +548,9 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
   );
 };
 
-/** Epochs the over-time chart covers, the current one last. */
-const OVER_TIME_EPOCHS = 10;
+/** Epochs the distribution chart covers at most, the current one last
+ *  (every labelled epoch, from FIRST_EPOCH, until there are more). */
+const OVER_TIME_EPOCHS = 30;
 
 /** Builders' colors (No builder in gray). */
 const builderColor = (
@@ -634,7 +689,7 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
 
   return (
     <SectionCard
-      title="Builders Over Time"
+      title="Block Builder Distribution"
       icon="trending-up"
       info="Each builder's share of the blocks built, epoch by epoch ('now': the epoch in progress, so far): each block by the client its leader ran when it built it (a BAM validator's fallback blocks count under Block Engine). Epochs not labelled yet are left out."
     >
