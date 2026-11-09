@@ -422,6 +422,18 @@ const Decentralization = () => {
     fetchDist?.(CLUSTER_KEY);
     fetchSummary?.(VALIDATOR_STATUS_SUMMARY_KEY);
   }, [fetchDist, fetchSummary]);
+  // The Block Builders card's Now: the epoch's builders as the Block
+  // Builders page counts them (/cluster/block-builders: Jito's BAM flag,
+  // then the client, then a Jito tip account for a stock client).
+  const builderEpoch = dist?.epoch ?? null;
+  const fetchBuilders = context?.blockBuildersState.fetchData;
+  useEffect(() => {
+    if (builderEpoch != null) fetchBuilders?.(builderEpoch);
+  }, [builderEpoch, fetchBuilders]);
+  const builders =
+    builderEpoch != null
+      ? context?.blockBuildersState.data.get(builderEpoch)
+      : undefined;
   useEffect(() => {
     if (!depth) return;
     fetchHistory?.(depth);
@@ -474,6 +486,36 @@ const Decentralization = () => {
       g.stake += c.stake;
       if (c.family) g.clients.add(FAMILY_LABELS[c.family] ?? c.family);
       byFlavor.set(name, g);
+    }
+    // From the API's builders where it has them (stock clients landing
+    // Jito bundles count as Jito Block Engine), else by client id.
+    if (builders) {
+      byFlavor.clear();
+      const familyOf = new Map(
+        dist.clientIds.map(c => [c.clientId, c.family] as const)
+      );
+      for (const b of builders.builders) {
+        const name =
+          b.builder === 'none'
+            ? 'No builder'
+            : b.builder === 'unknown'
+              ? 'Unknown client'
+              : b.name || b.builder;
+        const clients = new Set<string>();
+        // (Not for Unknown: its clients are ids agave doesn't know.)
+        if (b.builder !== 'unknown')
+          for (const c of b.clients) {
+            const f = familyOf.get(c.client);
+            if (f) clients.add(FAMILY_LABELS[f] ?? f);
+          }
+        byFlavor.set(name, {
+          key: name,
+          label: name,
+          validators: b.validators,
+          stake: b.stake,
+          clients
+        });
+      }
     }
     const flavorGroups: Group[] = [...byFlavor.values()].map(g => {
       const on = [...g.clients].sort();
@@ -603,7 +645,7 @@ const Decentralization = () => {
         validators: validators.length ? concentration(validators, total) : null
       }
     };
-  }, [dist, summary]);
+  }, [dist, summary, builders]);
 
   // Each breakdown's history, for its Race view (geo-history).
   const races = useMemo(() => {
@@ -833,7 +875,7 @@ const Decentralization = () => {
                 }
                 icon="layers"
                 noun="builder"
-                info="Stake by block builder (Jito BAM, Jito Block Engine, Harmonic), across clients: an outage in one builder hits validators of either client."
+                info="Stake by block builder (Jito BAM, Jito Block Engine, Harmonic, ...), across clients, as the Block Builders page counts it: a client Jito doesn't make that lands Jito bundles (stock Firedancer with a Jito tip account) counts as Jito Block Engine. An outage in one builder hits validators of either client."
                 groups={view.flavors}
                 total={view.total}
                 race={races?.flavors}
