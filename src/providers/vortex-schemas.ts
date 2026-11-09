@@ -3789,3 +3789,74 @@ export const productionOmissionsSchema = z
     votersLeftOut: votersOmitted ?? null
   }));
 export type ProductionOmissions = z.infer<typeof productionOmissionsSchema>;
+
+// /cluster/block-builders: one epoch's validators, leader slots and
+// block income by the block builder each used (Jito BAM, the Jito Block
+// Engine, Harmonic, Rakurai, Raiku, none, unknown), and `built`: its
+// blocks counted block by block by the client the leader ran then.
+const builderIncomeSchema = z.object({
+  baseFees: z.number().catch(0),
+  priorityFees: z.number().catch(0),
+  mevTips: z.number().catch(0)
+});
+export const blockBuilderSchema = z.object({
+  builder: z.string(),
+  name: z.string().catch(''),
+  // How its tips reach the leader: Jito's tip accounts (mevTips),
+  // priority fees (Harmonic), its own tip accounts (not ingested).
+  tips: z
+    .enum(['tipAccounts', 'priorityFees', 'ownTipAccounts'])
+    .nullable()
+    .catch(null),
+  protocolFee: z
+    .object({
+      bps: z.number().nullable().catch(null),
+      note: z.string().nullable().catch(null),
+      source: z.string().nullable().catch(null)
+    })
+    .nullable()
+    .catch(null),
+  clients: z
+    .array(
+      z.object({
+        client: z.string(),
+        validators: z.number().catch(0),
+        stake: z.number().catch(0)
+      })
+    )
+    .catch([]),
+  validators: z.number().catch(0),
+  stake: z.number().catch(0),
+  stakeShare: z.number().nullable().catch(null),
+  leaderSlots: z.number().catch(0),
+  slotShare: z.number().nullable().catch(null),
+  // Median over its validators with a Jito tip account.
+  mevCommissionBps: z.number().nullable().catch(null),
+  built: builderIncomeSchema
+    .extend({
+      blocks: z.number().catch(0),
+      validators: z.number().catch(0)
+    })
+    .nullable()
+    .catch(null)
+});
+export type BlockBuilder = z.infer<typeof blockBuilderSchema>;
+export const blockBuildersSchema = z.object({
+  epoch: z.number(),
+  complete: z.boolean().catch(false),
+  validators: z.number().catch(0),
+  stake: z.number().catch(0),
+  leaderSlots: z.number().catch(0),
+  // How far block labelling has got; null before 1066 or not reached.
+  blockLabels: z
+    .object({
+      throughSlot: z.number().catch(0),
+      complete: z.boolean().catch(false),
+      blocks: z.number().catch(0),
+      unplaced: z.number().catch(0)
+    })
+    .nullable()
+    .catch(null),
+  builders: z.array(blockBuilderSchema)
+});
+export type BlockBuilders = z.infer<typeof blockBuildersSchema>;

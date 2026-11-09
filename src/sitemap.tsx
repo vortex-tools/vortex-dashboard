@@ -1,3 +1,4 @@
+import { IS_STAGING } from 'helpers/apiEndpoint';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
 import useCluster from 'hooks/useCluster';
@@ -53,6 +54,10 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
   { name: 'Stake Pools', icon: 'layers', path: '/pools' },
   // How spread out the stake is (clients, providers, countries).
   { name: 'Decentralization', icon: 'globe', path: '/decentralization' },
+  // How each block builder's blocks pay (staging only for now).
+  ...(IS_STAGING
+    ? [{ name: 'Block Builders', icon: 'package', path: '/block-builders' }]
+    : []),
   // Key, commission and collector changes, withdrawals, failovers and
   // migrations, across validators.
   { name: 'Activity', icon: 'activity', path: '/activity' }

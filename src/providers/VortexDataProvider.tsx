@@ -39,6 +39,7 @@ import {
   epochParticipationListSchema,
   participationLeaderboardSchema,
   producerLeaderboardSchema,
+  blockBuildersSchema,
   participationHistorySchema,
   rankMapSchema,
   clusterHistorySchema,
@@ -51,6 +52,7 @@ import {
   RankMap,
   ParticipationLeaderboard,
   ProducerLeaderboard,
+  BlockBuilders,
   epochIncomeLeaderboardSchema,
   epochIncomeListSchema,
   epochVoteRecordResponseSchema,
@@ -142,6 +144,8 @@ export type {
   ParticipationLeaderboardRecord,
   ProducerLeaderboard,
   ProducerLeaderboardRecord,
+  BlockBuilders,
+  BlockBuilder,
   VoteRewards,
   EpochEarnings,
   SfdpProgram,
@@ -510,6 +514,17 @@ const producerLeaderboardRequest = (epoch: number) => ({
   schema: producerLeaderboardSchema,
   timeout: 15_000
 });
+// One epoch's block builders (NaN: the epoch in progress).
+const blockBuildersRequest = (epoch: number) => ({
+  path: '/cluster/block-builders',
+  params: Number.isNaN(epoch) ? {} : { epoch },
+  schema: blockBuildersSchema,
+  timeout: 20_000
+});
+const blockBuildersToEntries = (
+  key: number,
+  response: BlockBuilders
+): Array<[number, BlockBuilders]> => [[key, response]];
 const producerLeaderboardToEntries = (
   key: number,
   response: ProducerLeaderboard
@@ -1509,6 +1524,7 @@ interface VortexDataState {
   epochEarningsState: KeyedSlice<string, EpochEarnings[]>;
   participationLeaderboardState: KeyedSlice<number, ParticipationLeaderboard>;
   producerLeaderboardState: KeyedSlice<number, ProducerLeaderboard>;
+  blockBuildersState: KeyedSlice<number, BlockBuilders>;
   epochParticipationState: KeyedSlice<string, EpochParticipation[]>;
   participationHistoryState: KeyedSlice<string, ParticipationHistory>;
   rankMapState: KeyedSlice<number, RankMap>;
@@ -1710,6 +1726,10 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
     request: producerLeaderboardRequest,
     toEntries: producerLeaderboardToEntries
   });
+  const blockBuildersState = useKeyedSlice({
+    request: blockBuildersRequest,
+    toEntries: blockBuildersToEntries
+  });
   const epochParticipationState = useKeyedSlice({
     request: epochParticipationRequest,
     toEntries: epochParticipationToEntries
@@ -1783,6 +1803,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       epochEarningsState,
       participationLeaderboardState,
       producerLeaderboardState,
+      blockBuildersState,
       epochParticipationState,
       participationHistoryState,
       rankMapState,
@@ -1837,6 +1858,7 @@ export const VortexDataProvider: React.FC<VortexDataProviderProps> = ({
       epochEarningsState,
       participationLeaderboardState,
       producerLeaderboardState,
+      blockBuildersState,
       epochParticipationState,
       participationHistoryState,
       rankMapState,

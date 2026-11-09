@@ -477,6 +477,15 @@ export const SKELETON = {
   ],
   slot: [[half(470), half(470)], [half(314), half(314)], [full(160)]],
   clientVersions: [[half(843), half(843)], [full(569)]],
+  blockBuilders: [
+    { stats: 4 },
+    [
+      { w: 7, h: 415, kind: 'chart' },
+      { w: 5, h: 415, kind: 'chart' }
+    ],
+    [full(407)],
+    [full(190, 'list')]
+  ],
   status: [
     [full(152)],
     { stats: 4 },

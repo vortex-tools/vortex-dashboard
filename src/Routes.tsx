@@ -1,4 +1,4 @@
-import { NETWORK_TAB } from 'helpers/apiEndpoint';
+import { IS_STAGING, NETWORK_TAB } from 'helpers/apiEndpoint';
 import { ComponentType, lazy } from 'react';
 import RouteError from 'pages/error/RouteError';
 import MainLayout from 'layouts/MainLayout';
@@ -83,6 +83,10 @@ const Simds = page(() => import('pages/Simds'));
 const Governance = page(() => import('pages/Governance'));
 const GovernanceProposal = page(() => import('pages/GovernanceProposal'));
 const Decentralization = page(() => import('pages/Decentralization'));
+// Staging only (not prefetched elsewhere): see the route below.
+const BlockBuilders = IS_STAGING
+  ? page(() => import('pages/BlockBuilders'))
+  : () => null;
 
 // Inlined at build time. Staging-only pages are absent from the production
 // route table (and tree-shaken out of its bundle).
@@ -230,6 +234,17 @@ const routes: RouteObject[] = [
               // All-validators operational status.
               { path: '/validators', element: <Validators /> },
               { path: '/decentralization', element: <Decentralization /> },
+              // Block builders: staging only until the API's per-block
+              // labels reach production.
+              ...(IS_STAGING
+                ? [
+                    { path: '/block-builders', element: <BlockBuilders /> },
+                    {
+                      path: '/block-builders/epoch/:epoch',
+                      element: <BlockBuilders />
+                    }
+                  ]
+                : []),
               { path: '/client-versions', element: <ClientVersions /> },
               {
                 path: '/cluster-health',

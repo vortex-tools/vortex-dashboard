@@ -47,6 +47,7 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/status/, [{ liveBar: true }, ...SKELETON.status]],
   [/^\/slot\//, SKELETON.slot],
   [/^\/decentralization/, SKELETON.decentralization],
+  [/^\/block-builders/, SKELETON.blockBuilders],
   [/^\/(client-versions|cluster-health)/, SKELETON.clientVersions],
   [/^\/features\/?$/, SKELETON.featureGates],
   [/^\/feature\//, SKELETON.featureGate],
