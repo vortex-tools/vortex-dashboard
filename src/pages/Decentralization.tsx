@@ -8,6 +8,7 @@ import { GeoBreakdown } from 'providers/vortex-schemas';
 import UntrackedState from 'components/common/UntrackedState';
 import { IS_STAGING } from 'helpers/apiEndpoint';
 import { useApiHealth } from 'helpers/apiHealth';
+import { providerSlug } from 'helpers/providers';
 import {
   CLUSTER_KEY,
   VALIDATOR_STATUS_SUMMARY_KEY,
@@ -511,7 +512,10 @@ const Decentralization = () => {
     const byOrg = new Map<string, Group & { asns: number[] }>();
     for (const a of dist.asns) {
       const name = a.organization ?? `AS${a.asn}`;
-      const g = byOrg.get(name) ?? {
+      // By the name's letters, as Hosting Providers groups: one of
+      // Cherry Servers' ASNs is 'UAB "Cherry Servers"'.
+      const slug = providerSlug(name);
+      const g = byOrg.get(slug) ?? {
         key: name,
         label: name,
         validators: 0,
@@ -521,7 +525,7 @@ const Decentralization = () => {
       g.validators += a.validators;
       g.stake += a.stake;
       g.asns.push(a.asn);
-      byOrg.set(name, g);
+      byOrg.set(slug, g);
     }
     const asns: Group[] = [...byOrg.values()].map(g => ({
       ...g,
