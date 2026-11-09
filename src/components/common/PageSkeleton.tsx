@@ -481,11 +481,12 @@ export const SKELETON = {
     { stats: 4 },
     [full(290, 'chart')],
     [
-      { w: 7, h: 375, kind: 'chart' },
-      { w: 5, h: 375, kind: 'chart' }
+      { w: 7, h: 339, kind: 'chart' },
+      { w: 5, h: 339, kind: 'chart' }
     ],
+    [full(469)],
     [full(364)],
-    [full(245, 'list')]
+    [full(268, 'list')]
   ],
   status: [
     [full(152)],

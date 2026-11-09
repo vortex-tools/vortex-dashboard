@@ -15,7 +15,7 @@ import { formatLamports } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { BlockBuilder, BlockBuilders } from 'providers/vortex-schemas';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { ChangeEvent, useContext, useEffect, useMemo } from 'react';
+import { ChangeEvent, Fragment, useContext, useEffect, useMemo } from 'react';
 import { Col, Form, Row, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router';
 
@@ -63,6 +63,10 @@ type Row_ = {
   } | null;
   /** Its tips go to accounts Vortex doesn't read: income understated. */
   understated: boolean;
+  /** Average per block after the fees its blocks paid (null: no fees
+   *  served), and whether those fees are estimates. */
+  keptPerBlock: number | null;
+  keptEstimated: boolean;
 };
 
 const rowsOf = (d: BlockBuilders): Row_[] => {
@@ -88,7 +92,10 @@ const rowsOf = (d: BlockBuilders): Row_[] => {
                 )
               }
             : null,
-        understated: b.tips === 'ownTipAccounts'
+        understated: b.tips === 'ownTipAccounts',
+        keptPerBlock:
+          b.built?.kept != null && blocks ? b.built.kept / blocks : null,
+        keptEstimated: !!b.built?.fees && !b.built.fees.measured
       };
     });
 };
@@ -203,35 +210,16 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
   );
 };
 
-/** Each builder's share of the stake against its share of the blocks
- *  built, by stake. */
+/** Each builder's share of the blocks built, most first, in its color
+ *  (as Builders Over Time). */
 const ShareChart = ({ rows }: { rows: Row_[] }) => {
   const { getThemeColor } = useAppContext();
   const shown = rows
-    .filter(r => r.b.stakeShare || r.blockShare)
-    .sort((a, b) => (a.b.stakeShare ?? 0) - (b.b.stakeShare ?? 0));
-  const series = [
-    {
-      name: 'Share of stake',
-      color: getThemeColor('primary'),
-      value: (r: Row_) => r.b.stakeShare ?? 0
-    },
-    {
-      name: 'Share of blocks built',
-      color: getThemeColor('info'),
-      value: (r: Row_) => r.blockShare ?? 0
-    }
-  ];
+    .filter(r => r.blockShare)
+    .sort((a, b) => (a.blockShare ?? 0) - (b.blockShare ?? 0));
   const option = {
     animation: false,
-    grid: { left: 4, right: 48, top: 28, bottom: 4, containLabel: true },
-    legend: {
-      top: 0,
-      left: 0,
-      itemWidth: 10,
-      itemHeight: 10,
-      textStyle: { color: getThemeColor('tertiary-color'), fontSize: 11 }
-    },
+    grid: { left: 4, right: 48, top: 8, bottom: 4, containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -239,7 +227,14 @@ const ShareChart = ({ rows }: { rows: Row_[] }) => {
       backgroundColor: getThemeColor('body-highlight-bg'),
       borderColor: getThemeColor('border-color'),
       textStyle: { color: getThemeColor('body-color') },
-      valueFormatter: (v: number) => pct(v, 2)
+      formatter: (ps: Array<{ dataIndex: number }>) => {
+        const r = shown[ps[0]?.dataIndex ?? 0];
+        if (!r) return '';
+        return (
+          `<div class="fw-bold mb-1">${r.b.name || r.b.builder}</div>` +
+          `${pct(r.blockShare, 2)} of blocks built<div class="fs-10 text-body-tertiary">${r.blocks.toLocaleString()} blocks</div>`
+        );
+      }
     },
     xAxis: {
       type: 'value',
@@ -256,29 +251,192 @@ const ShareChart = ({ rows }: { rows: Row_[] }) => {
       axisLabel: { color: getThemeColor('body-color'), fontSize: 11 },
       axisTick: { show: false }
     },
-    series: series.map(s => ({
-      name: s.name,
-      type: 'bar',
-      barMaxWidth: 12,
-      color: s.color,
-      cursor: 'default',
-      data: shown.map(s.value),
-      label: {
-        show: true,
-        position: 'right',
-        color: getThemeColor('tertiary-color'),
-        fontSize: 10,
-        formatter: ({ value }: { value: number }) => pct(value)
+    series: [
+      {
+        name: 'Share of blocks built',
+        type: 'bar',
+        barMaxWidth: 22,
+        cursor: 'default',
+        data: shown.map(r => ({
+          value: r.blockShare ?? 0,
+          itemStyle: {
+            color: builderColor(
+              r.b.builder === 'none' ? 'other' : r.b.builder,
+              getThemeColor
+            )
+          }
+        })),
+        label: {
+          show: true,
+          position: 'right',
+          color: getThemeColor('tertiary-color'),
+          fontSize: 10,
+          formatter: ({ value }: { value: number }) => pct(value)
+        }
       }
-    }))
+    ]
   };
   return (
     <ReactEChartsCore
       echarts={echarts}
       option={option}
       notMerge
-      style={{ height: 64 + shown.length * 40, width: '100%' }}
+      style={{ height: 64 + shown.length * 34, width: '100%' }}
     />
+  );
+};
+
+/** A fee's kind, its base and when it's taken, in words. */
+const FEE_KIND: Record<string, string> = {
+  builderCommission: 'Builder commission',
+  tipRouterFee: 'Tip router fee',
+  priorityFeeRouterFee: 'Priority fee router fee',
+  tipCommission: 'Commission on its tips',
+  blockFeeCommission: 'Commission on block fees',
+  mevCommissionShare: 'Share of MEV commission'
+};
+const FEE_BASE: Record<string, string> = {
+  jitoTips: 'Jito tips',
+  sharedPriorityFees: 'priority fees shared through Jito',
+  ownTips: 'its own tips',
+  blockFees: 'block fees',
+  validatorMevCommission: "validators' MEV commission"
+};
+const FEE_WHEN: Record<string, string> = {
+  atDrain: 'at each tip payout',
+  atDistribution: 'at tip distribution',
+  perLeaderTurn: 'per leader turn',
+  afterEpoch: 'after the epoch'
+};
+
+/** A small soft badge. */
+const Tag = ({ tone, children }: { tone: string; children: string }) => (
+  <span className={`badge badge-soft badge-soft-${tone} ms-1 fs-11`}>
+    {children}
+  </span>
+);
+
+/**
+ * What each builder's operator collected in fees in the epoch, by
+ * collector (Jito runs both Jito builders), each fee listed: its rate and
+ * base, when it's taken, and how much - measured on chain, or an estimate
+ * (rate x base; the staging API only) marked as one. Fees on bases Vortex
+ * doesn't read are "not measured".
+ */
+const RevenueCard = ({ d }: { d: BlockBuilders }) => {
+  // Collectors with a fee, or with a builder in the epoch (Harmonic: none
+  // charged); not one nobody runs (Paladin today).
+  const revenue = (d.builderRevenue ?? []).filter(
+    c =>
+      c.items.length > 0 ||
+      c.builders.some(id =>
+        d.builders.some(b => b.builder === id && b.validators > 0)
+      )
+  );
+  const builderName = (id: string | null) =>
+    id ? (d.builders.find(b => b.builder === id)?.name ?? id) : null;
+  return (
+    <SectionCard
+      title="Builder Revenue"
+      icon="briefcase"
+      info="What each builder's operator collected in the epoch from the fees it charges, by who collects them (Jito runs both Jito builders). Measured: read on chain. Estimate: the fee's rate times what it's charged on. Not measured: charged on something Vortex doesn't read yet (Rakurai's and Raiku's own tips)."
+    >
+      {revenue.length === 0 ? (
+        <UntrackedState>
+          No builder fees from this API for the epoch.
+        </UntrackedState>
+      ) : (
+        <Table responsive size="sm" className="data-table no-stripes fs-9 mb-0">
+          <thead>
+            <tr className="text-nowrap">
+              <th>Collector / Fee</th>
+              <th>Charged On</th>
+              <th className="text-end">Rate</th>
+              <th className="text-end">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {revenue.map(c => (
+              <Fragment key={c.collector}>
+                <tr className="bg-body-highlight">
+                  <td className="fw-semibold">
+                    {c.name || c.collector}
+                    {c.builders.length > 0 && (
+                      <span className="fw-normal text-body-tertiary fs-10 ms-2">
+                        runs {c.builders.map(builderName).join(', ')}
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-body-tertiary fs-10">
+                    {c.items.length === 0 ? 'no fees' : ''}
+                  </td>
+                  <td />
+                  <td className="text-end fw-semibold text-nowrap">
+                    {!c.items.length ? (
+                      '—'
+                    ) : c.items.every(i => i.lamports == null) ? (
+                      <span className="fw-normal text-body-tertiary">
+                        not measured
+                      </span>
+                    ) : (
+                      formatLamports(c.lamports, 2)
+                    )}
+                    {c.items.some(i => i.lamports != null && !i.measured) && (
+                      <Tag tone="warning">incl. estimates</Tag>
+                    )}
+                    {c.items.some(i => i.lamports != null) && !c.complete && (
+                      <Tag tone="secondary">not final</Tag>
+                    )}
+                  </td>
+                </tr>
+                {c.items.map((i, n) => (
+                  <tr key={n}>
+                    <td className="ps-4">
+                      {i.source ? (
+                        <a href={i.source} target="_blank" rel="noreferrer">
+                          {FEE_KIND[i.kind] ?? i.kind}
+                        </a>
+                      ) : (
+                        (FEE_KIND[i.kind] ?? i.kind)
+                      )}
+                      {i.when && (
+                        <span className="text-body-tertiary fs-10 ms-2">
+                          {FEE_WHEN[i.when] ?? i.when}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {(i.base && FEE_BASE[i.base]) ?? i.base ?? '—'}
+                      <span className="text-body-tertiary fs-10 ms-2">
+                        {i.paidBy
+                          ? `in ${builderName(i.paidBy)} blocks`
+                          : 'every validator’s'}
+                      </span>
+                    </td>
+                    <td className="text-end">{bps(i.rateBps)}</td>
+                    <td className="text-end text-nowrap">
+                      {i.lamports != null ? (
+                        formatLamports(i.lamports, 2)
+                      ) : (
+                        <span className="text-body-tertiary">
+                          {i.measured ? 'after the epoch' : 'not measured'}
+                        </span>
+                      )}
+                      {i.lamports != null && !i.measured && (
+                        <Tag tone="warning">estimate</Tag>
+                      )}
+                      {i.lamports != null && i.measured && !i.complete && (
+                        <Tag tone="secondary">not final</Tag>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </SectionCard>
   );
 };
 
@@ -467,8 +625,8 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
 /**
  * Block builders (/cluster/block-builders): for one epoch, how each
  * builder's blocks paid the leader - base fees, priority fees and
- * tips per block built - and its share of the blocks against its share
- * of the stake, to help validators pick one. Blocks are credited by the
+ * tips per block built - and its share of the blocks built, to help
+ * validators pick one. Blocks are credited by the
  * client the leader ran when it built them. Staging only for now.
  */
 const BlockBuildersPage = () => {
@@ -488,6 +646,8 @@ const BlockBuildersPage = () => {
   const failed = !d && !slice?.isLoading && !!slice?.error;
   const rows = useMemo(() => (d ? rowsOf(d) : []), [d]);
   const unknown = d?.builders.find(b => b.builder === UNKNOWN);
+  // Kept per block: only where the API serves the blocks' fees (staging).
+  const showKept = rows.some(r => r.keptPerBlock != null);
 
   const epochOptions = useMemo(() => {
     const out: Array<{ value: number; label: string }> = [];
@@ -636,15 +796,17 @@ const BlockBuildersPage = () => {
             </Col>
             <Col xs={12} lg={5}>
               <SectionCard
-                title="Blocks vs Stake"
+                title="Share of Blocks"
                 icon="bar-chart-2"
-                info="Each builder's share of the stake (validators grouped by the client they ran in the epoch) against its share of the blocks built (each block by the client its leader ran then: a BAM validator's fallback blocks count under Block Engine)."
+                info="Each builder's share of the epoch's blocks built: each block by the client its leader ran when it built it (a BAM validator's fallback blocks count under Block Engine)."
               >
                 <ShareChart rows={rows} />
               </SectionCard>
             </Col>
           </Row>
         )}
+
+        {d.builderRevenue && <RevenueCard d={d} />}
 
         <SectionCard title="Builders" icon="layers">
           <Table responsive size="sm" className="data-table fs-9 mb-0">
@@ -660,6 +822,14 @@ const BlockBuildersPage = () => {
                 >
                   Avg / Block
                 </th>
+                {showKept && (
+                  <th
+                    className="text-end"
+                    title="Average per block built after the fees those blocks paid (builder commissions; estimates are marked)"
+                  >
+                    Kept / Block
+                  </th>
+                )}
                 <th className="text-end">Base</th>
                 <th className="text-end">Priority</th>
                 <th className="text-end">Jito Tips</th>
@@ -668,12 +838,6 @@ const BlockBuildersPage = () => {
                   title="The median MEV commission of its validators with a Jito tip account"
                 >
                   MEV Commission
-                </th>
-                <th
-                  className="text-end"
-                  title="The builder's published fee on tips"
-                >
-                  Builder Fee
                 </th>
                 <th>Tips Paid Via</th>
               </tr>
@@ -709,30 +873,20 @@ const BlockBuildersPage = () => {
                   <td className="text-end fw-semibold">
                     {sol(r.perBlock?.total ?? null)}
                   </td>
+                  {showKept && (
+                    <td className="text-end">
+                      {sol(r.keptPerBlock)}
+                      {r.keptPerBlock != null && r.keptEstimated && (
+                        <div className="fs-10 text-warning">estimate</div>
+                      )}
+                    </td>
+                  )}
                   <td className="text-end">{sol(r.perBlock?.base ?? null)}</td>
                   <td className="text-end">
                     {sol(r.perBlock?.priority ?? null)}
                   </td>
                   <td className="text-end">{sol(r.perBlock?.tips ?? null)}</td>
                   <td className="text-end">{bps(r.b.mevCommissionBps)}</td>
-                  <td
-                    className="text-end"
-                    title={r.b.protocolFee?.note ?? undefined}
-                  >
-                    {r.b.protocolFee?.source ? (
-                      <a
-                        href={r.b.protocolFee.source}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {r.b.protocolFee.bps != null
-                          ? bps(r.b.protocolFee.bps)
-                          : 'unpublished'}
-                      </a>
-                    ) : (
-                      bps(r.b.protocolFee?.bps)
-                    )}
-                  </td>
                   <td className="text-nowrap">
                     {r.b.tips ? TIPS[r.b.tips] : '—'}
                   </td>
@@ -780,6 +934,14 @@ const BlockBuildersPage = () => {
                   ? `, and ${unknown.built.blocks.toLocaleString()} blocks built on one`
                   : ''}
                 .
+              </li>
+            )}
+            {d.feeEstimates && (
+              <li>
+                Builder fees marked estimate are the fee&apos;s rate times what
+                it&apos;s charged on, not read on chain; this staging API serves
+                them, production won&apos;t. Kept / Block takes them off the
+                average.
               </li>
             )}
             {!d.complete && (

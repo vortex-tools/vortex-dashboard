@@ -3794,6 +3794,26 @@ export type ProductionOmissions = z.infer<typeof productionOmissionsSchema>;
 // block income by the block builder each used (Jito BAM, the Jito Block
 // Engine, Harmonic, Rakurai, Raiku, none, unknown), and `built`: its
 // blocks counted block by block by the client the leader ran then.
+// A fee a builder's operator takes: on what, at what rate, how much, and
+// whether measured on chain or estimated (rate x base, staging only).
+export const builderFeeItemSchema = z.object({
+  kind: z.string(),
+  collector: z.string().catch(''),
+  // The builder whose blocks paid it; null: every validator's Jito tips
+  // or shared priority fees, whatever built the blocks.
+  paidBy: z.string().nullable().catch(null),
+  base: z.string().nullable().catch(null),
+  rateBps: z.number().nullable().catch(null),
+  baseLamports: z.number().nullable().catch(null),
+  // Null: neither measured nor estimable (a base not ingested).
+  lamports: z.number().nullable().catch(null),
+  measured: z.boolean().catch(false),
+  complete: z.boolean().catch(false),
+  when: z.string().nullable().catch(null),
+  accounts: z.array(z.string()).catch([]),
+  source: z.string().nullable().catch(null)
+});
+export type BuilderFeeItem = z.infer<typeof builderFeeItemSchema>;
 const builderIncomeSchema = z.object({
   baseFees: z.number().catch(0),
   priorityFees: z.number().catch(0),
@@ -3835,7 +3855,20 @@ export const blockBuilderSchema = z.object({
   built: builderIncomeSchema
     .extend({
       blocks: z.number().catch(0),
-      validators: z.number().catch(0)
+      validators: z.number().catch(0),
+      // What those blocks paid in fees, and what the leaders kept after
+      // them (null where nothing is measured: production today).
+      fees: z
+        .object({
+          lamports: z.number().catch(0),
+          measured: z.boolean().catch(false),
+          complete: z.boolean().catch(false),
+          items: z.array(builderFeeItemSchema).catch([])
+        })
+        .nullable()
+        .optional()
+        .catch(null),
+      kept: z.number().nullable().optional().catch(null)
     })
     .nullable()
     .catch(null)
@@ -3857,6 +3890,25 @@ export const blockBuildersSchema = z.object({
     })
     .nullable()
     .catch(null),
-  builders: z.array(blockBuilderSchema)
+  builders: z.array(blockBuilderSchema),
+  // What each builder's operator collected in fees, by collector.
+  builderRevenue: z
+    .array(
+      z.object({
+        collector: z.string(),
+        name: z.string().catch(''),
+        builders: z.array(z.string()).catch([]),
+        lamports: z.number().catch(0),
+        complete: z.boolean().catch(false),
+        items: z.array(builderFeeItemSchema).catch([]),
+        note: z.string().nullable().catch(null),
+        source: z.string().nullable().catch(null)
+      })
+    )
+    .nullable()
+    .optional()
+    .catch(null),
+  // Estimated fee items included (the staging API only).
+  feeEstimates: z.boolean().optional().catch(false)
 });
 export type BlockBuilders = z.infer<typeof blockBuildersSchema>;
