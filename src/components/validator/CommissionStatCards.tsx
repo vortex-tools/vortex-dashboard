@@ -86,9 +86,18 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
   };
   const inflation = rate('inflationRewardsCommissionBps');
 
-  // MEV: the latest epoch's Jito rate.
+  // MEV: the latest epoch's Jito rate - the newest epoch with one (the
+  // epoch in progress has none until the API carries the last one over).
   const latest = earnings?.length ? earnings[earnings.length - 1] : undefined;
-  const mev = latest?.rates;
+  const mevRow =
+    [...(earnings ?? [])]
+      .reverse()
+      .find(
+        r =>
+          r.rates?.mevCommissionBps != null ||
+          r.rates?.mevCommissionBpsSource === 'noTipAccount'
+      ) ?? latest;
+  const mev = mevRow?.rates;
   const noTips = mev?.mevCommissionBpsSource === 'noTipAccount';
 
   const recent = changes
@@ -178,8 +187,8 @@ const CommissionStatCards = ({ identity }: { identity: string }) => {
                 : noTips
                   ? 'no Jito tip account'
                   : mev?.mevCommissionBpsSource === 'previousEpoch'
-                    ? `Jito's, epoch ${latest!.epoch - 1}'s`
-                    : `Jito's, epoch ${latest?.epoch ?? '—'}`
+                    ? `Jito's, epoch ${mevRow!.epoch - 1}'s`
+                    : `Jito's, epoch ${mevRow?.epoch ?? '—'}`
             }
           />
         </Col>
