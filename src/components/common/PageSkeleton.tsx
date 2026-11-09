@@ -479,7 +479,7 @@ export const SKELETON = {
   clientVersions: [[half(843), half(843)], [full(569)]],
   blockBuilders: [
     { stats: 4 },
-    [full(304, 'chart')],
+    [full(290, 'chart')],
     [
       { w: 7, h: 375, kind: 'chart' },
       { w: 5, h: 375, kind: 'chart' }

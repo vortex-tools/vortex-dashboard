@@ -15,15 +15,8 @@ import { formatLamports } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { BlockBuilder, BlockBuilders } from 'providers/vortex-schemas';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { ChangeEvent, useContext, useEffect, useMemo, useState } from 'react';
-import {
-  ButtonGroup,
-  Col,
-  Form,
-  Row,
-  Table,
-  ToggleButton
-} from 'react-bootstrap';
+import { ChangeEvent, useContext, useEffect, useMemo } from 'react';
+import { Col, Form, Row, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router';
 
 echarts.use([
@@ -308,15 +301,13 @@ const builderColor = (
 
 /**
  * Each builder's share over the last epochs, stacked to 100% (as the home
- * page's Client Diversity): of the stake (validators grouped by the client
- * they ran in the epoch), or of the blocks built (each block by the
- * client its leader ran then; epochs not labelled yet left out). No
+ * page's Client Diversity), of the blocks built: each block by the
+ * client its leader ran then; epochs not labelled yet left out. No
  * builder on top, in gray; Unknown (client not read) left out.
  */
 const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
   const context = useContext(VortexDataContext);
   const { getThemeColor } = useAppContext();
-  const [by, setBy] = useState<'stake' | 'blocks'>('stake');
   const slice = context?.blockBuildersState;
   const fetchData = slice?.fetchData;
   const epochs = useMemo(
@@ -335,23 +326,20 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
     .filter((d): d is BlockBuilders => !!d);
   const points = loaded
     .map(d => {
-      const total =
-        by === 'stake'
-          ? d.stake
-          : d.builders.reduce((a, b) => a + (b.built?.blocks ?? 0), 0);
+      if (!d.blockLabels) return null;
+      const total = d.builders.reduce((a, b) => a + (b.built?.blocks ?? 0), 0);
       const share = new Map<string, number>();
-      if (by === 'blocks' && !d.blockLabels) return null;
       for (const b of d.builders) {
         if (b.builder === UNKNOWN) continue;
         const key = b.builder === 'none' ? 'other' : b.builder;
-        const v = by === 'stake' ? b.stake : (b.built?.blocks ?? 0);
+        const v = b.built?.blocks ?? 0;
         share.set(key, (share.get(key) ?? 0) + (total ? v / total : 0));
       }
       return { epoch: d.epoch, inProgress: !d.complete, share };
     })
     .filter(p => p != null);
   const all = loaded.length === epochs.length;
-  // The builders, most stake in the latest epoch first; "other" on top.
+  // The builders, most blocks in the latest epoch first; "other" on top.
   const last = loaded[loaded.length - 1];
   const names = new Map<string, string>(
     loaded.flatMap(d => d.builders.map(b => [b.builder, b.name] as const))
@@ -361,7 +349,7 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
         ...new Set(
           [...last.builders]
             .filter(b => b.builder !== 'none' && b.builder !== 'unknown')
-            .sort((a, b) => b.stake - a.stake)
+            .sort((a, b) => (b.built?.blocks ?? 0) - (a.built?.blocks ?? 0))
             .map(b => b.builder)
         ),
         'other'
@@ -436,30 +424,7 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
     <SectionCard
       title="Builders Over Time"
       icon="trending-up"
-      info="Each builder's share, epoch by epoch ('now': the epoch in progress, so far). Stake: validators grouped by the client they ran in the epoch. Blocks: each block by the client its leader ran when it built it (a BAM validator's fallback blocks count under Block Engine); epochs not labelled yet are left out."
-      aside={
-        <ButtonGroup size="sm">
-          {(
-            [
-              ['stake', 'Stake'],
-              ['blocks', 'Blocks']
-            ] as const
-          ).map(([k, l]) => (
-            <ToggleButton
-              key={k}
-              id={`builders-over-time-${k}`}
-              type="radio"
-              name="builders-over-time"
-              variant="soft-secondary"
-              value={k}
-              checked={by === k}
-              onChange={() => setBy(k)}
-            >
-              {l}
-            </ToggleButton>
-          ))}
-        </ButtonGroup>
-      }
+      info="Each builder's share of the blocks built, epoch by epoch ('now': the epoch in progress, so far): each block by the client its leader ran when it built it (a BAM validator's fallback blocks count under Block Engine). Epochs not labelled yet are left out."
     >
       <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
         {keys.map(k => (
