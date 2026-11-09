@@ -53,17 +53,81 @@ const ProviderMap = ({
   const [moved, setMoved] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReactEChartsCore>(null);
-  // The +/- buttons: zoom about the map's current center, within the
-  // scroll zoom's limits.
-  const zoomBy = (f: number) => {
+  // Zoom by a factor about a point of the box (default its middle: the
+  // +/- buttons), keeping that point where it is, within 1-MAX_ZOOM.
+  const zoomBy = (f: number, at?: [number, number]) => {
     const chart = chartRef.current?.getEchartsInstance();
-    if (!chart || chart.isDisposed()) return;
+    const el = boxRef.current;
+    if (!chart || chart.isDisposed() || !el) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const geo = (chart.getOption() as any).geo?.[0];
-    const zoom = Math.min(MAX_ZOOM, Math.max(1, (geo?.zoom ?? 1) * f));
-    chart.setOption({ geo: { zoom } });
+    const old = geo?.zoom ?? 1;
+    const zoom = Math.min(MAX_ZOOM, Math.max(1, old * f));
+    if (zoom === old) return;
+    const mid: [number, number] = [el.clientWidth / 2, el.clientHeight / 2];
+    const a = chart.convertFromPixel({ geoIndex: 0 }, at ?? mid) as
+      | number[]
+      | undefined;
+    const m = chart.convertFromPixel({ geoIndex: 0 }, mid) as
+      | number[]
+      | undefined;
+    const k = old / zoom;
+    chart.setOption({
+      geo: {
+        zoom,
+        ...(zoom === 1
+          ? { center: null }
+          : a && m
+            ? { center: [a[0] + (m[0] - a[0]) * k, a[1] + (m[1] - a[1]) * k] }
+            : {})
+      }
+    });
+    setZoomed(zoom > 1);
     setMoved(zoom !== 1 || !!geo?.center);
   };
+  const [zoomed, setZoomed] = useState(false);
+  // A mouse or trackpad zooms with Ctrl / Cmd + scroll (a trackpad pinch
+  // sends that too); a plain scroll scrolls the page, with a hint. Touch:
+  // pinch is the page's, the +/- buttons zoom, and a zoomed map drags.
+  const coarse = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      !!window.matchMedia?.('(pointer: coarse)').matches,
+    []
+  );
+  const isMac = useMemo(
+    () =>
+      typeof navigator !== 'undefined' &&
+      /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+    []
+  );
+  const [hint, setHint] = useState(false);
+  const zoomRef = useRef(zoomBy);
+  zoomRef.current = zoomBy;
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || coarse) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) {
+        setHint(true);
+        clearTimeout(timer);
+        timer = setTimeout(() => setHint(false), 1400);
+        return;
+      }
+      e.preventDefault();
+      const box = el.getBoundingClientRect();
+      zoomRef.current(Math.exp(-e.deltaY * 0.0025), [
+        e.clientX - box.left,
+        e.clientY - box.top
+      ]);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      clearTimeout(timer);
+    };
+  }, [coarse, ready]);
   const [width, setWidth] = useState<number | null>(null);
   useEffect(() => {
     const el = boxRef.current;
@@ -103,9 +167,9 @@ const ProviderMap = ({
     },
     geo: {
       map: 'world',
-      // Zoom (wheel, pinch) and pan (drag); kept across point changes,
-      // reset by the button.
-      roam: true,
+      // Drag pans (on touch, once zoomed in); zoom is ours (Ctrl / Cmd +
+      // scroll, the buttons). Kept across point changes, reset by Reset.
+      roam: coarse ? (zoomed ? 'move' : false) : 'move',
       scaleLimit: { min: 1, max: MAX_ZOOM },
       silent: true,
       layoutCenter: ['50%', '50%'],
@@ -194,11 +258,17 @@ const ProviderMap = ({
                 onClick={() => {
                   setView(v => v + 1);
                   setMoved(false);
+                  setZoomed(false);
                 }}
               >
                 Reset
               </button>
             )}
+          </div>
+        )}
+        {hint && (
+          <div className="position-absolute top-50 start-50 translate-middle bg-body-emphasis border border-translucent rounded shadow-sm px-3 py-2 fs-9 pe-none">
+            Hold {isMac ? '⌘' : 'Ctrl'} and scroll to zoom
           </div>
         )}
         {legend && (
