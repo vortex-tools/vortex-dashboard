@@ -224,7 +224,16 @@ export const MOVED: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
     /^\/validator\/([^/]+)\/(block-income|income)\/?$/,
     m => `/validator/${m[1]}/fees`
   ],
-  [/^\/income\/([^/]+)\/?$/, m => `/validator/${m[1]}/fees`]
+  [/^\/income\/([^/]+)\/?$/, m => `/validator/${m[1]}/fees`],
+  // The consensus record's old URLs: the Voting and Production tabs.
+  [
+    /^\/validator\/([^/]+)\/consensus(?:\/epoch\/(\d+))?\/blocks\/?$/,
+    m => `/validator/${m[1]}/production${m[2] ? `/epoch/${m[2]}` : ''}`
+  ],
+  [
+    /^\/validator\/([^/]+)\/consensus(?:\/epoch\/(\d+))?(?:\/votes)?\/?$/,
+    m => `/validator/${m[1]}/voting${m[2] ? `/epoch/${m[2]}` : ''}`
+  ]
 ];
 
 // ------------------------------------------------------------ validators
@@ -335,8 +344,8 @@ const validatorMeta = (
   if (s === undefined) return PASS;
   const parts = rest.split('/').filter(Boolean);
   const seg = parts[0] ?? '';
-  // The record's old URLs (/consensus[...]) redirect in the app.
-  if (seg === 'consensus') return PASS;
+  // The record's old URLs (/consensus[...]) 301 (MOVED) before this, and
+  // redirect in the app: no tab of their own.
   const tab = VALIDATOR_TABS.find(t => t.seg === seg);
   if (!tab) return MISSING;
   if (!tab.testnet && isTestnet(env)) return PASS;
