@@ -3861,6 +3861,9 @@ export const blockBuilderSchema = z.object({
     .extend({
       blocks: z.number().catch(0),
       validators: z.number().catch(0),
+      // Tips its blocks' leaders got in the builder's own tip accounts
+      // (Rakurai, Raiku), where measured; null: not read.
+      ownTips: z.number().nullable().optional().catch(null),
       // What those blocks paid in fees, and what the leaders kept after
       // them (null where nothing is measured: production today).
       fees: z

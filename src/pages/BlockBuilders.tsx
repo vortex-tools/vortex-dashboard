@@ -60,9 +60,13 @@ type Row_ = {
     base: number;
     priority: number;
     tips: number;
+    /** Tips in the builder's own tip accounts (Rakurai, Raiku), where
+     *  measured. */
+    own: number;
     total: number;
   } | null;
-  /** Its tips go to accounts Vortex doesn't read: income understated. */
+  /** Its tips go to its own accounts and aren't measured: income
+   *  understated. */
   understated: boolean;
   /** Average per block after the fees its blocks paid (null: no fees
    *  served), and whether those fees are estimates. */
@@ -80,11 +84,12 @@ type Row_ = {
 const afterFees = (b: BlockBuilder): Row_['perBlock'] => {
   const built = b.built;
   if (!built?.fees || !built.blocks) return null;
-  const off = { base: 0, priority: 0, tips: 0 };
+  const off = { base: 0, priority: 0, tips: 0, own: 0 };
   const fees = built.baseFees + built.priorityFees;
   for (const i of built.fees.items) {
     const l = i.lamports ?? 0;
     if (i.base === 'jitoTips') off.tips += l;
+    else if (i.base === 'ownTips') off.own += l;
     else if (i.base === 'sharedPriorityFees') off.priority += l;
     else if (i.base === 'blockFees' && fees) {
       off.base += (l * built.baseFees) / fees;
@@ -95,7 +100,8 @@ const afterFees = (b: BlockBuilder): Row_['perBlock'] => {
   const base = per(built.baseFees - off.base);
   const priority = per(built.priorityFees - off.priority);
   const tips = per(built.mevTips - off.tips);
-  return { base, priority, tips, total: base + priority + tips };
+  const own = per((built.ownTips ?? 0) - off.own);
+  return { base, priority, tips, own, total: base + priority + tips + own };
 };
 
 const rowsOf = (d: BlockBuilders): Row_[] => {
@@ -116,12 +122,16 @@ const rowsOf = (d: BlockBuilders): Row_[] => {
                 base: per(b.built.baseFees),
                 priority: per(b.built.priorityFees),
                 tips: per(b.built.mevTips),
+                own: per(b.built.ownTips ?? 0),
                 total: per(
-                  b.built.baseFees + b.built.priorityFees + b.built.mevTips
+                  b.built.baseFees +
+                    b.built.priorityFees +
+                    b.built.mevTips +
+                    (b.built.ownTips ?? 0)
                 )
               }
             : null,
-        understated: b.tips === 'ownTipAccounts',
+        understated: b.tips === 'ownTipAccounts' && b.built?.ownTips == null,
         keptPerBlock:
           b.built?.kept != null && blocks ? b.built.kept / blocks : null,
         keptEstimated: !!b.built?.fees && !b.built.fees.measured,
@@ -155,8 +165,17 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
       name: 'Priority fees',
       color: getThemeColor('primary')
     },
-    { key: 'tips', name: 'Jito tips', color: getThemeColor('success') }
-  ] as const;
+    { key: 'tips', name: 'Jito tips', color: getThemeColor('success') },
+    { key: 'own', name: 'Own tips', color: getThemeColor('warning') }
+  ]
+    // Own tips only where some builder's are measured.
+    .filter(
+      p => p.key !== 'own' || shown.some(r => (pb(r)?.own ?? 0) > 0)
+    ) as Array<{
+    key: 'base' | 'priority' | 'tips' | 'own';
+    name: string;
+    color: string;
+  }>;
   const feesColor = getThemeColor('quaternary-color');
   const option = {
     animation: false,
@@ -206,7 +225,7 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
             ? `<div class="fs-10 text-warning">After estimated fees (staging only).</div>`
             : '') +
           (r.understated
-            ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its tips go to its own tip accounts, not read yet: understated.</div>`
+            ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its own tips aren't measured for this epoch: understated.</div>`
             : '')
         );
       }
@@ -733,6 +752,183 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
 };
 
 /**
+ * Average income per block built, epoch by epoch, one line per builder
+ * (the epoch in progress so far): base, priority fees and Jito tips over
+ * its blocks, and - dashed, where the API serves the blocks' fees - what
+ * the leader kept after them. Epochs not labelled yet are left out.
+ */
+const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
+  const context = useContext(VortexDataContext);
+  const { getThemeColor } = useAppContext();
+  const slice = context?.blockBuildersState;
+  const fetchData = slice?.fetchData;
+  const epochs = useMemo(
+    () =>
+      Array.from(
+        { length: OVER_TIME_EPOCHS },
+        (_, i) => currentEpoch - OVER_TIME_EPOCHS + 1 + i
+      ).filter(e => e >= FIRST_EPOCH),
+    [currentEpoch]
+  );
+  // (The same requests as the distribution card: the slice asks once.)
+  useEffect(() => {
+    epochs.forEach(e => fetchData?.(e));
+  }, [epochs, fetchData]);
+  const loaded = epochs
+    .map(e => slice?.data.get(e))
+    .filter((d): d is BlockBuilders => !!d && !!d.blockLabels);
+  const all = epochs.every(e => slice?.data.has(e)) && loaded.length >= 2;
+  const last = loaded[loaded.length - 1];
+  const names = new Map<string, string>(
+    loaded.flatMap(d =>
+      d.builders.map(
+        b => [b.builder, b.builder === 'none' ? 'No builder' : b.name] as const
+      )
+    )
+  );
+  // Builders by the latest epoch's blocks, No builder last; not Unknown.
+  const keys = last
+    ? [...last.builders]
+        .filter(b => b.builder !== UNKNOWN && (b.built?.blocks ?? 0) > 0)
+        .sort(
+          (a, b) =>
+            (a.builder === 'none' ? 1 : 0) - (b.builder === 'none' ? 1 : 0) ||
+            (b.built?.blocks ?? 0) - (a.built?.blocks ?? 0)
+        )
+        .map(b => b.builder)
+    : [];
+  const at = (d: BlockBuilders, k: string) => {
+    const b = d.builders.find(x => x.builder === k)?.built;
+    if (!b?.blocks) return { avg: null, kept: null };
+    return {
+      avg:
+        (b.baseFees + b.priorityFees + b.mevTips + (b.ownTips ?? 0)) / b.blocks,
+      kept: b.kept != null ? b.kept / b.blocks : null
+    };
+  };
+  const anyKept = loaded.some(d => d.builders.some(b => b.built?.kept != null));
+  const color = (k: string) =>
+    builderColor(k === 'none' ? 'other' : k, getThemeColor);
+  const option = {
+    animation: false,
+    grid: { left: 4, right: 28, top: 8, bottom: 4, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      confine: true,
+      backgroundColor: getThemeColor('body-highlight-bg'),
+      borderColor: getThemeColor('border-color'),
+      textStyle: { color: getThemeColor('body-color'), fontSize: 12 },
+      formatter: (ps: Array<{ dataIndex: number }>) => {
+        const d = loaded[ps[0]?.dataIndex ?? 0];
+        if (!d) return '';
+        const rows = keys
+          .map(k => ({ k, ...at(d, k) }))
+          .filter(r => r.avg != null)
+          .sort((a, b) => b.avg! - a.avg!);
+        return (
+          `<div class="fw-bold mb-1">Epoch ${d.epoch}${d.complete ? '' : ' (so far)'}</div>` +
+          `<table class="fs-10"><tr class="text-body-tertiary"><td></td><td class="text-end ps-3">Avg / block</td>${anyKept ? '<td class="text-end ps-3">Kept</td>' : ''}</tr>` +
+          rows
+            .map(
+              r =>
+                `<tr><td><span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:${color(r.k)}"></span>${names.get(r.k) ?? r.k}</td><td class="text-end ps-3 fw-semibold">${sol(r.avg)}</td>${anyKept ? `<td class="text-end ps-3">${r.kept != null ? sol(r.kept) : '—'}</td>` : ''}</tr>`
+            )
+            .join('') +
+          '</table>'
+        );
+      }
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: loaded.map(d => `${d.epoch}${d.complete ? '' : ' (now)'}`),
+      axisLabel: {
+        color: getThemeColor('tertiary-color'),
+        fontSize: 10,
+        interval: (i: number) => (loaded.length - 1 - i) % 2 === 0
+      },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      axisLabel: {
+        color: getThemeColor('tertiary-color'),
+        fontSize: 10,
+        formatter: (v: number) => formatLamports(v, 3)
+      },
+      splitLine: { lineStyle: { color: getThemeColor('border-color') } }
+    },
+    series: [
+      ...keys.map(k => ({
+        name: names.get(k) ?? k,
+        type: 'line',
+        symbol: 'circle',
+        symbolSize: 4,
+        color: color(k),
+        lineStyle: { width: 2 },
+        data: loaded.map(d => at(d, k).avg)
+      })),
+      ...(anyKept
+        ? keys.map(k => ({
+            name: `${names.get(k) ?? k} (kept)`,
+            type: 'line',
+            symbol: 'none',
+            color: color(k),
+            lineStyle: { width: 1, type: 'dashed', opacity: 0.8 },
+            data: loaded.map(d => at(d, k).kept)
+          }))
+        : [])
+    ]
+  };
+  return (
+    <SectionCard
+      title="Average Income per Block by Epoch"
+      icon="trending-up"
+      info={`Each builder's average (mean) income per block built, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid. Before epoch 1083 Jito's builder commission in it is an estimate (measured from 1083)." : ''}`}
+    >
+      <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
+        {keys.map(k => (
+          <span key={k} className="d-inline-flex align-items-center gap-1">
+            <span
+              className="d-inline-block rounded-1"
+              style={{ width: 10, height: 10, background: color(k) }}
+            />
+            {names.get(k) ?? k}
+          </span>
+        ))}
+        {anyKept && (
+          <span className="d-inline-flex align-items-center gap-1">
+            <span
+              className="d-inline-block"
+              style={{
+                width: 14,
+                borderTop: `2px dashed ${getThemeColor('tertiary-color')}`
+              }}
+            />
+            kept, after builder fees
+          </span>
+        )}
+      </div>
+      {!all ? (
+        <div style={{ height: 260 }}>
+          <div className="placeholder-glow h-100">
+            <span className="placeholder w-100 h-100 rounded bg-body-secondary" />
+          </div>
+        </div>
+      ) : (
+        <ReactEChartsCore
+          echarts={echarts}
+          option={noPointer(option)}
+          notMerge
+          style={{ height: 260, width: '100%' }}
+        />
+      )}
+    </SectionCard>
+  );
+};
+
+/**
  * Block builders (/cluster/block-builders): for one epoch, how each
  * builder's blocks paid the leader - base fees, priority fees and
  * tips per block built - and its share of the blocks built, to help
@@ -756,6 +952,8 @@ const BlockBuildersPage = () => {
   const failed = !d && !slice?.isLoading && !!slice?.error;
   const rows = useMemo(() => (d ? rowsOf(d) : []), [d]);
   const unknown = d?.builders.find(b => b.builder === UNKNOWN);
+  // Own Tips: a column once any builder's are measured.
+  const showOwn = rows.some(r => r.b.built?.ownTips != null);
   // Kept per block: only where the API serves the blocks' fees (staging).
   const showKept = rows.some(r => r.keptPerBlock != null);
   // Average Income per Block: after builder fees, the fees a segment of
@@ -902,7 +1100,7 @@ const BlockBuildersPage = () => {
               <SectionCard
                 title="Average Income per Block"
                 icon="dollar-sign"
-                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees and Jito tips. Builder fees (gray, at the end): what those blocks paid in fees (Jito's builder commission and tip router fee off the Jito tips, and so on; see Builder Revenue), taken off the part they're charged on: the bar is the gross, the label what the leader kept, before its own MEV commission. * Tips paid to its own tip accounts, not read yet: understated."
+                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees, Jito tips and its builder's own tips (Rakurai's, Raiku's, where measured). Builder fees (gray, at the end): what those blocks paid in fees (Jito's builder commission and tip router fee off the Jito tips, and so on; see Builder Revenue), taken off the part they're charged on: the bar is the gross, the label what the leader kept, before its own MEV commission. * Own tips not measured for the epoch: understated."
               >
                 <IncomeChart rows={rows} after={after} />
               </SectionCard>
@@ -917,6 +1115,10 @@ const BlockBuildersPage = () => {
               </SectionCard>
             </Col>
           </Row>
+        )}
+
+        {currentEpoch != null && (
+          <IncomeHistoryCard currentEpoch={currentEpoch} />
         )}
 
         {d.builderRevenue && <RevenueCard d={d} />}
@@ -946,6 +1148,7 @@ const BlockBuildersPage = () => {
                 <th className="text-end">Base</th>
                 <th className="text-end">Priority</th>
                 <th className="text-end">Jito Tips</th>
+                {showOwn && <th className="text-end">Own Tips</th>}
                 <th
                   className="text-end"
                   title="The median MEV commission of its validators with a Jito tip account"
@@ -999,6 +1202,15 @@ const BlockBuildersPage = () => {
                     {sol(r.perBlock?.priority ?? null)}
                   </td>
                   <td className="text-end">{sol(r.perBlock?.tips ?? null)}</td>
+                  {showOwn && (
+                    <td className="text-end">
+                      {r.b.tips === 'ownTipAccounts'
+                        ? r.b.built?.ownTips != null
+                          ? sol(r.perBlock?.own ?? null)
+                          : 'not measured'
+                        : '—'}
+                    </td>
+                  )}
                   <td className="text-end">{bps(r.b.mevCommissionBps)}</td>
                   <td className="text-nowrap">
                     {r.b.tips ? TIPS[r.b.tips] : '—'}
@@ -1019,8 +1231,9 @@ const BlockBuildersPage = () => {
               per-block total.
             </li>
             <li>
-              Rakurai and Raiku (*) pay tips into their own tip accounts, which
-              Vortex doesn&apos;t read yet: their income here is understated.
+              Rakurai and Raiku pay tips into their own tip accounts: Own tips,
+              where Vortex has measured them. A builder marked * has own tips
+              not measured for the epoch, so its income here is understated.
             </li>
             <li>
               Jito tips are gross: Jito&apos;s fee and the validator&apos;s MEV
