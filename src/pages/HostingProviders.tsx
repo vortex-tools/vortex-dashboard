@@ -18,12 +18,13 @@ import useAdvanceTable from 'hooks/useAdvanceTable';
 import { useValidatorGeoAt } from 'hooks/useValidatorGeo';
 import AdvanceTableProvider from 'providers/AdvanceTableProvider';
 import { useAppContext } from 'providers/AppProvider';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Col, Row } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 /** Providers the map colors (the rest share gray). */
 const COLORED = 8;
+const OTHER_COLOR = 'rgba(140, 150, 165, 0.9)';
 
 export const pct = (x: number, digits = 1) => `${(x * 100).toFixed(digits)}%`;
 export const sol = (lamports: number) => formatLamports(lamports, 0);
@@ -155,6 +156,9 @@ const HostingProviders = () => {
   );
   const providers = useMemo(() => grouped?.providers ?? [], [grouped]);
 
+  // The legend's pick: one of the colored providers (its slug), the rest
+  // ('others'), or every provider (null).
+  const [pick, setPick] = useState<string | null>(null);
   const points = useMemo(() => {
     const out: MapPoint[] = [];
     // Others: one gray dot per place, all of them together.
@@ -165,14 +169,15 @@ const HostingProviders = () => {
     providers.forEach((p, i) =>
       p.locations.forEach(l => {
         if (!l.coord) return;
-        if (i < COLORED)
+        if (i < COLORED) {
+          if (pick && pick !== p.slug) return;
           out.push({
             coord: l.coord,
             stake: l.stake,
             color: colors[i],
             tooltip: `<div class="fw-bold">${p.name}</div>${placeName(l)}<br/>${l.validators.length} validator${l.validators.length === 1 ? '' : 's'} · ${sol(l.stake)}`
           });
-        else {
+        } else if (!pick || pick === 'others') {
           const o = other.get(l.key) ?? {
             coord: l.coord,
             stake: 0,
@@ -189,11 +194,11 @@ const HostingProviders = () => {
       out.push({
         coord: o.coord,
         stake: o.stake,
-        color: 'rgba(140, 150, 165, 0.9)',
+        color: OTHER_COLOR,
         tooltip: `<div class="fw-bold">Other providers</div>${o.name}<br/>${o.n} validator${o.n === 1 ? '' : 's'} · ${sol(o.stake)}`
       });
     return out;
-  }, [providers, colors]);
+  }, [providers, colors, pick]);
 
   const table = useAdvanceTable({
     columns,
@@ -272,35 +277,63 @@ const HostingProviders = () => {
         <SectionCard
           title="Coverage"
           icon="map"
-          info="Every provider's places: a dot per provider and city (DB-IP's), sized by its validators' stake. The largest providers each have a color; the rest are gray."
+          info="Every provider's places: a dot per provider and city (DB-IP's), sized by its validators' stake. The largest providers each have a color; the rest are gray. Click a legend entry to see only its places (again for all); scroll or pinch to zoom, drag to pan."
         >
-          <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-2">
-            {providers.slice(0, COLORED).map((p, i) => (
-              <Link
-                key={p.slug}
-                to={providerPath(p)}
-                className="d-inline-flex align-items-center gap-1 text-body-tertiary"
-              >
-                <span
-                  className="d-inline-block rounded-circle"
-                  style={{ width: 9, height: 9, background: colors[i] }}
-                />
-                {p.name} {pct(p.share)}
-              </Link>
-            ))}
-            <span className="d-inline-flex align-items-center gap-1">
-              <span
-                className="d-inline-block rounded-circle"
-                style={{
-                  width: 9,
-                  height: 9,
-                  background: 'rgba(140, 150, 165, 0.9)'
-                }}
-              />
-              Others
-            </span>
-          </div>
-          <ProviderMap points={points} />
+          <ProviderMap
+            points={points}
+            legend={
+              <div className="d-flex flex-column fs-10">
+                {[
+                  ...providers.slice(0, COLORED).map((p, i) => ({
+                    key: p.slug,
+                    label: `${p.name} ${pct(p.share)}`,
+                    color: colors[i],
+                    path: providerPath(p)
+                  })),
+                  {
+                    key: 'others',
+                    label: 'Others',
+                    color: OTHER_COLOR,
+                    path: null
+                  }
+                ].map(x => (
+                  <span
+                    key={x.key}
+                    className="d-inline-flex align-items-center gap-1"
+                  >
+                    <button
+                      type="button"
+                      className={`btn btn-link p-0 fs-10 text-start text-decoration-none d-inline-flex align-items-center gap-1 ${
+                        pick && pick !== x.key
+                          ? 'text-body-quaternary'
+                          : 'text-body-secondary'
+                      }`}
+                      aria-pressed={pick === x.key}
+                      title={
+                        pick === x.key
+                          ? 'Show every provider'
+                          : 'Show only its locations'
+                      }
+                      onClick={() => setPick(k => (k === x.key ? null : x.key))}
+                    >
+                      <span
+                        className="d-inline-block rounded-circle flex-shrink-0"
+                        style={{ width: 9, height: 9, background: x.color }}
+                      />
+                      <span className={pick === x.key ? 'fw-bold' : ''}>
+                        {x.label}
+                      </span>
+                    </button>
+                    {pick === x.key && x.path && (
+                      <Link to={x.path} className="ms-1">
+                        Open →
+                      </Link>
+                    )}
+                  </span>
+                ))}
+              </div>
+            }
+          />
         </SectionCard>
 
         <SectionCard

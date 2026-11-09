@@ -6,7 +6,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import ChartSkeleton from 'components/common/ChartSkeleton';
 import { loadWorld } from 'helpers/worldMap';
 import { useAppContext } from 'providers/AppProvider';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 echarts.use([ScatterChart, GeoComponent, TooltipComponent, CanvasRenderer]);
 
@@ -35,14 +35,20 @@ const sizeOf = (stake: number, max: number) =>
  */
 const ProviderMap = ({
   points,
-  onClick
+  onClick,
+  legend
 }: {
   points: MapPoint[];
   /** A dot clicked: its index in `points`. */
   onClick?: (index: number) => void;
+  /** Drawn over the map's bottom left corner. */
+  legend?: ReactNode;
 }) => {
   const { getThemeColor, isDark } = useAppContext();
   const [ready, setReady] = useState(false);
+  // Bumped by Reset: a new chart at the whole world.
+  const [view, setView] = useState(0);
+  const [moved, setMoved] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number | null>(null);
   useEffect(() => {
@@ -83,7 +89,10 @@ const ProviderMap = ({
     },
     geo: {
       map: 'world',
-      roam: false,
+      // Zoom (wheel, pinch) and pan (drag); kept across point changes,
+      // reset by the button.
+      roam: true,
+      scaleLimit: { min: 1, max: 20 },
       silent: true,
       layoutCenter: ['50%', '50%'],
       layoutSize:
@@ -115,28 +124,57 @@ const ProviderMap = ({
     ]
   };
   return (
-    <div ref={boxRef} style={{ height }}>
-      {ready ? (
-        <ReactEChartsCore
-          echarts={echarts}
-          option={option}
-          notMerge
-          style={{ height, width: '100%' }}
-          onEvents={
-            onClick
-              ? {
-                  click: (e: { dataIndex: number }) => {
-                    const hit = order[e.dataIndex];
-                    if (hit) onClick(hit.i);
+    <>
+      <div ref={boxRef} className="position-relative" style={{ height }}>
+        {ready ? (
+          <ReactEChartsCore
+            key={view}
+            echarts={echarts}
+            option={option}
+            // Merged, so a zoom or pan survives new points (a legend pick).
+            notMerge={false}
+            style={{ height, width: '100%' }}
+            onEvents={{
+              georoam: () => setMoved(true),
+              ...(onClick
+                ? {
+                    click: (e: { dataIndex: number }) => {
+                      const hit = order[e.dataIndex];
+                      if (hit) onClick(hit.i);
+                    }
                   }
-                }
-              : undefined
-          }
-        />
-      ) : (
-        <ChartSkeleton height={height} />
+                : {})
+            }}
+          />
+        ) : (
+          <ChartSkeleton height={height} />
+        )}
+        {moved && (
+          <button
+            type="button"
+            className="btn btn-sm btn-soft-secondary position-absolute top-0 end-0"
+            onClick={() => {
+              setView(v => v + 1);
+              setMoved(false);
+            }}
+          >
+            Reset
+          </button>
+        )}
+        {legend && (
+          // A box over the bottom left corner; under the map on phones,
+          // where it would cover the dots.
+          <div className="d-none d-md-block position-absolute bottom-0 start-0 m-2 bg-body-emphasis border border-translucent rounded shadow-sm px-2 py-1">
+            {legend}
+          </div>
+        )}
+      </div>
+      {legend && (
+        <div className="d-md-none mt-2 bg-body-emphasis border border-translucent rounded px-2 py-1">
+          {legend}
+        </div>
       )}
-    </div>
+    </>
   );
 };
 
