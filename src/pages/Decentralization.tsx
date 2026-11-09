@@ -134,7 +134,7 @@ const FLAVOR_KEYS: Record<string, string> = {
   rakurai: 'Rakurai',
   raiku: 'Raiku',
   paladin: 'Paladin',
-  plain: 'Plain client'
+  plain: 'No builder'
 };
 
 const flavorOf = (clientId: string | null) =>
@@ -453,7 +453,7 @@ const Decentralization = () => {
     for (const c of dist.clientIds) {
       const known = c.clientId != null && c.clientId in FLAVORS;
       const name = known
-        ? (FLAVORS[c.clientId!] ?? 'Plain client')
+        ? (FLAVORS[c.clientId!] ?? 'No builder')
         : c.clientId
           ? 'Unrecognized'
           : 'Not in gossip';
@@ -668,7 +668,7 @@ const Decentralization = () => {
           ? clientFrames(
               e => e.clientIds,
               k =>
-                k in FLAVORS ? (FLAVORS[k] ?? 'Plain client') : 'Unrecognized'
+                k in FLAVORS ? (FLAVORS[k] ?? 'No builder') : 'Unrecognized'
             )
           : undefined,
       // By node identity over all the stake (located or not).
@@ -814,9 +814,9 @@ const Decentralization = () => {
             </Col>
             <Col xs={12} lg={6}>
               <BreakdownCard
-                title="Flavors"
+                title="Block Builders"
                 icon="layers"
-                noun="flavor"
+                noun="builder"
                 info="Stake by block builder (Jito, BAM, Harmonic), across clients: an outage in one builder hits validators of either client."
                 groups={view.flavors}
                 total={view.total}
