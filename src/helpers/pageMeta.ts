@@ -725,6 +725,23 @@ export const pageMeta = (
 ): Verdict => {
   const path = pathname.replace(/\/+$/, '') || '/';
   const seg = path.split('/');
+  // Block Builders: a staging-only page (src/Routes.tsx) - unknown elsewhere.
+  if (seg[1] === 'block-builders') {
+    const m = path.match(/^\/block-builders(?:\/epoch\/(\d+))?$/);
+    if (env.SITE !== 'staging' || !m) return MISSING;
+    const base = { name: 'Block Builders', path: '/block-builders' };
+    return {
+      title: m[1]
+        ? `${solana(env)} block builders, epoch ${m[1]}`
+        : `${solana(env)} block builders: income per block and builder fees`,
+      description: `How each ${solana(env)} block builder's blocks pay the leader${m[1] ? ` in epoch ${m[1]}` : ''}: base fees, priority fees and Jito tips per block built, share of blocks, and what each builder collects in fees.`,
+      canonical: path,
+      crumbs: m[1]
+        ? [HOME, base, { name: `Epoch ${m[1]}`, path }]
+        : [HOME, base],
+      archive: !!m[1]
+    };
+  }
   if (!KNOWN_SECTIONS.has(seg[1] ?? '')) return MISSING;
 
   const fixed = STATIC[path];
