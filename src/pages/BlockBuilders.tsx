@@ -15,8 +15,22 @@ import { formatLamports } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { BlockBuilder, BlockBuilders } from 'providers/vortex-schemas';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { ChangeEvent, Fragment, useContext, useEffect, useMemo } from 'react';
-import { Col, Form, Row, Table } from 'react-bootstrap';
+import {
+  ChangeEvent,
+  Fragment,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
+import {
+  ButtonGroup,
+  Col,
+  Form,
+  Row,
+  Table,
+  ToggleButton
+} from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router';
 
 echarts.use([
@@ -67,6 +81,34 @@ type Row_ = {
    *  served), and whether those fees are estimates. */
   keptPerBlock: number | null;
   keptEstimated: boolean;
+  /** perBlock after the fees its blocks paid, each taken from the part
+   *  it's charged on (null: no fees served). */
+  perBlockAfter: Row_['perBlock'];
+};
+
+/** A builder's per-block parts after the fees its blocks paid: Jito tip
+ *  fees off the tips, shared priority fees' off priority fees, block-fee
+ *  commissions off base and priority pro rata; fees on what income
+ *  doesn't count (its own tips, the validator's MEV commission) don't. */
+const afterFees = (b: BlockBuilder): Row_['perBlock'] => {
+  const built = b.built;
+  if (!built?.fees || !built.blocks) return null;
+  const off = { base: 0, priority: 0, tips: 0 };
+  const fees = built.baseFees + built.priorityFees;
+  for (const i of built.fees.items) {
+    const l = i.lamports ?? 0;
+    if (i.base === 'jitoTips') off.tips += l;
+    else if (i.base === 'sharedPriorityFees') off.priority += l;
+    else if (i.base === 'blockFees' && fees) {
+      off.base += (l * built.baseFees) / fees;
+      off.priority += (l * built.priorityFees) / fees;
+    }
+  }
+  const per = (v: number) => Math.max(0, v) / built.blocks;
+  const base = per(built.baseFees - off.base);
+  const priority = per(built.priorityFees - off.priority);
+  const tips = per(built.mevTips - off.tips);
+  return { base, priority, tips, total: base + priority + tips };
 };
 
 const rowsOf = (d: BlockBuilders): Row_[] => {
@@ -95,7 +137,8 @@ const rowsOf = (d: BlockBuilders): Row_[] => {
         understated: b.tips === 'ownTipAccounts',
         keptPerBlock:
           b.built?.kept != null && blocks ? b.built.kept / blocks : null,
-        keptEstimated: !!b.built?.fees && !b.built.fees.measured
+        keptEstimated: !!b.built?.fees && !b.built.fees.measured,
+        perBlockAfter: afterFees(b)
       };
     });
 };
@@ -106,11 +149,13 @@ const label = (r: Row_) =>
 
 /** Income per built block by builder, split base / priority / tips
  *  (SOL), most first. */
-const IncomeChart = ({ rows }: { rows: Row_[] }) => {
+const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
   const { getThemeColor } = useAppContext();
+  // Before or after the fees its blocks paid.
+  const pb = (r: Row_) => (after ? r.perBlockAfter : r.perBlock);
   const shown = rows
-    .filter(r => r.perBlock)
-    .sort((a, b) => a.perBlock!.total - b.perBlock!.total);
+    .filter(r => pb(r))
+    .sort((a, b) => pb(a)!.total - pb(b)!.total);
   const parts = [
     { key: 'base', name: 'Base fees', color: getThemeColor('info') },
     {
@@ -139,7 +184,7 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
       textStyle: { color: getThemeColor('body-color') },
       formatter: (ps: Array<{ dataIndex: number }>) => {
         const r = shown[ps[0]?.dataIndex ?? 0];
-        if (!r?.perBlock) return '';
+        if (!r || !pb(r)) return '';
         const line = (c: string | null, k: string, v: string) =>
           `<div class="d-flex justify-content-between gap-3">${
             c
@@ -148,13 +193,18 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
           }<span class="me-auto">${k}</span><span class="fw-semibold">${v}</span></div>`;
         return (
           `<div class="fw-bold mb-1">${r.b.name || r.b.builder}</div>` +
-          parts
-            .map(p => line(p.color, p.name, sol(r.perBlock![p.key])))
-            .join('') +
-          line(null, 'Average per block', sol(r.perBlock.total)) +
+          parts.map(p => line(p.color, p.name, sol(pb(r)![p.key]))).join('') +
+          line(
+            null,
+            after ? 'Average kept per block' : 'Average per block',
+            sol(pb(r)!.total)
+          ) +
           `<div class="fs-10 text-body-tertiary mt-1">${r.blocks.toLocaleString()} blocks built</div>` +
           (r.b.tips === 'priorityFees'
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its own tips arrive as priority fees: Jito tips here are only the Jito bundles that landed in its blocks.</div>`
+            : '') +
+          (after && r.keptEstimated
+            ? `<div class="fs-10 text-warning">After estimated fees (staging only).</div>`
             : '') +
           (r.understated
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its tips go to its own tip accounts, not read yet: understated.</div>`
@@ -183,7 +233,7 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
       stack: 'income',
       barMaxWidth: 22,
       color: p.color,
-      data: shown.map(r => r.perBlock![p.key]),
+      data: shown.map(r => pb(r)![p.key]),
       cursor: 'default',
       // The total at the end of the bar.
       ...(i === parts.length - 1
@@ -194,7 +244,7 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
               color: getThemeColor('body-color'),
               fontSize: 11,
               formatter: ({ dataIndex }: { dataIndex: number }) =>
-                sol(shown[dataIndex].perBlock!.total)
+                sol(pb(shown[dataIndex])!.total)
             }
           }
         : {})
@@ -648,6 +698,10 @@ const BlockBuildersPage = () => {
   const unknown = d?.builders.find(b => b.builder === UNKNOWN);
   // Kept per block: only where the API serves the blocks' fees (staging).
   const showKept = rows.some(r => r.keptPerBlock != null);
+  // Average Income per Block: before or after builder fees (after, where
+  // the API serves the blocks' fees).
+  const [feesView, setFeesView] = useState<'before' | 'after'>('after');
+  const after = showKept && feesView === 'after';
 
   const epochOptions = useMemo(() => {
     const out: Array<{ value: number; label: string }> = [];
@@ -789,9 +843,34 @@ const BlockBuildersPage = () => {
               <SectionCard
                 title="Average Income per Block"
                 icon="dollar-sign"
-                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees and Jito tips (gross, before Jito's fee and its MEV commission). * Tips paid to its own tip accounts, not read yet: understated."
+                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees and Jito tips. Before fees: gross. After fees: less the fees those blocks paid (Jito's builder commission and tip router fee off the Jito tips, and so on; see Builder Revenue), before the validator's own MEV commission. * Tips paid to its own tip accounts, not read yet: understated."
+                aside={
+                  showKept ? (
+                    <ButtonGroup size="sm">
+                      {(
+                        [
+                          ['after', 'After fees'],
+                          ['before', 'Before fees']
+                        ] as const
+                      ).map(([k, l]) => (
+                        <ToggleButton
+                          key={k}
+                          id={`income-fees-${k}`}
+                          type="radio"
+                          name="income-fees"
+                          variant="soft-secondary"
+                          value={k}
+                          checked={feesView === k}
+                          onChange={() => setFeesView(k)}
+                        >
+                          {l}
+                        </ToggleButton>
+                      ))}
+                    </ButtonGroup>
+                  ) : undefined
+                }
               >
-                <IncomeChart rows={rows} />
+                <IncomeChart rows={rows} after={after} />
               </SectionCard>
             </Col>
             <Col xs={12} lg={5}>
