@@ -6,6 +6,7 @@ import StakeRace, { RaceFrame } from 'components/common/StakeRace';
 import { raceEntries } from 'components/charts/e-charts/StakeRaceChart';
 import { GeoBreakdown } from 'providers/vortex-schemas';
 import UntrackedState from 'components/common/UntrackedState';
+import { IS_STAGING } from 'helpers/apiEndpoint';
 import { useApiHealth } from 'helpers/apiHealth';
 import {
   CLUSTER_KEY,
@@ -211,8 +212,11 @@ const BreakdownCard = ({
   countValidators = true,
   nakamoto = true,
   race,
-  history
+  history,
+  link
 }: {
+  /** A page with more on it, linked from the header. */
+  link?: { to: string; label: string };
   /** The page's history loading (its Past toggle; omitted: Now only). */
   history?: HistoryCtl;
   /** Its Nakamoto number (badge, marked rows); off where it isn't a
@@ -252,6 +256,8 @@ const BreakdownCard = ({
       title={title}
       icon={icon}
       info={info}
+      linkTo={link?.to}
+      linkLabel={link?.label}
       badge={
         nakamoto && (
           <span
@@ -732,6 +738,7 @@ const Decentralization = () => {
             <Col xs={12} lg={6}>
               <BreakdownCard
                 title="Providers"
+                link={{ to: '/providers', label: 'All' }}
                 icon="server"
                 noun="provider"
                 info="Stake by the network (ASN) hosting each validator, an organization's ASNs together."
@@ -814,6 +821,12 @@ const Decentralization = () => {
             <Col xs={12} lg={6}>
               <BreakdownCard
                 title="Block Builders"
+                // The Block Builders page is staging only for now.
+                link={
+                  IS_STAGING
+                    ? { to: '/block-builders', label: 'All' }
+                    : undefined
+                }
                 icon="layers"
                 noun="builder"
                 info="Stake by block builder (Jito BAM, Jito Block Engine, Harmonic), across clients: an outage in one builder hits validators of either client."
