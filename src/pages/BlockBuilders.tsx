@@ -1,6 +1,6 @@
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
-import { BarChart } from 'echarts/charts';
+import { BarChart, LineChart } from 'echarts/charts';
 import {
   GridComponent,
   LegendComponent,
@@ -15,17 +15,29 @@ import { formatLamports } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { BlockBuilder, BlockBuilders } from 'providers/vortex-schemas';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { ChangeEvent, useContext, useEffect, useMemo } from 'react';
-import { Col, Form, Row, Table } from 'react-bootstrap';
+import { ChangeEvent, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  ButtonGroup,
+  Col,
+  Form,
+  Row,
+  Table,
+  ToggleButton
+} from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router';
 
 echarts.use([
   BarChart,
+  LineChart,
   GridComponent,
   LegendComponent,
   TooltipComponent,
   CanvasRenderer
 ]);
+
+/** The API's group for validators whose client it couldn't read for the
+ *  epoch: no builder to show, left out of the charts and table. */
+const UNKNOWN = 'unknown';
 
 /** The first epoch with blocks labelled by builder. */
 const FIRST_EPOCH = 1066;
@@ -62,27 +74,30 @@ type Row_ = {
 
 const rowsOf = (d: BlockBuilders): Row_[] => {
   const labelled = d.blockLabels?.blocks ?? 0;
-  return d.builders.map(b => {
-    const blocks = b.built?.blocks ?? 0;
-    const per = (v: number) => v / blocks;
-    return {
-      b,
-      blocks,
-      blockShare: labelled && b.built ? blocks / labelled : null,
-      perBlock:
-        b.built && blocks
-          ? {
-              base: per(b.built.baseFees),
-              priority: per(b.built.priorityFees),
-              tips: per(b.built.mevTips),
-              total: per(
-                b.built.baseFees + b.built.priorityFees + b.built.mevTips
-              )
-            }
-          : null,
-      understated: b.tips === 'ownTipAccounts'
-    };
-  });
+  // Not "unknown": validators whose client we couldn't read (see notes).
+  return d.builders
+    .filter(b => b.builder !== UNKNOWN)
+    .map(b => {
+      const blocks = b.built?.blocks ?? 0;
+      const per = (v: number) => v / blocks;
+      return {
+        b,
+        blocks,
+        blockShare: labelled && b.built ? blocks / labelled : null,
+        perBlock:
+          b.built && blocks
+            ? {
+                base: per(b.built.baseFees),
+                priority: per(b.built.priorityFees),
+                tips: per(b.built.mevTips),
+                total: per(
+                  b.built.baseFees + b.built.priorityFees + b.built.mevTips
+                )
+              }
+            : null,
+        understated: b.tips === 'ownTipAccounts'
+      };
+    });
 };
 
 /** A builder's name, starred when its income is understated. */
@@ -103,7 +118,7 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
       name: 'Priority fees',
       color: getThemeColor('primary')
     },
-    { key: 'tips', name: 'Tips', color: getThemeColor('success') }
+    { key: 'tips', name: 'Jito tips', color: getThemeColor('success') }
   ] as const;
   const option = {
     animation: false,
@@ -136,10 +151,10 @@ const IncomeChart = ({ rows }: { rows: Row_[] }) => {
           parts
             .map(p => line(p.color, p.name, sol(r.perBlock![p.key])))
             .join('') +
-          line(null, 'Per block', sol(r.perBlock.total)) +
+          line(null, 'Average per block', sol(r.perBlock.total)) +
           `<div class="fs-10 text-body-tertiary mt-1">${r.blocks.toLocaleString()} blocks built</div>` +
           (r.b.tips === 'priorityFees'
-            ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its tips arrive as priority fees: Tips here are only the tips paid through Jito's tip accounts in its blocks.</div>`
+            ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its own tips arrive as priority fees: Jito tips here are only the Jito bundles that landed in its blocks.</div>`
             : '') +
           (r.understated
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its tips go to its own tip accounts, not read yet: understated.</div>`
@@ -274,6 +289,216 @@ const ShareChart = ({ rows }: { rows: Row_[] }) => {
   );
 };
 
+/** Epochs the over-time chart covers, the current one last. */
+const OVER_TIME_EPOCHS = 10;
+
+/** Builders' colors (No builder in gray). */
+const builderColor = (
+  builder: string,
+  getThemeColor: (name: string) => string
+) =>
+  ({
+    'jito-bam': getThemeColor('primary'),
+    harmonic: 'rgb(26, 153, 131)',
+    'jito-block-engine': getThemeColor('info'),
+    rakurai: getThemeColor('warning'),
+    raiku: getThemeColor('danger'),
+    paladin: getThemeColor('success')
+  })[builder] ?? getThemeColor('quaternary-color');
+
+/**
+ * Each builder's share over the last epochs, stacked to 100% (as the home
+ * page's Client Diversity): of the stake (validators grouped by the client
+ * they ran in the epoch), or of the blocks built (each block by the
+ * client its leader ran then; epochs not labelled yet left out). No
+ * builder on top, in gray; Unknown (client not read) left out.
+ */
+const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
+  const context = useContext(VortexDataContext);
+  const { getThemeColor } = useAppContext();
+  const [by, setBy] = useState<'stake' | 'blocks'>('stake');
+  const slice = context?.blockBuildersState;
+  const fetchData = slice?.fetchData;
+  const epochs = useMemo(
+    () =>
+      Array.from(
+        { length: OVER_TIME_EPOCHS },
+        (_, i) => currentEpoch - OVER_TIME_EPOCHS + 1 + i
+      ).filter(e => e >= FIRST_EPOCH),
+    [currentEpoch]
+  );
+  useEffect(() => {
+    epochs.forEach(e => fetchData?.(e));
+  }, [epochs, fetchData]);
+  const loaded = epochs
+    .map(e => slice?.data.get(e))
+    .filter((d): d is BlockBuilders => !!d);
+  const points = loaded
+    .map(d => {
+      const total =
+        by === 'stake'
+          ? d.stake
+          : d.builders.reduce((a, b) => a + (b.built?.blocks ?? 0), 0);
+      const share = new Map<string, number>();
+      if (by === 'blocks' && !d.blockLabels) return null;
+      for (const b of d.builders) {
+        if (b.builder === UNKNOWN) continue;
+        const key = b.builder === 'none' ? 'other' : b.builder;
+        const v = by === 'stake' ? b.stake : (b.built?.blocks ?? 0);
+        share.set(key, (share.get(key) ?? 0) + (total ? v / total : 0));
+      }
+      return { epoch: d.epoch, inProgress: !d.complete, share };
+    })
+    .filter(p => p != null);
+  const all = loaded.length === epochs.length;
+  // The builders, most stake in the latest epoch first; "other" on top.
+  const last = loaded[loaded.length - 1];
+  const names = new Map<string, string>(
+    loaded.flatMap(d => d.builders.map(b => [b.builder, b.name] as const))
+  );
+  const keys = last
+    ? [
+        ...new Set(
+          [...last.builders]
+            .filter(b => b.builder !== 'none' && b.builder !== 'unknown')
+            .sort((a, b) => b.stake - a.stake)
+            .map(b => b.builder)
+        ),
+        'other'
+      ]
+    : [];
+  const nameOf = (k: string) =>
+    k === 'other' ? 'No builder' : (names.get(k) ?? k);
+  const latestPoint = points[points.length - 1];
+
+  const option = {
+    animation: false,
+    // Room on the right for the last label ("1081 (now)").
+    grid: { left: 4, right: 28, top: 8, bottom: 4, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      confine: true,
+      backgroundColor: getThemeColor('body-highlight-bg'),
+      borderColor: getThemeColor('border-color'),
+      textStyle: { color: getThemeColor('body-color'), fontSize: 12 },
+      formatter: (ps: Array<{ dataIndex: number }>) => {
+        const p = points[ps[0]?.dataIndex ?? 0];
+        if (!p) return '';
+        return (
+          `<div class="fw-bold mb-1">Epoch ${p.epoch}${p.inProgress ? ' (so far)' : ''}</div>` +
+          keys
+            .filter(k => (p.share.get(k) ?? 0) > 0.0005)
+            .map(
+              k =>
+                `<div class="d-flex justify-content-between gap-3"><span><span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:${builderColor(k, getThemeColor)}"></span>${nameOf(k)}</span><span class="fw-semibold">${pct(p.share.get(k) ?? 0)}</span></div>`
+            )
+            .join('')
+        );
+      }
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: points.map(p => `${p.epoch}${p.inProgress ? ' (now)' : ''}`),
+      axisLabel: {
+        color: getThemeColor('tertiary-color'),
+        fontSize: 10,
+        interval: (i: number) => (points.length - 1 - i) % 2 === 0
+      },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 1,
+      interval: 0.25,
+      axisLabel: {
+        color: getThemeColor('tertiary-color'),
+        fontSize: 10,
+        formatter: (v: number) => `${Math.round(v * 100)}%`
+      },
+      splitLine: { lineStyle: { color: getThemeColor('border-color') } }
+    },
+    series: keys.map(k => ({
+      name: nameOf(k),
+      type: 'line',
+      stack: 'builders',
+      symbol: 'none',
+      smooth: 0.2,
+      color: builderColor(k, getThemeColor),
+      lineStyle: { width: 1 },
+      areaStyle: { opacity: 0.55 },
+      data: points.map(p => p.share.get(k) ?? 0)
+    }))
+  };
+
+  return (
+    <SectionCard
+      title="Builders Over Time"
+      icon="trending-up"
+      info="Each builder's share, epoch by epoch ('now': the epoch in progress, so far). Stake: validators grouped by the client they ran in the epoch. Blocks: each block by the client its leader ran when it built it (a BAM validator's fallback blocks count under Block Engine); epochs not labelled yet are left out."
+      aside={
+        <ButtonGroup size="sm">
+          {(
+            [
+              ['stake', 'Stake'],
+              ['blocks', 'Blocks']
+            ] as const
+          ).map(([k, l]) => (
+            <ToggleButton
+              key={k}
+              id={`builders-over-time-${k}`}
+              type="radio"
+              name="builders-over-time"
+              variant="soft-secondary"
+              value={k}
+              checked={by === k}
+              onChange={() => setBy(k)}
+            >
+              {l}
+            </ToggleButton>
+          ))}
+        </ButtonGroup>
+      }
+    >
+      <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
+        {keys.map(k => (
+          <span key={k} className="d-inline-flex align-items-center gap-1">
+            <span
+              className="d-inline-block rounded-1"
+              style={{
+                width: 10,
+                height: 10,
+                background: builderColor(k, getThemeColor)
+              }}
+            />
+            {nameOf(k)}
+            {latestPoint ? ` ${pct(latestPoint.share.get(k) ?? 0)}` : ''}
+          </span>
+        ))}
+      </div>
+      {!all || points.length < 2 ? (
+        <div style={{ height: 200 }}>
+          {all ? (
+            <UntrackedState>Not enough epochs labelled yet.</UntrackedState>
+          ) : (
+            <div className="placeholder-glow h-100">
+              <span className="placeholder w-100 h-100 rounded bg-body-secondary" />
+            </div>
+          )}
+        </div>
+      ) : (
+        <ReactEChartsCore
+          echarts={echarts}
+          option={option}
+          notMerge
+          style={{ height: 200, width: '100%' }}
+        />
+      )}
+    </SectionCard>
+  );
+};
+
 /**
  * Block builders (/cluster/block-builders): for one epoch, how each
  * builder's blocks paid the leader - base fees, priority fees and
@@ -297,6 +522,7 @@ const BlockBuildersPage = () => {
   const d = epoch != null ? slice?.data.get(epoch) : undefined;
   const failed = !d && !slice?.isLoading && !!slice?.error;
   const rows = useMemo(() => (d ? rowsOf(d) : []), [d]);
+  const unknown = d?.builders.find(b => b.builder === UNKNOWN);
 
   const epochOptions = useMemo(() => {
     const out: Array<{ value: number; label: string }> = [];
@@ -404,12 +630,12 @@ const BlockBuildersPage = () => {
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
-              label="Top Income / Block"
+              label="Top Avg Income / Block"
               mono={false}
               value={best ? best.b.name : '—'}
               sublabel={
                 best
-                  ? `${sol(best.perBlock!.total)} per block built`
+                  ? `${sol(best.perBlock!.total)} average per block built`
                   : undefined
               }
             />
@@ -423,8 +649,10 @@ const BlockBuildersPage = () => {
           </Col>
         </Row>
 
+        {currentEpoch != null && <OverTimeCard currentEpoch={currentEpoch} />}
+
         {!labels ? (
-          <SectionCard title="Income per Block" icon="dollar-sign">
+          <SectionCard title="Average Income per Block" icon="dollar-sign">
             <UntrackedState>
               Epoch {d.epoch}&apos;s blocks aren&apos;t labelled by builder yet
               {d.epoch < FIRST_EPOCH ? '' : ' (labelling is catching up)'}.
@@ -434,9 +662,9 @@ const BlockBuildersPage = () => {
           <Row className="g-3">
             <Col xs={12} lg={7}>
               <SectionCard
-                title="Income per Block"
+                title="Average Income per Block"
                 icon="dollar-sign"
-                info="What the leader took in per block it built, by the builder whose client it ran at that block: its share of base fees, priority fees and tips (paid through Jito's tip accounts; gross, before Jito's fee and its MEV commission). * Tips paid to its own tip accounts, not read yet: understated."
+                info="The average (mean) the leader took in per block it built - the builder's blocks' total over their count - by the builder whose client it ran at that block: its share of base fees, priority fees and Jito tips (gross, before Jito's fee and its MEV commission). * Tips paid to its own tip accounts, not read yet: understated."
               >
                 <IncomeChart rows={rows} />
               </SectionCard>
@@ -461,10 +689,15 @@ const BlockBuildersPage = () => {
                 <th className="text-end">Validators</th>
                 <th className="text-end">Stake</th>
                 <th className="text-end">Blocks Built</th>
-                <th className="text-end">Per Block</th>
+                <th
+                  className="text-end"
+                  title="Average (mean) per block built: its blocks' total over their count"
+                >
+                  Avg / Block
+                </th>
                 <th className="text-end">Base</th>
                 <th className="text-end">Priority</th>
-                <th className="text-end">Tips</th>
+                <th className="text-end">Jito Tips</th>
                 <th
                   className="text-end"
                   title="The median MEV commission of its validators with a Jito tip account"
@@ -547,10 +780,10 @@ const BlockBuildersPage = () => {
         <SectionCard title="Reading the Numbers" icon="info">
           <ul className="fs-9 text-body-secondary mb-0 ps-4 d-flex flex-column gap-1">
             <li>
-              Tips are what&apos;s paid through Jito&apos;s tip accounts, in any
+              Jito tips are Jito bundles&apos; tips, which land in any
               builder&apos;s blocks. They don&apos;t compare across builders:
-              Harmonic&apos;s tips arrive as priority fees, so its Tips are only
-              the Jito-account tips that landed in its blocks. Compare the
+              Harmonic&apos;s own tips arrive as priority fees, so its Jito tips
+              are only the Jito bundles that landed in its blocks. Compare the
               per-block total.
             </li>
             <li>
@@ -558,7 +791,7 @@ const BlockBuildersPage = () => {
               Vortex doesn&apos;t read yet: their income here is understated.
             </li>
             <li>
-              Tips are gross: Jito&apos;s fee and the validator&apos;s MEV
+              Jito tips are gross: Jito&apos;s fee and the validator&apos;s MEV
               commission come out later, when the epoch&apos;s tips are
               distributed.
             </li>
@@ -573,6 +806,17 @@ const BlockBuildersPage = () => {
               . Validators and stake group each validator by the client it ran
               in the epoch.
             </li>
+            {unknown && unknown.validators > 0 && (
+              <li>
+                Left out: {unknown.validators.toLocaleString()} validators (
+                {pct(unknown.stakeShare, 2)} of stake) whose client
+                couldn&apos;t be read for the epoch
+                {unknown.built?.blocks
+                  ? `, and ${unknown.built.blocks.toLocaleString()} blocks built on one`
+                  : ''}
+                .
+              </li>
+            )}
             {!d.complete && (
               <li>
                 Epoch {d.epoch} is in progress: these numbers grow as it goes.
