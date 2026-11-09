@@ -16,7 +16,11 @@ import { formatLamports } from 'helpers/utils';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { ReactNode, useContext, useEffect } from 'react';
 import { explorerAddress, explorerTx } from 'helpers/explorer';
-import { ActivityEvent, VoteAccountChange } from 'providers/vortex-schemas';
+import {
+  ActivityEvent,
+  ValidatorStatus,
+  VoteAccountChange
+} from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
@@ -80,34 +84,57 @@ const Cmd = ({ children }: { children: string }) => (
 );
 
 /**
- * A vote account with no stake (new, or its stake gone): the API's
- * validator status and directory hold staked validators only, so the
- * validator page has nothing else to show. Its keys and commissions as
- * its changes leave them, and the changes themselves.
+ * A vote account with no stake (new, or its stake gone): no voting,
+ * production or earnings record to show. Its status where the API serves
+ * one (keys, admission tickets, gossip, name), else its keys as its
+ * changes leave them; next steps for its operator; its changes.
  */
 const UnstakedValidator = ({
   voteKey,
-  events
+  events,
+  status = null
 }: {
   voteKey: string;
   events: VoteAccountChange[];
+  /** /validators/status for it (null: an API that doesn't serve
+   *  unstaked vote accounts). */
+  status?: ValidatorStatus | null;
 }) => {
   const { isTestnet } = useCluster();
   const s = stateOf(events);
   const created = events.find(e => e.kind === 'create');
-  const identity = str(s.identity);
+  const vs = status?.voteState ?? null;
+  const identity = status?.identity ?? str(s.identity);
+  const voter = vs ? vs.authorizedVoter : str(s.voter);
+  const withdrawer = vs ? vs.authorizedWithdrawer : str(s.withdrawer);
+  const inflationBps = vs
+    ? vs.inflationRewardsCommissionBps
+    : (s.inflationCommissionBps ?? s.inflationCommission);
+  const blockBps = vs
+    ? vs.blockRevenueCommissionBps
+    : (s.blockRevenueCommissionBps ?? s.blockRevenueCommission);
   const bls = events.find(e => isBlsChange(e as ActivityEvent));
+  const blsSet = vs?.blsPubkeySet ?? status?.vat?.blsPubkeySet ?? !!bls;
+  const vat = status?.vat ?? null;
+  const name = status?.info?.name ?? null;
+  const software = status?.software ?? null;
+  const neverVoted = status?.stake.neverVoted ?? !status;
   // Today's admission ticket and the vote account's rent, from any staked
   // validator's status (the cluster's, the same for every validator).
   const context = useContext(VortexDataContext);
-  const anyNode = context?.validatorDirectoryState.validators?.[0]?.nodeAddress;
+  // (Its own status carries them where the API serves it.)
+  const anyNode = status
+    ? undefined
+    : context?.validatorDirectoryState.validators?.[0]?.nodeAddress;
   const fetchStatus = context?.validatorStatusState.fetchData;
   useEffect(() => {
     if (anyNode) fetchStatus?.(anyNode);
   }, [anyNode, fetchStatus]);
-  const cluster = anyNode
-    ? context?.validatorStatusState.data.get(anyNode)?.cluster
-    : undefined;
+  const cluster =
+    status?.cluster ??
+    (anyNode
+      ? context?.validatorStatusState.data.get(anyNode)?.cluster
+      : undefined);
   const ticket = cluster?.vatLamportsPerEpoch ?? null;
   const rent = cluster?.voteAccountRentExemptMinimum ?? null;
   const newest = [...events].sort(
@@ -124,7 +151,7 @@ const UnstakedValidator = ({
       <div className="page-header row g-3 align-items-start">
         <div className="col-auto">
           <h1 className="h3 d-flex align-items-center gap-2">
-            {short(voteKey)}
+            {name ?? short(voteKey)}
             <span className="badge badge-soft badge-soft-secondary fs-10">
               Not staked
             </span>
@@ -141,10 +168,13 @@ const UnstakedValidator = ({
                   ? ` (${whenText(eventTime(created as ActivityEvent))})`
                   : ''
               }`
-            : ''}
-          . Only staked validators vote, produce blocks and earn, so
-          there&apos;s no voting, production or earnings record for it until
-          stake is delegated to it and activates.
+            : status && !neverVoted
+              ? `: its stake is gone (it last voted at slot ${status.stake.lastVote.toLocaleString('en-US')})`
+              : ''}
+          {neverVoted && status ? ', and it has never voted' : ''}. Only staked
+          validators vote, produce blocks and earn, so there&apos;s no voting,
+          production or earnings record for it until stake is delegated to it
+          and activates.
         </WarningBanner>
 
         <SectionCard title="Keys" icon="key">
@@ -160,25 +190,29 @@ const UnstakedValidator = ({
               href={explorerAddress(identity, isTestnet)}
             />
           )}
-          {str(s.voter) && <AddressLine label="Voter" value={str(s.voter)!} />}
-          {str(s.withdrawer) && (
-            <AddressLine label="Withdrawer" value={str(s.withdrawer)!} />
-          )}
+          {voter && <AddressLine label="Voter" value={voter} />}
+          {withdrawer && <AddressLine label="Withdrawer" value={withdrawer} />}
           <div className="d-flex flex-wrap column-gap-4 fs-9 mt-2">
-            {pct(s.inflationCommissionBps ?? s.inflationCommission) && (
+            {pct(inflationBps) && (
               <span>
                 <span className="text-body-tertiary">
                   Inflation commission{' '}
                 </span>
-                {pct(s.inflationCommissionBps ?? s.inflationCommission)}
+                {pct(inflationBps)}
               </span>
             )}
-            {pct(s.blockRevenueCommissionBps ?? s.blockRevenueCommission) && (
+            {pct(blockBps) && (
               <span>
                 <span className="text-body-tertiary">
                   Block revenue commission{' '}
                 </span>
-                {pct(s.blockRevenueCommissionBps ?? s.blockRevenueCommission)}
+                {pct(blockBps)}
+              </span>
+            )}
+            {vs && (
+              <span>
+                <span className="text-body-tertiary">Balance </span>
+                {formatLamports(vs.lamports, 4)}
               </span>
             )}
           </div>
@@ -190,12 +224,25 @@ const UnstakedValidator = ({
           info="What a vote account needs before it votes and earns here. Commands are the Solana CLI's; check your client's docs for its own."
         >
           <ol className="list-unstyled d-flex flex-column gap-3 fs-9 mb-0">
-            <Step n={1} done={!!bls} title="Register a BLS key">
+            <Step n={1} done={blsSet} title="Register a BLS key">
               Alpenglow votes with BLS signatures: the vote account needs a BLS
               public key, registered by its voter
               {bls ? ` (epoch ${bls.epoch})` : ''}.
             </Step>
-            <Step n={2} title="Fund the vote account for its admission tickets">
+            <Step
+              n={2}
+              done={!!vat && vat.epochsFunded >= 1}
+              title="Fund the vote account for its admission tickets"
+            >
+              {vat && (
+                <div className="mb-1">
+                  It holds {formatLamports(vat.voteAccountLamports, 4)}:{' '}
+                  {vat.epochsFunded >= 1
+                    ? `${vat.epochsFunded.toLocaleString()} epoch${vat.epochsFunded === 1 ? '' : 's'} of tickets`
+                    : `${formatLamports(Math.max(0, vat.minimumBalance - vat.voteAccountLamports), 4)} short of one ticket`}
+                  .
+                </div>
+              )}
               Each epoch&apos;s stake set admits only vote accounts holding rent
               {rent != null ? ` (${formatLamports(rent, 4)})` : ''} plus one
               epoch&apos;s admission ticket (VAT, SIMD-0357
@@ -229,8 +276,18 @@ const UnstakedValidator = ({
             </Step>
             <Step
               n={4}
+              done={!!software}
               title="Run the validator on this identity and vote account"
             >
+              {software && (
+                <div className="mb-1">
+                  In gossip, running{' '}
+                  {[software.clientId, software.version]
+                    .filter(Boolean)
+                    .join(' ')}
+                  .
+                </div>
+              )}
               Start your client with this identity keypair and vote account
               (Agave:{' '}
               <Cmd>
@@ -239,7 +296,8 @@ const UnstakedValidator = ({
               ) and keep it in gossip: Vortex reads its version and location
               from there.
             </Step>
-            <Step n={5} title="Publish its name">
+            <Step n={5} done={!!name} title="Publish its name">
+              {name && <div className="mb-1">Published: {name}.</div>}
               <Cmd>
                 {
                   'solana validator-info publish "<name>" --website <url> --icon-url <url>'

@@ -53,7 +53,8 @@ const CHECK_LABELS: Record<string, string> = {
   vat: 'Admission ticket (VAT)',
   concentration: 'Concentration',
   block_revenue_collector: 'Block rewards collector',
-  bam_boost: 'BAM Boost'
+  bam_boost: 'BAM Boost',
+  stake: 'Stake'
 };
 
 /** Checks the dashboard no longer shows: identity balance covered vote

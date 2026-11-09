@@ -329,7 +329,12 @@ export const validatorStatusSchema = z.object({
     rootSlot: z.number(),
     slotsBehind: z.number(),
     // Of cluster.totalActivatedStake; null on APIs that predate it.
-    shareOfTotal: z.number().nullable().catch(null)
+    shareOfTotal: z.number().nullable().catch(null),
+    // A vote account with no active stake (the API answers those too):
+    // staked false; neverVoted when its last vote is 0. Absent on older
+    // APIs.
+    staked: z.boolean().optional().catch(undefined),
+    neverVoted: z.boolean().optional().catch(undefined)
   }),
   identityBalance: z
     .object({

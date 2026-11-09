@@ -120,9 +120,21 @@ const ValidatorOverview = () => {
     identity?.source === 'fallback' &&
     context?.validatorDirectoryState.validators != null;
   const fetchChanges = context?.validatorVoteAccountChangesState.fetchData;
+  const fetchUnknownStatus = context?.validatorStatusState.fetchData;
+  // Its status (the API answers unstaked vote accounts and identities),
+  // and its changes - by the vote account the status names, when the URL
+  // has the identity.
+  const unknownStatus =
+    unknown && address
+      ? context?.validatorStatusState.data.get(address)
+      : undefined;
+  const changesKey = unknownStatus?.voteAccount ?? address;
   useEffect(() => {
-    if (unknown && address) fetchChanges?.(address);
-  }, [unknown, address, fetchChanges]);
+    if (unknown && address) fetchUnknownStatus?.(address);
+  }, [unknown, address, fetchUnknownStatus]);
+  useEffect(() => {
+    if (unknown && changesKey) fetchChanges?.(changesKey);
+  }, [unknown, changesKey, fetchChanges]);
   // Everything needing attention; decides the layout below.
   const notices = useValidatorNotices(
     identity?.nodeAddress ?? '',
@@ -321,12 +333,23 @@ const ValidatorOverview = () => {
   if (!identity || (identity.source === 'fallback' && directoryReady)) {
     const cluster = context.currentEpochState.cluster;
     const changesSlice = context.validatorVoteAccountChangesState;
-    const changes = address ? changesSlice.data.get(address) : undefined;
-    if (address && changes?.events.length)
-      return <UnstakedValidator voteKey={address} events={changes.events} />;
+    const changes = changesKey ? changesSlice.data.get(changesKey) : undefined;
+    const st = unknownStatus;
+    if (address && (st || changes?.events.length))
+      return (
+        <UnstakedValidator
+          voteKey={st?.voteAccount ?? address}
+          events={changes?.events ?? []}
+          status={st ?? null}
+        />
+      );
     // Still asking (or about to): hold the page, not a flash of "not
     // found".
-    if (address && !changes && !changesSlice.error)
+    if (
+      address &&
+      ((!changes && !changesSlice.error) ||
+        (!st && !context.validatorStatusState.error))
+    )
       return (
         <div className="mb-9" style={{ minHeight: '100vh' }}>
           <PageSkeleton rows={SKELETON.overview} />
