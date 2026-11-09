@@ -6,10 +6,15 @@ import {
   ChangeBadge,
   changeValue,
   eventTime,
+  isBlsChange,
   voterLabel,
   whenText
 } from 'components/changes/changes';
+import FeatherIcon from 'components/base/FeatherIcon';
 import useCluster from 'hooks/useCluster';
+import { formatLamports } from 'helpers/utils';
+import { VortexDataContext } from 'providers/VortexDataProvider';
+import { ReactNode, useContext, useEffect } from 'react';
 import { explorerAddress, explorerTx } from 'helpers/explorer';
 import { ActivityEvent, VoteAccountChange } from 'providers/vortex-schemas';
 import { Table } from 'react-bootstrap';
@@ -36,6 +41,44 @@ const stateOf = (events: VoteAccountChange[]) => {
   return s;
 };
 
+/** One step: done (a check) or still to do (a number). */
+const Step = ({
+  n,
+  done,
+  title,
+  children
+}: {
+  n: number;
+  done?: boolean;
+  title: string;
+  children: ReactNode;
+}) => (
+  <li className="d-flex gap-2">
+    <span
+      className={`flex-shrink-0 d-inline-flex align-items-center justify-content-center rounded-circle fs-10 fw-bold ${
+        done ? 'bg-success-subtle text-success' : 'bg-body-highlight'
+      }`}
+      style={{ width: 22, height: 22 }}
+    >
+      {done ? <FeatherIcon icon="check" size={12} /> : n}
+    </span>
+    <div>
+      <div className="fw-semibold">
+        {title}
+        {done && <span className="text-success fw-normal ms-2">Done</span>}
+      </div>
+      <div className="text-body-secondary">{children}</div>
+    </div>
+  </li>
+);
+
+/** Code, inline. */
+const Cmd = ({ children }: { children: string }) => (
+  <code className="text-body-emphasis bg-body-highlight rounded px-1 text-break">
+    {children}
+  </code>
+);
+
 /**
  * A vote account with no stake (new, or its stake gone): the API's
  * validator status and directory hold staked validators only, so the
@@ -53,6 +96,20 @@ const UnstakedValidator = ({
   const s = stateOf(events);
   const created = events.find(e => e.kind === 'create');
   const identity = str(s.identity);
+  const bls = events.find(e => isBlsChange(e as ActivityEvent));
+  // Today's admission ticket and the vote account's rent, from any staked
+  // validator's status (the cluster's, the same for every validator).
+  const context = useContext(VortexDataContext);
+  const anyNode = context?.validatorDirectoryState.validators?.[0]?.nodeAddress;
+  const fetchStatus = context?.validatorStatusState.fetchData;
+  useEffect(() => {
+    if (anyNode) fetchStatus?.(anyNode);
+  }, [anyNode, fetchStatus]);
+  const cluster = anyNode
+    ? context?.validatorStatusState.data.get(anyNode)?.cluster
+    : undefined;
+  const ticket = cluster?.vatLamportsPerEpoch ?? null;
+  const rent = cluster?.voteAccountRentExemptMinimum ?? null;
   const newest = [...events].sort(
     (a, b) => (b.slot ?? b.epoch) - (a.slot ?? a.epoch)
   );
@@ -125,6 +182,76 @@ const UnstakedValidator = ({
               </span>
             )}
           </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Next Steps"
+          icon="list"
+          info="What a vote account needs before it votes and earns here. Commands are the Solana CLI's; check your client's docs for its own."
+        >
+          <ol className="list-unstyled d-flex flex-column gap-3 fs-9 mb-0">
+            <Step n={1} done={!!bls} title="Register a BLS key">
+              Alpenglow votes with BLS signatures: the vote account needs a BLS
+              public key, registered by its voter
+              {bls ? ` (epoch ${bls.epoch})` : ''}.
+            </Step>
+            <Step n={2} title="Fund the vote account for its admission tickets">
+              Each epoch&apos;s stake set admits only vote accounts holding rent
+              {rent != null ? ` (${formatLamports(rent, 4)})` : ''} plus one
+              epoch&apos;s admission ticket (VAT, SIMD-0357
+              {ticket != null ? `: ${formatLamports(ticket, 2)} an epoch` : ''}
+              ), and takes the ticket at the boundary. Keep a few epochs funded:{' '}
+              <Cmd>{`solana transfer ${voteKey} <SOL>`}</Cmd> (see{' '}
+              <a
+                href={explorerAddress(voteKey, isTestnet)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                its balance
+              </a>
+              ).
+            </Step>
+            <Step n={3} title="Get stake delegated to it">
+              Your own:{' '}
+              <Cmd>{`solana delegate-stake <stake account> ${voteKey}`}</Cmd>.
+              Or apply to the{' '}
+              <a
+                href="https://solana.org/delegation-program"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Solana Foundation Delegation Program
+              </a>{' '}
+              or meet a <Link to="/pools">stake pool</Link>&apos;s criteria.
+              Stake activates at the next epoch boundary, and the vote account
+              joins the stake set (votes, leader slots, rewards) at the boundary
+              after, if it&apos;s admitted.
+            </Step>
+            <Step
+              n={4}
+              title="Run the validator on this identity and vote account"
+            >
+              Start your client with this identity keypair and vote account
+              (Agave:{' '}
+              <Cmd>
+                --identity &lt;keypair&gt; --vote-account &lt;address&gt;
+              </Cmd>
+              ) and keep it in gossip: Vortex reads its version and location
+              from there.
+            </Step>
+            <Step n={5} title="Publish its name">
+              <Cmd>
+                {
+                  'solana validator-info publish "<name>" --website <url> --icon-url <url>'
+                }
+              </Cmd>
+              , signed by the identity: Vortex and explorers show that name.
+            </Step>
+          </ol>
+          <p className="fs-10 text-body-tertiary mt-3 mb-0">
+            Once it&apos;s staked, this page becomes its full validator page:
+            its Notices on the Overview say what still needs attention.
+          </p>
         </SectionCard>
 
         <SectionCard
