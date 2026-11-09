@@ -12,6 +12,8 @@ echarts.use([ScatterChart, GeoComponent, TooltipComponent, CanvasRenderer]);
 
 /** The world map's width to height (Antarctica dropped). */
 const ASPECT = 1.9;
+/** The most it zooms in (scroll, pinch or +). */
+const MAX_ZOOM = 20;
 /** The map's height at most (desktop). */
 const MAX_HEIGHT = 380;
 
@@ -50,6 +52,18 @@ const ProviderMap = ({
   const [view, setView] = useState(0);
   const [moved, setMoved] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<ReactEChartsCore>(null);
+  // The +/- buttons: zoom about the map's current center, within the
+  // scroll zoom's limits.
+  const zoomBy = (f: number) => {
+    const chart = chartRef.current?.getEchartsInstance();
+    if (!chart || chart.isDisposed()) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const geo = (chart.getOption() as any).geo?.[0];
+    const zoom = Math.min(MAX_ZOOM, Math.max(1, (geo?.zoom ?? 1) * f));
+    chart.setOption({ geo: { zoom } });
+    setMoved(zoom !== 1 || !!geo?.center);
+  };
   const [width, setWidth] = useState<number | null>(null);
   useEffect(() => {
     const el = boxRef.current;
@@ -92,7 +106,7 @@ const ProviderMap = ({
       // Zoom (wheel, pinch) and pan (drag); kept across point changes,
       // reset by the button.
       roam: true,
-      scaleLimit: { min: 1, max: 20 },
+      scaleLimit: { min: 1, max: MAX_ZOOM },
       silent: true,
       layoutCenter: ['50%', '50%'],
       layoutSize:
@@ -129,6 +143,7 @@ const ProviderMap = ({
         {ready ? (
           <ReactEChartsCore
             key={view}
+            ref={chartRef}
             echarts={echarts}
             option={option}
             // Merged, so a zoom or pan survives new points (a legend pick).
@@ -149,17 +164,42 @@ const ProviderMap = ({
         ) : (
           <ChartSkeleton height={height} />
         )}
-        {moved && (
-          <button
-            type="button"
-            className="btn btn-sm btn-soft-secondary position-absolute top-0 end-0"
-            onClick={() => {
-              setView(v => v + 1);
-              setMoved(false);
-            }}
-          >
-            Reset
-          </button>
+        {ready && (
+          <div className="position-absolute top-0 end-0 d-flex flex-column gap-1">
+            <div className="btn-group-vertical btn-group-sm shadow-sm">
+              <button
+                type="button"
+                className="btn btn-soft-secondary px-2 lh-1 fs-8"
+                aria-label="Zoom in"
+                title="Zoom in"
+                onClick={() => zoomBy(1.6)}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                className="btn btn-soft-secondary px-2 lh-1 fs-8"
+                aria-label="Zoom out"
+                title="Zoom out"
+                onClick={() => zoomBy(1 / 1.6)}
+              >
+                −
+              </button>
+            </div>
+            {moved && (
+              <button
+                type="button"
+                className="btn btn-sm btn-soft-secondary px-2 fs-10 shadow-sm"
+                title="Back to the whole world"
+                onClick={() => {
+                  setView(v => v + 1);
+                  setMoved(false);
+                }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
         )}
         {legend && (
           // A box over the bottom left corner; under the map on phones,
