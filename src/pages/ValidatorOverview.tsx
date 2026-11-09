@@ -39,6 +39,7 @@ import useRefreshOnce from 'hooks/useRefreshOnce';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
 import { useContext, useEffect, useMemo } from 'react';
 import { Col, Row, Spinner, Table } from 'react-bootstrap';
+import UnstakedValidator from 'components/validator/UnstakedValidator';
 import { Link, useParams } from 'react-router';
 import {
   IDEAL_RECORD_KEY,
@@ -112,6 +113,16 @@ const ValidatorOverview = () => {
   const currentEpoch = context?.currentEpochState.epoch ?? null;
 
   const identity = useValidatorIdentity(address);
+  // An address no staked validator has: maybe a vote account with no
+  // stake (new, or its stake gone) - its changes say, and make its page.
+  const unknown =
+    !!address &&
+    identity?.source === 'fallback' &&
+    context?.validatorDirectoryState.validators != null;
+  const fetchChanges = context?.validatorVoteAccountChangesState.fetchData;
+  useEffect(() => {
+    if (unknown && address) fetchChanges?.(address);
+  }, [unknown, address, fetchChanges]);
   // Everything needing attention; decides the layout below.
   const notices = useValidatorNotices(
     identity?.nodeAddress ?? '',
@@ -309,6 +320,18 @@ const ValidatorOverview = () => {
   const directoryReady = context.validatorDirectoryState.validators !== null;
   if (!identity || (identity.source === 'fallback' && directoryReady)) {
     const cluster = context.currentEpochState.cluster;
+    const changesSlice = context.validatorVoteAccountChangesState;
+    const changes = address ? changesSlice.data.get(address) : undefined;
+    if (address && changes?.events.length)
+      return <UnstakedValidator voteKey={address} events={changes.events} />;
+    // Still asking (or about to): hold the page, not a flash of "not
+    // found".
+    if (address && !changes && !changesSlice.error)
+      return (
+        <div className="mb-9" style={{ minHeight: '100vh' }}>
+          <PageSkeleton rows={SKELETON.overview} />
+        </div>
+      );
     return (
       <div>
         <PageBreadcrumb items={validatorBreadcrumbPlaceholder} />
