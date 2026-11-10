@@ -68,10 +68,9 @@ type Row_ = {
   /** Its tips go to its own accounts and aren't measured: income
    *  understated. */
   understated: boolean;
-  /** Average per block after the fees its blocks paid (null: no fees
-   *  served), and whether those fees are estimates. */
+  /** Average per block after the fees its blocks paid (null: not all
+   *  of them measured). */
   keptPerBlock: number | null;
-  keptEstimated: boolean;
   /** perBlock after the fees its blocks paid, each taken from the part
    *  it's charged on (null: no fees served). */
   perBlockAfter: Row_['perBlock'];
@@ -141,7 +140,6 @@ const rowsOf = (d: BlockBuilders): Row_[] => {
         understated: b.tips === 'ownTipAccounts' && b.built?.ownTips == null,
         keptPerBlock:
           b.built?.kept != null && blocks ? b.built.kept / blocks : null,
-        keptEstimated: !!b.built?.fees && !b.built.fees.measured,
         perBlockAfter: afterFees(b),
         median: false,
         mean: null,
@@ -273,9 +271,6 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
           `<div class="fs-10 text-body-tertiary mt-1">${r.blocks.toLocaleString()} blocks built</div>` +
           (r.b.tips === 'priorityFees'
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its own tips arrive as priority fees: Jito tips here are only the Jito bundles that landed in its blocks.</div>`
-            : '') +
-          (after && r.keptEstimated
-            ? `<div class="fs-10 text-warning">After estimated fees (staging only).</div>`
             : '') +
           (r.understated
             ? `<div class="fs-10 text-body-tertiary" style="max-width:16rem;white-space:normal">Its own tips aren't measured for this epoch: understated.</div>`
@@ -426,6 +421,7 @@ const FEE_KIND: Record<string, string> = {
   priorityFeeRouterFee: 'Priority fee router fee',
   tipCommission: 'Commission on its tips',
   blockFeeCommission: 'Commission on block fees',
+  blockRewardCommission: 'Commission on block rewards',
   mevCommissionShare: 'Share of MEV commission'
 };
 const FEE_BASE: Record<string, string> = {
@@ -433,6 +429,7 @@ const FEE_BASE: Record<string, string> = {
   sharedPriorityFees: 'priority fees shared through Jito',
   ownTips: 'its own tips',
   blockFees: 'block fees',
+  sharedBlockRewards: 'block rewards it shares',
   validatorMevCommission: "validators' MEV commission"
 };
 const FEE_WHEN: Record<string, string> = {
@@ -452,9 +449,9 @@ const Tag = ({ tone, children }: { tone: string; children: string }) => (
 /**
  * What each builder's operator collected in fees in the epoch, by
  * collector (Jito runs both Jito builders), each fee listed: its rate and
- * base, when it's taken, and how much - measured on chain, or an estimate
- * (rate x base; the staging API only) marked as one. Fees on bases Vortex
- * doesn't read are "not measured".
+ * base, when it's taken, and how much, measured on chain (an estimate the
+ * staging API serves is dropped: "not measured", as fees on what Vortex
+ * doesn't read).
  */
 type Collector = NonNullable<BlockBuilders['builderRevenue']>[number];
 
@@ -513,7 +510,7 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
     <SectionCard
       title="Builder Revenue"
       icon="briefcase"
-      info="What each builder's operator collected in the epoch from the fees it charges, by who collects them: Jito BAM and Jito Block Engine each their builder commission (the Block Engine's includes the blocks of clients that pass its bundles on, Rakurai's among them), and Jito's tip router its fees on every validator's Jito tips, whatever built the block. Measured: read on chain. Estimate: the fee's rate times what it's charged on. Not measured: charged on something Vortex doesn't read yet (Rakurai's and Raiku's own tips)."
+      info="What each builder's operator collected in the epoch from the fees it charges, by who collects them: Jito BAM and Jito Block Engine each their builder commission (the Block Engine's includes the blocks of clients that pass its bundles on, Rakurai's among them), and Jito's tip router its fees on every validator's Jito tips, whatever built the block. Every amount is read on chain. Not measured: not read for the epoch yet (Jito's builder commission is measured from epoch 1083). After the epoch: Jito's fees are known once it pays the epoch's tips out."
     >
       {revenue.length === 0 ? (
         <UntrackedState>
@@ -562,9 +559,7 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
                     ) : (
                       formatLamports(c.lamports, 2)
                     )}
-                    {c.items.some(i => i.lamports != null && !i.measured) && (
-                      <Tag tone="warning">incl. estimates</Tag>
-                    )}
+
                     {c.items.some(i => i.lamports != null) && !c.complete && (
                       <Tag tone="secondary">not final</Tag>
                     )}
@@ -603,9 +598,7 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
                           {i.measured ? 'after the epoch' : 'not measured'}
                         </span>
                       )}
-                      {i.lamports != null && !i.measured && (
-                        <Tag tone="warning">estimate</Tag>
-                      )}
+
                       {i.lamports != null && i.measured && !i.complete && (
                         <Tag tone="secondary">not final</Tag>
                       )}
@@ -947,7 +940,7 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
     <SectionCard
       title={`${useMedian ? 'Median' : 'Average'} Income per Block by Epoch`}
       icon="trending-up"
-      info={`Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid. Before epoch 1083 Jito's builder commission in it is an estimate (measured from 1083)." : ''}`}
+      info={`Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid, for epochs whose fees are all measured (from 1083, when Jito's builder commission is)." : ''}`}
     >
       <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
         {keys.map(k => (
@@ -1217,7 +1210,7 @@ const BlockBuildersPage = () => {
                 {showKept && (
                   <th
                     className="text-end"
-                    title="Average per block built after the fees those blocks paid (builder commissions; estimates are marked)"
+                    title="Average per block built after the fees those blocks paid (builder commissions; only where every fee is measured)"
                   >
                     Kept / Block
                   </th>
@@ -1268,12 +1261,7 @@ const BlockBuildersPage = () => {
                   </td>
                   {byMedian && <td className="text-end">{sol(r.mean)}</td>}
                   {showKept && (
-                    <td className="text-end">
-                      {sol(r.keptPerBlock)}
-                      {r.keptPerBlock != null && r.keptEstimated && (
-                        <div className="fs-10 text-warning">estimate</div>
-                      )}
-                    </td>
+                    <td className="text-end">{sol(r.keptPerBlock)}</td>
                   )}
                   <td className="text-end">{sol(r.perBlock?.base ?? null)}</td>
                   <td className="text-end">
@@ -1340,14 +1328,7 @@ const BlockBuildersPage = () => {
                 .
               </li>
             )}
-            {d.feeEstimates && (
-              <li>
-                Builder fees marked estimate are the fee&apos;s rate times what
-                it&apos;s charged on, not read on chain; this staging API serves
-                them, production won&apos;t. Kept / Block takes them off the
-                average.
-              </li>
-            )}
+
             {!d.complete && (
               <li>
                 Epoch {d.epoch} is in progress: these numbers grow as it goes.

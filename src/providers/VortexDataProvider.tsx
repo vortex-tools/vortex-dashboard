@@ -521,10 +521,49 @@ const blockBuildersRequest = (epoch: number) => ({
   schema: blockBuildersSchema,
   timeout: 20_000
 });
+// Measured figures only: the staging API also serves estimates (a fee's
+// rate x its base, measured: false), which the dashboard never shows (as
+// production, which doesn't serve them). An estimated fee becomes "not
+// measured" (lamports null); a builder's blocks' fees and what its leaders
+// kept count only when every fee in them is measured.
+const measuredOnly = (d: BlockBuilders): BlockBuilders => ({
+  ...d,
+  feeEstimates: false,
+  builderRevenue: d.builderRevenue?.map(c => {
+    const items = c.items.map(i =>
+      i.measured ? i : { ...i, lamports: null, complete: false }
+    );
+    return {
+      ...c,
+      items,
+      lamports: items.reduce((a, i) => a + (i.lamports ?? 0), 0),
+      complete: items.every(i => i.complete && i.lamports != null)
+    };
+  }),
+  builders: d.builders.map(b =>
+    b.built && b.built.fees && !b.built.fees.measured
+      ? {
+          ...b,
+          built: {
+            ...b.built,
+            fees: null,
+            kept: null,
+            perBlock: b.built.perBlock
+              ? {
+                  p25: { ...b.built.perBlock.p25, kept: null },
+                  median: { ...b.built.perBlock.median, kept: null },
+                  p75: { ...b.built.perBlock.p75, kept: null }
+                }
+              : b.built.perBlock
+          }
+        }
+      : b
+  )
+});
 const blockBuildersToEntries = (
   key: number,
   response: BlockBuilders
-): Array<[number, BlockBuilders]> => [[key, response]];
+): Array<[number, BlockBuilders]> => [[key, measuredOnly(response)]];
 const producerLeaderboardToEntries = (
   key: number,
   response: ProducerLeaderboard
