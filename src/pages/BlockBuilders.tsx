@@ -280,9 +280,13 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
     },
     xAxis: {
       type: 'value',
+      // Few enough ticks for a phone's width ("◎0.005" is wide), and no
+      // label drawn over another.
+      splitNumber: 4,
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
+        hideOverlap: true,
         formatter: (v: number) => formatLamports(v, 3)
       },
       splitLine: { lineStyle: { color: getThemeColor('border-color') } }
@@ -624,7 +628,9 @@ const builderColor = (
   getThemeColor: (name: string) => string
 ) =>
   ({
-    'jito-bam': getThemeColor('primary'),
+    // Fixed, not the theme's primary: staging's orange (and testnet's
+    // pink) would clash with Rakurai's.
+    'jito-bam': '#7f3fff',
     harmonic: 'rgb(26, 153, 131)',
     'jito-block-engine': getThemeColor('info'),
     rakurai: getThemeColor('warning'),
