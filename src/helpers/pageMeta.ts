@@ -742,6 +742,17 @@ export const pageMeta = (
 ): Verdict => {
   const path = pathname.replace(/\/+$/, '') || '/';
   const seg = path.split('/');
+  // Boundary Replay: a staging-only page too.
+  if (path === '/replay')
+    return env.SITE !== 'staging'
+      ? MISSING
+      : {
+          title: `${solana(env)} epoch boundary replay`,
+          description: `How far vortex-replay has got replaying and checking ${solana(env)}'s epoch boundaries.`,
+          canonical: path,
+          crumbs: [HOME, { name: 'Boundary Replay', path }],
+          archive: false
+        };
   // Block Builders: a staging-only page (src/Routes.tsx) - unknown elsewhere.
   if (seg[1] === 'block-builders') {
     const m = path.match(/^\/block-builders(?:\/epoch\/(\d+))?$/);

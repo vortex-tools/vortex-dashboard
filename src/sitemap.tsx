@@ -58,7 +58,11 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
   { name: 'Hosting Providers', icon: 'map', path: '/providers' },
   // How each block builder's blocks pay (staging only for now).
   ...(IS_STAGING
-    ? [{ name: 'Block Builders', icon: 'package', path: '/block-builders' }]
+    ? [
+        { name: 'Block Builders', icon: 'package', path: '/block-builders' },
+        // Mainnet epoch boundaries replayed by vortex-replay.
+        { name: 'Boundary Replay', icon: 'grid', path: '/replay' }
+      ]
     : []),
   // Key, commission and collector changes, withdrawals, failovers and
   // migrations, across validators.

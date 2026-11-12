@@ -690,3 +690,13 @@ table .vx-slot-group {
     content: none;
   }
 }
+
+// A replaying epoch's cell on the Boundary Replay grid: a slow fade.
+@keyframes vx-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+.vx-pulse {
+  animation: vx-pulse 1.6s ease-in-out infinite;
+}

@@ -48,6 +48,7 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/slot\//, SKELETON.slot],
   [/^\/decentralization/, SKELETON.decentralization],
   [/^\/block-builders/, SKELETON.blockBuilders],
+  [/^\/replay\/?$/, SKELETON.boundaryReplay],
   [/^\/(client-versions|cluster-health)/, SKELETON.clientVersions],
   [/^\/features\/?$/, SKELETON.featureGates],
   [/^\/feature\//, SKELETON.featureGate],
