@@ -3,6 +3,7 @@ import SectionCard from 'components/common/SectionCard';
 import SlotNumber from 'components/common/SlotNumber';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
+import WarningBanner from 'components/common/WarningBanner';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { timeAgo } from 'helpers/utils';
 import { useEffect, useMemo, useState } from 'react';
@@ -12,6 +13,8 @@ import { z } from 'zod';
 /** Where the page reads vortex-replay's boundary status (served by the
  *  API from gs://vortex-mainnet/calibration/status/boundary-status.json). */
 const STATUS_PATH = '/replay/boundary-status';
+/** The file is rewritten every 15 minutes; older than this, it's stalled. */
+const STALE_S = 30 * 60;
 /** The file is rewritten every 15 minutes: read it again this often. */
 const REFRESH_MS = 60_000;
 /** Grid cells per row. */
@@ -54,9 +57,21 @@ const rowSchema = z.object({
   seconds: z.number().nullable().optional().catch(null)
 });
 type BoundaryRow = z.infer<typeof rowSchema>;
+// epoch-stakes' history store: a delta for every adjacent pair of
+// epochs it covers, keyframes, the pairs still missing (and those whose
+// seam is pending), as "E-E+1".
+const histSchema = z.object({
+  deltas: z.number().catch(0),
+  pairs: z.number().catch(0),
+  keyframes: z.array(z.number()).catch([]),
+  missing: z.array(z.string()).catch([]),
+  pending_seams: z.array(z.string()).catch([])
+});
+type Hist = z.infer<typeof histSchema>;
 const statusSchema = z.object({
   generated: z.string().nullable().catch(null),
   last_epoch: z.number(),
+  hist: histSchema.nullable().optional().catch(null),
   counts: z.record(z.string(), z.number()).catch({}),
   epochs: z.array(rowSchema)
 });
@@ -104,6 +119,78 @@ const titleOf = (r: BoundaryRow) =>
   ]
     .filter(Boolean)
     .join(' · ');
+
+/** "E-E+1" pairs as runs of consecutive pairs: "818-1079" for 818-819
+ *  up to 1078-1079. */
+const pairRuns = (pairs: string[]) => {
+  const firsts = pairs
+    .map(p => Number(p.split('-')[0]))
+    .filter(n => !Number.isNaN(n))
+    .sort((a, b) => a - b);
+  const runs: Array<[number, number]> = [];
+  for (const e of firsts) {
+    const last = runs[runs.length - 1];
+    if (last && e === last[1]) last[1] = e + 1;
+    else runs.push([e, e + 1]);
+  }
+  return runs;
+};
+const runsText = (pairs: string[]) =>
+  pairRuns(pairs)
+    .map(([a, b]) =>
+      b - a === 1 ? `${a}-${b}` : `${a}-${b} (${(b - a).toLocaleString()})`
+    )
+    .join(', ');
+
+/** epoch-stakes' history store: how many of its adjacent-epoch deltas
+ *  exist, its keyframes, and what's missing or pending. */
+const HistCard = ({ h }: { h: Hist }) => (
+  <SectionCard
+    title="Stake History Store"
+    icon="layers"
+    info="epoch-stakes' history store: every adjacent pair of epochs it covers needs a delta; keyframes are full snapshots. Missing: pairs with no delta yet (runs of consecutive pairs as first-last epoch, with their count). Pending seams: pairs waiting on a seam."
+  >
+    <div className="fs-9 d-flex flex-column gap-2">
+      <div>
+        <span className="fw-semibold">
+          {h.deltas.toLocaleString()} of {h.pairs.toLocaleString()}
+        </span>{' '}
+        deltas
+        {h.pairs > 0 && (
+          <span className="text-body-tertiary">
+            {' '}
+            ({((h.deltas / h.pairs) * 100).toFixed(0)}%)
+          </span>
+        )}
+        <div
+          className="mt-1 rounded bg-body-highlight overflow-hidden"
+          style={{ height: 6 }}
+        >
+          <div
+            className="h-100 bg-success"
+            style={{ width: `${h.pairs ? (h.deltas / h.pairs) * 100 : 0}%` }}
+          />
+        </div>
+      </div>
+      <div>
+        <span className="text-body-tertiary">Keyframes </span>
+        {h.keyframes.length ? h.keyframes.join(', ') : 'none'}
+      </div>
+      <div>
+        <span className="text-body-tertiary">
+          Missing ({h.missing.length.toLocaleString()}){' '}
+        </span>
+        {h.missing.length ? runsText(h.missing) : 'none'}
+      </div>
+      <div>
+        <span className="text-body-tertiary">
+          Pending seams ({h.pending_seams.length.toLocaleString()}){' '}
+        </span>
+        {h.pending_seams.length ? runsText(h.pending_seams) : 'none'}
+      </div>
+    </div>
+  </SectionCard>
+);
 
 /** A boundary's details: what vortex-replay recorded for it. */
 const Details = ({ r }: { r: BoundaryRow }) => {
@@ -203,6 +290,10 @@ const BoundaryReplay = () => {
         a.epoch - b.epoch
     );
   const pickedRow = rows.find(r => r.epoch === picked) ?? null;
+  // Not rewritten for a while: the generator has stalled.
+  const generatedAt = unixOf(data?.generated);
+  const stale =
+    generatedAt != null && Date.now() / 1000 - generatedAt > STALE_S;
 
   const header = (
     <div className="page-header row g-3 align-items-start justify-content-between">
@@ -234,6 +325,17 @@ const BoundaryReplay = () => {
     <div className="mb-9">
       {header}
       <div className="d-flex flex-column gap-3">
+        {stale && (
+          <WarningBanner icon="alert-triangle">
+            The status hasn&apos;t been rewritten since{' '}
+            {new Date(generatedAt! * 1000)
+              .toUTCString()
+              .replace(' GMT', ' UTC')}{' '}
+            ({ago(data.generated)}): it&apos;s written every 15 minutes, so
+            vortex-replay&apos;s generator has likely stalled and these counts
+            are stale.
+          </WarningBanner>
+        )}
         <Row className="g-3">
           <Col xs={6} xl={3}>
             <StatCard
@@ -261,6 +363,7 @@ const BoundaryReplay = () => {
             <StatCard
               label="Updated"
               mono={false}
+              tone={stale ? 'warning' : undefined}
               value={ago(data.generated)}
               sublabel={`through epoch ${data.last_epoch.toLocaleString()} · every 15 min`}
             />
@@ -307,6 +410,8 @@ const BoundaryReplay = () => {
             </div>
           )}
         </SectionCard>
+
+        {data.hist && <HistCard h={data.hist} />}
 
         <SectionCard
           title="Failed and Running"
