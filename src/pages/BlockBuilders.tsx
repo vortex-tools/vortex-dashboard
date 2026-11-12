@@ -5,6 +5,7 @@ import { BarChart, LineChart } from 'echarts/charts';
 import {
   GridComponent,
   LegendComponent,
+  MarkLineComponent,
   TooltipComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -16,8 +17,22 @@ import { formatLamports } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
 import { BlockBuilder, BlockBuilders } from 'providers/vortex-schemas';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { ChangeEvent, Fragment, useContext, useEffect, useMemo } from 'react';
-import { Col, Form, Row, Table } from 'react-bootstrap';
+import {
+  ChangeEvent,
+  Fragment,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
+import {
+  ButtonGroup,
+  Col,
+  Form,
+  Row,
+  Table,
+  ToggleButton
+} from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router';
 
 echarts.use([
@@ -25,6 +40,7 @@ echarts.use([
   LineChart,
   GridComponent,
   LegendComponent,
+  MarkLineComponent,
   TooltipComponent,
   CanvasRenderer
 ]);
@@ -870,6 +886,28 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
   const anyKept = loaded.some(d => d.builders.some(b => b.built?.kept != null));
   const color = (k: string) =>
     builderColor(k === 'none' ? 'other' : k, getThemeColor);
+  // Relative (the default): each value over the epoch's baseline - its
+  // builders' per-block figures weighted by their blocks, a typical block
+  // that epoch - so what moves every builder together (a busy epoch)
+  // drops out and 1x is the epoch's typical block. Absolute: SOL.
+  const [scale, setScale] = useState<'relative' | 'absolute'>('relative');
+  const relative = scale === 'relative';
+  const baselineOf = (d: BlockBuilders) => {
+    let w = 0;
+    let sum = 0;
+    for (const b of d.builders) {
+      if (b.builder === UNKNOWN || !b.built?.blocks) continue;
+      const v = at(d, b.builder).avg;
+      if (v == null) continue;
+      w += b.built.blocks;
+      sum += v * b.built.blocks;
+    }
+    return w ? sum / w : null;
+  };
+  const baselines = loaded.map(baselineOf);
+  const norm = (v: number | null, i: number) =>
+    v == null ? null : relative ? (baselines[i] ? v / baselines[i]! : null) : v;
+  const fmtRel = (v: number | null) => (v == null ? '—' : `${v.toFixed(2)}×`);
   const option = {
     animation: false,
     grid: { left: 4, right: 28, top: 8, bottom: 4, containLabel: true },
@@ -880,22 +918,27 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
       borderColor: getThemeColor('border-color'),
       textStyle: { color: getThemeColor('body-color'), fontSize: 12 },
       formatter: (ps: Array<{ dataIndex: number }>) => {
-        const d = loaded[ps[0]?.dataIndex ?? 0];
+        const i = ps[0]?.dataIndex ?? 0;
+        const d = loaded[i];
         if (!d) return '';
+        const base = baselines[i];
         const rows = keys
           .map(k => ({ k, ...at(d, k) }))
           .filter(r => r.avg != null)
           .sort((a, b) => b.avg! - a.avg!);
         return (
           `<div class="fw-bold mb-1">Epoch ${d.epoch}${d.complete ? '' : ' (so far)'}</div>` +
-          `<table class="fs-10"><tr class="text-body-tertiary"><td></td><td class="text-end ps-3">${useMedian ? 'Median' : 'Avg'} / block</td>${anyKept ? '<td class="text-end ps-3">Kept</td>' : ''}</tr>` +
+          `<table class="fs-10"><tr class="text-body-tertiary"><td></td><td class="text-end ps-3">vs typical</td><td class="text-end ps-3">${useMedian ? 'Median' : 'Avg'} / block</td>${anyKept ? '<td class="text-end ps-3">Kept</td>' : ''}</tr>` +
           rows
             .map(
               r =>
-                `<tr><td><span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:${color(r.k)}"></span>${names.get(r.k) ?? r.k}</td><td class="text-end ps-3 fw-semibold">${sol(r.avg)}</td>${anyKept ? `<td class="text-end ps-3">${r.kept != null ? sol(r.kept) : '—'}</td>` : ''}</tr>`
+                `<tr><td><span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:${color(r.k)}"></span>${names.get(r.k) ?? r.k}</td><td class="text-end ps-3 fw-semibold">${base ? fmtRel(r.avg! / base) : '—'}</td><td class="text-end ps-3">${sol(r.avg)}</td>${anyKept ? `<td class="text-end ps-3">${r.kept != null ? sol(r.kept) : '—'}</td>` : ''}</tr>`
             )
             .join('') +
-          '</table>'
+          '</table>' +
+          (base
+            ? `<div class="fs-10 text-body-tertiary mt-1">Typical block this epoch: ${sol(base)}</div>`
+            : '')
         );
       }
     },
@@ -916,7 +959,8 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
-        formatter: (v: number) => formatLamports(v, 3)
+        formatter: (v: number) =>
+          relative ? `${v.toFixed(1)}×` : formatLamports(v, 3)
       },
       splitLine: { lineStyle: { color: getThemeColor('border-color') } }
     },
@@ -928,7 +972,23 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
         symbolSize: 4,
         color: color(k),
         lineStyle: { width: 2 },
-        data: loaded.map(d => at(d, k).avg)
+        data: loaded.map((d, i) => norm(at(d, k).avg, i)),
+        // 1x: the epoch's typical block.
+        ...(relative && k === keys[0]
+          ? {
+              markLine: {
+                silent: true,
+                symbol: 'none',
+                label: { show: false },
+                lineStyle: {
+                  color: getThemeColor('tertiary-color'),
+                  type: 'dashed',
+                  width: 1
+                },
+                data: [{ yAxis: 1 }]
+              }
+            }
+          : {})
       })),
       ...(anyKept
         ? keys.map(k => ({
@@ -937,7 +997,7 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
             symbol: 'none',
             color: color(k),
             lineStyle: { width: 1, type: 'dashed', opacity: 0.8 },
-            data: loaded.map(d => at(d, k).kept)
+            data: loaded.map((d, i) => norm(at(d, k).kept, i))
           }))
         : [])
     ]
@@ -946,7 +1006,30 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
     <SectionCard
       title={`${useMedian ? 'Median' : 'Average'} Income per Block by Epoch`}
       icon="trending-up"
-      info={`Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid, for epochs whose fees are all measured (from 1083, when Jito's builder commission is)." : ''}`}
+      aside={
+        <ButtonGroup size="sm">
+          {(
+            [
+              ['relative', 'Relative'],
+              ['absolute', 'SOL']
+            ] as const
+          ).map(([k, l]) => (
+            <ToggleButton
+              key={k}
+              id={`income-history-${k}`}
+              type="radio"
+              name="income-history"
+              variant="soft-secondary"
+              value={k}
+              checked={scale === k}
+              onChange={() => setScale(k)}
+            >
+              {l}
+            </ToggleButton>
+          ))}
+        </ButtonGroup>
+      }
+      info={`${relative ? "Relative: each builder against the epoch's typical block (1x, dashed) - its builders' figures weighted by their blocks - so what lifts every builder together drops out. SOL: the figures themselves. " : ''}Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid, for epochs whose fees are all measured (from 1083, when Jito's builder commission is)." : ''}`}
     >
       <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
         {keys.map(k => (
