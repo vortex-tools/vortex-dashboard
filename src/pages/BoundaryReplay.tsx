@@ -50,6 +50,7 @@ const rowSchema = z.object({
     .optional()
     .catch(null),
   version: z.string().nullable().optional().catch(null),
+  ledger_source: z.string().nullable().optional().catch(null),
   seconds: z.number().nullable().optional().catch(null)
 });
 type BoundaryRow = z.infer<typeof rowSchema>;
@@ -81,9 +82,14 @@ const ago = (iso: string | null | undefined) => {
 };
 const checksText = (c: BoundaryRow['checks']) =>
   c == null ? null : Array.isArray(c) ? c.join(', ') : c;
-const progressPct = (r: BoundaryRow) =>
-  r.progress && r.progress.target
-    ? Math.min(1, r.progress.slot / r.progress.target)
+/** Its progress as vortex-replay reports it: the slot reached and the
+ *  slot it's replaying to (not a fraction - the slot can be 0 before it
+ *  starts, or the target itself at a stage's end). */
+const progressText = (r: BoundaryRow) =>
+  r.progress
+    ? r.progress.slot === r.progress.target
+      ? `at ${r.progress.target.toLocaleString('en-US')}`
+      : `${r.progress.slot ? r.progress.slot.toLocaleString('en-US') : 'not started'} → ${r.progress.target.toLocaleString('en-US')}`
     : null;
 
 /** One epoch's hover text: its status and what's known. */
@@ -92,7 +98,7 @@ const titleOf = (r: BoundaryRow) =>
     `Epoch ${r.epoch} boundary: ${STATUS[r.status].label}`,
     r.runner && `on ${r.runner}`,
     r.stage && `stage ${r.stage}`,
-    progressPct(r) != null && `${Math.round(progressPct(r)! * 100)}%`,
+    progressText(r) && `slot ${progressText(r)}`,
     r.failure && r.failure.slice(0, 120),
     r.version && `agave ${r.version}`
   ]
@@ -110,7 +116,6 @@ const Details = ({ r }: { r: BoundaryRow }) => {
         <span className="text-break">{v}</span>
       </div>
     );
-  const pct = progressPct(r);
   return (
     <div className="fs-9 d-flex flex-column gap-1">
       <div className="fw-semibold mb-1">
@@ -134,18 +139,14 @@ const Details = ({ r }: { r: BoundaryRow }) => {
       {line('First hash', r.first_hash ? <code>{r.first_hash}</code> : null)}
       {line('Checks', checksText(r.checks))}
       {line('Agave', r.version)}
+      {line('Ledger', r.ledger_source)}
       {line(
         'Took',
         r.seconds != null ? `${Math.round(r.seconds / 60)} min` : null
       )}
       {line('Runner', r.runner)}
       {line('Stage', r.stage)}
-      {line(
-        'Progress',
-        pct != null && r.progress
-          ? `${Math.round(pct * 100)}% (slot ${r.progress.slot.toLocaleString('en-US')} of ${r.progress.target.toLocaleString('en-US')})`
-          : null
-      )}
+      {line('Progress', progressText(r) ? `slot ${progressText(r)}` : null)}
       {line('Heartbeat', r.heartbeat ? ago(r.heartbeat) : null)}
       {line(
         'Failure',
@@ -324,7 +325,7 @@ const BoundaryReplay = () => {
                   <th>Status</th>
                   <th>Runner</th>
                   <th>Stage</th>
-                  <th className="text-end">Progress</th>
+                  <th className="text-end">Slot</th>
                   <th>Heartbeat</th>
                   <th>Failure</th>
                 </tr>
@@ -349,10 +350,8 @@ const BoundaryReplay = () => {
                     </td>
                     <td className="text-nowrap">{r.runner ?? '—'}</td>
                     <td className="text-nowrap">{r.stage ?? '—'}</td>
-                    <td className="text-end">
-                      {progressPct(r) != null
-                        ? `${Math.round(progressPct(r)! * 100)}%`
-                        : '—'}
+                    <td className="text-end text-nowrap">
+                      {progressText(r) ?? '—'}
                     </td>
                     <td className="text-nowrap">
                       {r.heartbeat ? ago(r.heartbeat) : '—'}
