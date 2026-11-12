@@ -266,7 +266,7 @@ const IncomeChart = ({ rows, after }: { rows: Row_[]; after: boolean }) => {
                 sol(pb(r)!.total)
               )) +
           (r.median
-            ? `<div class="fs-10 text-body-tertiary mt-1">The median block's parts. Middle half of its blocks: ${sol(r.iqr![0])} to ${sol(r.iqr![1])} · mean ${sol(r.mean)}</div>`
+            ? `<div class="fs-10 text-body-tertiary mt-1" style="max-width:16rem;white-space:normal">The median block's parts. Middle half of its blocks: ${sol(r.iqr![0])} to ${sol(r.iqr![1])} · mean ${sol(r.mean)}</div>`
             : '') +
           `<div class="fs-10 text-body-tertiary mt-1">${r.blocks.toLocaleString()} blocks built</div>` +
           (r.b.tips === 'priorityFees'
