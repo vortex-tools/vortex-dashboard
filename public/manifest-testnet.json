@@ -1,0 +1,20 @@
+{
+  "short_name": "Vortex Testnet",
+  "name": "Vortex Testnet | Validator Explorer",
+  "icons": [
+    {
+      "src": "/icon-testnet-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-testnet-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#C20C67",
+  "background_color": "#FFF7FB"
+}

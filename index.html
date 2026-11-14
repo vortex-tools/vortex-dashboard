@@ -2,11 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%VITE_FAVICON%" />
+    <!-- Icons from vortex-home's set for this site (app, staging or testnet). -->
+    <link rel="icon" href="%VITE_FAVICON%" sizes="32x32" />
+    <link rel="icon" href="%VITE_FAVICON_SVG%" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="%VITE_APPLE_ICON%" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="%VITE_THEME_COLOR%" />
     <meta name="description" content="How Solana validators perform under Alpenglow: voting, block production, block income, stake and decentralization." />
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="%VITE_MANIFEST%" />
     <title>%VITE_APP_TITLE%</title>
     <!-- The Worker puts a plain summary of the page in #root for crawlers
          that don't run JavaScript; with JavaScript the app replaces it, so

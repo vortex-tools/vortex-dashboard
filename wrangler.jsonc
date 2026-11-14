@@ -33,10 +33,10 @@
     "run_worker_first": [
         "/*",
         "!/assets/*",
-        "!/favicon.ico",
-        "!/favicon-staging.ico",
-        "!/favicon-testnet.ico",
-        "!/manifest.json"
+        "!/favicon*",
+        "!/apple-touch-icon*",
+        "!/icon-*",
+        "!/manifest*.json"
       ]
   },
   // The API the share cards read (vars aren't inherited: set per env).
@@ -63,10 +63,10 @@
         "run_worker_first": [
         "/*",
         "!/assets/*",
-        "!/favicon.ico",
-        "!/favicon-staging.ico",
-        "!/favicon-testnet.ico",
-        "!/manifest.json"
+        "!/favicon*",
+        "!/apple-touch-icon*",
+        "!/icon-*",
+        "!/manifest*.json"
       ]
       },
       "vars": {
@@ -89,10 +89,10 @@
         "run_worker_first": [
         "/*",
         "!/assets/*",
-        "!/favicon.ico",
-        "!/favicon-staging.ico",
-        "!/favicon-testnet.ico",
-        "!/manifest.json"
+        "!/favicon*",
+        "!/apple-touch-icon*",
+        "!/icon-*",
+        "!/manifest*.json"
       ]
       },
       "vars": {

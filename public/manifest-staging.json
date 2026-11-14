@@ -1,0 +1,20 @@
+{
+  "short_name": "Vortex Staging",
+  "name": "Vortex Staging | Validator Explorer",
+  "icons": [
+    {
+      "src": "/icon-staging-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-staging-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#F56A14",
+  "background_color": "#FFF7F0"
+}
