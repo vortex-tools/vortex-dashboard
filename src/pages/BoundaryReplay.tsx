@@ -6,7 +6,7 @@ import UntrackedState from 'components/common/UntrackedState';
 import WarningBanner from 'components/common/WarningBanner';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { timeAgo } from 'helpers/utils';
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Col, Row, Table } from 'react-bootstrap';
 import { z } from 'zod';
 
@@ -142,55 +142,163 @@ const runsText = (pairs: string[]) =>
     )
     .join(', ');
 
-/** epoch-stakes' history store: how many of its adjacent-epoch deltas
- *  exist, its keyframes, and what's missing or pending. */
-const HistCard = ({ h }: { h: Hist }) => (
-  <SectionCard
-    title="Stake History Store"
-    icon="layers"
-    info="epoch-stakes' history store: every adjacent pair of epochs it covers needs a delta; keyframes are full snapshots. Missing: pairs with no delta yet (runs of consecutive pairs as first-last epoch, with their count). Pending seams: pairs waiting on a seam."
-  >
-    <div className="fs-9 d-flex flex-column gap-2">
-      <div>
+/** epoch-stakes' history store: a cell per adjacent pair of epochs it
+ *  covers (E-E+1 under epoch E, on the Boundaries grid's columns),
+ *  colored by whether its delta is stored, missing, or missing with its
+ *  seam pending; a keyframe (a full snapshot) is a dot in its epoch's
+ *  cell. The lists themselves on request. */
+const HistCard = ({ h, lastEpoch }: { h: Hist; lastEpoch: number }) => {
+  const [list, setList] = useState(false);
+  const first = lastEpoch - h.pairs;
+  const firsts = (pairs: string[]) =>
+    new Set(pairs.map(p => Number(p.split('-')[0])));
+  const missing = firsts(h.missing);
+  const pending = firsts(h.pending_seams);
+  const keyframes = new Set(h.keyframes);
+  const kind = (e: number) =>
+    pending.has(e) ? 'pending' : missing.has(e) ? 'missing' : 'stored';
+  const KIND = {
+    stored: { label: 'Delta stored', color: 'var(--vx-success)' },
+    missing: { label: 'Missing', color: 'var(--vx-body-highlight-bg)' },
+    pending: {
+      label: 'Missing, seam pending',
+      color: 'var(--vx-warning-border-subtle)'
+    }
+  } as const;
+  const counts = { stored: 0, missing: 0, pending: 0 };
+  for (let e = first; e < lastEpoch; e++) counts[kind(e)]++;
+  // Rows on the Boundaries grid's columns: epochs PER_ROW to a row.
+  const rowStart = Math.floor(first / PER_ROW) * PER_ROW;
+  const rowCount = Math.ceil((lastEpoch - rowStart) / PER_ROW);
+  return (
+    <SectionCard
+      title="Stake History Store"
+      icon="layers"
+      info="epoch-stakes' history store: every adjacent pair of epochs it covers needs a delta. A cell per pair (E to E+1, under epoch E): stored, missing, or missing with its seam pending. A dot: a keyframe, a full snapshot at that epoch."
+      aside={
+        <button
+          type="button"
+          className="btn btn-link btn-sm p-0 fs-9"
+          onClick={() => setList(l => !l)}
+        >
+          {list ? 'Hide list' : 'Show list'}
+        </button>
+      }
+    >
+      <div className="d-flex align-items-baseline gap-2 mb-1 fs-9">
         <span className="fw-semibold">
           {h.deltas.toLocaleString()} of {h.pairs.toLocaleString()}
-        </span>{' '}
-        deltas
-        {h.pairs > 0 && (
-          <span className="text-body-tertiary">
-            {' '}
-            ({((h.deltas / h.pairs) * 100).toFixed(0)}%)
-          </span>
-        )}
+        </span>
+        <span className="text-body-tertiary">
+          deltas stored
+          {h.pairs > 0 ? ` (${((h.deltas / h.pairs) * 100).toFixed(0)}%)` : ''}
+          {' · '}
+          {h.keyframes.length.toLocaleString()} keyframes
+        </span>
+      </div>
+      <div
+        className="rounded bg-body-highlight overflow-hidden mb-3"
+        style={{ height: 6 }}
+      >
         <div
-          className="mt-1 rounded bg-body-highlight overflow-hidden"
-          style={{ height: 6 }}
-        >
-          <div
-            className="h-100 bg-success"
-            style={{ width: `${h.pairs ? (h.deltas / h.pairs) * 100 : 0}%` }}
+          className="h-100 bg-success"
+          style={{ width: `${h.pairs ? (h.deltas / h.pairs) * 100 : 0}%` }}
+        />
+      </div>
+      <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-2">
+        {(['stored', 'pending', 'missing'] as const).map(k => (
+          <span key={k} className="d-inline-flex align-items-center gap-1">
+            <span
+              className="d-inline-block rounded-1 border border-translucent"
+              style={{ width: 10, height: 10, background: KIND[k].color }}
+            />
+            {KIND[k].label} {counts[k].toLocaleString()}
+          </span>
+        ))}
+        <span className="d-inline-flex align-items-center gap-1">
+          <span
+            className="d-inline-block rounded-circle"
+            style={{
+              width: 6,
+              height: 6,
+              background: 'var(--vx-emphasis-color)'
+            }}
           />
+          Keyframe
+        </span>
+      </div>
+      <div
+        className="d-grid"
+        style={{
+          gridTemplateColumns: `2.5rem repeat(${PER_ROW}, minmax(0, 1fr))`,
+          gap: 'clamp(2px, 0.45vw, 7px)'
+        }}
+      >
+        {Array.from({ length: rowCount }, (_, r) => {
+          const r0 = rowStart + r * PER_ROW;
+          return (
+            <Fragment key={r0}>
+              <span className="fs-11 text-body-tertiary text-end pe-1 align-self-center">
+                {r0}
+              </span>
+              {Array.from({ length: PER_ROW }, (_, c) => {
+                const e = r0 + c;
+                if (e < first || e >= lastEpoch)
+                  return <span key={e} style={{ aspectRatio: '1' }} />;
+                const k = kind(e);
+                const key = keyframes.has(e);
+                return (
+                  <span
+                    key={e}
+                    title={`${e}-${e + 1}: ${KIND[k].label}${key ? ` · keyframe at ${e}` : ''}`}
+                    className="d-flex align-items-center justify-content-center"
+                    style={{
+                      aspectRatio: '1',
+                      minWidth: 0,
+                      borderRadius: '30%',
+                      background: KIND[k].color
+                    }}
+                  >
+                    {key && (
+                      <span
+                        className="rounded-circle"
+                        style={{
+                          width: '38%',
+                          height: '38%',
+                          background: 'var(--vx-emphasis-color)'
+                        }}
+                      />
+                    )}
+                  </span>
+                );
+              })}
+            </Fragment>
+          );
+        })}
+      </div>
+      {list && (
+        <div className="fs-10 d-flex flex-column gap-1 mt-3">
+          <div>
+            <span className="text-body-tertiary">Keyframes </span>
+            {h.keyframes.length ? h.keyframes.join(', ') : 'none'}
+          </div>
+          <div>
+            <span className="text-body-tertiary">
+              Missing ({h.missing.length.toLocaleString()}){' '}
+            </span>
+            {h.missing.length ? runsText(h.missing) : 'none'}
+          </div>
+          <div>
+            <span className="text-body-tertiary">
+              Pending seams ({h.pending_seams.length.toLocaleString()}){' '}
+            </span>
+            {h.pending_seams.length ? runsText(h.pending_seams) : 'none'}
+          </div>
         </div>
-      </div>
-      <div>
-        <span className="text-body-tertiary">Keyframes </span>
-        {h.keyframes.length ? h.keyframes.join(', ') : 'none'}
-      </div>
-      <div>
-        <span className="text-body-tertiary">
-          Missing ({h.missing.length.toLocaleString()}){' '}
-        </span>
-        {h.missing.length ? runsText(h.missing) : 'none'}
-      </div>
-      <div>
-        <span className="text-body-tertiary">
-          Pending seams ({h.pending_seams.length.toLocaleString()}){' '}
-        </span>
-        {h.pending_seams.length ? runsText(h.pending_seams) : 'none'}
-      </div>
-    </div>
-  </SectionCard>
-);
+      )}
+    </SectionCard>
+  );
+};
 
 /** A boundary's details: what vortex-replay recorded for it. */
 const Details = ({ r }: { r: BoundaryRow }) => {
@@ -413,7 +521,7 @@ const BoundaryReplay = () => {
           )}
         </SectionCard>
 
-        {data.hist && <HistCard h={data.hist} />}
+        {data.hist && <HistCard h={data.hist} lastEpoch={data.last_epoch} />}
 
         <SectionCard
           title="Failed and Running"
@@ -512,7 +620,7 @@ const Row_ = ({
           background: STATUS[r.status].color,
           outline:
             r.epoch === picked
-              ? '2px solid var(--vx-body-emphasis-color)'
+              ? '2px solid var(--vx-emphasis-color)'
               : 'none'
         }}
       />

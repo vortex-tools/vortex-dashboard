@@ -483,7 +483,7 @@ export const SKELETON = {
   boundaryReplay: [
     { stats: 4 },
     [full(764, 'block')],
-    [full(182, 'list')],
+    [full(313, 'block')],
     [full(328)]
   ],
   blockBuilders: [
