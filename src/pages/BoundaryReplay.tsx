@@ -391,7 +391,9 @@ const BoundaryReplay = () => {
             style={{
               // minmax(0, ...): cells shrink to fit a phone (no overflow).
               gridTemplateColumns: `2.5rem repeat(${PER_ROW}, minmax(0, 1fr))`,
-              gap: 2
+              // Spacing and rounding scale with the cells, so desktop's big
+              // cells look like a phone's small ones.
+              gap: 'clamp(2px, 0.45vw, 7px)'
             }}
           >
             {Array.from({ length: Math.ceil(total / PER_ROW) }, (_, i) => (
@@ -502,9 +504,10 @@ const Row_ = ({
         title={titleOf(r)}
         aria-label={titleOf(r)}
         onClick={() => onPick(r.epoch)}
-        className={`p-0 border-0 rounded-1${r.status === 'running' ? ' vx-pulse' : ''}`}
+        className={`p-0 border-0${r.status === 'running' ? ' vx-pulse' : ''}`}
         style={{
           aspectRatio: '1',
+          borderRadius: '30%',
           minWidth: 0,
           background: STATUS[r.status].color,
           outline:
