@@ -989,6 +989,9 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
   // that epoch - so what moves every builder together (a busy epoch)
   // drops out and 1x is the epoch's typical block. Absolute: SOL.
   const [scale, setScale] = useState<'relative' | 'absolute'>('relative');
+  // A builder picked in the legend: its band shows and the other lines
+  // fade (null: just the lines - bands for all were too busy).
+  const [focus, setFocus] = useState<string | null>(null);
   const relative = scale === 'relative';
   const baselineOf = (d: BlockBuilders) => {
     let w = 0;
@@ -1075,8 +1078,8 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
     series: [
       // Each median's likely range: an invisible lower edge, then the
       // band's height stacked on it, in the builder's color.
-      ...(useMedian
-        ? keys.flatMap(k => [
+      ...(useMedian && focus && keys.includes(focus)
+        ? [focus].flatMap(k => [
             {
               name: `${names.get(k) ?? k} (range low)`,
               type: 'line',
@@ -1109,7 +1112,8 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
         symbol: 'circle',
         symbolSize: 4,
         color: color(k),
-        lineStyle: { width: 2 },
+        lineStyle: { width: 2, opacity: focus && focus !== k ? 0.2 : 1 },
+        itemStyle: { opacity: focus && focus !== k ? 0.2 : 1 },
         data: loaded.map((d, i) => norm(at(d, k).avg, i)),
         z: 3,
         // 1x: the epoch's typical block.
@@ -1135,7 +1139,11 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
             type: 'line',
             symbol: 'none',
             color: color(k),
-            lineStyle: { width: 1, type: 'dashed', opacity: 0.8 },
+            lineStyle: {
+              width: 1,
+              type: 'dashed',
+              opacity: focus && focus !== k ? 0.15 : 0.8
+            },
             data: loaded.map((d, i) => norm(at(d, k).kept, i))
           }))
         : [])
@@ -1168,17 +1176,36 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
           ))}
         </ButtonGroup>
       }
-      info={`${useMedian ? "Bands: how far each median could be off with its number of blocks (a ~95% range: median ± 1.58 × middle-half width / √blocks, combined with the API's ~4.5% precision) - narrow for builders with many blocks, wide for few; lines whose bands overlap aren't clearly different. " : ''}${relative ? "Relative: each builder against the epoch's typical block (1x, dashed) - its builders' figures weighted by their blocks - so what lifts every builder together drops out. SOL: the figures themselves. " : ''}Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid, for epochs whose fees are all measured (from 1083, when Jito's builder commission is)." : ''}`}
+      info={`${useMedian ? "Click a builder in the legend for its band: how far its median could be off with its number of blocks (a ~95% range: median ± 1.58 × middle-half width / √blocks, combined with the API's ~4.5% precision) - narrow for builders with many blocks, wide for few; lines whose bands overlap aren't clearly different. " : ''}${relative ? "Relative: each builder against the epoch's typical block (1x, dashed) - its builders' figures weighted by their blocks - so what lifts every builder together drops out. SOL: the figures themselves. " : ''}Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid, for epochs whose fees are all measured (from 1083, when Jito's builder commission is)." : ''}`}
     >
       <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
         {keys.map(k => (
-          <span key={k} className="d-inline-flex align-items-center gap-1">
+          <button
+            key={k}
+            type="button"
+            className={`btn btn-link p-0 fs-10 text-decoration-none d-inline-flex align-items-center gap-1 ${
+              focus && focus !== k
+                ? 'text-body-quaternary'
+                : 'text-body-tertiary'
+            }`}
+            aria-pressed={focus === k}
+            title={
+              focus === k
+                ? 'Show every builder'
+                : useMedian
+                  ? 'Show its median’s likely range'
+                  : 'Highlight it'
+            }
+            onClick={() => setFocus(f => (f === k ? null : k))}
+          >
             <span
               className="d-inline-block rounded-1"
               style={{ width: 10, height: 10, background: color(k) }}
             />
-            {names.get(k) ?? k}
-          </span>
+            <span className={focus === k ? 'fw-bold' : ''}>
+              {names.get(k) ?? k}
+            </span>
+          </button>
         ))}
         {anyKept && (
           <span className="d-inline-flex align-items-center gap-1">
