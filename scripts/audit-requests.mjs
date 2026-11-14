@@ -23,6 +23,10 @@ const SETTLE_MS = 8000;
 // Requests started this long after load are polling (live pages): listed
 // apart, not counted against the budget.
 const LOAD_MS = 3000;
+// Endpoints allowed more than MAX_SAME calls on load, and how many: the
+// production windows table prefetches each filter's first page and the
+// next page so switching is instant (Justin, 2026-10-22 and 2026-11-14).
+const ALLOW_SAME = { '/epochs/production/windows': 5 };
 // A production build (vite preview), not the dev server: React's
 // StrictMode runs effects twice in dev, which would read as duplicates.
 const BASE = process.env.AUDIT_BASE ?? 'http://localhost:3021';
@@ -103,10 +107,19 @@ for (const path of pages) {
       )
     )
     .map(r => r.path + r.q.slice(0, 40));
-  const fanout = [...byPath].filter(([, n]) => n > MAX_SAME);
+  const fanout = [...byPath].filter(
+    ([k, n]) => n > (ALLOW_SAME[k] ?? MAX_SAME)
+  );
   const last = Math.max(0, ...load.map(r => r.end ?? 0));
+  // An allowed prefetch counts as one request toward the total.
+  const counted =
+    load.length -
+    Object.entries(ALLOW_SAME).reduce(
+      (a, [k, n]) => a + Math.max(0, Math.min(byPath.get(k) ?? 0, n) - 1),
+      0
+    );
   const problems = [
-    load.length > MAX_REQUESTS && `${load.length} requests`,
+    counted > MAX_REQUESTS && `${load.length} requests`,
     ...fanout.map(([k, n]) => `${n}x ${k}`),
     dups.length &&
       `${dups.length} duplicate(s): ${[...new Set(dups)].join(' ')}`

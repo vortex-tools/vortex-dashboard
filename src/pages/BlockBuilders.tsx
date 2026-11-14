@@ -15,7 +15,14 @@ import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import { formatLamports } from 'helpers/utils';
 import { useAppContext } from 'providers/AppProvider';
-import { BlockBuilder, BlockBuilders } from 'providers/vortex-schemas';
+import {
+  BlockBuilder,
+  BlockBuilders,
+  blockBuilderSchema,
+  blockBuildersSchema
+} from 'providers/vortex-schemas';
+import { API_ENDPOINT } from 'helpers/apiEndpoint';
+import { z } from 'zod';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import {
   ChangeEvent,
@@ -638,6 +645,111 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
  *  (every labelled epoch, from FIRST_EPOCH, until there are more). */
 const OVER_TIME_EPOCHS = 30;
 
+// The per-epoch charts' series: finished epochs from one long-cached
+// /cluster/block-builders/history request, the epoch in progress from the
+// page's own /cluster/block-builders (the slice). An API without the
+// history route (404): every epoch from the slice, one request each.
+const historySchema = z.object({
+  epochs: z.array(
+    z.object({
+      epoch: z.number(),
+      complete: z.boolean().catch(true),
+      blockLabels: blockBuildersSchema.shape.blockLabels,
+      builders: z.array(
+        z.object({
+          builder: z.string(),
+          name: z.string().catch(''),
+          built: blockBuilderSchema.shape.built
+        })
+      )
+    })
+  )
+});
+const historyCache = new Map<number, Promise<BlockBuilders[]>>();
+const loadHistory = (toEpoch: number) => {
+  let p = historyCache.get(toEpoch);
+  if (!p) {
+    p = fetch(
+      `${API_ENDPOINT}/cluster/block-builders/history?fromEpoch=${FIRST_EPOCH}&toEpoch=${toEpoch}`
+    )
+      .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then(j =>
+        historySchema.parse(j).epochs.map(
+          e =>
+            ({
+              epoch: e.epoch,
+              complete: e.complete,
+              validators: 0,
+              stake: 0,
+              leaderSlots: 0,
+              blockLabels: e.blockLabels,
+              builders: e.builders.map(b => ({
+                builder: b.builder,
+                name: b.name,
+                tips: null,
+                protocolFee: null,
+                clients: [],
+                validators: 0,
+                stake: 0,
+                stakeShare: null,
+                leaderSlots: 0,
+                slotShare: null,
+                mevCommissionBps: null,
+                built: b.built
+              }))
+            }) as BlockBuilders
+        )
+      );
+    p.catch(() => historyCache.delete(toEpoch));
+    historyCache.set(toEpoch, p);
+  }
+  return p;
+};
+const useEpochSeries = (currentEpoch: number) => {
+  const context = useContext(VortexDataContext);
+  const slice = context?.blockBuildersState;
+  const fetchData = slice?.fetchData;
+  const epochs = useMemo(
+    () =>
+      Array.from(
+        { length: OVER_TIME_EPOCHS },
+        (_, i) => currentEpoch - OVER_TIME_EPOCHS + 1 + i
+      ).filter(e => e >= FIRST_EPOCH),
+    [currentEpoch]
+  );
+  const [past, setPast] = useState<BlockBuilders[] | 'none' | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadHistory(currentEpoch - 1).then(
+      h => alive && setPast(h),
+      () => alive && setPast('none')
+    );
+    return () => {
+      alive = false;
+    };
+  }, [currentEpoch]);
+  // The epoch in progress always from the slice; every epoch from it
+  // when the API has no history route.
+  useEffect(() => {
+    fetchData?.(currentEpoch);
+    if (past === 'none') epochs.forEach(e => fetchData?.(e));
+  }, [past, epochs, currentEpoch, fetchData]);
+  const byEpoch = new Map<number, BlockBuilders>();
+  if (Array.isArray(past)) for (const d of past) byEpoch.set(d.epoch, d);
+  const fromSlice = (e: number) => slice?.data.get(e);
+  const loaded = epochs
+    .map(e =>
+      e === currentEpoch ? fromSlice(e) : (byEpoch.get(e) ?? fromSlice(e))
+    )
+    .filter((d): d is BlockBuilders => !!d);
+  const done =
+    past !== null &&
+    epochs.every(
+      e => (e !== currentEpoch && byEpoch.has(e)) || !!slice?.data.has(e)
+    );
+  return { epochs, loaded, done };
+};
+
 /** Builders' colors (No builder in gray). */
 const builderColor = (
   builder: string,
@@ -661,24 +773,8 @@ const builderColor = (
  * builder on top, in gray; Unknown (client not read) left out.
  */
 const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
-  const context = useContext(VortexDataContext);
   const { getThemeColor } = useAppContext();
-  const slice = context?.blockBuildersState;
-  const fetchData = slice?.fetchData;
-  const epochs = useMemo(
-    () =>
-      Array.from(
-        { length: OVER_TIME_EPOCHS },
-        (_, i) => currentEpoch - OVER_TIME_EPOCHS + 1 + i
-      ).filter(e => e >= FIRST_EPOCH),
-    [currentEpoch]
-  );
-  useEffect(() => {
-    epochs.forEach(e => fetchData?.(e));
-  }, [epochs, fetchData]);
-  const loaded = epochs
-    .map(e => slice?.data.get(e))
-    .filter((d): d is BlockBuilders => !!d);
+  const { loaded, done } = useEpochSeries(currentEpoch);
   const points = loaded
     .map(d => {
       if (!d.blockLabels) return null;
@@ -693,7 +789,7 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
       return { epoch: d.epoch, inProgress: !d.complete, share };
     })
     .filter(p => p != null);
-  const all = loaded.length === epochs.length;
+  const all = done;
   // The builders, most blocks in the latest epoch first; "other" on top.
   const last = loaded[loaded.length - 1];
   const names = new Map<string, string>(
@@ -826,26 +922,11 @@ const OverTimeCard = ({ currentEpoch }: { currentEpoch: number }) => {
  * the leader kept after them. Epochs not labelled yet are left out.
  */
 const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
-  const context = useContext(VortexDataContext);
   const { getThemeColor } = useAppContext();
-  const slice = context?.blockBuildersState;
-  const fetchData = slice?.fetchData;
-  const epochs = useMemo(
-    () =>
-      Array.from(
-        { length: OVER_TIME_EPOCHS },
-        (_, i) => currentEpoch - OVER_TIME_EPOCHS + 1 + i
-      ).filter(e => e >= FIRST_EPOCH),
-    [currentEpoch]
-  );
-  // (The same requests as the distribution card: the slice asks once.)
-  useEffect(() => {
-    epochs.forEach(e => fetchData?.(e));
-  }, [epochs, fetchData]);
-  const loaded = epochs
-    .map(e => slice?.data.get(e))
-    .filter((d): d is BlockBuilders => !!d && !!d.blockLabels);
-  const all = epochs.every(e => slice?.data.has(e)) && loaded.length >= 2;
+  // (The same series as the distribution card: one history request.)
+  const series = useEpochSeries(currentEpoch);
+  const loaded = series.loaded.filter(d => !!d.blockLabels);
+  const all = series.done && loaded.length >= 2;
   const last = loaded[loaded.length - 1];
   const names = new Map<string, string>(
     loaded.flatMap(d =>
