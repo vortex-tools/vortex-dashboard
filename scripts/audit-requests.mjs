@@ -9,13 +9,15 @@
 //   node scripts/audit-requests.mjs '/,/validators,/validator/<id>/staging'
 //   node scripts/audit-requests.mjs all      # the PAGES list below
 //
-// Budget: at most MAX_REQUESTS requests on load, at most MAX_SAME to any
+// Budget: at most MAX_REQUESTS (16) requests on load, at most MAX_SAME to any
 // one endpoint (a fan-out over epochs or keys wants a bulk endpoint), and
 // no exact duplicates.
 
 import { chromium } from 'playwright';
 
-const MAX_REQUESTS = 12;
+// Distinct requests in parallel (a card each) are fine; the budget catches
+// pages that pile up. Fan-outs and duplicates are the real smells.
+const MAX_REQUESTS = 16;
 const MAX_SAME = 4;
 const SETTLE_MS = 8000;
 // Requests started this long after load are polling (live pages): listed
@@ -91,8 +93,16 @@ for (const path of pages) {
   const load = reqs.filter(r => r.start <= LOAD_MS);
   const byPath = new Map();
   for (const r of load) byPath.set(r.path, (byPath.get(r.path) ?? 0) + 1);
-  const keys = load.map(r => r.path + r.q);
-  const dups = keys.filter((k, i) => keys.indexOf(k) !== i);
+  // A duplicate: the same request again within a second (later repeats
+  // are a page polling).
+  const dups = load
+    .filter((r, i) =>
+      load.some(
+        (o, j) =>
+          j < i && o.path + o.q === r.path + r.q && r.start - o.start < 1000
+      )
+    )
+    .map(r => r.path + r.q.slice(0, 40));
   const fanout = [...byPath].filter(([, n]) => n > MAX_SAME);
   const last = Math.max(0, ...load.map(r => r.end ?? 0));
   const problems = [

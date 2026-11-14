@@ -131,14 +131,55 @@ export const fetchSlots = async (
   slots: number[]
 ): Promise<Map<number, SlotInfo | null>> => {
   const out = new Map<number, SlotInfo | null>();
+  // Slots another call is already fetching: wait for its answer rather
+  // than ask again (two components asking at once used to double the
+  // request).
+  const waiting: Array<Promise<void>> = [];
   const todo = [...new Set(slots)]
     .filter(s => {
-      if (!cache.has(s)) return true;
-      out.set(s, cache.get(s)!);
-      return false;
+      if (cache.has(s)) {
+        out.set(s, cache.get(s)!);
+        return false;
+      }
+      const p = inflight.get(s);
+      if (p) {
+        waiting.push(p.then(i => void out.set(s, i)));
+        return false;
+      }
+      return true;
     })
     .sort((a, b) => a - b);
-  if (!todo.length) return out;
+  if (!todo.length) {
+    await Promise.all(waiting);
+    return out;
+  }
+  const mine = fetchTodo(todo);
+  for (const s of todo)
+    inflight.set(
+      s,
+      mine.then(
+        m => m.get(s) ?? null,
+        () => null
+      )
+    );
+  try {
+    const got = await mine;
+    for (const [s, i] of got) out.set(s, i);
+  } finally {
+    for (const s of todo) inflight.delete(s);
+  }
+  await Promise.all(waiting);
+  return out;
+};
+
+/** Slots in flight (fetchSlots), each resolving to its answer. */
+const inflight = new Map<number, Promise<SlotInfo | null>>();
+
+/** fetchSlots' requests for slots neither cached nor in flight. */
+const fetchTodo = async (
+  todo: number[]
+): Promise<Map<number, SlotInfo | null>> => {
+  const out = new Map<number, SlotInfo | null>();
   const ranges = groupRanges(todo);
   const batches: Array<() => Promise<SlotInfo[]>> =
     ranges.length === 1 || noList
