@@ -9,7 +9,6 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
-import SearchBox from 'components/common/SearchBox';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -65,26 +64,61 @@ type History = z.infer<typeof historySchema>;
 const delegationsSchema = z.object({
   epoch: z.number(),
   total: z.number().catch(0),
-  delegations: z.array(
-    z.object({
-      stakeAccount: z.string(),
-      effective: num,
-      activating: num,
-      deactivating: num,
-      inflationReward: num,
-      blockReward: num,
-      staker: z.string().nullable().catch(null),
-      withdrawer: z.string().nullable().catch(null),
-      change: z
-        .object({
-          kind: z.string().catch('same'),
-          delta: num
-        })
-        .nullable()
-        .catch(null)
+  delegations: z
+    .array(
+      z.object({
+        stakeAccount: z.string(),
+        effective: num,
+        activating: num,
+        deactivating: num,
+        inflationReward: num,
+        blockReward: num,
+        staker: z.string().nullable().catch(null),
+        withdrawer: z.string().nullable().catch(null),
+        change: z
+          .object({
+            kind: z.string().catch('same'),
+            delta: num,
+            // New here, moved from another validator: which.
+            previousVoteKey: z.string().nullable().optional().catch(null),
+            previousName: z.string().nullable().optional().catch(null)
+          })
+          .nullable()
+          .catch(null)
+      })
+    )
+    .catch([]),
+  // filter=gone: the stake accounts that left since the epoch before,
+  // and where each is now.
+  gone: z
+    .array(
+      z.object({
+        stakeAccount: z.string(),
+        effective: num,
+        voteKeyNow: z.string().nullable().catch(null),
+        nameNow: z.string().nullable().catch(null)
+      })
+    )
+    .optional()
+    .catch([]),
+  changeTotals: z
+    .object({
+      new: num,
+      increased: num,
+      decreased: num,
+      gone: num,
+      goneCount: num
     })
-  ),
-  nextCursor: z.string().nullable().optional().catch(null)
+    .nullable()
+    .optional()
+    .catch(null),
+  // Rows to skip for the next page (a number or a string).
+  nextCursor: z
+    .union([z.string(), z.number()])
+    .nullable()
+    .optional()
+    .transform(v => (v == null ? null : String(v)))
+    .catch(null)
 });
 type Delegations = z.infer<typeof delegationsSchema>;
 
@@ -105,11 +139,11 @@ const CHANGE: Record<string, { label: string; tone: string }> = {
   new: { label: 'New', tone: 'success' },
   increased: { label: 'Increased', tone: 'info' },
   decreased: { label: 'Decreased', tone: 'warning' },
-  gone: { label: 'Gone', tone: 'danger' }
+  gone: { label: 'Left', tone: 'danger' }
 };
 
 type Sort = 'effective' | 'rewards' | 'change';
-type Filter = 'all' | 'changed' | 'activating' | 'deactivating';
+type Filter = 'all' | 'changed' | 'activating' | 'deactivating' | 'gone';
 
 /** Its stake per epoch (line), delegators (bars, right axis), and a
  *  dashed mark where its inflation commission changed. */
@@ -214,7 +248,7 @@ const HistoryChart = ({ rows }: { rows: History['epochs'] }) => {
   );
 };
 
-/** Its delegations in one epoch: sorted, filtered and searched by the
+/** Its delegations in one epoch: sorted and filtered by the
  *  API, 50 at a time, each with what changed since the epoch before. */
 const DelegationsCard = ({
   voteKey,
@@ -226,7 +260,6 @@ const DelegationsCard = ({
   const [epoch, setEpoch] = useState(epochs[0]);
   const [sort, setSort] = useState<Sort>('effective');
   const [filter, setFilter] = useState<Filter>('all');
-  const [search, setSearch] = useState('');
   const [pages, setPages] = useState<Delegations[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -238,7 +271,6 @@ const DelegationsCard = ({
       dir: 'desc',
       limit: String(LIMIT),
       ...(filter !== 'all' ? { filter } : {}),
-      ...(search.trim() ? { search: search.trim() } : {}),
       ...(cursor ? { cursor } : {})
     });
     setLoading(true);
@@ -251,22 +283,18 @@ const DelegationsCard = ({
     let alive = true;
     setPages([]);
     setError(null);
-    // Typing pauses before searching.
-    const t = setTimeout(
-      () =>
-        load(null).then(
-          p => alive && setPages([p]),
-          e => alive && setError(String(e))
-        ),
-      search ? 300 : 0
+    load(null).then(
+      p => alive && setPages([p]),
+      e => alive && setError(String(e))
     );
     return () => {
       alive = false;
-      clearTimeout(t);
     };
     // (load reads these.)
-  }, [voteKey, epoch, sort, filter, search]);
+  }, [voteKey, epoch, sort, filter]);
   const rows = pages.flatMap(p => p.delegations);
+  const gone = pages.flatMap(p => p.gone ?? []);
+  const totals = pages[0]?.changeTotals ?? null;
   const next = pages[pages.length - 1]?.nextCursor ?? null;
   const total = pages[0]?.total ?? null;
 
@@ -274,7 +302,7 @@ const DelegationsCard = ({
     <SectionCard
       title="Delegations"
       icon="users"
-      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New, Increased, Decreased, Gone. Sorted, filtered and searched by the API, 50 at a time."
+      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New (and from which validator, if it moved), Increased, Decreased; Left lists the ones that went, and where they are now. Sorted and filtered by the API, 50 at a time."
     >
       <Row className="g-2 align-items-center mb-3">
         <Col xs={6} md="auto">
@@ -310,7 +338,8 @@ const DelegationsCard = ({
                 ['all', 'All'],
                 ['changed', 'Changed'],
                 ['activating', 'Activating'],
-                ['deactivating', 'Deactivating']
+                ['deactivating', 'Deactivating'],
+                ['gone', 'Left']
               ] as const
             ).map(([k, l]) => (
               <ToggleButton
@@ -328,12 +357,6 @@ const DelegationsCard = ({
             ))}
           </ButtonGroup>
         </Col>
-        <Col xs={12} md>
-          <SearchBox
-            placeholder="Search stake accounts or authorities"
-            onChange={e => setSearch(e.target.value)}
-          />
-        </Col>
       </Row>
       {error ? (
         <UntrackedState>
@@ -341,71 +364,136 @@ const DelegationsCard = ({
         </UntrackedState>
       ) : (
         <>
-          <Table responsive size="sm" className="data-table fs-9 mb-0">
-            <thead>
-              <tr className="text-nowrap">
-                <th>Stake Account</th>
-                <th className="text-end">Effective</th>
-                <th className="text-end">Activating</th>
-                <th className="text-end">Deactivating</th>
-                <th className="text-end">Rewards</th>
-                <th>Change</th>
-                <th>Staker</th>
-                <th>Withdrawer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(d => {
-                const c = d.change && CHANGE[d.change.kind];
-                return (
-                  <tr key={d.stakeAccount}>
+          {totals && (
+            <div className="d-flex flex-wrap column-gap-3 fs-9 mb-2">
+              <span className="text-body-tertiary">
+                Since the epoch before:
+              </span>
+              <span>New {sol(totals.new, 0)}</span>
+              <span>Increased {sol(totals.increased, 0)}</span>
+              <span>Decreased {sol(totals.decreased, 0)}</span>
+              <span>
+                Left {sol(totals.gone, 0)}
+                {totals.goneCount != null &&
+                  ` (${totals.goneCount.toLocaleString()} accounts)`}
+              </span>
+            </div>
+          )}
+          {filter === 'gone' ? (
+            <Table responsive size="sm" className="data-table fs-9 mb-0">
+              <thead>
+                <tr className="text-nowrap">
+                  <th>Stake Account</th>
+                  <th className="text-end">Stake It Had</th>
+                  <th>Now With</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gone.map(g => (
+                  <tr key={g.stakeAccount}>
                     <td className="font-monospace">
-                      <Link to={`/stake/account/${d.stakeAccount}`}>
-                        {short(d.stakeAccount)}
+                      <Link to={`/stake/account/${g.stakeAccount}`}>
+                        {short(g.stakeAccount)}
                       </Link>
                     </td>
                     <td className="text-end text-nowrap">
-                      {sol(d.effective, 2)}
+                      {sol(g.effective, 2)}
                     </td>
-                    <td className="text-end text-nowrap">
-                      {d.activating ? sol(d.activating, 2) : '—'}
-                    </td>
-                    <td className="text-end text-nowrap">
-                      {d.deactivating ? sol(d.deactivating, 2) : '—'}
-                    </td>
-                    <td className="text-end text-nowrap">
-                      {sol(rewards(d), 4)}
-                    </td>
-                    <td className="text-nowrap">
-                      {c && (
-                        <span
-                          className={`badge badge-soft badge-soft-${c.tone}`}
-                        >
-                          {c.label}
+                    <td className="text-truncate" style={{ maxWidth: '18rem' }}>
+                      {g.voteKeyNow ? (
+                        <Link to={`/stake/vote/${g.voteKeyNow}`}>
+                          {g.nameNow ?? short(g.voteKeyNow)}
+                        </Link>
+                      ) : (
+                        <span className="text-body-tertiary">
+                          Not delegated
                         </span>
                       )}
-                      {c && d.change?.delta != null && d.change.delta !== 0 && (
-                        <span className="text-body-tertiary fs-10 ms-1">
-                          {d.change.delta > 0 ? '+' : '−'}
-                          {sol(Math.abs(d.change.delta), 2)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="font-monospace text-body-tertiary">
-                      {d.staker ? short(d.staker) : '—'}
-                    </td>
-                    <td className="font-monospace text-body-tertiary">
-                      {d.withdrawer ? short(d.withdrawer) : '—'}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </Table>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <Table responsive size="sm" className="data-table fs-9 mb-0">
+              <thead>
+                <tr className="text-nowrap">
+                  <th>Stake Account</th>
+                  <th className="text-end">Effective</th>
+                  <th className="text-end">Activating</th>
+                  <th className="text-end">Deactivating</th>
+                  <th className="text-end">Rewards</th>
+                  <th>Change</th>
+                  <th>Staker</th>
+                  <th>Withdrawer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(d => {
+                  const c = d.change && CHANGE[d.change.kind];
+                  return (
+                    <tr key={d.stakeAccount}>
+                      <td className="font-monospace">
+                        <Link to={`/stake/account/${d.stakeAccount}`}>
+                          {short(d.stakeAccount)}
+                        </Link>
+                      </td>
+                      <td className="text-end text-nowrap">
+                        {sol(d.effective, 2)}
+                      </td>
+                      <td className="text-end text-nowrap">
+                        {d.activating ? sol(d.activating, 2) : '—'}
+                      </td>
+                      <td className="text-end text-nowrap">
+                        {d.deactivating ? sol(d.deactivating, 2) : '—'}
+                      </td>
+                      <td className="text-end text-nowrap">
+                        {sol(rewards(d), 4)}
+                      </td>
+                      <td className="text-nowrap">
+                        {c && (
+                          <span
+                            className={`badge badge-soft badge-soft-${c.tone}`}
+                          >
+                            {c.label}
+                          </span>
+                        )}
+                        {c &&
+                          d.change?.delta != null &&
+                          d.change.delta !== 0 && (
+                            <span className="text-body-tertiary fs-10 ms-1">
+                              {d.change.delta > 0 ? '+' : '−'}
+                              {sol(Math.abs(d.change.delta), 2)}
+                            </span>
+                          )}
+                        {d.change?.previousVoteKey && (
+                          <div className="fs-10 text-body-tertiary">
+                            from{' '}
+                            <Link
+                              to={`/stake/vote/${d.change.previousVoteKey}`}
+                            >
+                              {d.change.previousName ??
+                                short(d.change.previousVoteKey)}
+                            </Link>
+                          </div>
+                        )}
+                      </td>
+                      <td className="font-monospace text-body-tertiary">
+                        {d.staker ? short(d.staker) : '—'}
+                      </td>
+                      <td className="font-monospace text-body-tertiary">
+                        {d.withdrawer ? short(d.withdrawer) : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
           <div className="d-flex align-items-center justify-content-between mt-2 fs-9 text-body-tertiary">
             <span>
               {total != null
-                ? `${rows.length.toLocaleString()} of ${total.toLocaleString()}`
+                ? `${(filter === 'gone' ? gone.length : rows.length).toLocaleString()} of ${total.toLocaleString()}`
                 : loading
                   ? 'Loading…'
                   : ''}
