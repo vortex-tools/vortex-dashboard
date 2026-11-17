@@ -3,7 +3,7 @@ import SectionCard from 'components/common/SectionCard';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { BASE58 } from 'helpers/pageMeta';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { FormEvent, useContext, useState } from 'react';
+import { FormEvent, useContext, useMemo, useState } from 'react';
 import { Button, Col, Form, Row } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 
@@ -41,13 +41,33 @@ const StakeExplorer = () => {
         ? `/stake/account/${address}`
         : null;
 
+  // Validators by name (or a piece of an address), as the site search
+  // matches them: shown as you type anything that isn't a whole address.
+  const query = value.trim();
+  const matches = useMemo(
+    () =>
+      query && !BASE58.test(query)
+        ? (context?.validatorDirectoryState.search(query, 8) ?? [])
+        : [],
+    [context, query]
+  );
+  const openValidator = (v: {
+    voteAddress: string | null;
+    nodeAddress: string;
+  }) => navigate(`/validator/${v.voteAddress ?? v.nodeAddress}/staking`);
+
   const go = async (e: FormEvent) => {
     e.preventDefault();
     const address = value.trim();
     setNote(null);
     setChoices([]);
     if (!BASE58.test(address)) {
-      setNote('That isn’t a Solana address (base58, 32–44 characters).');
+      // A name: its best match.
+      if (matches.length) openValidator(matches[0]);
+      else
+        setNote(
+          'No validator by that name, and it isn’t a Solana address (base58, 32–44 characters).'
+        );
       return;
     }
     // A validator the directory knows: its Staking tab.
@@ -107,7 +127,7 @@ const StakeExplorer = () => {
     {
       icon: 'server',
       title: 'Validator',
-      text: 'Its vote account or identity opens its Staking tab: stake over time, who stakes with it, and what changed.'
+      text: 'By name, vote account or identity: its Staking tab - stake over time, who stakes with it, and what changed.'
     }
   ];
 
@@ -117,7 +137,7 @@ const StakeExplorer = () => {
         <div className="col-auto">
           <h1 className="h3">Stake Explorer</h1>
           <p className="text-body-tertiary lh-sm mb-0 mt-1">
-            Look up any stake account, staker, withdrawer or validator, with its
+            Look up any validator, stake account, staker or withdrawer, with its
             history every epoch
           </p>
         </div>
@@ -128,7 +148,7 @@ const StakeExplorer = () => {
             <Form.Control
               value={value}
               onChange={e => setValue(e.target.value)}
-              placeholder="Paste a stake account, staker, withdrawer or vote account"
+              placeholder="A validator's name, or a stake account, staker, withdrawer or vote account"
               aria-label="Address"
               className="font-monospace"
               autoFocus
@@ -142,6 +162,26 @@ const StakeExplorer = () => {
               {busy ? 'Looking…' : 'Look up'}
             </Button>
           </Form>
+          {matches.length > 0 && (
+            <div className="list-group mt-2 fs-9">
+              {matches.map(v => (
+                <button
+                  key={v.nodeAddress}
+                  type="button"
+                  className="list-group-item list-group-item-action d-flex justify-content-between gap-3"
+                  onClick={() => openValidator(v)}
+                >
+                  <span className="fw-semibold text-truncate">
+                    {v.name ?? v.nodeAddress}
+                  </span>
+                  <span className="text-body-tertiary font-monospace fs-10 text-nowrap">
+                    {(v.voteAddress ?? v.nodeAddress).slice(0, 4)}…
+                    {(v.voteAddress ?? v.nodeAddress).slice(-4)} · Staking
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           {note && <p className="fs-9 text-body-tertiary mt-2 mb-0">{note}</p>}
           {choices.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-2 fs-9">
