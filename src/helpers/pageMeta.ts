@@ -754,6 +754,19 @@ export const pageMeta = (
             crumbs: [HOME, { name: 'Stake Explorer', path }],
             archive: false
           };
+    const v = path.match(/^\/stake\/vote\/([1-9A-HJ-NP-Za-km-z]{32,44})$/);
+    if (v && env.SITE === 'staging')
+      return {
+        title: `${solana(env)} vote account ${short(v[1])}: stake and delegations`,
+        description: `${solana(env)} vote account ${v[1]}: its stake, delegators and commission every epoch, and every delegation with what changed.`,
+        canonical: path,
+        crumbs: [
+          HOME,
+          { name: 'Stake Explorer', path: '/stake' },
+          { name: short(v[1]), path }
+        ],
+        archive: true
+      };
     const m = path.match(/^\/stake\/account\/([1-9A-HJ-NP-Za-km-z]{32,44})$/);
     if (env.SITE !== 'staging' || !m) return MISSING;
     return {

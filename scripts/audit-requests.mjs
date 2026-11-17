@@ -57,6 +57,7 @@ const PAGES = [
   '/block-builders',
   '/replay',
   '/stake',
+  `/stake/vote/${V}`,
   '/stake/account/4w7Ph3V3b1tN4oDXdh9ns3eUFsVtFoWpQe6TnfxHYfGW'
 ];
 

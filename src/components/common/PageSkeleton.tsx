@@ -488,6 +488,7 @@ export const SKELETON = {
       { w: 4, h: 120, kind: 'block' }
     ]
   ],
+  stakeVoteAccount: [{ stats: 4 }, [full(351, 'chart')], [full(1594)]],
   stakeAccount: [
     { stats: 4 },
     [full(351, 'chart')],

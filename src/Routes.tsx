@@ -89,6 +89,9 @@ const HostingProvider = page(() => import('pages/HostingProvider'));
 const StakeExplorer = IS_STAGING
   ? page(() => import('pages/StakeExplorer'))
   : () => null;
+const StakeVoteAccount = IS_STAGING
+  ? page(() => import('pages/StakeVoteAccount'))
+  : () => null;
 const StakeAccount = IS_STAGING
   ? page(() => import('pages/StakeAccount'))
   : () => null;
@@ -254,6 +257,10 @@ const routes: RouteObject[] = [
                     { path: '/block-builders', element: <BlockBuilders /> },
                     { path: '/replay', element: <BoundaryReplay /> },
                     { path: '/stake', element: <StakeExplorer /> },
+                    {
+                      path: '/stake/vote/:voteKey',
+                      element: <StakeVoteAccount />
+                    },
                     {
                       path: '/stake/account/:address',
                       element: <StakeAccount />

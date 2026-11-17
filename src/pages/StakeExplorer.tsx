@@ -36,7 +36,7 @@ const StakeExplorer = () => {
 
   const pathFor = (kind: Kind, address: string, voteKey?: string) =>
     kind === 'vote'
-      ? `/validator/${voteKey ?? address}/staking`
+      ? `/stake/vote/${voteKey ?? address}`
       : kind === 'stake'
         ? `/stake/account/${address}`
         : null;
@@ -54,7 +54,7 @@ const StakeExplorer = () => {
   const openValidator = (v: {
     voteAddress: string | null;
     nodeAddress: string;
-  }) => navigate(`/validator/${v.voteAddress ?? v.nodeAddress}/staking`);
+  }) => navigate(`/stake/vote/${v.voteAddress ?? v.nodeAddress}`);
 
   const go = async (e: FormEvent) => {
     e.preventDefault();
@@ -70,12 +70,12 @@ const StakeExplorer = () => {
         );
       return;
     }
-    // A validator the directory knows: its Staking tab.
+    // A validator the directory knows: its vote account's page.
     const dir = context?.validatorDirectoryState;
     const v =
       dir?.byVoteAddress.get(address) ?? dir?.byNodeAddress.get(address);
     if (v) {
-      navigate(`/validator/${v.voteAddress ?? address}/staking`);
+      navigate(`/stake/vote/${v.voteAddress ?? address}`);
       return;
     }
     setBusy(true);
@@ -127,7 +127,7 @@ const StakeExplorer = () => {
     {
       icon: 'server',
       title: 'Validator',
-      text: 'By name, vote account or identity: its Staking tab - stake over time, who stakes with it, and what changed.'
+      text: 'By name, vote account or identity: its stake, delegators and commission every epoch, and every delegation with what changed.'
     }
   ];
 
@@ -176,7 +176,7 @@ const StakeExplorer = () => {
                   </span>
                   <span className="text-body-tertiary font-monospace fs-10 text-nowrap">
                     {(v.voteAddress ?? v.nodeAddress).slice(0, 4)}…
-                    {(v.voteAddress ?? v.nodeAddress).slice(-4)} · Staking
+                    {(v.voteAddress ?? v.nodeAddress).slice(-4)}
                   </span>
                 </button>
               ))}
