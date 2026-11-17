@@ -55,7 +55,8 @@ const PAGES = [
   '/features',
   '/governance',
   '/block-builders',
-  '/replay'
+  '/replay',
+  '/stake/account/4w7Ph3V3b1tN4oDXdh9ns3eUFsVtFoWpQe6TnfxHYfGW'
 ];
 
 const arg = process.argv[2] ?? 'all';

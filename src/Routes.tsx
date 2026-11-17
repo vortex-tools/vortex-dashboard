@@ -86,6 +86,9 @@ const Decentralization = page(() => import('pages/Decentralization'));
 const HostingProviders = page(() => import('pages/HostingProviders'));
 const HostingProvider = page(() => import('pages/HostingProvider'));
 // Staging only (not prefetched elsewhere): see the route below.
+const StakeAccount = IS_STAGING
+  ? page(() => import('pages/StakeAccount'))
+  : () => null;
 const BoundaryReplay = IS_STAGING
   ? page(() => import('pages/BoundaryReplay'))
   : () => null;
@@ -247,6 +250,10 @@ const routes: RouteObject[] = [
                 ? [
                     { path: '/block-builders', element: <BlockBuilders /> },
                     { path: '/replay', element: <BoundaryReplay /> },
+                    {
+                      path: '/stake/account/:address',
+                      element: <StakeAccount />
+                    },
                     {
                       path: '/block-builders/epoch/:epoch',
                       element: <BlockBuilders />

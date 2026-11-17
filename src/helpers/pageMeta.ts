@@ -742,6 +742,18 @@ export const pageMeta = (
 ): Verdict => {
   const path = pathname.replace(/\/+$/, '') || '/';
   const seg = path.split('/');
+  // A stake account: staging only too.
+  if (seg[1] === 'stake') {
+    const m = path.match(/^\/stake\/account\/([1-9A-HJ-NP-Za-km-z]{32,44})$/);
+    if (env.SITE !== 'staging' || !m) return MISSING;
+    return {
+      title: `${solana(env)} stake account ${short(m[1])}`,
+      description: `${solana(env)} stake account ${m[1]}: the validators it delegated to, its stake and rewards every epoch, and its authorities.`,
+      canonical: path,
+      crumbs: [HOME, { name: short(m[1]), path }],
+      archive: true
+    };
+  }
   // Boundary Replay: a staging-only page too.
   if (path === '/replay')
     return env.SITE !== 'staging'
