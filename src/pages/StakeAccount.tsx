@@ -241,11 +241,16 @@ const StakeAccount = () => {
     fetch(
       `${API_ENDPOINT}/stake-accounts/history?address=${encodeURIComponent(address)}`
     )
-      .then(r =>
-        r.ok
-          ? r.json()
-          : Promise.reject(r.status === 404 ? 'not found' : `HTTP ${r.status}`)
-      )
+      .then(async r => {
+        if (r.ok) return r.json();
+        // A 404 with no body is the route itself missing (an API without
+        // the Stake explorer yet); the API's own 404 says what it lacks.
+        if (r.status === 404)
+          return Promise.reject(
+            (await r.text()).trim() ? 'not found' : 'no route'
+          );
+        return Promise.reject(`HTTP ${r.status}`);
+      })
       .then(j => alive && setData(historySchema.parse(j)))
       .catch(e => alive && setError(String(e)));
     return () => {
@@ -299,7 +304,9 @@ const StakeAccount = () => {
         <UntrackedState>
           {error === 'not found'
             ? 'No stake account with this address in the recorded epochs.'
-            : `Couldn't load this stake account (${error}).`}
+            : error === 'no route'
+              ? 'Stake history isn\u2019t served by this API yet: the Stake Explorer\u2019s data is still loading, and this page fills in once it\u2019s up.'
+              : `Couldn't load this stake account (${error}).`}
         </UntrackedState>
       </div>
     );
