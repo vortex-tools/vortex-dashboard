@@ -480,6 +480,14 @@ export const SKELETON = {
   ],
   slot: [[half(470), half(470)], [half(314), half(314)], [full(160)]],
   clientVersions: [[half(843), half(843)], [full(569)]],
+  stakeExplorer: [
+    [full(104, 'block')],
+    [
+      { w: 4, h: 120, kind: 'block' },
+      { w: 4, h: 120, kind: 'block' },
+      { w: 4, h: 120, kind: 'block' }
+    ]
+  ],
   stakeAccount: [
     { stats: 4 },
     [full(351, 'chart')],

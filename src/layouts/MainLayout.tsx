@@ -50,6 +50,7 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/block-builders/, SKELETON.blockBuilders],
   [/^\/replay\/?$/, SKELETON.boundaryReplay],
   [/^\/stake\/account\//, SKELETON.stakeAccount],
+  [/^\/stake\/?$/, SKELETON.stakeExplorer],
   [/^\/(client-versions|cluster-health)/, SKELETON.clientVersions],
   [/^\/features\/?$/, SKELETON.featureGates],
   [/^\/feature\//, SKELETON.featureGate],

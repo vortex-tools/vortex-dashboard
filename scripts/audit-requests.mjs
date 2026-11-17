@@ -56,6 +56,7 @@ const PAGES = [
   '/governance',
   '/block-builders',
   '/replay',
+  '/stake',
   '/stake/account/4w7Ph3V3b1tN4oDXdh9ns3eUFsVtFoWpQe6TnfxHYfGW'
 ];
 

@@ -744,6 +744,16 @@ export const pageMeta = (
   const seg = path.split('/');
   // A stake account: staging only too.
   if (seg[1] === 'stake') {
+    if (path === '/stake')
+      return env.SITE !== 'staging'
+        ? MISSING
+        : {
+            title: `${solana(env)} stake explorer`,
+            description: `Look up any ${solana(env)} stake account, staker, withdrawer or validator, with its history every epoch.`,
+            canonical: path,
+            crumbs: [HOME, { name: 'Stake Explorer', path }],
+            archive: false
+          };
     const m = path.match(/^\/stake\/account\/([1-9A-HJ-NP-Za-km-z]{32,44})$/);
     if (env.SITE !== 'staging' || !m) return MISSING;
     return {

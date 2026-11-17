@@ -60,6 +60,8 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
   ...(IS_STAGING
     ? [
         { name: 'Block Builders', icon: 'package', path: '/block-builders' },
+        // Any stake account, staker or withdrawer, with its history.
+        { name: 'Stake Explorer', icon: 'search', path: '/stake' },
         // Mainnet epoch boundaries replayed by vortex-replay.
         { name: 'Boundary Replay', icon: 'grid', path: '/replay' }
       ]
