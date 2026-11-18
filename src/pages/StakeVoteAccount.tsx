@@ -17,7 +17,7 @@ import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { noPointer } from 'helpers/echart-utils';
 import { formatLamports } from 'helpers/utils';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
-import { VortexDataContext } from 'providers/VortexDataProvider';
+import { FEATURES_KEY, VortexDataContext } from 'providers/VortexDataProvider';
 import { useAppContext } from 'providers/AppProvider';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import {
@@ -320,6 +320,26 @@ const latestLoadedEpoch = (current: number) =>
     return lo < 0 ? null : save(lo);
   })());
 
+/** A staker or withdrawer: a stake pool's name (linked) when it's one of
+ *  a pool's authorities, else the short address. */
+const Authority = ({
+  address,
+  pools
+}: {
+  address: string | null;
+  pools: Map<string, string>;
+}) => {
+  if (!address) return <>—</>;
+  const pool = pools.get(address);
+  return pool ? (
+    <Link to={`/pool/${encodeURIComponent(pool)}`} title={address}>
+      {pool}
+    </Link>
+  ) : (
+    <span className="font-monospace text-body-tertiary">{short(address)}</span>
+  );
+};
+
 /** Its delegations in one epoch: sorted and filtered by the
  *  API, 50 at a time, each with what changed since the epoch before. */
 const DelegationsCard = ({
@@ -386,6 +406,20 @@ const DelegationsCard = ({
   const next = pages[pages.length - 1]?.nextCursor ?? null;
   const total = pages[0]?.total ?? null;
   const waiting = !byFilter[filter];
+  // Stake pools' authorities, to name them (a pool's own stake accounts:
+  // its validator and transient accounts, reused epoch after epoch).
+  const context = useContext(VortexDataContext);
+  const fetchPools = context?.poolsState.fetchData;
+  const poolList = context?.poolsState.data.get(FEATURES_KEY);
+  useEffect(() => {
+    fetchPools?.(FEATURES_KEY);
+  }, [fetchPools]);
+  const poolOf = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of poolList?.pools ?? [])
+      for (const a of p.authorities) m.set(a, p.name);
+    return m;
+  }, [poolList]);
 
   return (
     <SectionCard
@@ -475,7 +509,7 @@ const DelegationsCard = ({
                 <tr className="text-nowrap">
                   <th>Stake Account</th>
                   <th className="text-end">Stake It Had</th>
-                  <th>Now With</th>
+                  <th>At Epoch End</th>
                 </tr>
               </thead>
               <tbody>
@@ -496,7 +530,7 @@ const DelegationsCard = ({
                         </Link>
                       ) : (
                         <span className="text-body-tertiary">
-                          Not delegated
+                          Not delegated yet
                         </span>
                       )}
                     </td>
@@ -602,11 +636,11 @@ const DelegationsCard = ({
                           </div>
                         )}
                       </td>
-                      <td className="font-monospace text-body-tertiary">
-                        {d.staker ? short(d.staker) : '—'}
+                      <td className="text-nowrap">
+                        <Authority address={d.staker} pools={poolOf} />
                       </td>
-                      <td className="font-monospace text-body-tertiary">
-                        {d.withdrawer ? short(d.withdrawer) : '—'}
+                      <td className="text-nowrap">
+                        <Authority address={d.withdrawer} pools={poolOf} />
                       </td>
                     </tr>
                   );
