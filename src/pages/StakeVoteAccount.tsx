@@ -9,6 +9,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
+import StakeLookup from 'components/stake/StakeLookup';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -145,6 +146,13 @@ const CHANGE: Record<string, { label: string; tone: string }> = {
 
 type Sort = 'effective' | 'rewards' | 'change';
 type Filter = 'all' | 'changed' | 'activating' | 'deactivating' | 'gone';
+const FILTERS: Filter[] = [
+  'all',
+  'changed',
+  'activating',
+  'deactivating',
+  'gone'
+];
 
 /** Its stake per epoch (line), delegators (bars, right axis), and a
  *  dashed mark where its inflation commission changed. */
@@ -267,7 +275,8 @@ const latestLoadedEpoch = (current: number) =>
     const KEY = 'vx-delegations-loaded-through';
     let hint: number | null = null;
     try {
-      const v = Number(localStorage.getItem(KEY));
+      const saved = localStorage.getItem(KEY);
+      const v = saved == null ? NaN : Number(saved);
       if (Number.isInteger(v) && v >= 0 && v <= current) hint = v;
     } catch {
       // no storage: search from scratch
@@ -288,15 +297,15 @@ const latestLoadedEpoch = (current: number) =>
       if (at && !after) return save(hint);
     }
     if (await complete(current)) return save(current);
-    if (!(await complete(0))) return null;
-    let lo = 0;
+    // lo: the latest known loaded (-1: none yet); hi: known not loaded.
+    let lo = -1;
     let hi = current;
     while (hi - lo > 1) {
       const mid = Math.floor((lo + hi) / 2);
       if (await complete(mid)) lo = mid;
       else hi = mid;
     }
-    return save(lo);
+    return lo < 0 ? null : save(lo);
   })());
 
 /** Its delegations in one epoch: sorted and filtered by the
@@ -311,43 +320,60 @@ const DelegationsCard = ({
   const [epoch, setEpoch] = useState(epochs[0]);
   const [sort, setSort] = useState<Sort>('effective');
   const [filter, setFilter] = useState<Filter>('all');
-  const [pages, setPages] = useState<Delegations[]>([]);
+  // Every filter's pages for the picked epoch and sort: all of them
+  // fetched together, so switching filter needs no request (only More,
+  // or a new epoch or sort, asks).
+  const [byFilter, setByFilter] = useState<
+    Partial<Record<Filter, Delegations[]>>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const load = (cursor: string | null) => {
+  const load = (f: Filter, cursor: string | null) => {
     const q = new URLSearchParams({
       voteKey,
       epoch: String(epoch),
       sort,
       dir: 'desc',
       limit: String(LIMIT),
-      ...(filter !== 'all' ? { filter } : {}),
+      ...(f !== 'all' ? { filter: f } : {}),
       ...(cursor ? { cursor } : {})
     });
-    setLoading(true);
     return fetch(`${API_ENDPOINT}/epochs/delegations?${q}`)
       .then(r => (r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`)))
-      .then(j => delegationsSchema.parse(j))
-      .finally(() => setLoading(false));
+      .then(j => delegationsSchema.parse(j));
   };
   useEffect(() => {
     let alive = true;
-    setPages([]);
+    setByFilter({});
     setError(null);
-    load(null).then(
-      p => alive && setPages([p]),
-      e => alive && setError(String(e))
-    );
+    for (const f of FILTERS)
+      load(f, null).then(
+        p => alive && setByFilter(b => ({ ...b, [f]: [p] })),
+        e => alive && f === 'all' && setError(String(e))
+      );
     return () => {
       alive = false;
     };
     // (load reads these.)
-  }, [voteKey, epoch, sort, filter]);
+  }, [voteKey, epoch, sort]);
+  const pages = byFilter[filter] ?? [];
+  const more = () => {
+    const cursor = pages[pages.length - 1]?.nextCursor ?? null;
+    if (!cursor) return;
+    setLoading(true);
+    load(filter, cursor)
+      .then(
+        p => setByFilter(b => ({ ...b, [filter]: [...(b[filter] ?? []), p] })),
+        e => setError(String(e))
+      )
+      .finally(() => setLoading(false));
+  };
   const rows = pages.flatMap(p => p.delegations);
   const gone = pages.flatMap(p => p.gone ?? []);
-  const totals = pages[0]?.changeTotals ?? null;
+  const totals = (byFilter.all ?? pages)[0]?.changeTotals ?? null;
   const next = pages[pages.length - 1]?.nextCursor ?? null;
   const total = pages[0]?.total ?? null;
+  const waiting = !byFilter[filter];
 
   return (
     <SectionCard
@@ -545,7 +571,7 @@ const DelegationsCard = ({
             <span>
               {total != null
                 ? `${(filter === 'gone' ? gone.length : rows.length).toLocaleString()} of ${total.toLocaleString()}`
-                : loading
+                : waiting
                   ? 'Loading…'
                   : ''}
             </span>
@@ -554,12 +580,7 @@ const DelegationsCard = ({
                 size="sm"
                 variant="soft-secondary"
                 disabled={loading}
-                onClick={() =>
-                  load(next).then(
-                    p => setPages(ps => [...ps, p]),
-                    e => setError(String(e))
-                  )
-                }
+                onClick={more}
               >
                 {loading ? 'Loading…' : 'More'}
               </Button>
@@ -674,15 +695,19 @@ const StakeVoteAccount = () => {
   const header = (
     <div className="page-header row g-3 align-items-start justify-content-between">
       <div className="col-auto">
+        <Link to="/stake" className="d-block fs-9 mb-1">
+          ← Stake Explorer
+        </Link>
         <h1 className="h3">{name ?? short(voteKey)}</h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
           Vote account <span className="font-monospace">{short(voteKey)}</span>
         </p>
       </div>
-      <div className="col-auto align-self-center">
+      <div className="col-12 col-md-auto align-self-end d-flex flex-column align-items-md-end gap-2">
         <Link to={`/validator/${voteKey}`} className="fs-9">
           Validator page →
         </Link>
+        <StakeLookup compact />
       </div>
     </div>
   );

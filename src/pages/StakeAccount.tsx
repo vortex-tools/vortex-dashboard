@@ -10,6 +10,7 @@ import {
 import { CanvasRenderer } from 'echarts/renderers';
 import AddressLine from 'components/common/AddressLine';
 import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
+import StakeLookup from 'components/stake/StakeLookup';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -22,7 +23,7 @@ import useCluster from 'hooks/useCluster';
 import { useAppContext } from 'providers/AppProvider';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Col, Row, Table } from 'react-bootstrap';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { z } from 'zod';
 
 echarts.use([
@@ -239,7 +240,7 @@ const StakeAccount = () => {
     setError(null);
     setPage(0);
     fetch(
-      `${API_ENDPOINT}/stake-accounts/history?address=${encodeURIComponent(address)}`
+      `${API_ENDPOINT}/stake-accounts/history?stakeAccount=${encodeURIComponent(address)}`
     )
       .then(async r => {
         if (r.ok) return r.json();
@@ -280,8 +281,11 @@ const StakeAccount = () => {
     : null;
 
   const header = (
-    <div className="page-header row g-3 align-items-start">
+    <div className="page-header row g-3 align-items-start justify-content-between">
       <div className="col-auto">
+        <Link to="/stake" className="d-block fs-9 mb-1">
+          ← Stake Explorer
+        </Link>
         <h1 className="h3 d-flex align-items-center gap-2">
           {short(address)}
           {state && (
@@ -294,6 +298,9 @@ const StakeAccount = () => {
         </h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">Stake account</p>
       </div>
+      <div className="col-12 col-md-auto align-self-end">
+        <StakeLookup compact />
+      </div>
     </div>
   );
 
@@ -303,7 +310,7 @@ const StakeAccount = () => {
         {header}
         <UntrackedState>
           {error === 'not found'
-            ? 'No stake account with this address in the recorded epochs.'
+            ? 'No stake account at this address was delegated at the end of any epoch loaded so far. If it\u2019s a staker or withdrawer, the Stake Explorer will open its own page for that once the API can tell what an address is.'
             : error === 'no route'
               ? 'Stake history isn\u2019t served by this API yet: the Stake Explorer\u2019s data is still loading, and this page fills in once it\u2019s up.'
               : `Couldn't load this stake account (${error}).`}
