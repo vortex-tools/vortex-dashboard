@@ -124,11 +124,15 @@ const delegationsSchema = z.object({
     .array(
       z.object({
         stakeAccount: z.string(),
+        delegatedStake: num.optional().catch(null),
         effective: num,
         voteKeyNow: z.string().nullable().catch(null),
         nameNow: z.string().nullable().catch(null),
         // Merged into another of this vote account's stake accounts.
         mergedInto: z.string().nullable().optional().catch(null),
+        // The account closed when its address was reused this epoch (the
+        // main list has the new one, Recreated).
+        recreated: z.boolean().optional().catch(false),
         // Its next delegation after leaving, in the loaded epochs:
         // undefined while the API doesn't say, null when there's none.
         next: z
@@ -625,14 +629,25 @@ const DelegationsCard = ({
               </thead>
               <tbody>
                 {gone.map(g => (
-                  <tr key={g.stakeAccount}>
-                    <td className="font-monospace">
-                      <Link to={`/stake/account/${g.stakeAccount}`}>
+                  <tr key={`${g.stakeAccount}${g.recreated ? '-closed' : ''}`}>
+                    <td className="text-nowrap">
+                      <Link
+                        to={`/stake/account/${g.stakeAccount}`}
+                        className="font-monospace"
+                      >
                         {short(g.stakeAccount)}
                       </Link>
+                      {g.recreated && (
+                        <span
+                          className="badge badge-soft badge-soft-secondary ms-2"
+                          title="Closed this epoch; a new account opened at the same address (Recreated in the main list)."
+                        >
+                          Closed
+                        </span>
+                      )}
                     </td>
                     <td className="text-end text-nowrap">
-                      {sol(g.effective, 2)}
+                      {sol(g.delegatedStake ?? g.effective, 2)}
                     </td>
                     <td className="text-truncate" style={{ maxWidth: '18rem' }}>
                       <WentTo g={g} through={epochs[0]} />
