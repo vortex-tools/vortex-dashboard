@@ -83,7 +83,16 @@ const delegationsSchema = z.object({
             delta: num,
             // New here, moved from another validator: which.
             previousVoteKey: z.string().nullable().optional().catch(null),
-            previousName: z.string().nullable().optional().catch(null)
+            previousName: z.string().nullable().optional().catch(null),
+            // Stake-account splits, matched within this vote account: the
+            // new account's source, and the source's new accounts.
+            splitFrom: z.string().nullable().optional().catch(null),
+            splitTo: z
+              .union([z.array(z.string()), z.string()])
+              .nullable()
+              .optional()
+              .transform(v => (v == null ? [] : Array.isArray(v) ? v : [v]))
+              .catch([])
           })
           .nullable()
           .catch(null)
@@ -379,7 +388,7 @@ const DelegationsCard = ({
     <SectionCard
       title="Delegations"
       icon="users"
-      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New (and from which validator, if it moved), Increased, Decreased; Left lists the ones that went, and where they are now. Sorted and filtered by the API, 50 at a time."
+      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New (and from which validator, if it moved), Split (a new account split off another of its accounts; the source shows Decreased and what it split into), Increased, Decreased; Left lists the ones that went, and where they are now. Sorted and filtered by the API, 50 at a time."
     >
       <Row className="g-2 align-items-center mb-3">
         <Col xs={6} md="auto">
@@ -507,7 +516,12 @@ const DelegationsCard = ({
               </thead>
               <tbody>
                 {rows.map(d => {
-                  const c = d.change && CHANGE[d.change.kind];
+                  const split = !!d.change?.splitFrom;
+                  const c =
+                    d.change &&
+                    (split
+                      ? { label: 'Split', tone: 'info' }
+                      : CHANGE[d.change.kind]);
                   return (
                     <tr key={d.stakeAccount}>
                       <td className="font-monospace">
@@ -543,6 +557,35 @@ const DelegationsCard = ({
                               {sol(Math.abs(d.change.delta), 2)}
                             </span>
                           )}
+                        {d.change?.splitFrom && (
+                          <div className="fs-10 text-body-tertiary">
+                            from{' '}
+                            <Link
+                              to={`/stake/account/${d.change.splitFrom}`}
+                              className="font-monospace"
+                            >
+                              {short(d.change.splitFrom)}
+                            </Link>
+                          </div>
+                        )}
+                        {!!d.change?.splitTo?.length && (
+                          <div className="fs-10 text-body-tertiary">
+                            split into{' '}
+                            {d.change.splitTo.length > 2
+                              ? `${d.change.splitTo.length} accounts`
+                              : d.change.splitTo.map((a, i) => (
+                                  <span key={a}>
+                                    {i > 0 && ', '}
+                                    <Link
+                                      to={`/stake/account/${a}`}
+                                      className="font-monospace"
+                                    >
+                                      {short(a)}
+                                    </Link>
+                                  </span>
+                                ))}
+                          </div>
+                        )}
                         {d.change?.previousVoteKey && (
                           <div className="fs-10 text-body-tertiary">
                             from{' '}
