@@ -87,6 +87,13 @@ const delegationsSchema = z.object({
             // Stake-account splits, matched within this vote account: the
             // new account's source, and the source's new accounts.
             splitFrom: z.string().nullable().optional().catch(null),
+            // Accounts merged into this one this epoch (they show in Left).
+            mergedFrom: z
+              .union([z.array(z.string()), z.string()])
+              .nullable()
+              .optional()
+              .transform(v => (v == null ? [] : Array.isArray(v) ? v : [v]))
+              .catch([]),
             splitTo: z
               .union([z.array(z.string()), z.string()])
               .nullable()
@@ -107,7 +114,20 @@ const delegationsSchema = z.object({
         stakeAccount: z.string(),
         effective: num,
         voteKeyNow: z.string().nullable().catch(null),
-        nameNow: z.string().nullable().catch(null)
+        nameNow: z.string().nullable().catch(null),
+        // Merged into another of this vote account's stake accounts.
+        mergedInto: z.string().nullable().optional().catch(null),
+        // Its next delegation after leaving, in the loaded epochs:
+        // undefined while the API doesn't say, null when there's none.
+        next: z
+          .object({
+            epoch: z.number(),
+            voteKey: z.string(),
+            name: z.string().nullable().catch(null)
+          })
+          .nullable()
+          .optional()
+          .catch(undefined)
       })
     )
     .optional()
@@ -340,6 +360,45 @@ const Authority = ({
   );
 };
 
+type Gone = NonNullable<Delegations['gone']>[number];
+/** Where a stake account that left went: merged into another of this
+ *  vote account's accounts, delegated elsewhere by the epoch's end, or
+ *  its next delegation (once the API serves it). */
+const WentTo = ({ g, through }: { g: Gone; through: number }) => {
+  if (g.mergedInto)
+    return (
+      <>
+        <span className="text-body-tertiary">Merged into </span>
+        <Link to={`/stake/account/${g.mergedInto}`} className="font-monospace">
+          {short(g.mergedInto)}
+        </Link>
+      </>
+    );
+  const to = g.voteKeyNow
+    ? { voteKey: g.voteKeyNow, name: g.nameNow, epoch: null }
+    : g.next
+      ? { voteKey: g.next.voteKey, name: g.next.name, epoch: g.next.epoch }
+      : null;
+  if (to)
+    return (
+      <>
+        <Link to={`/stake/vote/${to.voteKey}`}>
+          {to.name ?? short(to.voteKey)}
+        </Link>
+        {to.epoch != null && (
+          <span className="text-body-tertiary"> from epoch {to.epoch}</span>
+        )}
+      </>
+    );
+  return (
+    <span className="text-body-tertiary">
+      {g.next === null
+        ? `Not delegated again (through epoch ${through})`
+        : 'Not delegated by the epoch\u2019s end'}
+    </span>
+  );
+};
+
 /** Its delegations in one epoch: sorted and filtered by the
  *  API, 50 at a time, each with what changed since the epoch before. */
 const DelegationsCard = ({
@@ -509,7 +568,7 @@ const DelegationsCard = ({
                 <tr className="text-nowrap">
                   <th>Stake Account</th>
                   <th className="text-end">Stake It Had</th>
-                  <th>At Epoch End</th>
+                  <th>Where It Went</th>
                 </tr>
               </thead>
               <tbody>
@@ -524,15 +583,7 @@ const DelegationsCard = ({
                       {sol(g.effective, 2)}
                     </td>
                     <td className="text-truncate" style={{ maxWidth: '18rem' }}>
-                      {g.voteKeyNow ? (
-                        <Link to={`/stake/vote/${g.voteKeyNow}`}>
-                          {g.nameNow ?? short(g.voteKeyNow)}
-                        </Link>
-                      ) : (
-                        <span className="text-body-tertiary">
-                          Not delegated yet
-                        </span>
-                      )}
+                      <WentTo g={g} through={epochs[0]} />
                     </td>
                   </tr>
                 ))}
@@ -595,6 +646,24 @@ const DelegationsCard = ({
                               {sol(Math.abs(d.change.delta), 2)}
                             </span>
                           )}
+                        {!!d.change?.mergedFrom?.length && (
+                          <div className="fs-10 text-body-tertiary">
+                            merged in{' '}
+                            {d.change.mergedFrom.length > 2
+                              ? `${d.change.mergedFrom.length} accounts`
+                              : d.change.mergedFrom.map((a, i) => (
+                                  <span key={a}>
+                                    {i > 0 && ', '}
+                                    <Link
+                                      to={`/stake/account/${a}`}
+                                      className="font-monospace"
+                                    >
+                                      {short(a)}
+                                    </Link>
+                                  </span>
+                                ))}
+                          </div>
+                        )}
                         {d.change?.splitFrom && (
                           <div className="fs-10 text-body-tertiary">
                             from{' '}
