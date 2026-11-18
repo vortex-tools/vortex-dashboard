@@ -16,8 +16,9 @@ import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { noPointer } from 'helpers/echart-utils';
 import { formatLamports } from 'helpers/utils';
 import useValidatorIdentity from 'hooks/useValidatorIdentity';
+import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useAppContext } from 'providers/AppProvider';
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   ButtonGroup,
@@ -247,6 +248,56 @@ const HistoryChart = ({ rows }: { rows: History['epochs'] }) => {
     />
   );
 };
+
+/** The latest epoch whose delegations are stored (the API loads them
+ *  from epoch 0 up): a binary search over /epochs/stakes'
+ *  delegationsComplete, once a session (stake sets never change, so the
+ *  answers are cached). For an API without the per-vote stake history,
+ *  which would otherwise list the epochs. */
+let loadedThrough: Promise<number | null> | null = null;
+const latestLoadedEpoch = (current: number) =>
+  (loadedThrough ??= (async () => {
+    const complete = async (e: number) => {
+      const r = await fetch(`${API_ENDPOINT}/epochs/stakes?epoch=${e}`);
+      if (!r.ok) return false;
+      return !!(await r.json())?.delegationsComplete;
+    };
+    // The last answer, saved in the browser: usually still right, or
+    // a little further on (the load only moves forward).
+    const KEY = 'vx-delegations-loaded-through';
+    let hint: number | null = null;
+    try {
+      const v = Number(localStorage.getItem(KEY));
+      if (Number.isInteger(v) && v >= 0 && v <= current) hint = v;
+    } catch {
+      // no storage: search from scratch
+    }
+    const save = (e: number | null) => {
+      try {
+        if (e != null) localStorage.setItem(KEY, String(e));
+      } catch {
+        // ignore
+      }
+      return e;
+    };
+    if (hint != null) {
+      const [at, after] = await Promise.all([
+        complete(hint),
+        hint < current ? complete(hint + 1) : Promise.resolve(false)
+      ]);
+      if (at && !after) return save(hint);
+    }
+    if (await complete(current)) return save(current);
+    if (!(await complete(0))) return null;
+    let lo = 0;
+    let hi = current;
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (await complete(mid)) lo = mid;
+      else hi = mid;
+    }
+    return save(lo);
+  })());
 
 /** Its delegations in one epoch: sorted and filtered by the
  *  API, 50 at a time, each with what changed since the epoch before. */
@@ -520,6 +571,55 @@ const DelegationsCard = ({
   );
 };
 
+/** An API with delegations but not yet the per-vote stake history: a
+ *  note, and its delegations from the latest epoch loaded down. */
+const NoHistory = ({
+  voteKey,
+  currentEpoch
+}: {
+  voteKey: string;
+  currentEpoch: number | null;
+}) => {
+  const [latest, setLatest] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (currentEpoch == null) return;
+    let alive = true;
+    latestLoadedEpoch(currentEpoch).then(
+      e => alive && setLatest(e),
+      () => alive && setLatest(null)
+    );
+    return () => {
+      alive = false;
+    };
+  }, [currentEpoch]);
+  const epochs = useMemo(
+    () =>
+      latest == null
+        ? []
+        : Array.from({ length: latest + 1 }, (_, i) => latest - i),
+    [latest]
+  );
+  return (
+    <div className="d-flex flex-column gap-3">
+      <UntrackedState>
+        Its stake history isn&apos;t served by this API yet.
+        {latest != null
+          ? ` Delegations are loaded through epoch ${latest} so far; later epochs fill in as the data loads.`
+          : latest === null
+            ? ' No epoch\u2019s delegations are loaded yet either.'
+            : ''}
+      </UntrackedState>
+      {latest === undefined ? (
+        <PageSkeleton rows={[[{ w: 12, h: 600, kind: 'table' }]]} />
+      ) : (
+        epochs.length > 0 && (
+          <DelegationsCard voteKey={voteKey} epochs={epochs} />
+        )
+      )}
+    </div>
+  );
+};
+
 /**
  * A vote account in the Stake explorer (/stake/vote/:voteKey): its stake,
  * delegators and commission every epoch (/validators/stake-history, one
@@ -528,6 +628,8 @@ const DelegationsCard = ({
  */
 const StakeVoteAccount = () => {
   const { voteKey = '' } = useParams();
+  const context = useContext(VortexDataContext);
+  const currentEpoch = context?.currentEpochState.epoch ?? null;
   const identity = useValidatorIdentity(voteKey);
   const [data, setData] = useState<History | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -585,6 +687,13 @@ const StakeVoteAccount = () => {
     </div>
   );
 
+  if (error === 'no route')
+    return (
+      <div className="mb-9">
+        {header}
+        <NoHistory voteKey={voteKey} currentEpoch={currentEpoch} />
+      </div>
+    );
   if (error)
     return (
       <div className="mb-9">
