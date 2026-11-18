@@ -29,7 +29,7 @@ import {
   Table,
   ToggleButton
 } from 'react-bootstrap';
-import { Link, useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { z } from 'zod';
 
 echarts.use([
@@ -177,6 +177,7 @@ const CHANGE: Record<string, { label: string; tone: string }> = {
 };
 
 type Sort = 'effective' | 'rewards' | 'change';
+const SORTS: Sort[] = ['effective', 'rewards', 'change'];
 type Filter = 'all' | 'changed' | 'activating' | 'deactivating' | 'gone';
 const FILTERS: Filter[] = [
   'all',
@@ -408,9 +409,39 @@ const DelegationsCard = ({
   voteKey: string;
   epochs: number[];
 }) => {
-  const [epoch, setEpoch] = useState(epochs[0]);
-  const [sort, setSort] = useState<Sort>('effective');
-  const [filter, setFilter] = useState<Filter>('all');
+  // The view lives in the URL (?epoch=&sort=&filter=), so it can be
+  // shared; the default sort and filter stay out of it.
+  const [params, setParams] = useSearchParams();
+  const askedRaw = params.get('epoch');
+  // (Number(null) is 0, a real epoch: only a given value counts.)
+  const asked = askedRaw ? Number(askedRaw) : NaN;
+  const epoch = epochs.includes(asked) ? asked : epochs[0];
+  const sort = (SORTS as string[]).includes(params.get('sort') ?? '')
+    ? (params.get('sort') as Sort)
+    : 'effective';
+  const filter = (FILTERS as string[]).includes(params.get('filter') ?? '')
+    ? (params.get('filter') as Filter)
+    : 'all';
+  const setView = (key: 'epoch' | 'sort' | 'filter', value: string) =>
+    setParams(
+      p => {
+        const n = new URLSearchParams(p);
+        const isDefault =
+          key === 'sort'
+            ? value === 'effective'
+            : key === 'filter' && value === 'all';
+        if (isDefault) n.delete(key);
+        else n.set(key, value);
+        // The latest epoch moves on as data loads: a shared view keeps its
+        // epoch.
+        if (!n.has('epoch')) n.set('epoch', String(epoch));
+        return n;
+      },
+      { replace: true, preventScrollReset: true }
+    );
+  const setEpoch = (e: number) => setView('epoch', String(e));
+  const setSort = (v: Sort) => setView('sort', v);
+  const setFilter = (v: Filter) => setView('filter', v);
   // Every filter's pages for the picked epoch and sort: all of them
   // fetched together, so switching filter needs no request (only More,
   // or a new epoch or sort, asks).
