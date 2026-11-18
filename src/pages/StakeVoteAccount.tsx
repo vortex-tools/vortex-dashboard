@@ -118,7 +118,10 @@ const delegationsSchema = z.object({
       increased: num,
       decreased: num,
       gone: num,
-      goneCount: num
+      goneCount: num,
+      // Moved into split accounts, still with this vote account (not in
+      // new or decreased).
+      split: num.optional().catch(null)
     })
     .nullable()
     .optional()
@@ -458,6 +461,7 @@ const DelegationsCard = ({
               <span>New {sol(totals.new, 0)}</span>
               <span>Increased {sol(totals.increased, 0)}</span>
               <span>Decreased {sol(totals.decreased, 0)}</span>
+              {!!totals.split && <span>Split {sol(totals.split, 0)}</span>}
               <span>
                 Left {sol(totals.gone, 0)}
                 {totals.goneCount != null &&
