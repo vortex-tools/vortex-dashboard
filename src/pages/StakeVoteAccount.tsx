@@ -70,9 +70,11 @@ const delegationsSchema = z.object({
     .array(
       z.object({
         stakeAccount: z.string(),
+        delegatedStake: num.optional().catch(null),
         effective: num,
         activating: num,
         deactivating: num,
+        activationEpoch: num.optional().catch(null),
         inflationReward: num,
         blockReward: num,
         staker: z.string().nullable().catch(null),
@@ -637,11 +639,32 @@ const DelegationsCard = ({
               <tbody>
                 {rows.map(d => {
                   const split = !!d.change?.splitFrom;
+                  // Its activation started over this epoch though it was
+                  // here the epoch before: a fresh delegation at the same
+                  // address (a pool's transient account, or one closed and
+                  // recreated), not more of the same stake. Shown as New,
+                  // with what the address held before.
+                  const restarted =
+                    d.activationEpoch === epoch &&
+                    (d.change?.kind === 'increased' ||
+                      d.change?.kind === 'decreased');
+                  const now =
+                    d.delegatedStake ??
+                    (d.effective ?? 0) +
+                      (d.activating ?? 0) +
+                      (d.deactivating ?? 0);
+                  const before =
+                    restarted && d.change?.delta != null
+                      ? now - d.change.delta
+                      : null;
                   const c =
                     d.change &&
                     (split
                       ? { label: 'Split', tone: 'info' }
-                      : CHANGE[d.change.kind]);
+                      : restarted
+                        ? CHANGE.new
+                        : CHANGE[d.change.kind]);
+                  const delta = restarted ? now : d.change?.delta;
                   return (
                     <tr key={d.stakeAccount}>
                       <td className="font-monospace">
@@ -669,14 +692,17 @@ const DelegationsCard = ({
                             {c.label}
                           </span>
                         )}
-                        {c &&
-                          d.change?.delta != null &&
-                          d.change.delta !== 0 && (
-                            <span className="text-body-tertiary fs-10 ms-1">
-                              {d.change.delta > 0 ? '+' : '−'}
-                              {sol(Math.abs(d.change.delta), 2)}
-                            </span>
-                          )}
+                        {c && delta != null && delta !== 0 && (
+                          <span className="text-body-tertiary fs-10 ms-1">
+                            {delta > 0 ? '+' : '−'}
+                            {sol(Math.abs(delta), 2)}
+                          </span>
+                        )}
+                        {before != null && (
+                          <div className="fs-10 text-body-tertiary">
+                            replaces {sol(before, 2)} at this address
+                          </div>
+                        )}
                         {!!d.change?.mergedFrom?.length && (
                           <div className="fs-10 text-body-tertiary">
                             merged in{' '}
