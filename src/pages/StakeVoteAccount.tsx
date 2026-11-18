@@ -70,11 +70,9 @@ const delegationsSchema = z.object({
     .array(
       z.object({
         stakeAccount: z.string(),
-        delegatedStake: num.optional().catch(null),
         effective: num,
         activating: num,
         deactivating: num,
-        activationEpoch: num.optional().catch(null),
         inflationReward: num,
         blockReward: num,
         staker: z.string().nullable().catch(null),
@@ -89,6 +87,18 @@ const delegationsSchema = z.object({
             // Stake-account splits, matched within this vote account: the
             // new account's source, and the source's new accounts.
             splitFrom: z.string().nullable().optional().catch(null),
+            // A delegation at this address the epoch before that this one
+            // replaced (a pool's transient account recreated, or one closed
+            // and recreated): its stake, and the account here it merged
+            // into (else it left).
+            replaced: z
+              .object({
+                delegatedStake: num,
+                mergedInto: z.string().nullable().catch(null)
+              })
+              .nullable()
+              .optional()
+              .catch(null),
             // Accounts merged into this one this epoch (they show in Left).
             mergedFrom: z
               .union([z.array(z.string()), z.string()])
@@ -143,7 +153,12 @@ const delegationsSchema = z.object({
       goneCount: num,
       // Moved into split accounts, still with this vote account (not in
       // new or decreased).
-      split: num.optional().catch(null)
+      split: num.optional().catch(null),
+      // Stake that stayed by merging into an account here (from accounts
+      // that left, or replaced delegations).
+      merged: num.optional().catch(null),
+      // Replaced delegations' stake that left.
+      replaced: num.optional().catch(null)
     })
     .nullable()
     .optional()
@@ -588,6 +603,10 @@ const DelegationsCard = ({
               <span>Increased {sol(totals.increased, 0)}</span>
               <span>Decreased {sol(totals.decreased, 0)}</span>
               {!!totals.split && <span>Split {sol(totals.split, 0)}</span>}
+              {!!totals.merged && <span>Merged {sol(totals.merged, 0)}</span>}
+              {!!totals.replaced && (
+                <span>Replaced {sol(totals.replaced, 0)}</span>
+              )}
               <span>
                 Left {sol(totals.gone, 0)}
                 {totals.goneCount != null &&
@@ -639,32 +658,13 @@ const DelegationsCard = ({
               <tbody>
                 {rows.map(d => {
                   const split = !!d.change?.splitFrom;
-                  // Its activation started over this epoch though it was
-                  // here the epoch before: a fresh delegation at the same
-                  // address (a pool's transient account, or one closed and
-                  // recreated), not more of the same stake. Shown as New,
-                  // with what the address held before.
-                  const restarted =
-                    d.activationEpoch === epoch &&
-                    (d.change?.kind === 'increased' ||
-                      d.change?.kind === 'decreased');
-                  const now =
-                    d.delegatedStake ??
-                    (d.effective ?? 0) +
-                      (d.activating ?? 0) +
-                      (d.deactivating ?? 0);
-                  const before =
-                    restarted && d.change?.delta != null
-                      ? now - d.change.delta
-                      : null;
+                  const replaced = d.change?.replaced ?? null;
                   const c =
                     d.change &&
                     (split
                       ? { label: 'Split', tone: 'info' }
-                      : restarted
-                        ? CHANGE.new
-                        : CHANGE[d.change.kind]);
-                  const delta = restarted ? now : d.change?.delta;
+                      : CHANGE[d.change.kind]);
+                  const delta = d.change?.delta;
                   return (
                     <tr key={d.stakeAccount}>
                       <td className="font-monospace">
@@ -698,9 +698,21 @@ const DelegationsCard = ({
                             {sol(Math.abs(delta), 2)}
                           </span>
                         )}
-                        {before != null && (
+                        {replaced && (
                           <div className="fs-10 text-body-tertiary">
-                            replaces {sol(before, 2)} at this address
+                            replaces {sol(replaced.delegatedStake, 2)} at this
+                            address
+                            {replaced.mergedInto && (
+                              <>
+                                , merged into{' '}
+                                <Link
+                                  to={`/stake/account/${replaced.mergedInto}`}
+                                  className="font-monospace"
+                                >
+                                  {short(replaced.mergedInto)}
+                                </Link>
+                              </>
+                            )}
                           </div>
                         )}
                         {!!d.change?.mergedFrom?.length && (
