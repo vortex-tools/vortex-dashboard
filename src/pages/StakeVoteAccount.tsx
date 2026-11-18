@@ -532,7 +532,7 @@ const DelegationsCard = ({
     <SectionCard
       title="Delegations"
       icon="users"
-      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New (and from which validator, if it moved), Split (a new account split off another of its accounts; the source shows Decreased and what it split into), Increased, Decreased; Left lists the ones that went, and where they are now. Sorted and filtered by the API, 50 at a time."
+      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New (and from which validator, if it moved), Split (a new account split off another of its accounts; the source shows Decreased and what it split into), Recreated (the account at that address at the epoch's start was closed and a new one opened there: a stake pool reusing its transient account, say), Increased, Decreased; Left lists the ones that went, and where they are now. Sorted and filtered by the API, 50 at a time."
     >
       <Row className="g-2 align-items-center mb-3">
         <Col xs={6} md="auto">
@@ -663,7 +663,9 @@ const DelegationsCard = ({
                     d.change &&
                     (split
                       ? { label: 'Split', tone: 'info' }
-                      : CHANGE[d.change.kind]);
+                      : replaced
+                        ? { label: 'Recreated', tone: 'warning' }
+                        : CHANGE[d.change.kind]);
                   const delta = d.change?.delta;
                   return (
                     <tr key={d.stakeAccount}>
@@ -699,10 +701,14 @@ const DelegationsCard = ({
                           </span>
                         )}
                         {replaced && (
-                          <div className="fs-10 text-body-tertiary">
-                            replaces {sol(replaced.delegatedStake, 2)} at this
-                            address
-                            {replaced.mergedInto && (
+                          <div
+                            className="fs-10 text-body-tertiary"
+                            style={{ maxWidth: '16rem', whiteSpace: 'normal' }}
+                          >
+                            A new account at this address: the one here at the
+                            epoch&apos;s start (
+                            {sol(replaced.delegatedStake, 2)}) was closed
+                            {replaced.mergedInto ? (
                               <>
                                 , merged into{' '}
                                 <Link
@@ -712,6 +718,8 @@ const DelegationsCard = ({
                                   {short(replaced.mergedInto)}
                                 </Link>
                               </>
+                            ) : (
+                              ' and its stake left'
                             )}
                           </div>
                         )}
