@@ -11,6 +11,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import AddressLine from 'components/common/AddressLine';
 import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import StakeLookup from 'components/stake/StakeLookup';
+import usePoolAuthorities from 'components/stake/usePoolAuthorities';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
@@ -271,6 +272,37 @@ const HistoryChart = ({ rows }: { rows: EpochRow[] }) => {
   );
 };
 
+/** Under an authority: the stake pool it is (if one), and its own page. */
+const AuthorityNote = ({
+  address,
+  role,
+  pools
+}: {
+  address: string;
+  role: string;
+  pools: ReturnType<typeof usePoolAuthorities>;
+}) => {
+  const pool = pools.get(address);
+  return (
+    <div className="fs-10 mb-2">
+      {pool && (
+        <>
+          <span className="badge badge-soft badge-soft-primary me-1">
+            Stake pool
+          </span>
+          <Link to={`/pool/${encodeURIComponent(pool.name)}`}>
+            {pool.fullName ?? pool.name}
+          </Link>
+          {' · '}
+        </>
+      )}
+      <Link to={`/stake/authority/${address}?role=${role}`}>
+        All its stake accounts
+      </Link>
+    </div>
+  );
+};
+
 /**
  * A stake account (/stake/account/:address): every epoch it existed -
  * which validator it delegated to, its stake and rewards - its runs
@@ -278,6 +310,7 @@ const HistoryChart = ({ rows }: { rows: EpochRow[] }) => {
  * from /stake-accounts/history (one request). Staging only for now.
  */
 const StakeAccount = () => {
+  const pools = usePoolAuthorities();
   const { address = '' } = useParams();
   const { isTestnet } = useCluster();
   const [data, setData] = useState<History | null>(null);
@@ -585,18 +618,34 @@ const StakeAccount = () => {
               {nowAuth ? (
                 <div className="d-flex flex-column gap-1">
                   {nowAuth.staker && (
-                    <AddressLine
-                      mono={false}
-                      label="Staker"
-                      value={nowAuth.staker}
-                    />
+                    <>
+                      {' '}
+                      <AddressLine
+                        mono={false}
+                        label="Staker"
+                        value={nowAuth.staker}
+                      />
+                      <AuthorityNote
+                        address={nowAuth.staker}
+                        role="staker"
+                        pools={pools}
+                      />
+                    </>
                   )}
                   {nowAuth.withdrawer && (
-                    <AddressLine
-                      mono={false}
-                      label="Withdrawer"
-                      value={nowAuth.withdrawer}
-                    />
+                    <>
+                      {' '}
+                      <AddressLine
+                        mono={false}
+                        label="Withdrawer"
+                        value={nowAuth.withdrawer}
+                      />
+                      <AuthorityNote
+                        address={nowAuth.withdrawer}
+                        role="withdrawer"
+                        pools={pools}
+                      />
+                    </>
                   )}
                   {/* The system program's address means no custodian. */}
                   {nowAuth.custodian && !/^1+$/.test(nowAuth.custodian) && (

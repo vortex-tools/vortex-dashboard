@@ -13,6 +13,7 @@ import StatCard from 'components/common/StatCard';
 import UntrackedState from 'components/common/UntrackedState';
 import ValidatorLink from 'components/common/ValidatorLink';
 import StakeLookup from 'components/stake/StakeLookup';
+import usePoolAuthorities from 'components/stake/usePoolAuthorities';
 import { API_ENDPOINT } from 'helpers/apiEndpoint';
 import { noPointer } from 'helpers/echart-utils';
 import { formatLamports } from 'helpers/utils';
@@ -45,6 +46,12 @@ const ROLE_LABEL: Record<Role, string> = {
   withdrawer: 'Withdrawer',
   staker: 'Staker',
   custodian: 'Custodian'
+};
+/** The role's name as Solana uses it. */
+const AUTHORITY_NAME: Record<Role, string> = {
+  withdrawer: 'withdraw authority',
+  staker: 'stake authority',
+  custodian: 'lockup custodian'
 };
 const ROLE_WHAT: Record<Role, string> = {
   withdrawer: 'can withdraw from and reassign',
@@ -560,6 +567,8 @@ const StakeAuthority = () => {
   );
   const latest = rows[rows.length - 1];
   const s = data?.summary;
+  // A stake pool's authority is named as the pool.
+  const pool = usePoolAuthorities().get(address) ?? null;
   const totalRewards = rows.reduce((a, r) => a + (rewardOf(r) ?? 0), 0);
   const newestFirst = useMemo(
     () => [...rows].reverse().map(r => r.epoch),
@@ -572,9 +581,29 @@ const StakeAuthority = () => {
         <Link to="/stake" className="d-block fs-9 mb-1">
           ← Stake Explorer
         </Link>
-        <h1 className="h3">{short(address)}</h1>
+        <h1 className="h3 d-flex align-items-center gap-2">
+          {pool ? (pool.fullName ?? pool.name) : short(address)}
+          {pool && (
+            <span className="badge badge-soft badge-soft-primary fs-10">
+              Stake pool
+            </span>
+          )}
+        </h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
-          {ROLE_LABEL[role]} of stake accounts: {ROLE_WHAT[role]} them
+          {pool ? (
+            <>
+              <Link to={`/pool/${encodeURIComponent(pool.name)}`}>
+                {pool.name}
+              </Link>
+              &apos;s {AUTHORITY_NAME[role]}{' '}
+              <span className="text-body-quaternary">{short(address)}</span>:{' '}
+              {ROLE_WHAT[role]} its stake accounts
+            </>
+          ) : (
+            <>
+              {ROLE_LABEL[role]} of stake accounts: {ROLE_WHAT[role]} them
+            </>
+          )}
         </p>
       </div>
       <div className="col-12 col-md-auto align-self-end d-flex flex-column align-items-md-end gap-2">
