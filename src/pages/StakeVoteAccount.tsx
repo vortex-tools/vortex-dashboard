@@ -378,7 +378,7 @@ const Authority = ({
       {pool}
     </Link>
   ) : (
-    <span className="font-monospace text-body-tertiary">{short(address)}</span>
+    <span className="text-body-tertiary">{short(address)}</span>
   );
 };
 
@@ -391,9 +391,7 @@ const WentTo = ({ g, through }: { g: Gone; through: number }) => {
     return (
       <>
         <span className="text-body-tertiary">Merged into </span>
-        <Link to={`/stake/account/${g.mergedInto}`} className="font-monospace">
-          {short(g.mergedInto)}
-        </Link>
+        <Link to={`/stake/account/${g.mergedInto}`}>{short(g.mergedInto)}</Link>
       </>
     );
   const to = g.voteKeyNow
@@ -631,10 +629,7 @@ const DelegationsCard = ({
                 {gone.map(g => (
                   <tr key={`${g.stakeAccount}${g.recreated ? '-closed' : ''}`}>
                     <td className="text-nowrap">
-                      <Link
-                        to={`/stake/account/${g.stakeAccount}`}
-                        className="font-monospace"
-                      >
+                      <Link to={`/stake/account/${g.stakeAccount}`}>
                         {short(g.stakeAccount)}
                       </Link>
                       {g.recreated && (
@@ -684,7 +679,7 @@ const DelegationsCard = ({
                   const delta = d.change?.delta;
                   return (
                     <tr key={d.stakeAccount}>
-                      <td className="font-monospace">
+                      <td>
                         <Link to={`/stake/account/${d.stakeAccount}`}>
                           {short(d.stakeAccount)}
                         </Link>
@@ -728,7 +723,6 @@ const DelegationsCard = ({
                                 , merged into{' '}
                                 <Link
                                   to={`/stake/account/${replaced.mergedInto}`}
-                                  className="font-monospace"
                                 >
                                   {short(replaced.mergedInto)}
                                 </Link>
@@ -746,10 +740,7 @@ const DelegationsCard = ({
                               : d.change.mergedFrom.map((a, i) => (
                                   <span key={a}>
                                     {i > 0 && ', '}
-                                    <Link
-                                      to={`/stake/account/${a}`}
-                                      className="font-monospace"
-                                    >
+                                    <Link to={`/stake/account/${a}`}>
                                       {short(a)}
                                     </Link>
                                   </span>
@@ -759,10 +750,7 @@ const DelegationsCard = ({
                         {d.change?.splitFrom && (
                           <div className="fs-10 text-body-tertiary">
                             from{' '}
-                            <Link
-                              to={`/stake/account/${d.change.splitFrom}`}
-                              className="font-monospace"
-                            >
+                            <Link to={`/stake/account/${d.change.splitFrom}`}>
                               {short(d.change.splitFrom)}
                             </Link>
                           </div>
@@ -775,10 +763,7 @@ const DelegationsCard = ({
                               : d.change.splitTo.map((a, i) => (
                                   <span key={a}>
                                     {i > 0 && ', '}
-                                    <Link
-                                      to={`/stake/account/${a}`}
-                                      className="font-monospace"
-                                    >
+                                    <Link to={`/stake/account/${a}`}>
                                       {short(a)}
                                     </Link>
                                   </span>
@@ -942,7 +927,7 @@ const StakeVoteAccount = () => {
         </Link>
         <h1 className="h3">{name ?? short(voteKey)}</h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
-          Vote account <span className="font-monospace">{short(voteKey)}</span>
+          Vote account <span>{short(voteKey)}</span>
         </p>
       </div>
       <div className="col-12 col-md-auto align-self-end d-flex flex-column align-items-md-end gap-2">
@@ -989,6 +974,7 @@ const StakeVoteAccount = () => {
         <Row className="g-3">
           <Col xs={6} xl={3}>
             <StatCard
+              mono={false}
               label="Stake"
               value={sol(latest?.activated, 0)}
               sublabel={latest ? `epoch ${latest.epoch}` : undefined}
@@ -996,6 +982,7 @@ const StakeVoteAccount = () => {
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
+              mono={false}
               label="Delegators"
               value={latest?.delegators?.toLocaleString() ?? '—'}
               sublabel={
@@ -1007,6 +994,7 @@ const StakeVoteAccount = () => {
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
+              mono={false}
               label="Commission"
               value={pct(latest?.inflationBps)}
               sublabel={`inflation · ${pct(latest?.blockBps)} block revenue`}
@@ -1014,6 +1002,7 @@ const StakeVoteAccount = () => {
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
+              mono={false}
               label="History"
               value={rows.length.toLocaleString()}
               sublabel={

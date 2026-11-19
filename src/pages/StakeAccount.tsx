@@ -332,6 +332,7 @@ const StakeAccount = () => {
         <Row className="g-3">
           <Col xs={6} xl={3}>
             <StatCard
+              mono={false}
               label="Effective Stake"
               value={sol(latest?.effective, 0)}
               sublabel={latest ? `epoch ${latest.epoch}` : undefined}
@@ -359,6 +360,7 @@ const StakeAccount = () => {
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
+              mono={false}
               label="Rewards"
               value={sol(totalRewards, 2)}
               sublabel={`over ${rows.length.toLocaleString()} epochs`}
@@ -366,6 +368,7 @@ const StakeAccount = () => {
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
+              mono={false}
               label="First Seen"
               value={rows.length ? `${rows[0].epoch}` : '—'}
               sublabel={
@@ -438,16 +441,25 @@ const StakeAccount = () => {
               {nowAuth ? (
                 <div className="d-flex flex-column gap-1">
                   {nowAuth.staker && (
-                    <AddressLine label="Staker" value={nowAuth.staker} />
+                    <AddressLine
+                      mono={false}
+                      label="Staker"
+                      value={nowAuth.staker}
+                    />
                   )}
                   {nowAuth.withdrawer && (
                     <AddressLine
+                      mono={false}
                       label="Withdrawer"
                       value={nowAuth.withdrawer}
                     />
                   )}
                   {nowAuth.custodian && (
-                    <AddressLine label="Custodian" value={nowAuth.custodian} />
+                    <AddressLine
+                      mono={false}
+                      label="Custodian"
+                      value={nowAuth.custodian}
+                    />
                   )}
                   {nowAuth.lockup &&
                     ((nowAuth.lockup.epoch ?? NO_LOCKUP) > NO_LOCKUP ||

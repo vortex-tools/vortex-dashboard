@@ -47,6 +47,8 @@ interface AddressLineProps {
   /** Always the middle-truncated form (a narrow column), never the
    *  whole address. */
   compact?: boolean;
+  /** Monospace address (default); false for the page's own font. */
+  mono?: boolean;
 }
 
 const AddressLine = ({
@@ -58,7 +60,8 @@ const AddressLine = ({
   labelTitle,
   bare = false,
   href,
-  compact = false
+  compact = false,
+  mono = true
 }: AddressLineProps) => {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,7 +111,7 @@ const AddressLine = ({
             href={href}
             target="_blank"
             rel="noreferrer"
-            className={`font-monospace fs-9 ${cls}`}
+            className={`${mono ? 'font-monospace ' : ''}fs-9 ${cls}`}
             title={value}
           >
             {text}
@@ -116,7 +119,7 @@ const AddressLine = ({
         ) : (
           <span
             key={cls}
-            className={`font-monospace fs-9 ${cls}`}
+            className={`${mono ? 'font-monospace ' : ''}fs-9 ${cls}`}
             title={value}
           >
             {text}

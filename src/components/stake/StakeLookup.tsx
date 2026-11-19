@@ -124,7 +124,6 @@ const StakeLookup = ({ compact = false }: { compact?: boolean }) => {
               : "A validator's name, or a stake account, staker, withdrawer or vote account"
           }
           aria-label="Address"
-          className="font-monospace"
           size={compact ? 'sm' : undefined}
           autoFocus={!compact}
           spellCheck={false}
@@ -152,7 +151,7 @@ const StakeLookup = ({ compact = false }: { compact?: boolean }) => {
               <span className="fw-semibold text-truncate">
                 {v.name ?? v.nodeAddress}
               </span>
-              <span className="text-body-tertiary font-monospace fs-10 text-nowrap">
+              <span className="text-body-tertiary fs-10 text-nowrap">
                 {(v.voteAddress ?? v.nodeAddress).slice(0, 4)}…
                 {(v.voteAddress ?? v.nodeAddress).slice(-4)}
               </span>
