@@ -27,6 +27,7 @@ import {
   sol,
   short,
   Crumb,
+  EpochFacts,
   FeatureFacts,
   MAINNET_ONLY,
   MISSING,
@@ -39,6 +40,7 @@ import {
   Site,
   ValidatorStatus,
   brand,
+  epochPages,
   factsNeeded,
   indexable,
   isTestnet,
@@ -347,6 +349,10 @@ const cachedLists = async (env: SeoEnv, origin: string, path: string) => {
 
 const LIST_PAGES = new Set(['/features', '/simds', '/validators', '/pools']);
 
+/** The epoch in progress (null when the API can't say). */
+const currentEpoch = async (env: SeoEnv) =>
+  (await api<{ epoch: number }>(env, '/epochs/current', 120))?.epoch ?? null;
+
 /** A page's tags, with the facts it needs read from the API. */
 export const metaFor = async (
   env: SeoEnv,
@@ -378,7 +384,12 @@ export const metaFor = async (
       : undefined,
     simd: need.simd
       ? await api<SimdFacts>(env, `/simd?simd=${need.simd}`, 600)
-      : undefined
+      : undefined,
+    currentEpoch: need.currentEpoch ? await currentEpoch(env) : undefined,
+    epoch:
+      need.epoch != null
+        ? await api<EpochFacts>(env, `/epoch?epoch=${need.epoch}`, 600)
+        : undefined
   });
 };
 
@@ -467,11 +478,23 @@ const urlset = (origin: string, paths: string[]) =>
     .map(p => `<url><loc>${esc(origin + p)}</loc></url>`)
     .join('\n')}\n</urlset>\n`;
 
-const SITEMAPS = ['pages', 'validators', 'pools', 'features', 'simds'] as const;
+const SITEMAPS = [
+  'pages',
+  'validators',
+  'pools',
+  'features',
+  'simds',
+  'epochs'
+] as const;
 
 const sitemap = async (env: SeoEnv, origin: string, part: string) => {
-  // Testnet has no stake pool pages.
-  const parts = SITEMAPS.filter(p => !(isTestnet(env) && p === 'pools'));
+  // Testnet has no stake pool pages; epoch pages are live where epochPages
+  // says.
+  const parts = SITEMAPS.filter(
+    p =>
+      !(isTestnet(env) && p === 'pools') &&
+      !(p === 'epochs' && !epochPages(env))
+  );
   if (!(parts as string[]).includes(part) && part !== 'index') return null;
   if (part === 'index')
     return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${parts
@@ -527,6 +550,14 @@ const sitemap = async (env: SeoEnv, origin: string, part: string) => {
       d.simds.map(x => `/simd/${x.simd}`)
     );
   }
+  if (part === 'epochs') {
+    const current = await currentEpoch(env);
+    if (current == null) return null;
+    return urlset(origin, [
+      '/epoch',
+      ...Array.from({ length: current + 1 }, (_, i) => `/epoch/${current - i}`)
+    ]);
+  }
   if (part === 'pools') {
     const d = await api<{ pools: Array<{ name: string }> }>(
       env,
@@ -560,7 +591,7 @@ ${sections(env)
   .map(c => `- [${c.name}](${origin}${c.path})`)
   .join('\n')}
 - Validator pages: ${origin}/validator/<vote account or identity>, with tabs /voting, /production, /network, /earnings${isTestnet(env) ? '' : ', /fees, /staking'}
-- Slot pages: ${origin}/slot/<slot>
+- Slot pages: ${origin}/slot/<slot>${epochPages(env) ? `\n- Epoch pages: ${origin}/epoch/<epoch>: stake, validators, staking rewards and feature activations for that epoch; ${origin}/epoch lists them all` : ''}
 
 ## Optional
 

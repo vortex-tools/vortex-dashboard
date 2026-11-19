@@ -8,14 +8,15 @@ import {
   epochsSchema,
   skipRate
 } from 'helpers/epochRow';
+import { EPOCHS_PAGE } from 'helpers/pageMeta';
 import { formatLamports } from 'helpers/utils';
 import { VortexDataContext } from 'providers/VortexDataProvider';
 import { useContext, useEffect, useState } from 'react';
 import { Table } from 'react-bootstrap';
 import { Link, useSearchParams } from 'react-router';
 
-/** Epochs per page. */
-const PAGE = 50;
+/** Epochs per page (the Worker's crawler summary pages by the same). */
+const PAGE = EPOCHS_PAGE;
 
 const sol = (l: number | null | undefined) =>
   l == null ? '—' : formatLamports(l, 0);

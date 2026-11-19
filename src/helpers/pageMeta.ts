@@ -16,6 +16,11 @@ export const BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 export const indexable = (env: Site) => env.SITE !== 'staging';
 export const isTestnet = (env: Site) => env.CLUSTER === 'testnet';
+/** Where the /epoch pages are live (staging only until Justin makes them
+ *  public): their routes, tags and sitemap. */
+export const epochPages = (env: Site) => env.SITE === 'staging';
+/** Epochs per /epoch index page (src/pages/Epochs.tsx pages by the same). */
+export const EPOCHS_PAGE = 50;
 export const brand = (env: Site) =>
   env.SITE === 'staging'
     ? 'Vortex Staging'
@@ -505,6 +510,35 @@ export interface FeatureFacts {
 }
 
 /** The /simd fields the tags use. */
+/** What /epoch?epoch=<n> says of an epoch (times in unix seconds). */
+export interface EpochFacts {
+  epoch: number;
+  complete: boolean;
+  startTime: number | null;
+  endTime: number | null;
+}
+
+/** "Nov 17, 2026", in UTC. */
+const utcDay = (t: number) =>
+  new Date(t * 1000).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+
+/** When an epoch ran, for copy: "Nov 17 to Nov 18, 2026", "started
+ *  Nov 19, 2026", or null when the API has no times. */
+const epochDates = (e: EpochFacts | null | undefined) => {
+  if (!e?.startTime) return null;
+  const a = utcDay(e.startTime);
+  if (!e.complete || !e.endTime) return `started ${a}`;
+  const b = utcDay(e.endTime);
+  if (a === b) return a;
+  const [ay, by] = [a.slice(-4), b.slice(-4)];
+  return ay === by ? `${a.slice(0, -6)} to ${b}` : `${a} to ${b}`;
+};
+
 export interface SimdFacts {
   simd: {
     simd: number;
@@ -713,7 +747,17 @@ const simdMeta = (
 /** What a page needs fetched before its tags can be built. */
 export const factsNeeded = (
   pathname: string
-): { validator?: string; pool?: string; feature?: string; simd?: number } => {
+): {
+  validator?: string;
+  pool?: string;
+  feature?: string;
+  simd?: number;
+  currentEpoch?: true;
+  epoch?: number;
+} => {
+  const e = pathname.match(/^\/epoch\/(0|[1-9]\d*)\/?$/);
+  if (e) return { currentEpoch: true, epoch: Number(e[1]) };
+  if (/^\/epoch\/?$/.test(pathname)) return { currentEpoch: true };
   let m = pathname.match(/^\/validator\/([^/]+)/);
   if (m && BASE58.test(m[1])) return { validator: m[1] };
   m = pathname.match(/^\/feature\/([^/]+)\/?$/);
@@ -738,6 +782,9 @@ export const pageMeta = (
     pool?: PoolFacts | null;
     feature?: FeatureFacts | null;
     simd?: SimdFacts | null;
+    /** The epoch in progress. */
+    currentEpoch?: number | null;
+    epoch?: EpochFacts | null;
   }
 ): Verdict => {
   const path = pathname.replace(/\/+$/, '') || '/';
@@ -777,30 +824,100 @@ export const pageMeta = (
       archive: true
     };
   }
-  // Epochs: staging-only pages for now, an index and one per epoch.
-  if (path === '/epoch')
-    return env.SITE !== 'staging'
-      ? MISSING
-      : {
-          title: `${solana(env)} epochs`,
-          description: `Every ${solana(env)} epoch, each with its own page: stake, validators, feature activations and activity.`,
-          canonical: path,
-          crumbs: [HOME, { name: 'Epochs', path }],
-          archive: false
-        };
-  if (seg[1] === 'epoch') {
-    const m = path.match(/^\/epoch\/(\d+)$/);
-    if (env.SITE !== 'staging' || !m) return MISSING;
+  // Epochs: an index and one page per epoch, indexed (a past epoch's page
+  // is fixed and citable). Live where epochPages says so.
+  if (path === '/epoch') {
+    if (!epochPages(env)) return MISSING;
+    const b = new URLSearchParams(search).get('before');
+    const before = b && /^[1-9]\d*$/.test(b) ? Number(b) : null;
+    const current = facts.currentEpoch;
+    // A page past the newest is the first page.
+    const paged = before != null && (current == null || before <= current);
+    const top = paged ? before! - 1 : current;
     return {
-      title: `${solana(env)} epoch ${m[1]}`,
-      description: `${solana(env)} epoch ${m[1]}: total stake, staked validators, Nakamoto coefficient, the largest validators, feature gates activated and validator activity.`,
+      title: paged
+        ? `${solana(env)} epochs ${Math.max(0, before! - EPOCHS_PAGE)} to ${before! - 1}`
+        : `${solana(env)} epochs: every epoch's stake, validators and feature activations`,
+      description: `Every ${solana(env)} epoch, newest first, each with its own page: total stake, staked validators, Nakamoto coefficient, staking rewards and the feature gates it activated.`,
+      canonical: paged ? `${path}?before=${before}` : path,
+      crumbs: [HOME, { name: 'Epochs', path }],
+      archive: false,
+      lists:
+        top == null
+          ? undefined
+          : [
+              {
+                title: 'Epochs',
+                items: Array.from(
+                  { length: Math.min(EPOCHS_PAGE, top + 1) },
+                  (_, i) => ({
+                    name: `Epoch ${top - i}`,
+                    path: `/epoch/${top - i}`,
+                    note: top - i === current ? 'in progress' : undefined
+                  })
+                )
+              },
+              {
+                title: 'More epochs',
+                items: [
+                  ...(paged
+                    ? [
+                        {
+                          name: 'Newer epochs',
+                          path:
+                            before! + EPOCHS_PAGE > current!
+                              ? path
+                              : `${path}?before=${before! + EPOCHS_PAGE}`
+                        }
+                      ]
+                    : []),
+                  ...(top + 1 > EPOCHS_PAGE
+                    ? [
+                        {
+                          name: 'Older epochs',
+                          path: `${path}?before=${top + 1 - EPOCHS_PAGE}`
+                        }
+                      ]
+                    : [])
+                ]
+              }
+            ].filter(l => l.items.length)
+    };
+  }
+  if (seg[1] === 'epoch') {
+    const m = path.match(/^\/epoch\/(0|[1-9]\d*)$/);
+    if (!epochPages(env) || !m) return MISSING;
+    const n = Number(m[1]);
+    const current = facts.currentEpoch;
+    // Epochs that haven't started have no page.
+    if (current != null && n > current) return MISSING;
+    const when = epochDates(facts.epoch);
+    const progress = n === current ? 'in progress' : null;
+    const aside = [when, progress].filter(Boolean).join(', ');
+    return {
+      title: `${solana(env)} epoch ${n}: stake, validators and feature activations`,
+      description: `${solana(env)} epoch ${n}${aside ? ` (${aside})` : ''}: total stake, staked validators, Nakamoto coefficient, staking rewards, the largest validators with their commission, feature gates activated and validator activity.`,
       canonical: path,
       crumbs: [
         HOME,
         { name: 'Epochs', path: '/epoch' },
-        { name: `Epoch ${m[1]}`, path }
+        { name: `Epoch ${n}`, path }
       ],
-      archive: true
+      archive: false,
+      lists: [
+        {
+          title: 'Nearby epochs',
+          items: [
+            ...(n > 0
+              ? [{ name: `Epoch ${n - 1}`, path: `/epoch/${n - 1}` }]
+              : []),
+            ...(current != null && n < current
+              ? [{ name: `Epoch ${n + 1}`, path: `/epoch/${n + 1}` }]
+              : []),
+            { name: 'All epochs', path: '/epoch' }
+          ]
+        }
+      ]
     };
   }
   // Boundary Replay: a staging-only page too.
