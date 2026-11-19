@@ -92,20 +92,32 @@ const span = (secs: number) =>
       ? `${Math.round(secs / 60)} min`
       : `${Math.round(secs)} s`;
 
-/** The epoch's halts: each gap between blocks, its length, and the
- *  restart announcement that matched it. */
+/** "none", "1 (4.8 h in all)", "2 restarts". */
+const haltSummary = (halts: NonNullable<EpochRow['halts']>) => {
+  if (!halts.length) return 'none';
+  const restarts = halts.filter(h => h.kind === 'restart').length;
+  const secs = halts.reduce((a, h) => a + (h.durationSeconds ?? 0), 0);
+  return restarts === halts.length
+    ? `${restarts} restart${restarts === 1 ? '' : 's'}`
+    : `${halts.length}${secs ? ` (${span(secs)} in all)` : ''}`;
+};
+
+/** The epoch's halts: a TowerBFT gap's times and length, or an
+ *  Alpenglow restart's slot, and the restart announcement matched. */
 const HaltsCard = ({ halts }: { halts: NonNullable<EpochRow['halts']> }) => (
   <SectionCard
     title="Halts"
     icon="alert-octagon"
-    info="Every gap of a minute or more between consecutive blocks in this epoch, with the restart announcement whose slots fall in it."
+    info="TowerBFT epochs: every stretch of a minute or more without a block, with its times. Alpenglow epochs: cluster restarts, at their hard-fork slot (Alpenglow block times are each producer's own and run on through a restart, so a restart has no measured length). Each with the restart announcement that matched it."
   >
     <Table responsive size="sm" className="data-table fs-9 mb-0">
       <thead>
         <tr className="text-nowrap">
+          <th>Kind</th>
           <th>Stopped</th>
           <th className="text-end">Length</th>
           <th className="text-end">Last Block</th>
+          <th className="text-end">Restart Slot</th>
           <th className="text-end">Next Block</th>
           <th>Announcement</th>
         </tr>
@@ -113,6 +125,9 @@ const HaltsCard = ({ halts }: { halts: NonNullable<EpochRow['halts']> }) => (
       <tbody>
         {halts.map((h, i) => (
           <tr key={`${h.lastBlockSlot}-${i}`}>
+            <td className="text-nowrap">
+              {h.kind === 'restart' ? 'Cluster restart' : 'No blocks'}
+            </td>
             <td className="text-nowrap">{date(h.startTime)}</td>
             <td className="text-end text-nowrap">
               {h.durationSeconds == null ? '—' : span(h.durationSeconds)}
@@ -123,6 +138,15 @@ const HaltsCard = ({ halts }: { halts: NonNullable<EpochRow['halts']> }) => (
               ) : (
                 <Link to={`/slot/${h.lastBlockSlot}`}>
                   {h.lastBlockSlot.toLocaleString()}
+                </Link>
+              )}
+            </td>
+            <td className="text-end">
+              {h.restartSlot == null ? (
+                '—'
+              ) : (
+                <Link to={`/slot/${h.restartSlot}`}>
+                  {h.restartSlot.toLocaleString()}
                 </Link>
               )}
             </td>
@@ -192,12 +216,12 @@ const EpochFacts = ({ row }: { row: EpochRow }) => {
         ['Blocks', row.blocks?.toLocaleString() ?? null],
         [
           'Halts',
+          row.halts == null ? null : haltSummary(row.halts),
           row.halts == null
-            ? null
-            : row.halts.length
-              ? `${row.halts.length} (${span(row.halts.reduce((a, h) => a + (h.durationSeconds ?? 0), 0))} in all)`
-              : 'none',
-          row.halts == null ? undefined : 'block gaps of a minute or more'
+            ? undefined
+            : row.consensus === 'alpenglow'
+              ? 'cluster restarts'
+              : 'a minute or more without a block'
         ],
         [
           'Skipped slots',
@@ -246,6 +270,15 @@ const EpochFacts = ({ row }: { row: EpochRow }) => {
         ],
         ['Staked', ratio != null ? pct(ratio) : null, 'of supply'],
         ['Inflation rate', ratePct(row.inflationRate), 'annual'],
+        [
+          'Inflation rewards',
+          row.inflationBudget != null ? sol(row.inflationBudget) : null,
+          row.inflationBudget != null &&
+          (row.stakerInflationRewards != null ||
+            row.validatorInflationRewards != null)
+            ? `stakers ${sol(row.stakerInflationRewards)} · commission ${sol(row.validatorInflationRewards)}`
+            : undefined
+        ],
         [
           'Block rewards to stakers',
           row.stakerBlockRewards != null ? sol(row.stakerBlockRewards) : null

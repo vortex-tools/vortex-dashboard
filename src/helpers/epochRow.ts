@@ -26,16 +26,25 @@ export const epochRowSchema = z.object({
   activatingStake: num,
   deactivatingStake: num,
   stakerInflationRewards: num,
+  // Commission validators took from the epoch's inflation rewards, and
+  // the whole budget (reconciled epochs only).
+  validatorInflationRewards: num.optional().catch(null),
+  inflationBudget: num.optional().catch(null),
   stakerBlockRewards: num,
   joined: num,
   left: num,
   capitalization: num,
   inflationRate: num,
-  // Gaps of 60 s or more between consecutive blocks: [] for none, null
+  // Halts: TowerBFT epochs' gaps of a minute or more without a block
+  // (kind gap, with times), Alpenglow epochs' cluster restarts (kind
+  // restart, at a hard-fork slot, without times: Alpenglow block times
+  // are the producer's and run on through a restart). [] for none; null
   // (or absent) before the epoch is scanned.
   halts: z
     .array(
       z.object({
+        kind: z.string().catch('gap'),
+        restartSlot: num.optional().catch(null),
         lastBlockSlot: num,
         nextBlockSlot: num,
         startTime: num,
