@@ -935,7 +935,11 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
   const names = new Map<string, string>(
     loaded.flatMap(d =>
       d.builders.map(
-        b => [b.builder, b.builder === 'none' ? 'No builder' : b.name] as const
+        b =>
+          [
+            b.builder,
+            b.builder === 'none' ? 'No known builder' : b.name
+          ] as const
       )
     )
   );
@@ -988,11 +992,37 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
   // builders' per-block figures weighted by their blocks, a typical block
   // that epoch - so what moves every builder together (a busy epoch)
   // drops out and 1x is the epoch's typical block. Absolute: SOL.
-  const [scale, setScale] = useState<'relative' | 'absolute'>('relative');
+  // Vs neighbours (the default where the API has it): each builder's
+  // time-adjusted income, its blocks against the cluster's blocks at the
+  // same slots, so it isn't flattered or penalised by when it built.
+  const hasNeighbors = loaded.some(d =>
+    d.builders.some(b => b.built?.neighbors?.timeAdjusted != null)
+  );
+  const [picked, setScale] = useState<
+    'neighbors' | 'relative' | 'absolute' | null
+  >(null);
+  const scale = picked ?? (hasNeighbors ? 'neighbors' : 'relative');
+  const neighborsOf = (d: BlockBuilders, k: string) =>
+    d.builders.find(x => x.builder === k)?.built?.neighbors ?? null;
+  // The epochs compared with their neighbouring blocks.
+  const compared = loaded.filter(d =>
+    d.builders.some(b => b.built?.neighbors?.timeAdjusted != null)
+  );
+  // A builder whose figure rests on few validators (in the latest epoch
+  // compared): a small sample.
+  const SMALL = 5;
+  const small = (k: string) => {
+    const d = compared[compared.length - 1];
+    const n = d ? neighborsOf(d, k)?.validators?.count : null;
+    return n != null && n < SMALL;
+  };
   // A builder picked in the legend: its band shows and the other lines
   // fade (null: just the lines - bands for all were too busy).
   const [focus, setFocus] = useState<string | null>(null);
   const relative = scale === 'relative';
+  const nb = scale === 'neighbors';
+  // The chart's epochs: in the neighbour view, the ones compared.
+  const view = nb ? compared : loaded;
   const baselineOf = (d: BlockBuilders) => {
     let w = 0;
     let sum = 0;
@@ -1005,9 +1035,12 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
     }
     return w ? sum / w : null;
   };
-  const baselines = loaded.map(baselineOf);
+  const baselines = view.map(baselineOf);
   const norm = (v: number | null, i: number) =>
     v == null ? null : relative ? (baselines[i] ? v / baselines[i]! : null) : v;
+  // A builder's point in the chosen view.
+  const valueAt = (d: BlockBuilders, k: string, i: number) =>
+    nb ? (neighborsOf(d, k)?.timeAdjusted ?? null) : norm(at(d, k).avg, i);
   const fmtRel = (v: number | null) => (v == null ? '—' : `${v.toFixed(2)}×`);
   const option = {
     animation: false,
@@ -1020,9 +1053,29 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
       textStyle: { color: getThemeColor('body-color'), fontSize: 12 },
       formatter: (ps: Array<{ dataIndex: number }>) => {
         const i = ps[0]?.dataIndex ?? 0;
-        const d = loaded[i];
+        const d = view[i];
         if (!d) return '';
         const base = baselines[i];
+        if (nb) {
+          const nrows = keys
+            .map(k => ({ k, n: neighborsOf(d, k), m: at(d, k).avg }))
+            .filter(r => r.n?.timeAdjusted != null)
+            .sort((a, b) => b.n!.timeAdjusted! - a.n!.timeAdjusted!);
+          if (!nrows.length)
+            return `<div class="fw-bold mb-1">Epoch ${d.epoch}</div><div class="fs-10 text-body-tertiary">Not compared with neighbouring blocks yet.</div>`;
+          return (
+            `<div class="fw-bold mb-1">Epoch ${d.epoch}${d.complete ? '' : ' (so far)'}</div>` +
+            `<table class="fs-10"><tr class="text-body-tertiary"><td></td><td class="text-end ps-3">vs neighbours</td><td class="text-end ps-3">beats</td><td class="text-end ps-3">median validator</td><td class="text-end ps-3">median / block</td></tr>` +
+            nrows
+              .map(
+                r =>
+                  `<tr><td><span class="d-inline-block rounded-circle me-1" style="width:8px;height:8px;background:${color(r.k)}"></span>${names.get(r.k) ?? r.k}${(r.n!.validators?.count ?? SMALL) < SMALL ? ' <span class="text-body-tertiary">(small sample)</span>' : ''}</td><td class="text-end ps-3 fw-semibold">${fmtRel(r.n!.timeAdjusted)}</td><td class="text-end ps-3">${r.n!.beatShare != null ? pct(r.n!.beatShare, 0) : '—'}</td><td class="text-end ps-3">${r.n!.validators?.median != null ? `${fmtRel(r.n!.validators.median)} <span class="text-body-tertiary">of ${r.n!.validators.count}</span>` : '—'}</td><td class="text-end ps-3 text-body-tertiary">${sol(r.m)}</td></tr>`
+              )
+              .join('') +
+            '</table>' +
+            '<div class="fs-10 text-body-tertiary mt-1" style="max-width:26rem;white-space:normal">1× = the cluster\u2019s blocks at the same slots. Beats: share of its blocks above the median of the other leaders\u2019 blocks within 100 slots.</div>'
+          );
+        }
         const rows = keys
           .map(k => {
             const r = band(d, k);
@@ -1056,11 +1109,11 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: loaded.map(d => `${d.epoch}${d.complete ? '' : ' (now)'}`),
+      data: view.map(d => `${d.epoch}${d.complete ? '' : ' (now)'}`),
       axisLabel: {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
-        interval: (i: number) => (loaded.length - 1 - i) % 2 === 0
+        interval: (i: number) => (view.length - 1 - i) % 2 === 0
       },
       axisTick: { show: false }
     },
@@ -1071,14 +1124,14 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
         color: getThemeColor('tertiary-color'),
         fontSize: 10,
         formatter: (v: number) =>
-          relative ? `${v.toFixed(1)}×` : formatLamports(v, 3)
+          relative || nb ? `${v.toFixed(1)}×` : formatLamports(v, 3)
       },
       splitLine: { lineStyle: { color: getThemeColor('border-color') } }
     },
     series: [
       // Each median's likely range: an invisible lower edge, then the
       // band's height stacked on it, in the builder's color.
-      ...(useMedian && focus && keys.includes(focus)
+      ...(!nb && useMedian && focus && keys.includes(focus)
         ? [focus].flatMap(k => [
             {
               name: `${names.get(k) ?? k} (range low)`,
@@ -1087,7 +1140,7 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
               symbol: 'none',
               silent: true,
               lineStyle: { opacity: 0 },
-              data: loaded.map((d, i) => norm(band(d, k)?.[0] ?? null, i))
+              data: view.map((d, i) => norm(band(d, k)?.[0] ?? null, i))
             },
             {
               name: `${names.get(k) ?? k} (range)`,
@@ -1097,7 +1150,7 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
               silent: true,
               lineStyle: { opacity: 0 },
               areaStyle: { color: color(k), opacity: 0.18 },
-              data: loaded.map((d, i) => {
+              data: view.map((d, i) => {
                 const r = band(d, k);
                 const lo = norm(r?.[0] ?? null, i);
                 const hi = norm(r?.[1] ?? null, i);
@@ -1112,12 +1165,18 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
         symbol: 'circle',
         symbolSize: 4,
         color: color(k),
-        lineStyle: { width: 2, opacity: focus && focus !== k ? 0.2 : 1 },
+        lineStyle: {
+          width: 2,
+          opacity: focus && focus !== k ? 0.2 : 1,
+          // A small sample: dotted.
+          ...(nb && small(k) ? { type: 'dotted' } : {})
+        },
         itemStyle: { opacity: focus && focus !== k ? 0.2 : 1 },
-        data: loaded.map((d, i) => norm(at(d, k).avg, i)),
+        data: view.map((d, i) => valueAt(d, k, i)),
+        connectNulls: false,
         z: 3,
-        // 1x: the epoch's typical block.
-        ...(relative && k === keys[0]
+        // 1x: the epoch's typical block, or the blocks around.
+        ...((relative || nb) && k === keys[0]
           ? {
               markLine: {
                 silent: true,
@@ -1133,7 +1192,7 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
             }
           : {})
       })),
-      ...(anyKept
+      ...(anyKept && !nb
         ? keys.map(k => ({
             name: `${names.get(k) ?? k} (kept)`,
             type: 'line',
@@ -1144,22 +1203,27 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
               type: 'dashed',
               opacity: focus && focus !== k ? 0.15 : 0.8
             },
-            data: loaded.map((d, i) => norm(at(d, k).kept, i))
+            data: view.map((d, i) => norm(at(d, k).kept, i))
           }))
         : [])
     ]
   };
   return (
     <SectionCard
-      title={`${useMedian ? 'Median' : 'Average'} Income per Block by Epoch`}
+      title={
+        nb
+          ? 'Income per Block vs Neighbouring Blocks'
+          : `${useMedian ? 'Median' : 'Average'} Income per Block by Epoch`
+      }
       icon="trending-up"
       aside={
         <ButtonGroup size="sm">
           {(
             [
+              ...(hasNeighbors ? [['neighbors', 'Vs neighbours']] : []),
               ['relative', 'Relative'],
               ['absolute', 'SOL']
-            ] as const
+            ] as Array<[typeof scale, string]>
           ).map(([k, l]) => (
             <ToggleButton
               key={k}
@@ -1176,7 +1240,11 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
           ))}
         </ButtonGroup>
       }
-      info={`${useMedian ? "Click a builder in the legend for its band: how far its median could be off with its number of blocks (a ~95% range: median ± 1.58 × middle-half width / √blocks, combined with the API's ~4.5% precision) - narrow for builders with many blocks, wide for few; lines whose bands overlap aren't clearly different. " : ''}${relative ? "Relative: each builder against the epoch's typical block (1x, dashed) - its builders' figures weighted by their blocks - so what lifts every builder together drops out. SOL: the figures themselves. " : ''}Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid, for epochs whose fees are all measured (from 1083, when Jito's builder commission is)." : ''}`}
+      info={
+        nb
+          ? `Each builder's blocks against the other leaders' blocks around them (within 100 slots), so what moves every block at once - a busy hour, a quiet one - drops out and no builder is flattered or penalised by when its leaders happened to build. The line: time-adjusted income, its blocks' total income over their neighbours' (an average: big blocks count), against the same for every block - 1× is the cluster's blocks at the same slots, 1.13× is 13% more. In the tooltip, two checks it holds up: the share of its blocks that beat the median block around them, and its median validator's ratio (each validator with 8+ blocks counted once, so one big leader can't carry it); the raw median per block for reference. Dotted: fewer than ${SMALL} validators, a small sample. No known builder: clients with no builder we recognise (may include custom builds), not a baseline. Epochs before the comparison was counted are left out.`
+          : `${useMedian ? "Click a builder in the legend for its band: how far its median could be off with its number of blocks (a ~95% range: median ± 1.58 × middle-half width / √blocks, combined with the API's ~4.5% precision) - narrow for builders with many blocks, wide for few; lines whose bands overlap aren't clearly different. " : ''}${relative ? "Relative: each builder against the epoch's typical block (1x, dashed) - its builders' figures weighted by their blocks - so what lifts every builder together drops out. SOL: the figures themselves. " : ''}Each builder's ${useMedian ? 'median income per block built (half its blocks paid more, half less)' : 'average (mean) income per block built'}, epoch by epoch ('now': the epoch in progress, so far): base fees, priority fees, Jito tips and (where measured) a builder's own tips over its blocks, by the client the leader ran at each block.${anyKept ? " Dashed: what the leader kept after the builder fees those blocks paid, for epochs whose fees are all measured (from 1083, when Jito's builder commission is)." : ''}`
+      }
     >
       <div className="d-flex flex-wrap column-gap-3 fs-10 text-body-tertiary mb-1">
         {keys.map(k => (
@@ -1204,10 +1272,11 @@ const IncomeHistoryCard = ({ currentEpoch }: { currentEpoch: number }) => {
             />
             <span className={focus === k ? 'fw-bold' : ''}>
               {names.get(k) ?? k}
+              {nb && small(k) ? ' (small sample)' : ''}
             </span>
           </button>
         ))}
-        {anyKept && (
+        {anyKept && !nb && (
           <span className="d-inline-flex align-items-center gap-1">
             <span
               className="d-inline-block"

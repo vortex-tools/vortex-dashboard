@@ -3896,6 +3896,37 @@ export const blockBuilderSchema = z.object({
         })
         .nullable()
         .optional()
+        .catch(null),
+      // Its blocks against the other leaders' blocks around them (within
+      // 100 slots), so what moves every block at once drops out. Null
+      // before the epoch is counted. /cluster/block-builders/history
+      // carries the summary (medianRatio); /cluster/block-builders the
+      // ratio quartiles too.
+      neighbors: z
+        .object({
+          blocks: z.number().catch(0),
+          // Σ income / Σ baseline over its blocks, against the same for
+          // every block: 1.13 = 13% more than the blocks at the same slots.
+          timeAdjusted: z.number().nullable().catch(null),
+          // Share of its blocks above the median of the blocks around them.
+          beatShare: z.number().nullable().catch(null),
+          medianRatio: z.number().nullable().optional().catch(null),
+          ratio: z
+            .object({ p25: z.number(), median: z.number(), p75: z.number() })
+            .nullable()
+            .optional()
+            .catch(null),
+          // Each validator's median ratio (>= minBlocks blocks), once each.
+          validators: z
+            .object({
+              count: z.number().catch(0),
+              median: z.number().nullable().catch(null)
+            })
+            .nullable()
+            .catch(null)
+        })
+        .nullable()
+        .optional()
         .catch(null)
     })
     .nullable()
