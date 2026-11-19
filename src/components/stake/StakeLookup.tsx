@@ -6,9 +6,16 @@ import { Button, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 
 /** What an address can be, and where each opens. */
-type Kind = 'vote' | 'stake' | 'withdrawer' | 'staker' | 'custodian';
+type Kind =
+  | 'vote'
+  | 'identity'
+  | 'stake'
+  | 'withdrawer'
+  | 'staker'
+  | 'custodian';
 const KIND_LABEL: Record<Kind, string> = {
   vote: 'Validator',
+  identity: 'Validator',
   stake: 'Stake account',
   withdrawer: 'Withdrawer',
   staker: 'Staker',
@@ -34,8 +41,10 @@ const StakeLookup = ({ compact = false }: { compact?: boolean }) => {
   );
 
   const pathFor = (kind: Kind, address: string, voteKey?: string) =>
-    kind === 'vote'
-      ? `/stake/vote/${voteKey ?? address}`
+    kind === 'vote' || kind === 'identity'
+      ? voteKey || kind === 'vote'
+        ? `/stake/vote/${voteKey ?? address}`
+        : null
       : kind === 'stake'
         ? `/stake/account/${address}`
         : null;
@@ -86,21 +95,34 @@ const StakeLookup = ({ compact = false }: { compact?: boolean }) => {
         const r = (await res.json()) as {
           kinds?: Kind[];
           vote?: { voteKey?: string } | null;
+          indexes?: { stakeAccounts?: string; authorities?: string };
         };
+        // One choice per page (a vote account and its identity are one).
         const options = (r.kinds ?? [])
           .map(kind => ({
             kind,
             path: pathFor(kind, address, r.vote?.voteKey)
           }))
-          .filter((o): o is { kind: Kind; path: string } => !!o.path);
+          .filter((o): o is { kind: Kind; path: string } => !!o.path)
+          .filter((o, i, all) => all.findIndex(x => x.path === o.path) === i);
         if (options.length === 1) navigate(options[0].path);
         else if (options.length > 1) setChoices(options);
-        else
+        else if (r.kinds?.length)
           setNote(
-            r.kinds?.length
-              ? `It's a ${r.kinds.map(k => KIND_LABEL[k].toLowerCase()).join(' and ')} - its page is coming.`
-              : 'Not seen in any recorded epoch as a validator or stake account.'
+            `It's a ${[...new Set(r.kinds.map(k => KIND_LABEL[k].toLowerCase()))].join(' and ')} - its page is coming.`
           );
+        else {
+          // Nothing found: say which lookups aren't there yet.
+          const stakes = r.indexes?.stakeAccounts !== 'notLoaded';
+          const auths = r.indexes?.authorities !== 'notLoaded';
+          setNote(
+            stakes && auths
+              ? 'Not seen in any recorded epoch as a validator, stake account, staker or withdrawer.'
+              : stakes
+                ? 'Not a validator or a stake account. Looking up stakers and withdrawers comes once their data is loaded.'
+                : 'Not a validator. Looking up stake accounts, stakers and withdrawers comes once their data is loaded.'
+          );
+        }
         return;
       }
       // No resolve on this API yet: try it as a stake account.
