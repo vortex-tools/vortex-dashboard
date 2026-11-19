@@ -7,6 +7,12 @@ import UntrackedState from 'components/common/UntrackedState';
 import ValidatorLink from 'components/common/ValidatorLink';
 import { MAINNET_ACTIVATION_EPOCH } from 'helpers/alpenglowClient';
 import { API_ENDPOINT, IS_STAGING } from 'helpers/apiEndpoint';
+import {
+  EpochRow,
+  blockIncome,
+  epochRowSchema,
+  skipRate
+} from 'helpers/epochRow';
 import { formatLamports } from 'helpers/utils';
 import { FEATURES_KEY, VortexDataContext } from 'providers/VortexDataProvider';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -65,6 +71,146 @@ const getJson = async <T,>(path: string, schema: z.ZodType<T>) => {
   return schema.parse(await r.json());
 };
 
+const date = (t: number | null) =>
+  t == null
+    ? '—'
+    : new Date(t * 1000).toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: 'UTC'
+      }) + ' UTC';
+const duration = (a: number | null, b: number | null) => {
+  if (a == null || b == null) return null;
+  const h = (b - a) / 3600;
+  return h >= 48 ? `${(h / 24).toFixed(1)} days` : `${h.toFixed(1)} hours`;
+};
+// The API's rate: a fraction, or a percent if over 1.
+const ratePct = (r: number | null) =>
+  r == null ? null : `${(r > 1 ? r : r * 100).toFixed(2)}%`;
+
+/** The epoch's own figures (/epoch): when it ran, its slots and blocks,
+ *  what its leaders took in, how stake moved, and supply. Each figure
+ *  shows once the API has it. */
+const EpochFacts = ({ row }: { row: EpochRow }) => {
+  const income = blockIncome(row);
+  const skip = skipRate(row);
+  const ratio =
+    row.capitalization && row.totalStake != null
+      ? row.totalStake / row.capitalization
+      : null;
+  const groups: Array<{
+    title: string;
+    items: Array<[string, string | null, string?]>;
+  }> = [
+    {
+      title: 'When',
+      items: [
+        ['Started', date(row.startTime)],
+        [
+          'Ended',
+          row.complete ? date(row.endTime) : 'in progress',
+          duration(row.startTime, row.endTime) ?? undefined
+        ],
+        [
+          'Slots',
+          row.firstSlot != null && row.lastSlot != null
+            ? `${row.firstSlot.toLocaleString()} – ${row.lastSlot.toLocaleString()}`
+            : null
+        ]
+      ]
+    },
+    {
+      title: 'Blocks',
+      items: [
+        ['Blocks', row.blocks?.toLocaleString() ?? null],
+        [
+          'Skipped slots',
+          row.skippedSlots?.toLocaleString() ?? null,
+          skip != null ? `${pct(skip, 2)} skip rate` : undefined
+        ],
+        [
+          'Fees and tips',
+          income != null ? sol(income) : null,
+          income != null
+            ? `fees ${sol((row.baseFees ?? 0) + (row.priorityFees ?? 0))} · tips ${sol(row.mevTips)}`
+            : undefined
+        ]
+      ]
+    },
+    {
+      title: 'Stake',
+      items: [
+        [
+          'Effective',
+          row.effectiveStake != null ? sol(row.effectiveStake) : null
+        ],
+        [
+          'Activating',
+          row.activatingStake != null ? sol(row.activatingStake) : null
+        ],
+        [
+          'Deactivating',
+          row.deactivatingStake != null ? sol(row.deactivatingStake) : null
+        ],
+        [
+          'Validators joined / left',
+          row.joined != null || row.left != null
+            ? `+${row.joined ?? 0} / −${row.left ?? 0}`
+            : null
+        ]
+      ]
+    },
+    {
+      title: 'Supply',
+      items: [
+        [
+          'Capitalization',
+          row.capitalization != null ? sol(row.capitalization) : null,
+          'total SOL supply'
+        ],
+        ['Staked', ratio != null ? pct(ratio) : null, 'of supply'],
+        ['Inflation rate', ratePct(row.inflationRate), 'annual'],
+        [
+          'Block rewards to stakers',
+          row.stakerBlockRewards != null ? sol(row.stakerBlockRewards) : null
+        ]
+      ]
+    }
+  ];
+  const shown = groups
+    .map(g => ({ ...g, items: g.items.filter(i => i[1] != null) }))
+    .filter(g => g.items.length);
+  if (!shown.length) return null;
+  return (
+    <SectionCard title="This Epoch" icon="clock">
+      <Row className="g-3">
+        {shown.map(g => (
+          <Col key={g.title} xs={12} sm={6} xl={3}>
+            <div className="fs-10 text-uppercase fw-bold text-body-tertiary mb-2">
+              {g.title}
+            </div>
+            <dl className="mb-0 fs-9">
+              {g.items.map(([k, v, sub]) => (
+                <div key={k} className="mb-2">
+                  <dt className="fw-normal text-body-tertiary">{k}</dt>
+                  <dd className="mb-0 fw-semibold">
+                    {v}
+                    {sub && (
+                      <span className="fw-normal text-body-tertiary fs-10 ms-1">
+                        {sub}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Col>
+        ))}
+      </Row>
+    </SectionCard>
+  );
+};
+
 /** Previous / next epoch, around the title. */
 const EpochNav = ({ epoch, current }: { epoch: number; current: number }) => (
   <div className="d-flex align-items-center gap-1 fs-9">
@@ -108,6 +254,8 @@ const EpochPage = () => {
   const features = context?.featuresState.data.get(FEATURES_KEY);
   const [stakes, setStakes] = useState<Stakes | null | undefined>(undefined);
   const [events, setEvents] = useState<Array<{ kind: string }> | null>(null);
+  // null: the API has no /epoch (yet) or not this epoch.
+  const [row, setRow] = useState<EpochRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -118,7 +266,12 @@ const EpochPage = () => {
     let alive = true;
     setStakes(undefined);
     setEvents(null);
+    setRow(null);
     setError(null);
+    getJson(`/epoch?epoch=${epoch}`, epochRowSchema).then(
+      r => alive && setRow(r),
+      () => alive && setRow(null)
+    );
     getJson(`/epochs/stakes?epoch=${epoch}`, stakesSchema).then(
       s => alive && setStakes(s),
       e => alive && setError(String(e))
@@ -150,9 +303,11 @@ const EpochPage = () => {
         : null,
     [ranked, total]
   );
-  const stakerRewards = stakes?.delegationsComplete
-    ? ranked.reduce((a, v) => a + (v.stakerInflationRewards ?? 0), 0)
-    : null;
+  const stakerRewards =
+    row?.stakerInflationRewards ??
+    (stakes?.delegationsComplete
+      ? ranked.reduce((a, v) => a + (v.stakerInflationRewards ?? 0), 0)
+      : null);
   const activated = useMemo(
     () =>
       (features?.features ?? []).filter(
@@ -184,9 +339,15 @@ const EpochPage = () => {
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
           {epoch == null
             ? ''
-            : alpenglow
-              ? 'Alpenglow consensus'
-              : 'TowerBFT consensus'}
+            : `${alpenglow ? 'Alpenglow' : 'TowerBFT'} consensus${
+                row?.startTime
+                  ? ` · ${new Date(row.startTime * 1000).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' })}${
+                      row.endTime
+                        ? ` – ${new Date(row.endTime * 1000).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'UTC' })}`
+                        : ''
+                    }`
+                  : ''
+              }`}
         </p>
       </div>
       {epoch != null && current != null && (
@@ -286,6 +447,7 @@ const EpochPage = () => {
           </Col>
         </Row>
 
+        {row && <EpochFacts row={row} />}
         <SectionCard
           title="Largest Validators"
           icon="server"

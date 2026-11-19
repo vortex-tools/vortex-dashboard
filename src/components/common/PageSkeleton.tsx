@@ -501,6 +501,7 @@ export const SKELETON = {
   epochs: [[full(1800)]],
   epochPage: [
     { stats: 4, sub: 1 },
+    [full(280, 'block')],
     [full(666)],
     [
       { w: 4, h: 183, kind: 'list' },

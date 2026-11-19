@@ -1,19 +1,49 @@
 import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import SectionCard from 'components/common/SectionCard';
 import { MAINNET_ACTIVATION_EPOCH } from 'helpers/alpenglowClient';
+import { API_ENDPOINT } from 'helpers/apiEndpoint';
+import {
+  EpochRow,
+  blockIncome,
+  epochsSchema,
+  skipRate
+} from 'helpers/epochRow';
+import { formatLamports } from 'helpers/utils';
 import { VortexDataContext } from 'providers/VortexDataProvider';
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Table } from 'react-bootstrap';
 import { Link, useSearchParams } from 'react-router';
 
 /** Epochs per page. */
 const PAGE = 50;
 
+const sol = (l: number | null | undefined) =>
+  l == null ? '—' : formatLamports(l, 0);
+
+/** A row's figures, '—' where the API has none. */
+const Figures = ({ r }: { r: EpochRow | undefined }) => {
+  const skip = r ? skipRate(r) : null;
+  return (
+    <>
+      <td className="text-end text-nowrap">{sol(r?.totalStake)}</td>
+      <td className="text-end">
+        {r?.stakedValidators?.toLocaleString() ?? '—'}
+      </td>
+      <td className="text-end">{r?.blocks?.toLocaleString() ?? '—'}</td>
+      <td className="text-end">
+        {skip == null ? '—' : `${(skip * 100).toFixed(2)}%`}
+      </td>
+      <td className="text-end text-nowrap">{sol(r ? blockIncome(r) : null)}</td>
+    </>
+  );
+};
+
 /**
  * Every epoch (/epoch), newest first, each linking to its page
  * (/epoch/:epoch). Paged in the URL (?before=) so every page of the index
- * is a plain link too. Each row gains its figures (stake, validators,
- * blocks, fees) once the API serves /epochs. Staging only for now.
+ * is a plain link too. Each row's figures (start, stake, validators,
+ * blocks, skip rate, fees and tips) come from /epochs, one request a page;
+ * without it the rows are just the links. Staging only for now.
  */
 const Epochs = () => {
   const context = useContext(VortexDataContext);
@@ -26,6 +56,24 @@ const Epochs = () => {
       : asked && /^\d+$/.test(asked)
         ? Math.min(Number(asked), current + 1)
         : current + 1;
+
+  // The page's rows from /epochs, by epoch (null: not served).
+  const [rows, setRows] = useState<Map<number, EpochRow> | null>(null);
+  useEffect(() => {
+    if (before == null) return;
+    let alive = true;
+    setRows(null);
+    fetch(`${API_ENDPOINT}/epochs?limit=${PAGE}&before=${before}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then(j => epochsSchema.parse(j))
+      .then(
+        d => alive && setRows(new Map(d.epochs.map(r => [r.epoch, r]))),
+        () => alive && setRows(new Map())
+      );
+    return () => {
+      alive = false;
+    };
+  }, [before]);
 
   const header = (
     <div className="page-header row g-3 align-items-start">
@@ -45,6 +93,7 @@ const Epochs = () => {
       </div>
     );
 
+  const figures = !!rows?.size;
   const epochs = Array.from(
     { length: Math.min(PAGE, before) },
     (_, i) => before - 1 - i
@@ -62,7 +111,17 @@ const Epochs = () => {
           <thead>
             <tr className="text-nowrap">
               <th>Epoch</th>
+              <th>Started</th>
               <th>Consensus</th>
+              {figures && (
+                <>
+                  <th className="text-end">Stake</th>
+                  <th className="text-end">Validators</th>
+                  <th className="text-end">Blocks</th>
+                  <th className="text-end">Skip Rate</th>
+                  <th className="text-end">Fees and Tips</th>
+                </>
+              )}
               <th />
             </tr>
           </thead>
@@ -72,9 +131,20 @@ const Epochs = () => {
                 <td className="fw-semibold">
                   <Link to={`/epoch/${e}`}>Epoch {e}</Link>
                 </td>
+                <td className="text-nowrap text-body-secondary">
+                  {rows?.get(e)?.startTime
+                    ? new Date(
+                        rows.get(e)!.startTime! * 1000
+                      ).toLocaleDateString('en-US', {
+                        dateStyle: 'medium',
+                        timeZone: 'UTC'
+                      })
+                    : '—'}
+                </td>
                 <td className="text-body-secondary">
                   {e >= MAINNET_ACTIVATION_EPOCH ? 'Alpenglow' : 'TowerBFT'}
                 </td>
+                {figures && <Figures r={rows?.get(e)} />}
                 <td className="text-end">
                   {e === current && (
                     <span className="badge badge-soft badge-soft-warning">
