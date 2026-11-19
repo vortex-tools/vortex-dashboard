@@ -331,12 +331,16 @@ const WhereCard = ({ row }: { row: EpochRow }) => {
 const AccountsCard = ({
   address,
   role,
-  epochs
+  epochs,
+  accountsEver
 }: {
   address: string;
   role: Role;
   epochs: number[];
+  /** Over 100,000, the API can't export its rewards (no stored list). */
+  accountsEver: number | null;
 }) => {
+  const tooBig = (accountsEver ?? 0) > 100_000;
   const [epoch, setEpoch] = useState(epochs[0]);
   const [sort, setSort] = useState<'effective' | 'rewards'>('effective');
   const [pages, setPages] = useState<Accounts[]>([]);
@@ -376,7 +380,26 @@ const AccountsCard = ({
     <SectionCard
       title="Stake Accounts"
       icon="layers"
-      info={`Every stake account it was the ${ROLE_LABEL[role].toLowerCase()} of at the end of the epoch you pick: the validator it was delegated to, its stake and rewards. Sorted by the API, 50 at a time.`}
+      info={`Every stake account it was the ${ROLE_LABEL[role].toLowerCase()} of at the end of the epoch you pick: the validator it was delegated to, its stake and rewards. Sorted by the API, 50 at a time. Download CSV: every epoch of every one of its stake accounts over its whole history (account by account, oldest epoch first; amounts in lamports), with locked - whether that account's lockup was still in force at the epoch's end, so the reward couldn't be withdrawn yet (blank where the lockup or the epoch's block times aren't recorded).`}
+      aside={
+        tooBig ? (
+          <span
+            className="fs-10 text-body-tertiary"
+            title="Over 100,000 stake accounts ever: the API doesn't keep its full account list, so it can't export it."
+          >
+            Too many accounts to export
+          </span>
+        ) : (
+          // A plain link: the API streams the file as a download.
+          <a
+            className="btn btn-sm btn-soft-primary"
+            href={`${API_ENDPOINT}/stake/authority/rewards?${new URLSearchParams({ address, role, format: 'csv' })}`}
+            download
+          >
+            Download CSV
+          </a>
+        )
+      }
     >
       <Row className="g-2 mb-2">
         <Col xs={6} md="auto">
@@ -722,7 +745,12 @@ const StakeAuthority = () => {
         {latest && <WhereCard row={latest} />}
 
         {newestFirst.length > 0 && (
-          <AccountsCard address={address} role={role} epochs={newestFirst} />
+          <AccountsCard
+            address={address}
+            role={role}
+            epochs={newestFirst}
+            accountsEver={s?.accountsEver ?? null}
+          />
         )}
       </div>
     </div>
