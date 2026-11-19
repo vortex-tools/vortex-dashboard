@@ -43,13 +43,25 @@ const PAGE = 25;
 
 const num = z.number().nullable().catch(null);
 const historySchema = z.object({
-  address: z.string(),
+  stakeAccount: z.string().optional().catch(undefined),
+  // Where it stands as of the latest loaded epoch.
+  summary: z
+    .object({
+      asOf: num,
+      state: z.string().nullable().catch(null)
+    })
+    .nullable()
+    .optional()
+    .catch(null),
   epochs: z.array(
     z.object({
       epoch: z.number(),
       voteKey: z.string().nullable().catch(null),
       name: z.string().nullable().catch(null),
-      delegated: num,
+      // Which account at this address (0, 1, ...): a new one when a fresh
+      // delegation followed an active one (the old one closed, merged).
+      lifetime: z.number().catch(0),
+      delegatedStake: num,
       effective: num,
       activating: num,
       deactivating: num,
@@ -72,6 +84,18 @@ const historySchema = z.object({
           .catch(null)
       })
     )
+    .catch([]),
+  lifetimes: z
+    .array(
+      z.object({
+        lifetime: z.number(),
+        from: z.number(),
+        to: z.number(),
+        // null: still delegated; recreated: replaced by a new account at
+        // this address; left: its stake left (or it closed, unrecorded).
+        endedBy: z.string().nullable().catch(null)
+      })
+    )
     .catch([])
 });
 type History = z.infer<typeof historySchema>;
@@ -89,6 +113,7 @@ const NO_LOCKUP = 0;
 /** Its delegation runs: consecutive epochs with the same validator. */
 const runsOf = (rows: EpochRow[]) => {
   const runs: Array<{
+    lifetime: number;
     voteKey: string | null;
     name: string | null;
     from: number;
@@ -98,12 +123,18 @@ const runsOf = (rows: EpochRow[]) => {
   }> = [];
   for (const r of rows) {
     const last = runs[runs.length - 1];
-    if (last && last.voteKey === r.voteKey && r.epoch === last.to + 1) {
+    if (
+      last &&
+      last.voteKey === r.voteKey &&
+      r.epoch === last.to + 1 &&
+      last.lifetime === r.lifetime
+    ) {
       last.to = r.epoch;
       last.rewards += rewardOf(r) ?? 0;
       last.peak = Math.max(last.peak, r.effective ?? 0);
     } else
       runs.push({
+        lifetime: r.lifetime,
         voteKey: r.voteKey,
         name: r.name,
         from: r.epoch,
@@ -239,6 +270,7 @@ const StakeAccount = () => {
     setData(null);
     setError(null);
     setPage(0);
+    setPickedLifetime(null);
     fetch(
       `${API_ENDPOINT}/stake-accounts/history?stakeAccount=${encodeURIComponent(address)}`
     )
@@ -269,9 +301,20 @@ const StakeAccount = () => {
     };
   }, [address]);
 
-  const rows = useMemo(
-    () => [...(data?.epochs ?? [])].sort((a, b) => a.epoch - b.epoch),
+  // Each account this address has held, newest first; the view shows
+  // one at a time so two accounts are never drawn as one.
+  const lifetimes = useMemo(
+    () => [...(data?.lifetimes ?? [])].sort((a, b) => b.lifetime - a.lifetime),
     [data]
+  );
+  const [pickedLifetime, setPickedLifetime] = useState<number | null>(null);
+  const lifetime = pickedLifetime ?? lifetimes[0]?.lifetime ?? null;
+  const rows = useMemo(
+    () =>
+      [...(data?.epochs ?? [])]
+        .filter(r => lifetime == null || r.lifetime === lifetime)
+        .sort((a, b) => a.epoch - b.epoch),
+    [data, lifetime]
   );
   const runs = useMemo(() => runsOf(rows), [rows]);
   const latest = rows[rows.length - 1];
@@ -280,15 +323,22 @@ const StakeAccount = () => {
   const nowAuth = auth[auth.length - 1];
   const newestFirst = [...rows].reverse();
   const pages = Math.ceil(newestFirst.length / PAGE);
-  const state = latest
-    ? latest.deactivating
-      ? 'Deactivating'
-      : latest.activating
-        ? 'Activating'
-        : latest.effective
-          ? 'Active'
-          : 'Inactive'
-    : null;
+  const ended = lifetimes.find(l => l.lifetime === lifetime)?.endedBy;
+  const state = ended
+    ? ended === 'recreated'
+      ? 'Closed'
+      : 'Not delegated'
+    : data?.summary?.state === 'left'
+      ? 'Not delegated'
+      : latest
+        ? latest.deactivating
+          ? 'Deactivating'
+          : latest.activating
+            ? 'Activating'
+            : latest.effective
+              ? 'Active'
+              : 'Inactive'
+        : null;
 
   const header = (
     <div className="page-header row g-3 align-items-start justify-content-between">
@@ -300,7 +350,7 @@ const StakeAccount = () => {
           {short(address)}
           {state && (
             <span
-              className={`badge badge-soft fs-10 badge-soft-${state === 'Active' ? 'success' : state === 'Inactive' ? 'secondary' : 'warning'}`}
+              className={`badge badge-soft fs-10 badge-soft-${state === 'Active' ? 'success' : state === 'Inactive' || state === 'Not delegated' || state === 'Closed' ? 'secondary' : 'warning'}`}
             >
               {state}
             </span>
@@ -391,6 +441,46 @@ const StakeAccount = () => {
             />
           </Col>
         </Row>
+
+        {lifetimes.length > 1 && (
+          <SectionCard
+            title="Accounts at This Address"
+            icon="refresh-cw"
+            info="A stake account's address can be reused: when its account is closed (a stake pool merging its transient account, say) and a new one is opened at the same address, that's a new account. Each is shown on its own."
+          >
+            <p className="fs-9 text-body-secondary mb-2">
+              This address has held {lifetimes.length} stake accounts in turn.
+              Showing one at a time:
+            </p>
+            <div className="d-flex flex-wrap gap-2">
+              {lifetimes.map((l, i) => (
+                <Button
+                  key={l.lifetime}
+                  size="sm"
+                  variant={
+                    l.lifetime === lifetime ? 'primary' : 'soft-secondary'
+                  }
+                  onClick={() => {
+                    setPickedLifetime(l.lifetime);
+                    setPage(0);
+                  }}
+                >
+                  {i === 0 ? 'Current' : `Account ${l.lifetime + 1}`}
+                  <span className="ms-2 opacity-75">
+                    {l.from === l.to
+                      ? `epoch ${l.from}`
+                      : `epochs ${l.from}–${l.to}`}
+                    {l.endedBy === 'recreated'
+                      ? ' · closed'
+                      : l.endedBy === 'left'
+                        ? ' · left'
+                        : ''}
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </SectionCard>
+        )}
 
         <SectionCard
           title="Stake History"
