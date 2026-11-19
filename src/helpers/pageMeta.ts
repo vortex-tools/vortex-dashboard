@@ -814,6 +814,23 @@ export const pageMeta = (
         ],
         archive: true
       };
+    const au = path.match(
+      /^\/stake\/authority\/([1-9A-HJ-NP-Za-km-z]{32,44})$/
+    );
+    if (au)
+      return env.SITE !== 'staging'
+        ? MISSING
+        : {
+            title: `${solana(env)} stake authority ${short(au[1])}`,
+            description: `${solana(env)} stake authority ${au[1]}: the stake accounts it is the withdrawer, staker or custodian of, their stake and rewards every epoch, and the validators they delegate to.`,
+            canonical: path,
+            crumbs: [
+              HOME,
+              { name: 'Stake Explorer', path: '/stake' },
+              { name: short(au[1]), path }
+            ],
+            archive: true
+          };
     const m = path.match(/^\/stake\/account\/([1-9A-HJ-NP-Za-km-z]{32,44})$/);
     if (env.SITE !== 'staging' || !m) return MISSING;
     return {

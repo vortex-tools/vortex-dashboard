@@ -92,6 +92,9 @@ const StakeExplorer = IS_STAGING
 const StakeVoteAccount = IS_STAGING
   ? page(() => import('pages/StakeVoteAccount'))
   : () => null;
+const StakeAuthority = IS_STAGING
+  ? page(() => import('pages/StakeAuthority'))
+  : () => null;
 const StakeAccount = IS_STAGING
   ? page(() => import('pages/StakeAccount'))
   : () => null;
@@ -266,6 +269,10 @@ const routes: RouteObject[] = [
                     {
                       path: '/stake/vote/:voteKey',
                       element: <StakeVoteAccount />
+                    },
+                    {
+                      path: '/stake/authority/:address',
+                      element: <StakeAuthority />
                     },
                     {
                       path: '/stake/account/:address',

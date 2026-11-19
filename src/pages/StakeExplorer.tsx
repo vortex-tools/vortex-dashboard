@@ -14,7 +14,7 @@ const StakeExplorer = () => {
     {
       icon: 'key',
       title: 'Staker or withdrawer',
-      text: 'Every stake account it controls and where that stake sits, epoch by epoch. Coming next.'
+      text: 'Every stake account it controls and where that stake sits, epoch by epoch.'
     },
     {
       icon: 'server',

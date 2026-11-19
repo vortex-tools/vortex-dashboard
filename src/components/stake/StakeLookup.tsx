@@ -45,9 +45,11 @@ const StakeLookup = ({ compact = false }: { compact?: boolean }) => {
       ? voteKey || kind === 'vote'
         ? `/stake/vote/${voteKey ?? address}`
         : null
-      : kind === 'stake'
-        ? `/stake/account/${address}`
-        : null;
+      : kind === 'withdrawer' || kind === 'staker' || kind === 'custodian'
+        ? `/stake/authority/${address}?role=${kind}`
+        : kind === 'stake'
+          ? `/stake/account/${address}`
+          : null;
 
   // Validators by name (or a piece of an address), as the site search
   // matches them: shown as you type anything that isn't a whole address.

@@ -52,6 +52,7 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/epoch\/?$/, SKELETON.epochs],
   [/^\/epoch\/\d+/, SKELETON.epochPage],
   [/^\/stake\/account\//, SKELETON.stakeAccount],
+  [/^\/stake\/authority\//, SKELETON.stakeAuthority],
   [/^\/stake\/vote\//, SKELETON.stakeVoteAccount],
   [/^\/stake\/?$/, SKELETON.stakeExplorer],
   [/^\/(client-versions|cluster-health)/, SKELETON.clientVersions],
