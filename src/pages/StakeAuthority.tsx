@@ -93,8 +93,14 @@ const historySchema = z.object({
       inflationReward: num,
       blockReward: num,
       byValidator: z.array(holding).catch([]),
+      // The rest together; validators null for large authorities.
       other: z
-        .object({ accounts: num, delegatedStake: num, effective: num })
+        .object({
+          validators: num.optional().catch(null),
+          accounts: num,
+          delegatedStake: num,
+          effective: num
+        })
         .nullable()
         .optional()
         .catch(null)
@@ -247,8 +253,19 @@ const WhereCard = ({ row }: { row: EpochRow }) => {
   const total = row.effective ?? 0;
   const items = [
     ...row.byValidator,
-    ...(row.other?.accounts ? [{ voteKey: '', name: null, ...row.other }] : [])
+    ...(row.other?.accounts
+      ? [
+          {
+            voteKey: '',
+            name: null,
+            accounts: row.other.accounts,
+            delegatedStake: row.other.delegatedStake,
+            effective: row.other.effective
+          }
+        ]
+      : [])
   ];
+  const others = row.other?.validators;
   return (
     <SectionCard
       title="Where Its Stake Sits"
@@ -274,7 +291,11 @@ const WhereCard = ({ row }: { row: EpochRow }) => {
                       {v.name ?? short(v.voteKey)}
                     </Link>
                   ) : (
-                    <span className="text-body-tertiary">Other validators</span>
+                    <span className="text-body-tertiary">
+                      {others != null
+                        ? `Other ${others.toLocaleString()} validator${others === 1 ? '' : 's'}`
+                        : 'Other validators'}
+                    </span>
                   )}
                 </td>
                 <td className="text-end">
