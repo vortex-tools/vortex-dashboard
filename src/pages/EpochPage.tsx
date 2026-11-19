@@ -330,8 +330,9 @@ const EpochPage = () => {
   const features = context?.featuresState.data.get(FEATURES_KEY);
   const [stakes, setStakes] = useState<Stakes | null | undefined>(undefined);
   const [events, setEvents] = useState<Array<{ kind: string }> | null>(null);
-  // null: the API has no /epoch (yet) or not this epoch.
-  const [row, setRow] = useState<EpochRow | null>(null);
+  // undefined while loading; null: the API has no /epoch (yet) or not
+  // this epoch.
+  const [row, setRow] = useState<EpochRow | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -342,7 +343,7 @@ const EpochPage = () => {
     let alive = true;
     setStakes(undefined);
     setEvents(null);
-    setRow(null);
+    setRow(undefined);
     setError(null);
     getJson(`/epoch?epoch=${epoch}`, epochRowSchema).then(
       r => alive && setRow(r),
@@ -368,7 +369,7 @@ const EpochPage = () => {
         .sort((a, b) => b.leaderScheduleStake - a.leaderScheduleStake),
     [stakes]
   );
-  const total = stakes?.totalStake ?? 0;
+  const total = stakes?.totalStake ?? row?.totalStake ?? 0;
   const nak = useMemo(
     () =>
       total
@@ -445,18 +446,19 @@ const EpochPage = () => {
         </UntrackedState>
       </div>
     );
-  if (error || stakes === null)
+  // The page stands on either source: the stake set or the epoch's row.
+  if (error || (stakes === null && row === null))
     return (
       <div className="mb-9">
         {header}
         <UntrackedState>
           {error
             ? `Couldn't load epoch ${epoch} (${error}).`
-            : `No stake set is recorded for epoch ${epoch}.`}
+            : `Nothing is recorded for epoch ${epoch} yet.`}
         </UntrackedState>
       </div>
     );
-  if (stakes === undefined)
+  if (stakes === undefined || row === undefined)
     return (
       <div className="mb-9">
         {header}
@@ -488,7 +490,7 @@ const EpochPage = () => {
             <StatCard
               mono={false}
               label="Total Stake"
-              value={sol(total)}
+              value={total ? sol(total) : '—'}
               sublabel="frozen into the leader schedule"
             />
           </Col>
@@ -496,7 +498,11 @@ const EpochPage = () => {
             <StatCard
               mono={false}
               label="Staked Validators"
-              value={ranked.length.toLocaleString()}
+              value={
+                stakes
+                  ? ranked.length.toLocaleString()
+                  : (row?.stakedValidators?.toLocaleString() ?? '—')
+              }
             />
           </Col>
           <Col xs={6} xl={3}>
@@ -530,40 +536,46 @@ const EpochPage = () => {
           icon="server"
           info={`The ${TOP} vote accounts with the most stake in this epoch's leader schedule, with their share of all stake and their inflation commission as frozen.`}
         >
-          <Table responsive size="sm" className="data-table fs-9 mb-0">
-            <thead>
-              <tr className="text-nowrap">
-                <th className="text-end">#</th>
-                <th>Validator</th>
-                <th className="text-end">Stake</th>
-                <th className="text-end">Share</th>
-                <th className="text-end">Commission</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.slice(0, TOP).map((v, i) => (
-                <tr key={v.voteKey}>
-                  <td className="text-end text-body-tertiary">{i + 1}</td>
-                  <td className="text-truncate" style={{ maxWidth: '16rem' }}>
-                    <ValidatorLink address={v.voteKey}>
-                      {directory?.get(v.voteKey)?.name ?? short(v.voteKey)}
-                    </ValidatorLink>
-                  </td>
-                  <td className="text-end text-nowrap">
-                    {sol(v.leaderScheduleStake)}
-                  </td>
-                  <td className="text-end">
-                    {total ? pct(v.leaderScheduleStake / total, 2) : '—'}
-                  </td>
-                  <td className="text-end">
-                    {v.inflationCommissionBps == null
-                      ? '—'
-                      : `${v.inflationCommissionBps / 100}%`}
-                  </td>
+          {!stakes ? (
+            <p className="fs-9 text-body-tertiary mb-0">
+              This epoch&apos;s stake set isn&apos;t recorded yet.
+            </p>
+          ) : (
+            <Table responsive size="sm" className="data-table fs-9 mb-0">
+              <thead>
+                <tr className="text-nowrap">
+                  <th className="text-end">#</th>
+                  <th>Validator</th>
+                  <th className="text-end">Stake</th>
+                  <th className="text-end">Share</th>
+                  <th className="text-end">Commission</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {ranked.slice(0, TOP).map((v, i) => (
+                  <tr key={v.voteKey}>
+                    <td className="text-end text-body-tertiary">{i + 1}</td>
+                    <td className="text-truncate" style={{ maxWidth: '16rem' }}>
+                      <ValidatorLink address={v.voteKey}>
+                        {directory?.get(v.voteKey)?.name ?? short(v.voteKey)}
+                      </ValidatorLink>
+                    </td>
+                    <td className="text-end text-nowrap">
+                      {sol(v.leaderScheduleStake)}
+                    </td>
+                    <td className="text-end">
+                      {total ? pct(v.leaderScheduleStake / total, 2) : '—'}
+                    </td>
+                    <td className="text-end">
+                      {v.inflationCommissionBps == null
+                        ? '—'
+                        : `${v.inflationCommissionBps / 100}%`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
         </SectionCard>
 
         <Row className="g-3">
