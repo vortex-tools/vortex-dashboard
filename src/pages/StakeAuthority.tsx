@@ -574,7 +574,7 @@ const StakeAuthority = () => {
         </Link>
         <h1 className="h3">{short(address)}</h1>
         <p className="text-body-tertiary lh-sm mb-0 mt-1">
-          {ROLE_LABEL[role]} of stake accounts
+          {ROLE_LABEL[role]} of stake accounts: {ROLE_WHAT[role]} them
         </p>
       </div>
       <div className="col-12 col-md-auto align-self-end d-flex flex-column align-items-md-end gap-2">
@@ -681,10 +681,6 @@ const StakeAuthority = () => {
             />
           </Col>
         </Row>
-        <p className="fs-9 text-body-secondary mb-0">
-          The {ROLE_LABEL[role].toLowerCase()} {ROLE_WHAT[role]} the stake
-          accounts that name it.
-        </p>
 
         <SectionCard
           title="Stake History"

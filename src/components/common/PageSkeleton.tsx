@@ -491,7 +491,6 @@ export const SKELETON = {
   stakeVoteAccount: [{ stats: 4 }, [full(351, 'chart')], [full(1594)]],
   stakeAuthority: [
     { stats: 4 },
-    { note: true },
     [full(351, 'chart')],
     [full(420)],
     [full(1700)]
