@@ -777,6 +777,32 @@ export const pageMeta = (
       archive: true
     };
   }
+  // Epochs: staging-only pages for now, an index and one per epoch.
+  if (path === '/epoch')
+    return env.SITE !== 'staging'
+      ? MISSING
+      : {
+          title: `${solana(env)} epochs`,
+          description: `Every ${solana(env)} epoch, each with its own page: stake, validators, feature activations and activity.`,
+          canonical: path,
+          crumbs: [HOME, { name: 'Epochs', path }],
+          archive: false
+        };
+  if (seg[1] === 'epoch') {
+    const m = path.match(/^\/epoch\/(\d+)$/);
+    if (env.SITE !== 'staging' || !m) return MISSING;
+    return {
+      title: `${solana(env)} epoch ${m[1]}`,
+      description: `${solana(env)} epoch ${m[1]}: total stake, staked validators, Nakamoto coefficient, the largest validators, feature gates activated and validator activity.`,
+      canonical: path,
+      crumbs: [
+        HOME,
+        { name: 'Epochs', path: '/epoch' },
+        { name: `Epoch ${m[1]}`, path }
+      ],
+      archive: true
+    };
+  }
   // Boundary Replay: a staging-only page too.
   if (path === '/replay')
     return env.SITE !== 'staging'

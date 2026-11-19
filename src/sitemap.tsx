@@ -62,6 +62,8 @@ const clusterPages = (alpenglowActive: boolean): Route[] => [
         { name: 'Block Builders', icon: 'package', path: '/block-builders' },
         // Any stake account, staker or withdrawer, with its history.
         { name: 'Stake Explorer', icon: 'search', path: '/stake' },
+        // Every epoch, a page each.
+        { name: 'Epochs', icon: 'calendar', path: '/epoch' },
         // Mainnet epoch boundaries replayed by vortex-replay.
         { name: 'Boundary Replay', icon: 'grid', path: '/replay' }
       ]

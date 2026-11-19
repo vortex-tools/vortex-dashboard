@@ -95,6 +95,10 @@ const StakeVoteAccount = IS_STAGING
 const StakeAccount = IS_STAGING
   ? page(() => import('pages/StakeAccount'))
   : () => null;
+const Epochs = IS_STAGING ? page(() => import('pages/Epochs')) : () => null;
+const EpochPage = IS_STAGING
+  ? page(() => import('pages/EpochPage'))
+  : () => null;
 const BoundaryReplay = IS_STAGING
   ? page(() => import('pages/BoundaryReplay'))
   : () => null;
@@ -256,6 +260,8 @@ const routes: RouteObject[] = [
                 ? [
                     { path: '/block-builders', element: <BlockBuilders /> },
                     { path: '/replay', element: <BoundaryReplay /> },
+                    { path: '/epoch', element: <Epochs /> },
+                    { path: '/epoch/:epoch', element: <EpochPage /> },
                     { path: '/stake', element: <StakeExplorer /> },
                     {
                       path: '/stake/vote/:voteKey',

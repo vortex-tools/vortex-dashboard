@@ -49,6 +49,8 @@ const PAGE: Array<[RegExp, SkeletonRow[], number?]> = [
   [/^\/decentralization/, SKELETON.decentralization],
   [/^\/block-builders/, SKELETON.blockBuilders],
   [/^\/replay\/?$/, SKELETON.boundaryReplay],
+  [/^\/epoch\/?$/, SKELETON.epochs],
+  [/^\/epoch\/\d+/, SKELETON.epochPage],
   [/^\/stake\/account\//, SKELETON.stakeAccount],
   [/^\/stake\/vote\//, SKELETON.stakeVoteAccount],
   [/^\/stake\/?$/, SKELETON.stakeExplorer],

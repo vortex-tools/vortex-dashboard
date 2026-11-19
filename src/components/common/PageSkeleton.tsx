@@ -498,6 +498,16 @@ export const SKELETON = {
     ],
     [full(820)]
   ],
+  epochs: [[full(1800)]],
+  epochPage: [
+    { stats: 4, sub: 1 },
+    [full(666)],
+    [
+      { w: 4, h: 183, kind: 'list' },
+      { w: 4, h: 183, kind: 'list' },
+      { w: 4, h: 183, kind: 'block' }
+    ]
+  ],
   boundaryReplay: [
     { stats: 4 },
     [full(764, 'block')],
