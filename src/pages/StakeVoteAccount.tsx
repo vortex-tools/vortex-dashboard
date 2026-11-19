@@ -373,23 +373,31 @@ const latestLoadedEpoch = (current: number) =>
     return lo < 0 ? null : save(lo);
   })());
 
-/** A staker or withdrawer: a stake pool's name (linked) when it's one of
- *  a pool's authorities, else the short address. */
+/** A staker or withdrawer, linked to its explorer page: named as the
+ *  stake pool it belongs to where it is one, else the short address. */
 const Authority = ({
   address,
+  role,
   pools
 }: {
   address: string | null;
+  role: 'staker' | 'withdrawer';
   pools: Map<string, string>;
 }) => {
   if (!address) return <>—</>;
   const pool = pools.get(address);
-  return pool ? (
-    <Link to={`/pool/${encodeURIComponent(pool)}`} title={address}>
-      {pool}
+  return (
+    <Link
+      to={`/stake/authority/${address}?role=${role}`}
+      title={
+        pool
+          ? `${pool}'s ${role === 'staker' ? 'stake' : 'withdraw'} authority, ${address}`
+          : address
+      }
+      className={pool ? undefined : 'text-body-secondary'}
+    >
+      {pool ?? short(address)}
     </Link>
-  ) : (
-    <span className="text-body-tertiary">{short(address)}</span>
   );
 };
 
@@ -815,10 +823,18 @@ const DelegationsCard = ({
                         )}
                       </td>
                       <td className="text-nowrap">
-                        <Authority address={d.staker} pools={poolOf} />
+                        <Authority
+                          address={d.staker}
+                          role="staker"
+                          pools={poolOf}
+                        />
                       </td>
                       <td className="text-nowrap">
-                        <Authority address={d.withdrawer} pools={poolOf} />
+                        <Authority
+                          address={d.withdrawer}
+                          role="withdrawer"
+                          pools={poolOf}
+                        />
                       </td>
                     </tr>
                   );
