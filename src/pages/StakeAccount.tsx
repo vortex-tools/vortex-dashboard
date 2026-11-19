@@ -104,6 +104,12 @@ type EpochRow = History['epochs'][number];
 const sol = (l: number | null | undefined, d = 2) =>
   l == null ? '—' : formatLamports(l, d);
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
+/** Its stake at work in the epoch: effective (which still includes
+ *  stake cooling down) plus stake warming up (a pool's transient account
+ *  is only ever activating). Stake that finished deactivating still names
+ *  the validator but isn't counted. */
+const stakeOf = (r: EpochRow | undefined) =>
+  !r ? null : (r.effective ?? 0) + (r.activating ?? 0);
 const rewardOf = (r: EpochRow) =>
   r.inflationReward == null && r.blockReward == null
     ? null
@@ -169,7 +175,8 @@ const HistoryChart = ({ rows }: { rows: EpochRow[] }) => {
         return (
           `<div class="fw-bold mb-1">Epoch ${r.epoch}</div>` +
           `<div>${r.name ?? (r.voteKey ? short(r.voteKey) : 'Not delegated')}</div>` +
-          `<div>Effective <b>${sol(r.effective)}</b></div>` +
+          `<div>Stake <b>${sol(stakeOf(r))}</b></div>` +
+          `<div>Effective ${sol(r.effective)}</div>` +
           (r.activating ? `<div>Activating ${sol(r.activating)}</div>` : '') +
           (r.deactivating
             ? `<div>Deactivating ${sol(r.deactivating)}</div>`
@@ -224,8 +231,17 @@ const HistoryChart = ({ rows }: { rows: EpochRow[] }) => {
         step: 'end',
         symbol: 'none',
         color: getThemeColor('primary'),
-        areaStyle: { opacity: 0.12 },
-        data: rows.map(r => r.effective),
+        lineStyle: { width: 0 },
+        areaStyle: { opacity: 0.18 },
+        data: rows.map(r => r.effective)
+      },
+      {
+        name: 'Delegated stake',
+        type: 'line',
+        step: 'end',
+        symbol: rows.length === 1 ? 'circle' : 'none',
+        color: getThemeColor('primary'),
+        data: rows.map(stakeOf),
         markLine: {
           silent: true,
           symbol: 'none',
@@ -323,7 +339,9 @@ const StakeAccount = () => {
   const nowAuth = auth[auth.length - 1];
   const newestFirst = [...rows].reverse();
   const pages = Math.ceil(newestFirst.length / PAGE);
-  const ended = lifetimes.find(l => l.lifetime === lifetime)?.endedBy;
+  const ended =
+    lifetimes.find(l => l.lifetime === lifetime)?.endedBy ??
+    (data?.summary?.state === 'left' ? 'left' : null);
   const state = ended
     ? ended === 'recreated'
       ? 'Closed'
@@ -395,14 +413,18 @@ const StakeAccount = () => {
           <Col xs={6} xl={3}>
             <StatCard
               mono={false}
-              label="Effective Stake"
-              value={sol(latest?.effective, 0)}
-              sublabel={latest ? `epoch ${latest.epoch}` : undefined}
+              label={ended ? 'Last Stake' : 'Stake'}
+              value={sol(stakeOf(latest), 0)}
+              sublabel={
+                latest
+                  ? `epoch ${latest.epoch}${latest.activating ? ` · ${sol(latest.activating, 0)} activating` : latest.deactivating ? ` · ${sol(latest.deactivating, 0)} deactivating` : !stakeOf(latest) && latest.delegatedStake ? ` · ${sol(latest.delegatedStake, 0)} deactivated` : ''}`
+                  : undefined
+              }
             />
           </Col>
           <Col xs={6} xl={3}>
             <StatCard
-              label="Delegated To"
+              label={ended ? 'Last Delegated To' : 'Delegated To'}
               mono={false}
               value={
                 latest?.voteKey ? (
@@ -414,9 +436,11 @@ const StakeAccount = () => {
                 )
               }
               sublabel={
-                runs.length
-                  ? `since epoch ${runs[runs.length - 1].from} · ${runs.length} validator run${runs.length === 1 ? '' : 's'}`
-                  : undefined
+                !runs.length
+                  ? undefined
+                  : ended
+                    ? `until epoch ${latest?.epoch}, then ${ended === 'recreated' ? 'closed' : 'left'}`
+                    : `since epoch ${runs[runs.length - 1].from} · ${runs.length} validator run${runs.length === 1 ? '' : 's'}`
               }
             />
           </Col>
@@ -465,7 +489,7 @@ const StakeAccount = () => {
                     setPage(0);
                   }}
                 >
-                  {i === 0 ? 'Current' : `Account ${l.lifetime + 1}`}
+                  {i === 0 ? 'Latest' : `Account ${l.lifetime + 1}`}
                   <span className="ms-2 opacity-75">
                     {l.from === l.to
                       ? `epoch ${l.from}`
@@ -556,7 +580,8 @@ const StakeAccount = () => {
                       value={nowAuth.withdrawer}
                     />
                   )}
-                  {nowAuth.custodian && (
+                  {/* The system program's address means no custodian. */}
+                  {nowAuth.custodian && !/^1+$/.test(nowAuth.custodian) && (
                     <AddressLine
                       mono={false}
                       label="Custodian"
