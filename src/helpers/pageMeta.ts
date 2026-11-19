@@ -509,7 +509,6 @@ export interface FeatureFacts {
   links?: { introducedIn?: { repo: string; pr: number } | null } | null;
 }
 
-/** The /simd fields the tags use. */
 /** What /epoch?epoch=<n> says of an epoch (times in unix seconds). */
 export interface EpochFacts {
   epoch: number;
@@ -539,6 +538,7 @@ const epochDates = (e: EpochFacts | null | undefined) => {
   return ay === by ? `${a.slice(0, -6)} to ${b}` : `${a} to ${b}`;
 };
 
+/** The /simd fields the tags use. */
 export interface SimdFacts {
   simd: {
     simd: number;
