@@ -68,7 +68,9 @@ const historySchema = z.object({
       inflationReward: num,
       blockReward: num,
       activationEpoch: num,
-      deactivationEpoch: num
+      deactivationEpoch: num,
+      // activating | active | deactivating | inactive (null: unknown).
+      state: z.string().nullable().optional().catch(null)
     })
   ),
   authorities: z
@@ -332,8 +334,22 @@ const StakeAccount = () => {
         .sort((a, b) => a.epoch - b.epoch),
     [data, lifetime]
   );
-  const runs = useMemo(() => runsOf(rows), [rows]);
-  const latest = rows[rows.length - 1];
+  // Epochs its stake was at work: an inactive account still names its
+  // validator (until withdrawn or delegated again) but isn't delegating.
+  const working = useMemo(
+    () =>
+      rows.filter(r =>
+        r.state ? r.state !== 'inactive' : (stakeOf(r) ?? 0) > 0
+      ),
+    [rows]
+  );
+  const runs = useMemo(() => runsOf(working), [working]);
+  const latest = working[working.length - 1] ?? rows[rows.length - 1];
+  // Inactive since this epoch (it stopped working before the last row).
+  const inactiveFrom =
+    working.length && working.length < rows.length
+      ? rows.find(r => r.epoch > working[working.length - 1].epoch)?.epoch
+      : undefined;
   const totalRewards = rows.reduce((a, r) => a + (rewardOf(r) ?? 0), 0);
   const auth = data?.authorities ?? [];
   const nowAuth = auth[auth.length - 1];
@@ -439,7 +455,9 @@ const StakeAccount = () => {
                 !runs.length
                   ? undefined
                   : ended
-                    ? `until epoch ${latest?.epoch}, then ${ended === 'recreated' ? 'closed' : 'left'}`
+                    ? inactiveFrom != null
+                      ? `until epoch ${latest?.epoch}, inactive from ${inactiveFrom}`
+                      : `until epoch ${latest?.epoch}, then ${ended === 'recreated' ? 'closed' : 'left'}`
                     : `since epoch ${runs[runs.length - 1].from} · ${runs.length} validator run${runs.length === 1 ? '' : 's'}`
               }
             />

@@ -73,6 +73,10 @@ const delegationsSchema = z.object({
         effective: num,
         activating: num,
         deactivating: num,
+        // activating | active | deactivating | inactive (finished
+        // deactivating: still delegated here until withdrawn, earning
+        // nothing).
+        state: z.string().nullable().optional().catch(null),
         inflationReward: num,
         blockReward: num,
         staker: z.string().nullable().catch(null),
@@ -199,12 +203,19 @@ const CHANGE: Record<string, { label: string; tone: string }> = {
 
 type Sort = 'effective' | 'rewards' | 'change';
 const SORTS: Sort[] = ['effective', 'rewards', 'change'];
-type Filter = 'all' | 'changed' | 'activating' | 'deactivating' | 'gone';
+type Filter =
+  | 'all'
+  | 'changed'
+  | 'activating'
+  | 'deactivating'
+  | 'inactive'
+  | 'gone';
 const FILTERS: Filter[] = [
   'all',
   'changed',
   'activating',
   'deactivating',
+  'inactive',
   'gone'
 ];
 
@@ -467,6 +478,8 @@ const DelegationsCard = ({
   const [byFilter, setByFilter] = useState<
     Partial<Record<Filter, Delegations[]>>
   >({});
+  // Filters whose first page failed (one the API doesn't take yet).
+  const [failed, setFailed] = useState<Set<Filter>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const load = (f: Filter, cursor: string | null) => {
@@ -486,11 +499,17 @@ const DelegationsCard = ({
   useEffect(() => {
     let alive = true;
     setByFilter({});
+    setFailed(new Set());
     setError(null);
     for (const f of FILTERS)
       load(f, null).then(
         p => alive && setByFilter(b => ({ ...b, [f]: [p] })),
-        e => alive && f === 'all' && setError(String(e))
+        e => {
+          if (!alive) return;
+          // The whole card fails with All; another filter just says so.
+          if (f === 'all') setError(String(e));
+          else setFailed(x => new Set(x).add(f));
+        }
       );
     return () => {
       alive = false;
@@ -514,7 +533,7 @@ const DelegationsCard = ({
   const totals = (byFilter.all ?? pages)[0]?.changeTotals ?? null;
   const next = pages[pages.length - 1]?.nextCursor ?? null;
   const total = pages[0]?.total ?? null;
-  const waiting = !byFilter[filter];
+  const waiting = !byFilter[filter] && !failed.has(filter);
   // Stake pools' authorities, to name them (a pool's own stake accounts:
   // its validator and transient accounts, reused epoch after epoch).
   const context = useContext(VortexDataContext);
@@ -571,6 +590,7 @@ const DelegationsCard = ({
                 ['changed', 'Changed'],
                 ['activating', 'Activating'],
                 ['deactivating', 'Deactivating'],
+                ['inactive', 'Inactive'],
                 ['gone', 'Left']
               ] as const
             ).map(([k, l]) => (
@@ -616,7 +636,11 @@ const DelegationsCard = ({
               </span>
             </div>
           )}
-          {filter === 'gone' ? (
+          {failed.has(filter) ? (
+            <p className="fs-9 text-body-tertiary mb-0">
+              This filter isn&apos;t available from the API yet.
+            </p>
+          ) : filter === 'gone' ? (
             <Table responsive size="sm" className="data-table fs-9 mb-0">
               <thead>
                 <tr className="text-nowrap">
@@ -679,10 +703,18 @@ const DelegationsCard = ({
                   const delta = d.change?.delta;
                   return (
                     <tr key={d.stakeAccount}>
-                      <td>
+                      <td className="text-nowrap">
                         <Link to={`/stake/account/${d.stakeAccount}`}>
                           {short(d.stakeAccount)}
                         </Link>
+                        {d.state === 'inactive' && (
+                          <span
+                            className="badge badge-soft badge-soft-secondary ms-2"
+                            title="Finished deactivating: still delegated here until it's withdrawn or delegated again, but earning nothing and counting toward no stake."
+                          >
+                            Inactive
+                          </span>
+                        )}
                       </td>
                       <td className="text-end text-nowrap">
                         {sol(d.effective, 2)}

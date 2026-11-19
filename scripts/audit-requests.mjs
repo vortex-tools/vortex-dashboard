@@ -26,11 +26,11 @@ const LOAD_MS = 3000;
 // Endpoints allowed more than MAX_SAME calls on load, and how many: the
 // production windows table prefetches each filter's first page and the
 // next page so switching is instant (Justin, 2026-10-22 and 2026-11-14);
-// the Stake explorer's delegations table its five filters' first pages
+// the Stake explorer's delegations table its six filters' first pages
 // (Justin, 2026-11-18: switching filter shouldn't need a request).
 const ALLOW_SAME = {
   '/epochs/production/windows': 5,
-  '/epochs/delegations': 5
+  '/epochs/delegations': 6
 };
 // A production build (vite preview), not the dev server: React's
 // StrictMode runs effects twice in dev, which would read as duplicates.
