@@ -78,6 +78,13 @@ const candidateText = (a: Announcement) =>
         ? 'ready for all validators'
         : null;
 
+/** Whether a post is still a notice: the API's `active` where it says,
+ *  else not a finished restart and not replaced by a later post. */
+export const isCurrent = (a: Announcement, all: Announcement[]) =>
+  a.active != null
+    ? a.active
+    : a.restart?.finished !== true && !isSuperseded(a, all);
+
 /** A test run stands apart; any other upgrade or downgrade post is
  *  replaced by a later one for the same client (4.4.0-rc.1 for 10% of
  *  stake, then for 20%, then 4.4.0 for everyone: only the last matters). */

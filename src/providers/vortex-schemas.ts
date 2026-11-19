@@ -2769,6 +2769,11 @@ export const announcementSchema = z.object({
   // The original post.
   url: z.string().nullable().catch(null),
   urgent: z.boolean().catch(false),
+  // Still current as a notice (the API's expiry rules: a restart until
+  // finished, a post naming epochs until the last passes, an upgrade
+  // until replaced or 14 days, security 7, others 3). Null or absent: the
+  // API doesn't say, and the page's own rules decide.
+  active: z.boolean().nullable().optional().catch(null),
   ...announcementFactsSchema,
   // The Agave wiki pages the post links, each with its own facts (the
   // top-level facts are the post's, filled in from these).

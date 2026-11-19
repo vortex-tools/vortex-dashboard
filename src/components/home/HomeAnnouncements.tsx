@@ -107,6 +107,8 @@ const HomeAnnouncements = () => {
     const out: Item[] = [];
     for (const a of announcements ?? []) {
       if (a.cluster !== cluster) continue;
+      // Expired as a notice (the API's rules): history, not listed here.
+      if (a.active === false) continue;
       // A restart the cluster has finished is history, halt or not.
       if (a.kind === 'restart') {
         if (a.restart?.finished !== true && (!!halt || postedThisEpoch(a)))
