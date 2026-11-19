@@ -1,3 +1,4 @@
+import { downloadCsv } from 'helpers/csv';
 import Button from 'components/base/Button';
 import { slotText } from 'helpers/slot';
 import SlotNumber from 'components/common/SlotNumber';
@@ -27,11 +28,6 @@ const clientOf = (rec: ParticipationLeaderboardRecord | undefined) =>
   rec
     ? [rec.softwareBase, rec.softwareVersion].filter(Boolean).join(' ') || null
     : null;
-
-const csvCell = (v: string | number | null | undefined) => {
-  const s = v == null ? '' : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
 
 /**
  * Online voters left out of a slot's votes - the first rows, all on
@@ -107,7 +103,8 @@ const SlotMissingVoters = ({
     totalStake ? `${((stake / totalStake) * 100).toFixed(2)}%` : '—';
 
   const download = (rows: Missing[]) => {
-    const lines = [
+    downloadCsv(
+      `slot-${votedSlot}-left-out-voters.csv`,
       [
         'name',
         'voteAddress',
@@ -116,8 +113,8 @@ const SlotMissingVoters = ({
         'provider',
         'client',
         'stakeSol'
-      ].join(','),
-      ...rows.map(r => {
+      ],
+      rows.map(r => {
         const rec = byVote.get(r.voteAddress);
         return [
           nameOf(r.nodeAddress, r.voteAddress),
@@ -127,19 +124,9 @@ const SlotMissingVoters = ({
           rec?.provider,
           clientOf(rec),
           (r.stake / 1e9).toFixed(0)
-        ]
-          .map(csvCell)
-          .join(',');
+        ];
       })
-    ];
-    const url = URL.createObjectURL(
-      new Blob([lines.join('\n')], { type: 'text/csv' })
     );
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `slot-${votedSlot}-left-out-voters.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const slotLink = (n: number) => (

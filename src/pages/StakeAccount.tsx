@@ -11,6 +11,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import AddressLine from 'components/common/AddressLine';
 import PageSkeleton, { SKELETON } from 'components/common/PageSkeleton';
 import StakeLookup from 'components/stake/StakeLookup';
+import { csvSol, downloadCsv } from 'helpers/csv';
 import usePoolAuthorities from 'components/stake/usePoolAuthorities';
 import SectionCard from 'components/common/SectionCard';
 import StatCard from 'components/common/StatCard';
@@ -71,7 +72,10 @@ const historySchema = z.object({
       activationEpoch: num,
       deactivationEpoch: num,
       // activating | active | deactivating | inactive (null: unknown).
-      state: z.string().nullable().optional().catch(null)
+      state: z.string().nullable().optional().catch(null),
+      // Its lockup in force at the epoch's end (so the epoch's rewards
+      // couldn't be withdrawn yet); null or absent: the API doesn't say.
+      locked: z.boolean().nullable().optional().catch(null)
     })
   ),
   authorities: z
@@ -309,6 +313,83 @@ const AuthorityNote = ({
  * with each validator (moves highlighted), and its authorities over time,
  * from /stake-accounts/history (one request). Staging only for now.
  */
+/** The lockup that applied at an epoch's end: the last authorities
+ *  change at or before it. */
+const lockupAt = (auth: History['authorities'], epoch: number) => {
+  let l: History['authorities'][number]['lockup'] = null;
+  for (const a of auth) if (a.epoch <= epoch) l = a.lockup;
+  return l;
+};
+
+/** Whether an epoch's rewards were locked: the API's answer, else what
+ *  the lockup alone settles (its epoch not passed, or its date still
+ *  ahead: locked; no lockup: not), else unknown - a date that has since
+ *  passed needs the epoch's clock. */
+const lockedAt = (r: EpochRow, auth: History['authorities']) => {
+  if (r.locked != null) return r.locked ? 'yes' : 'no';
+  const l = lockupAt(auth, r.epoch);
+  if (!l) return 'no';
+  if ((l.epoch ?? 0) > r.epoch) return 'yes';
+  if (!l.unixTimestamp) return 'no';
+  // A lockup date still ahead held every epoch so far.
+  if (l.unixTimestamp > Date.now() / 1000) return 'yes';
+  return '';
+};
+
+/** Every epoch of every account at the address, as a CSV. */
+const downloadHistory = (address: string, data: History) => {
+  const auth = [...data.authorities].sort((a, b) => a.epoch - b.epoch);
+  const rows = [...data.epochs].sort((a, b) => a.epoch - b.epoch);
+  downloadCsv(
+    `stake-account-${address}-rewards.csv`,
+    [
+      'epoch',
+      'stake_account',
+      'account_number',
+      'vote_account',
+      'validator',
+      'state',
+      'delegated_sol',
+      'effective_sol',
+      'activating_sol',
+      'deactivating_sol',
+      'inflation_reward_sol',
+      'block_reward_sol',
+      'reward_sol',
+      'reward_locked',
+      'lockup_epoch',
+      'lockup_unix_timestamp',
+      'staker',
+      'withdrawer'
+    ],
+    rows.map(r => {
+      const l = lockupAt(auth, r.epoch);
+      const a = [...auth].reverse().find(x => x.epoch <= r.epoch);
+      const reward = rewardOf(r);
+      return [
+        r.epoch,
+        address,
+        r.lifetime + 1,
+        r.voteKey,
+        r.name,
+        r.state,
+        csvSol(r.delegatedStake),
+        csvSol(r.effective),
+        csvSol(r.activating),
+        csvSol(r.deactivating),
+        csvSol(r.inflationReward),
+        csvSol(r.blockReward),
+        csvSol(reward),
+        reward ? lockedAt(r, auth) : '',
+        l?.epoch || '',
+        l?.unixTimestamp || '',
+        a?.staker,
+        a?.withdrawer
+      ];
+    })
+  );
+};
+
 const StakeAccount = () => {
   const pools = usePoolAuthorities();
   const { address = '' } = useParams();
@@ -700,30 +781,40 @@ const StakeAccount = () => {
         <SectionCard
           title="By Epoch"
           icon="list"
+          info="Download CSV: every epoch of every account this address has held (account_number), with its validator, stake, inflation and block rewards in SOL, and reward_locked - yes when the account's lockup was still in force at the epoch's end, so the reward couldn't be withdrawn yet; blank where only the lockup's date would decide it."
           aside={
-            pages > 1 ? (
-              <div className="d-flex align-items-center gap-2 fs-9">
-                <Button
-                  size="sm"
-                  variant="soft-secondary"
-                  disabled={page === 0}
-                  onClick={() => setPage(p => p - 1)}
-                >
-                  Newer
-                </Button>
-                <span className="text-body-tertiary">
-                  {page + 1} / {pages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="soft-secondary"
-                  disabled={page >= pages - 1}
-                  onClick={() => setPage(p => p + 1)}
-                >
-                  Older
-                </Button>
-              </div>
-            ) : undefined
+            <div className="d-flex align-items-center gap-2 fs-9">
+              <Button
+                size="sm"
+                variant="soft-primary"
+                onClick={() => data && downloadHistory(address, data)}
+              >
+                Download CSV
+              </Button>
+              {pages > 1 && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="soft-secondary"
+                    disabled={page === 0}
+                    onClick={() => setPage(p => p - 1)}
+                  >
+                    Newer
+                  </Button>
+                  <span className="text-body-tertiary">
+                    {page + 1} / {pages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="soft-secondary"
+                    disabled={page >= pages - 1}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    Older
+                  </Button>
+                </>
+              )}
+            </div>
           }
         >
           <Table responsive size="sm" className="data-table fs-9 mb-0">
