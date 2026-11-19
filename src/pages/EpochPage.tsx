@@ -84,6 +84,73 @@ const duration = (a: number | null, b: number | null) => {
   const h = (b - a) / 3600;
   return h >= 48 ? `${(h / 24).toFixed(1)} days` : `${h.toFixed(1)} hours`;
 };
+/** A length of time, in its largest sensible unit. */
+const span = (secs: number) =>
+  secs >= 3600
+    ? `${(secs / 3600).toFixed(1)} h`
+    : secs >= 60
+      ? `${Math.round(secs / 60)} min`
+      : `${Math.round(secs)} s`;
+
+/** The epoch's halts: each gap between blocks, its length, and the
+ *  restart announcement that matched it. */
+const HaltsCard = ({ halts }: { halts: NonNullable<EpochRow['halts']> }) => (
+  <SectionCard
+    title="Halts"
+    icon="alert-octagon"
+    info="Every gap of a minute or more between consecutive blocks in this epoch, with the restart announcement whose slots fall in it."
+  >
+    <Table responsive size="sm" className="data-table fs-9 mb-0">
+      <thead>
+        <tr className="text-nowrap">
+          <th>Stopped</th>
+          <th className="text-end">Length</th>
+          <th className="text-end">Last Block</th>
+          <th className="text-end">Next Block</th>
+          <th>Announcement</th>
+        </tr>
+      </thead>
+      <tbody>
+        {halts.map((h, i) => (
+          <tr key={`${h.lastBlockSlot}-${i}`}>
+            <td className="text-nowrap">{date(h.startTime)}</td>
+            <td className="text-end text-nowrap">
+              {h.durationSeconds == null ? '—' : span(h.durationSeconds)}
+            </td>
+            <td className="text-end">
+              {h.lastBlockSlot == null ? (
+                '—'
+              ) : (
+                <Link to={`/slot/${h.lastBlockSlot}`}>
+                  {h.lastBlockSlot.toLocaleString()}
+                </Link>
+              )}
+            </td>
+            <td className="text-end">
+              {h.nextBlockSlot == null ? (
+                '—'
+              ) : (
+                <Link to={`/slot/${h.nextBlockSlot}`}>
+                  {h.nextBlockSlot.toLocaleString()}
+                </Link>
+              )}
+            </td>
+            <td>
+              {h.announcement?.url ? (
+                <a href={h.announcement.url} target="_blank" rel="noreferrer">
+                  Restart post
+                </a>
+              ) : (
+                <span className="text-body-tertiary">—</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  </SectionCard>
+);
+
 // The API's rate: a fraction, or a percent if over 1.
 const ratePct = (r: number | null) =>
   r == null ? null : `${(r > 1 ? r : r * 100).toFixed(2)}%`;
@@ -123,6 +190,15 @@ const EpochFacts = ({ row }: { row: EpochRow }) => {
       title: 'Blocks',
       items: [
         ['Blocks', row.blocks?.toLocaleString() ?? null],
+        [
+          'Halts',
+          row.halts == null
+            ? null
+            : row.halts.length
+              ? `${row.halts.length} (${span(row.halts.reduce((a, h) => a + (h.durationSeconds ?? 0), 0))} in all)`
+              : 'none',
+          row.halts == null ? undefined : 'block gaps of a minute or more'
+        ],
         [
           'Skipped slots',
           row.skippedSlots?.toLocaleString() ?? null,
@@ -448,6 +524,7 @@ const EpochPage = () => {
         </Row>
 
         {row && <EpochFacts row={row} />}
+        {!!row?.halts?.length && <HaltsCard halts={row.halts} />}
         <SectionCard
           title="Largest Validators"
           icon="server"

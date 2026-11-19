@@ -30,7 +30,31 @@ export const epochRowSchema = z.object({
   joined: num,
   left: num,
   capitalization: num,
-  inflationRate: num
+  inflationRate: num,
+  // Gaps of 60 s or more between consecutive blocks: [] for none, null
+  // (or absent) before the epoch is scanned.
+  halts: z
+    .array(
+      z.object({
+        lastBlockSlot: num,
+        nextBlockSlot: num,
+        startTime: num,
+        endTime: num,
+        durationSeconds: num,
+        // The restart announcement whose slots fall in the gap.
+        announcement: z
+          .object({
+            id: z.union([z.string(), z.number()]).nullable().catch(null),
+            url: z.string().nullable().catch(null),
+            postedAt: num
+          })
+          .nullable()
+          .catch(null)
+      })
+    )
+    .nullable()
+    .optional()
+    .catch(null)
 });
 export type EpochRow = z.infer<typeof epochRowSchema>;
 
