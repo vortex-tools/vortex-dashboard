@@ -411,6 +411,14 @@ const StakeAccount = () => {
         // A 404 with no body is the route itself missing (an API without
         // the Stake explorer yet); the API's own 404 says why: no
         // histories stored yet, or none for this address.
+        // An address that doesn't parse (a typo): the API says so.
+        if (r.status === 400) {
+          const body = (await r.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          if (body?.error === 'invalidAddress')
+            return Promise.reject('invalid address');
+        }
         if (r.status === 404) {
           const body = (await r.text()).trim();
           if (!body) return Promise.reject('no route');
@@ -517,13 +525,15 @@ const StakeAccount = () => {
       <div className="mb-9">
         {header}
         <UntrackedState>
-          {error === 'not found'
-            ? 'No stake account at this address was delegated at the end of any recorded epoch. If it\u2019s a staker or withdrawer, look it up from the Stake Explorer.'
-            : error === 'not loaded'
-              ? 'Stake account histories are still loading, so this page can\u2019t show this account yet. Its delegations appear on the validator\u2019s Stake Explorer page in the meantime.'
-              : error === 'no route'
-                ? 'Stake history isn\u2019t served by this API yet: the Stake Explorer\u2019s data is still loading, and this page fills in once it\u2019s up.'
-                : `Couldn't load this stake account (${error}).`}
+          {error === 'invalid address'
+            ? 'That isn\u2019t a valid Solana address: check it for a typo (base58, 32\u201344 characters).'
+            : error === 'not found'
+              ? 'No stake account at this address was delegated at the end of any recorded epoch. If it\u2019s a staker or withdrawer, look it up from the Stake Explorer.'
+              : error === 'not loaded'
+                ? 'Stake account histories are still loading, so this page can\u2019t show this account yet. Its delegations appear on the validator\u2019s Stake Explorer page in the meantime.'
+                : error === 'no route'
+                  ? 'Stake history isn\u2019t served by this API yet: the Stake Explorer\u2019s data is still loading, and this page fills in once it\u2019s up.'
+                  : `Couldn't load this stake account (${error}).`}
         </UntrackedState>
       </div>
     );

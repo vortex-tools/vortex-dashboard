@@ -562,6 +562,14 @@ const StakeAuthority = () => {
     )
       .then(async r => {
         if (r.ok) return r.json();
+        // An address that doesn't parse (a typo): the API says so.
+        if (r.status === 400) {
+          const body = (await r.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          if (body?.error === 'invalidAddress')
+            return Promise.reject('invalid address');
+        }
         if (r.status === 404) {
           const body = (await r.text()).trim();
           if (!body) return Promise.reject('no route');
@@ -667,13 +675,15 @@ const StakeAuthority = () => {
       <div className="mb-9">
         {header}
         <UntrackedState>
-          {error === 'not found'
-            ? `This address isn’t the ${ROLE_LABEL[role].toLowerCase()} of any stake account in the recorded epochs.`
-            : error === 'not loaded'
-              ? 'Staker and withdrawer histories are still loading; this page fills in once they’re up.'
-              : error === 'no route'
-                ? 'Staker and withdrawer histories aren’t served by this API yet.'
-                : `Couldn't load this address (${error}).`}
+          {error === 'invalid address'
+            ? 'That isn\u2019t a valid Solana address: check it for a typo (base58, 32\u201344 characters).'
+            : error === 'not found'
+              ? `This address isn’t the ${ROLE_LABEL[role].toLowerCase()} of any stake account in the recorded epochs.`
+              : error === 'not loaded'
+                ? 'Staker and withdrawer histories are still loading; this page fills in once they’re up.'
+                : error === 'no route'
+                  ? 'Staker and withdrawer histories aren’t served by this API yet.'
+                  : `Couldn't load this address (${error}).`}
         </UntrackedState>
       </div>
     );

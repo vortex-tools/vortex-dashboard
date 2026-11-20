@@ -938,6 +938,14 @@ const StakeVoteAccount = () => {
     )
       .then(async r => {
         if (r.ok) return r.json();
+        // An address that doesn't parse (a typo): the API says so.
+        if (r.status === 400) {
+          const body = (await r.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          if (body?.error === 'invalidAddress')
+            return Promise.reject('invalid address');
+        }
         // A 404 with no body is the route itself missing (an API without
         // the Stake explorer yet); the API's own 404 says what it lacks.
         if (r.status === 404)
@@ -999,11 +1007,13 @@ const StakeVoteAccount = () => {
       <div className="mb-9">
         {header}
         <UntrackedState>
-          {error === 'not found'
-            ? 'No vote account with this address in the recorded epochs.'
-            : error === 'no route'
-              ? 'Stake history isn\u2019t served by this API yet: the Stake Explorer\u2019s data is still loading, and this page fills in once it\u2019s up.'
-              : `Couldn't load this vote account (${error}).`}
+          {error === 'invalid address'
+            ? 'That isn\u2019t a valid Solana address: check it for a typo (base58, 32\u201344 characters).'
+            : error === 'not found'
+              ? 'No vote account with this address in the recorded epochs.'
+              : error === 'no route'
+                ? 'Stake history isn\u2019t served by this API yet: the Stake Explorer\u2019s data is still loading, and this page fills in once it\u2019s up.'
+                : `Couldn't load this vote account (${error}).`}
         </UntrackedState>
       </div>
     );
