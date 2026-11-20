@@ -598,7 +598,12 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
                     )}
 
                     {c.items.some(i => i.lamports != null) && !c.complete && (
-                      <Tag tone="secondary">not final</Tag>
+                      <Tag tone="secondary">
+                        {d.complete &&
+                        c.items.some(i => i.measured && i.lamports == null)
+                          ? 'pending'
+                          : 'not final'}
+                      </Tag>
                     )}
                   </td>
                 </tr>
@@ -642,7 +647,13 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
                         formatLamports(i.lamports, 2)
                       ) : (
                         <span className="text-body-tertiary">
-                          {i.measured ? 'after the epoch' : 'not measured'}
+                          {!i.measured
+                            ? 'not measured'
+                            : d.complete
+                              ? // A finished epoch the API hasn't read this
+                                // fee for yet: it fills in.
+                                'pending'
+                              : 'after the epoch'}
                         </span>
                       )}
 
