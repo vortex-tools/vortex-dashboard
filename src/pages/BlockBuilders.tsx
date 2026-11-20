@@ -449,7 +449,16 @@ const FEE_KIND: Record<string, string> = {
   tipCommission: 'Commission on its tips',
   blockFeeCommission: 'Commission on block fees',
   blockRewardCommission: 'Commission on block rewards',
-  mevCommissionShare: 'Share of MEV commission'
+  mevCommissionShare: 'Share of MEV commission',
+  // Rakurai's, charged when validators claim their rewards.
+  revenueShareCommission: 'Revenue share commission',
+  subscriptionCommission: 'Subscription commission'
+};
+/** A name the tables don't know yet, in words: "someNewKind" reads
+ *  "Some new kind" (not the API's identifier). */
+const words = (id: string) => {
+  const w = id.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  return w.charAt(0).toUpperCase() + w.slice(1);
 };
 const FEE_BASE: Record<string, string> = {
   jitoTips: 'Jito tips',
@@ -463,7 +472,8 @@ const FEE_WHEN: Record<string, string> = {
   atDrain: 'at each tip payout',
   atDistribution: 'at tip distribution',
   perLeaderTurn: 'per leader turn',
-  afterEpoch: 'after the epoch'
+  afterEpoch: 'after the epoch',
+  atClaim: 'when rewards are claimed'
 };
 
 /** A small soft badge. */
@@ -595,21 +605,31 @@ const RevenueCard = ({ d }: { d: BlockBuilders }) => {
                 {c.items.map((i, n) => (
                   <tr key={n}>
                     <td className="ps-4">
-                      {i.source ? (
-                        <a href={i.source} target="_blank" rel="noreferrer">
-                          {FEE_KIND[i.kind] ?? i.kind}
-                        </a>
-                      ) : (
-                        (FEE_KIND[i.kind] ?? i.kind)
-                      )}
+                      {/* source: how the API measured it (a description,
+                          not a link), on hover. */}
+                      <span
+                        title={i.source ?? undefined}
+                        className={
+                          i.source ? 'text-decoration-underline' : undefined
+                        }
+                        style={
+                          i.source
+                            ? { textDecorationStyle: 'dotted', cursor: 'help' }
+                            : undefined
+                        }
+                      >
+                        {FEE_KIND[i.kind] ?? words(i.kind)}
+                      </span>
                       {i.when && (
                         <span className="text-body-tertiary fs-10 ms-2">
-                          {FEE_WHEN[i.when] ?? i.when}
+                          {FEE_WHEN[i.when] ?? words(i.when).toLowerCase()}
                         </span>
                       )}
                     </td>
                     <td>
-                      {(i.base && FEE_BASE[i.base]) ?? i.base ?? '—'}
+                      {i.base
+                        ? (FEE_BASE[i.base] ?? words(i.base).toLowerCase())
+                        : '—'}
                       <span className="text-body-tertiary fs-10 ms-2">
                         {i.paidBy
                           ? `in ${builderName(i.paidBy)} blocks`
