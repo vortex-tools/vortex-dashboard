@@ -133,6 +133,21 @@ const columns = (served: string): ColumnDef<FeatureGate>[] => [
   )
 ];
 
+/** A gate whose feature account exists: it activates at the next epoch
+ *  boundary - a pulsing badge, so it stands out. */
+const NextEpochBadge = ({ short = false }: { short?: boolean }) => (
+  <span
+    className="badge badge-soft badge-soft-warning d-inline-flex align-items-center gap-1"
+    title="Its feature account exists: it activates at the next epoch boundary"
+  >
+    <span
+      className="vx-pulse d-inline-block rounded-circle bg-warning"
+      style={{ width: 7, height: 7 }}
+    />
+    {short ? 'Next epoch' : 'Activates next epoch'}
+  </span>
+);
+
 /**
  * Solana feature gates: what's active on each cluster, what activates next
  * (with how much stake already runs a version that supports it), and every
@@ -196,6 +211,8 @@ const FeatureGates = () => {
   }, [features, served]);
   const floor = data?.clusters.find(c => c.cluster === served)?.versionFloor;
   const next = upcoming?.features[0];
+  // Its feature account exists: it activates at the next epoch boundary.
+  const nextQueued = !!next && next.clusters[served]?.status === 'queued';
 
   return (
     <div className="mb-9">
@@ -253,9 +270,13 @@ const FeatureGates = () => {
                 value={next ? featureName(next) : '—'}
                 linkTo={next ? `/feature/${next.id}` : undefined}
                 sublabel={
-                  next?.readiness
-                    ? `${Math.round((next.readiness.readyStake / Math.max(1, next.readiness.totalStake)) * 1000) / 10}% of stake ready`
-                    : 'nothing scheduled'
+                  nextQueued ? (
+                    <NextEpochBadge />
+                  ) : next?.readiness ? (
+                    `${Math.round((next.readiness.readyStake / Math.max(1, next.readiness.totalStake)) * 1000) / 10}% of stake ready`
+                  ) : (
+                    'nothing scheduled'
+                  )
                 }
               />
             </div>
@@ -307,11 +328,26 @@ const FeatureGates = () => {
                 </thead>
                 <tbody>
                   {upcoming.features.map((f, i) => (
-                    <tr key={f.id}>
-                      <td className="text-body-tertiary font-monospace">
-                        {f.clusters[served]?.status === 'queued'
-                          ? 'next epoch'
-                          : i + 1}
+                    <tr
+                      key={f.id}
+                      className={
+                        f.clusters[served]?.status === 'queued'
+                          ? 'table-warning'
+                          : undefined
+                      }
+                    >
+                      <td
+                        className={
+                          f.clusters[served]?.status === 'queued'
+                            ? 'text-nowrap'
+                            : 'text-body-tertiary font-monospace'
+                        }
+                      >
+                        {f.clusters[served]?.status === 'queued' ? (
+                          <NextEpochBadge short />
+                        ) : (
+                          i + 1
+                        )}
                       </td>
                       <td>
                         <Link
