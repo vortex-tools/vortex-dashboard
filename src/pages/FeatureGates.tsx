@@ -267,7 +267,17 @@ const FeatureGates = () => {
               <StatCard
                 label="Next Up"
                 mono={false}
-                value={next ? featureName(next) : '—'}
+                // A name, not a number: the size of the minimum versions
+                // card's text beside it.
+                value={
+                  next ? (
+                    <span className="fs-9" title={featureName(next)}>
+                      {featureName(next)}
+                    </span>
+                  ) : (
+                    '—'
+                  )
+                }
                 linkTo={next ? `/feature/${next.id}` : undefined}
                 sublabel={
                   nextQueued ? (
