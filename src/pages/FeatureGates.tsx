@@ -292,7 +292,7 @@ const FeatureGates = () => {
             </div>
             <div className="col-6 col-lg-3">
               <StatCard
-                label="Minimum Supported Software"
+                label="Minimum Versions"
                 mono={false}
                 value={
                   floor ? (
