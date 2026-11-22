@@ -429,7 +429,7 @@ export const SKELETON = {
     { stats: 5, sub: 2 },
     [full(137, 'list')],
     [half(304, 'chart'), half(304, 'chart')],
-    [full(525)],
+    [full(487)],
     [full(593)]
   ],
   // Marinade's (mSOL, Native): its stake auction's card above Fees.
@@ -438,7 +438,7 @@ export const SKELETON = {
     [full(90, 'list')],
     [full(160, 'list')],
     [half(304, 'chart'), half(304, 'chart')],
-    [full(525)],
+    [full(487)],
     [full(593)]
   ],
   // Marinade Native's: four stat cards and the auction, no Fees.
@@ -446,7 +446,7 @@ export const SKELETON = {
     { stats: 4, sub: 2 },
     [full(90, 'list')],
     [half(304, 'chart'), half(304, 'chart')],
-    [full(525)],
+    [full(487)],
     [full(593)]
   ],
   // SFDP's: four stat cards (its Validators card has the 100 limit's
@@ -454,7 +454,7 @@ export const SKELETON = {
   poolSfdp: [
     { stats: 4, sub: 2 },
     [half(291, 'chart'), half(291, 'chart')],
-    [full(525)],
+    [full(487)],
     [full(593)]
   ],
   pools: [{ stats: 3 }, [full(733)]],
@@ -473,10 +473,10 @@ export const SKELETON = {
   ],
   // Ranked lists with share bars.
   decentralization: [
-    [half(359, 'list'), half(359, 'list')],
-    [half(359, 'list'), half(359, 'list')],
+    [half(328, 'list'), half(328, 'list')],
+    [half(328, 'list'), half(328, 'list')],
     [half(217, 'list'), half(217, 'list')],
-    [half(342, 'list')]
+    [half(311, 'list')]
   ],
   slot: [[half(470), half(470)], [half(314), half(314)], [full(160)]],
   clientVersions: [[half(843), half(843)], [full(569)]],
@@ -508,11 +508,11 @@ export const SKELETON = {
   epochPage: [
     { stats: 4, sub: 1 },
     [full(280, 'block')],
-    [full(666)],
+    [full(384)],
     [
-      { w: 4, h: 183, kind: 'list' },
-      { w: 4, h: 183, kind: 'list' },
-      { w: 4, h: 183, kind: 'block' }
+      { w: 4, h: 206, kind: 'list' },
+      { w: 4, h: 206, kind: 'list' },
+      { w: 4, h: 206, kind: 'block' }
     ]
   ],
   boundaryReplay: [
@@ -540,7 +540,7 @@ export const SKELETON = {
       { w: 7, h: 224, kind: 'table' },
       { w: 5, h: 224, kind: 'block' }
     ],
-    [full(408)]
+    [full(323)]
   ],
   leaderboard: [{ stats: 4 }, { toolbar: true }, { table: 16 }],
   producers: [{ stats: 3 }, { toolbar: true }, { table: 16 }],

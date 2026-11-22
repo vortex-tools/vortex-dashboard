@@ -742,7 +742,7 @@ const productionHistoryToEntries = (
  *  first, before `beforeSlot` (null = the newest), only windows with a
  *  skip or a Poor block when `issues`. APIs without paging ignore the
  *  page params and return every window (no `nextBeforeSlot`). */
-export const PRODUCTION_WINDOWS_PAGE = 20;
+export const PRODUCTION_WINDOWS_PAGE = 10;
 /** Which windows a page holds: all, any issue (skip or Poor block), or
  *  only skips / only Poor blocks. */
 export type WindowsFilter = 'all' | 'issues' | 'skipped' | 'poor';

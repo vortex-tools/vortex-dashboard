@@ -9,7 +9,7 @@ import {
   neverReaches
 } from './Unreachable';
 
-const TOP = 8;
+const TOP = 7;
 // A producer whose blocks carried this much less than the cluster's mean
 // included stake leaves many voters out, not just this one.
 const THIN_GAP = 0.02;

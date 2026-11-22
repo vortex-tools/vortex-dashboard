@@ -62,7 +62,7 @@ const ROLE_WHAT: Record<Role, string> = {
 /** Epochs the history chart opens on (zoom out for all). */
 const CHART_WINDOW = 100;
 /** Accounts per page of the table. */
-const LIMIT = 50;
+const LIMIT = 25;
 
 const num = z.number().nullable().catch(null);
 const holding = z.object({
@@ -327,7 +327,7 @@ const WhereCard = ({ row }: { row: EpochRow }) => {
   );
 };
 
-/** The stake accounts it held a role on in one epoch, 50 at a time. */
+/** The stake accounts it held a role on in one epoch, 25 at a time. */
 const AccountsCard = ({
   address,
   role,
@@ -380,7 +380,7 @@ const AccountsCard = ({
     <SectionCard
       title="Stake Accounts"
       icon="layers"
-      info={`Every stake account it was the ${ROLE_LABEL[role].toLowerCase()} of at the end of the epoch you pick: the validator it was delegated to, its stake and rewards. Sorted by the API, 50 at a time. Download CSV: every epoch of every one of its stake accounts over its whole history (account by account, oldest epoch first; amounts in SOL), with locked - whether that account's lockup was still in force at the epoch's end, so the reward couldn't be withdrawn yet (blank where the lockup or the epoch's block times aren't recorded).`}
+      info={`Every stake account it was the ${ROLE_LABEL[role].toLowerCase()} of at the end of the epoch you pick: the validator it was delegated to, its stake and rewards. Sorted by the API, 25 at a time. Download CSV: every epoch of every one of its stake accounts over its whole history (account by account, oldest epoch first; amounts in SOL), with locked - whether that account's lockup was still in force at the epoch's end, so the reward couldn't be withdrawn yet (blank where the lockup or the epoch's block times aren't recorded).`}
       aside={
         tooBig ? (
           <span

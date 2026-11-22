@@ -7,7 +7,7 @@ import { neverReaches } from './Unreachable';
 
 type Producer = ParticipationMisses['producers'][number];
 
-const PAGE = 12;
+const PAGE = 10;
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-6)}`;
 

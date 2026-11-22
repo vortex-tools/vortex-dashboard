@@ -54,7 +54,7 @@ const TIMELINE_EPOCHS = 3;
 const NAMED = 6;
 /** A version is named once it held this share of its client's stake. */
 const NAMED_MIN = 0.02;
-const BEHIND_FIRST = 8;
+const BEHIND_FIRST = 7;
 
 /** Frankendancer reached end of life with Alpenglow; it's left out. */
 const FAMILIES = [

@@ -1222,10 +1222,10 @@ const StakePool = () => {
           };
         })()
       : null;
-  // Epoch Changes: the pending row and the 10 latest epochs (each row's
-  // change against the one before, from the full list).
+  // Epoch Changes: 10 rows - the pending row, then the latest epochs
+  // (each row's change against the one before, from the full list).
   const allRows = pendingRow ? [pendingRow, ...newest] : newest;
-  const rows = allRows.slice(0, pendingRow ? 11 : 10);
+  const rows = allRows.slice(0, 10);
 
   return (
     <div className="mb-9">

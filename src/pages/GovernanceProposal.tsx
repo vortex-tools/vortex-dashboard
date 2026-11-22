@@ -303,7 +303,7 @@ const BreakdownCard = ({
       {sorted.length ? (
         <>
           <div className="d-flex flex-column gap-2">
-            {(all ? sorted : sorted.slice(0, 8)).map(r => (
+            {(all ? sorted : sorted.slice(0, 7)).map(r => (
               <div key={r.key}>
                 <div className="d-flex justify-content-between gap-2 fs-9 mb-1">
                   <span className="text-truncate" title={r.key}>

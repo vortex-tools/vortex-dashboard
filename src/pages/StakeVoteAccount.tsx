@@ -45,7 +45,7 @@ echarts.use([
 /** Epochs the history chart opens on (zoom out for all). */
 const CHART_WINDOW = 100;
 /** Delegations per page. */
-const LIMIT = 50;
+const LIMIT = 25;
 
 const num = z.number().nullable().catch(null);
 const historySchema = z.object({
@@ -439,7 +439,7 @@ const WentTo = ({ g, through }: { g: Gone; through: number }) => {
 };
 
 /** Its delegations in one epoch: sorted and filtered by the
- *  API, 50 at a time, each with what changed since the epoch before. */
+ *  API, 25 at a time, each with what changed since the epoch before. */
 const DelegationsCard = ({
   voteKey,
   epochs
@@ -561,7 +561,7 @@ const DelegationsCard = ({
     <SectionCard
       title="Delegations"
       icon="users"
-      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New (and from which validator, if it moved), Split (a new account split off another of its accounts; the source shows Decreased and what it split into), Recreated (the account at that address at the epoch's start was closed and a new one opened there: a stake pool reusing its transient account, say), Increased, Decreased; Left lists the ones that went, and where they are now. Sorted and filtered by the API, 50 at a time."
+      info="Every stake account delegated to it at the end of the epoch you pick, with its rewards, authorities and what changed since the epoch before: New (and from which validator, if it moved), Split (a new account split off another of its accounts; the source shows Decreased and what it split into), Recreated (the account at that address at the epoch's start was closed and a new one opened there: a stake pool reusing its transient account, say), Increased, Decreased; Left lists the ones that went, and where they are now. Sorted and filtered by the API, 25 at a time."
     >
       <Row className="g-2 align-items-center mb-3">
         <Col xs={6} md="auto">

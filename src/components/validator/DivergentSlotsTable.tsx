@@ -17,7 +17,7 @@ import SectionCard from 'components/common/SectionCard';
 import { Link } from 'react-router';
 
 /** Leader windows a page. */
-const PAGE = 20;
+const PAGE = 10;
 /** Slots in a leader window. */
 const WINDOW = 4;
 

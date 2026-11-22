@@ -14,7 +14,7 @@ import { Table } from 'react-bootstrap';
 import { Link, useSearchParams } from 'react-router';
 import { pct2 } from './SlotVotes';
 
-const FIRST_ROWS = 8;
+const FIRST_ROWS = 7;
 /** Below this (ppb), a share shows as 0.00%: not worth a line. */
 const HALF_BP = 50_000;
 

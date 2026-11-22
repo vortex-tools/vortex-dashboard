@@ -17,6 +17,7 @@ import {
   voterLabel,
   whenText
 } from 'components/changes/changes';
+import { TableSkeleton } from 'components/common/PageSkeleton';
 import DelayedSpinner from 'components/common/DelayedSpinner';
 import ValidatorSearch from 'components/common/ValidatorSearch';
 import SectionCard from 'components/common/SectionCard';
@@ -434,7 +435,7 @@ const Activity = () => {
     data: events,
     sortable: true,
     pagination: true,
-    pageSize: 50,
+    pageSize: 25,
     getRowId: (e, i) =>
       `${e.signature ?? eventTime(e) ?? i}-${e.kind}-${e.voteKey ?? e.identity ?? ''}`,
     resetPageKey: `${epochs}${kind}`,
@@ -544,7 +545,8 @@ const Activity = () => {
               Validator activity isn&apos;t available right now.
             </UntrackedState>
           ) : (
-            <DelayedSpinner loading label="Loading changes…" />
+            // A page of rows' stand-in, so the card is its table's height.
+            <TableSkeleton rows={25} inCard />
           )
         ) : events.length ? (
           <AdvanceTableProvider {...table}>

@@ -188,7 +188,7 @@ const FeatureGates = () => {
     data: shown,
     sortable: true,
     pagination: true,
-    pageSize: 20,
+    pageSize: 25,
     getRowId: f => f.id,
     resetPageKey: filter,
     initialState: { sorting: [{ id: 'mainnet-beta', desc: false }] }

@@ -33,7 +33,7 @@ type HistoryCtl = {
   failed: boolean;
 };
 /** Rows per breakdown card before "Show all". */
-const FIRST_ROWS = 8;
+const FIRST_ROWS = 7;
 
 type Group = {
   key: string;

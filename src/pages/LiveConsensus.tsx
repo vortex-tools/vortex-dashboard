@@ -48,7 +48,7 @@ const POLL_MS = 2_000;
 const HOLD_DELAY_MS = 400;
 const RELEASE_MS = 150;
 const RECENT = 128; // slots in the grid
-const LEADER_ROWS = 10;
+const LEADER_ROWS = 7;
 const GRID_ROWS = 3;
 // Playhead: trails the newest ingested slot by PLAY_GAP (votes ride 8
 // slots later, finalization a few after) and starts PLAY_LEAD further back

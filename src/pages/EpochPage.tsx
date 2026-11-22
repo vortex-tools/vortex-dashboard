@@ -45,7 +45,7 @@ const activitySchema = z.object({
 });
 
 /** Largest validators listed. */
-const TOP = 20;
+const TOP = 10;
 
 const sol = (l: number | null | undefined, d = 0) =>
   l == null ? '—' : formatLamports(l, d);
